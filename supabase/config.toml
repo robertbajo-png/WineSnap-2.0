@@ -1,1 +1,4 @@
 project_id = "mervdrbnwgreaifobasw"
+
+[functions.analyze-wine]
+verify_jwt = false
