@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Grape } from "lucide-react";
+import { Grape, MapPin, Wine, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,7 @@ function TastePage() {
         </p>
       ) : (
         <>
+          <SummaryCard stats={stats} count={wines.length} />
           <section className="mt-6">
             <h2 className="mb-3 font-display text-xl">Genomsnitt</h2>
             <Card className="space-y-3 p-4">
@@ -167,5 +168,68 @@ function TopList({ items }: { items: [string, number][] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+type Stats = {
+  grapes: [string, number][];
+  regions: [string, number][];
+  types: [string, number][];
+  avg: {
+    fruit: number | null;
+    tannin: number | null;
+    acidity: number | null;
+    oak: number | null;
+    sweetness: number | null;
+    body: number | null;
+  };
+};
+
+function SummaryCard({ stats, count }: { stats: Stats; count: number }) {
+  const topGrape = stats.grapes[0]?.[0];
+  const topRegion = stats.regions[0]?.[0];
+  const topType = stats.types[0]?.[0];
+  const recommended = TYPE_LABEL[topType ?? "unknown"] ?? "Övrigt";
+
+  const { tannin, body, acidity, sweetness, oak, fruit } = stats.avg;
+  const traits: string[] = [];
+  if (body != null) traits.push(body >= 7 ? "fylliga" : body <= 3 ? "lätta" : "medelfylliga");
+  if (tannin != null && tannin >= 7) traits.push("tanninrika");
+  if (acidity != null && acidity >= 7) traits.push("friska");
+  if (sweetness != null && sweetness >= 6) traits.push("med sötma");
+  if (oak != null && oak >= 6) traits.push("ekfatslagrade");
+  if (fruit != null && fruit >= 7) traits.push("fruktdrivna");
+
+  const summary = topGrape
+    ? `Du dras till ${traits.slice(0, 3).join(", ") || "balanserade"} viner — ofta ${recommended.toLowerCase()} på ${topGrape}${topRegion ? ` från ${topRegion}` : ""}.`
+    : "Skanna fler vin så förfinar vi din profil.";
+
+  return (
+    <Card className="mt-6 overflow-hidden border-burgundy/20 bg-gradient-wine/5 p-5">
+      <div className="flex items-center gap-2 text-burgundy">
+        <Sparkles className="h-4 w-4" />
+        <span className="text-xs font-medium uppercase tracking-widest">Sammanfattning</span>
+      </div>
+      <p className="mt-3 font-display text-lg leading-snug">{summary}</p>
+      <p className="mt-1 text-xs text-muted-foreground">Baserat på {count} vin</p>
+
+      <div className="mt-5 grid grid-cols-3 gap-3">
+        <Highlight icon={<Grape className="h-4 w-4" />} label="Toppdruva" value={topGrape ?? "—"} />
+        <Highlight icon={<MapPin className="h-4 w-4" />} label="Topp­region" value={topRegion ?? "—"} />
+        <Highlight icon={<Wine className="h-4 w-4" />} label="Rek. typ" value={recommended} />
+      </div>
+    </Card>
+  );
+}
+
+function Highlight({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-background/60 p-3">
+      <div className="flex items-center gap-1.5 text-burgundy">
+        {icon}
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+      </div>
+      <p className="mt-1.5 font-display text-sm leading-tight line-clamp-2">{value}</p>
+    </div>
   );
 }
