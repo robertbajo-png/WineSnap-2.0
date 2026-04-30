@@ -112,6 +112,7 @@ function TastePage() {
         </p>
       ) : (
         <>
+          <SummaryCard stats={stats} count={wines.length} />
           <section className="mt-6">
             <h2 className="mb-3 font-display text-xl">Genomsnitt</h2>
             <Card className="space-y-3 p-4">
