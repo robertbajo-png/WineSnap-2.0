@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasteRouteImport } from './routes/taste'
+import { Route as ScanRouteImport } from './routes/scan'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -22,6 +23,11 @@ import { Route as WineIdRouteImport } from './routes/wine.$id'
 const TasteRoute = TasteRouteImport.update({
   id: '/taste',
   path: '/taste',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeRoute = MeRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/scan': typeof ScanRoute
   '/taste': typeof TasteRoute
   '/wine/$id': typeof WineIdRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/scan': typeof ScanRoute
   '/taste': typeof TasteRoute
   '/wine/$id': typeof WineIdRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/scan': typeof ScanRoute
   '/taste': typeof TasteRoute
   '/wine/$id': typeof WineIdRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/login'
     | '/me'
+    | '/scan'
     | '/taste'
     | '/wine/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/login'
     | '/me'
+    | '/scan'
     | '/taste'
     | '/wine/$id'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/login'
     | '/me'
+    | '/scan'
     | '/taste'
     | '/wine/$id'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
+  ScanRoute: typeof ScanRoute
   TasteRoute: typeof TasteRoute
   WineIdRoute: typeof WineIdRoute
 }
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/taste'
       fullPath: '/taste'
       preLoaderRoute: typeof TasteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me': {
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
+  ScanRoute: ScanRoute,
   TasteRoute: TasteRoute,
   WineIdRoute: WineIdRoute,
 }
