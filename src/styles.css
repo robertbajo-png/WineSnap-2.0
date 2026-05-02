@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Winesnap 2.0 Design System
- * Lyxig vinkänsla — burgundy, plommon, champagne & guld.
+ * WineSnap — Dark Luxury
+ * Svart bakgrund, guld/koppar accenter, vinröd som signal.
  */
 
 @theme inline {
@@ -55,122 +55,77 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --color-burgundy: var(--burgundy);
-  --color-plum: var(--plum);
   --color-gold: var(--gold);
-  --color-champagne: var(--champagne);
-  --color-rose: var(--rose);
+  --color-copper: var(--copper);
+  --color-cream: var(--cream);
+  --color-success: var(--success);
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.875rem;
 
-  /* Bas: varm champagne/cream */
-  --background: oklch(0.97 0.012 75);
-  --foreground: oklch(0.2 0.04 25);
+  /* Mörk lyx — djupt svart med varm underton */
+  --background: oklch(0.13 0.008 30);
+  --foreground: oklch(0.96 0.012 75);
 
-  --card: oklch(0.99 0.008 80);
-  --card-foreground: oklch(0.2 0.04 25);
+  --card: oklch(0.18 0.012 30);
+  --card-foreground: oklch(0.96 0.012 75);
 
-  --popover: oklch(0.99 0.008 80);
-  --popover-foreground: oklch(0.2 0.04 25);
+  --popover: oklch(0.16 0.012 30);
+  --popover-foreground: oklch(0.96 0.012 75);
 
-  /* Primär: djup burgundy/bordeaux */
-  --primary: oklch(0.36 0.13 18);
-  --primary-foreground: oklch(0.97 0.012 75);
+  /* Primär: varm guld/koppar */
+  --primary: oklch(0.74 0.13 65);
+  --primary-foreground: oklch(0.13 0.008 30);
 
-  /* Sekundär: mjuk champagne */
-  --secondary: oklch(0.93 0.025 75);
-  --secondary-foreground: oklch(0.3 0.06 20);
+  --secondary: oklch(0.22 0.015 30);
+  --secondary-foreground: oklch(0.92 0.012 75);
 
-  --muted: oklch(0.94 0.018 70);
-  --muted-foreground: oklch(0.48 0.04 25);
+  --muted: oklch(0.2 0.012 30);
+  --muted-foreground: oklch(0.62 0.015 60);
 
-  --accent: oklch(0.88 0.05 60);
-  --accent-foreground: oklch(0.25 0.06 20);
+  --accent: oklch(0.26 0.02 30);
+  --accent-foreground: oklch(0.96 0.012 75);
 
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.88 0.025 60);
-  --input: oklch(0.92 0.018 65);
-  --ring: oklch(0.55 0.16 22);
+  --border: oklch(0.26 0.012 30);
+  --input: oklch(0.22 0.015 30);
+  --ring: oklch(0.74 0.13 65);
 
-  /* Vin-tokens */
-  --burgundy: oklch(0.36 0.13 18);
-  --plum: oklch(0.32 0.1 350);
-  --gold: oklch(0.78 0.13 80);
-  --champagne: oklch(0.92 0.04 85);
-  --rose: oklch(0.78 0.08 25);
+  /* WineSnap-specifika tokens */
+  --burgundy: oklch(0.5 0.18 18);
+  --gold: oklch(0.78 0.13 75);
+  --copper: oklch(0.68 0.14 50);
+  --cream: oklch(0.92 0.04 80);
+  --success: oklch(0.7 0.18 145);
 
-  --chart-1: oklch(0.45 0.15 18);
-  --chart-2: oklch(0.55 0.13 350);
-  --chart-3: oklch(0.78 0.13 80);
-  --chart-4: oklch(0.65 0.1 30);
-  --chart-5: oklch(0.5 0.08 280);
+  --chart-1: oklch(0.78 0.13 75);
+  --chart-2: oklch(0.5 0.18 18);
+  --chart-3: oklch(0.68 0.14 50);
+  --chart-4: oklch(0.6 0.1 350);
+  --chart-5: oklch(0.7 0.18 145);
 
-  --sidebar: oklch(0.96 0.015 75);
-  --sidebar-foreground: oklch(0.2 0.04 25);
-  --sidebar-primary: oklch(0.36 0.13 18);
-  --sidebar-primary-foreground: oklch(0.97 0.012 75);
-  --sidebar-accent: oklch(0.93 0.025 75);
-  --sidebar-accent-foreground: oklch(0.25 0.06 20);
-  --sidebar-border: oklch(0.88 0.025 60);
-  --sidebar-ring: oklch(0.55 0.16 22);
+  --sidebar: oklch(0.13 0.008 30);
+  --sidebar-foreground: oklch(0.96 0.012 75);
+  --sidebar-primary: oklch(0.74 0.13 65);
+  --sidebar-primary-foreground: oklch(0.13 0.008 30);
+  --sidebar-accent: oklch(0.22 0.015 30);
+  --sidebar-accent-foreground: oklch(0.96 0.012 75);
+  --sidebar-border: oklch(0.26 0.012 30);
+  --sidebar-ring: oklch(0.74 0.13 65);
 
   /* Gradients & shadows */
-  --gradient-wine: linear-gradient(135deg, oklch(0.36 0.13 18) 0%, oklch(0.28 0.1 350) 100%);
-  --gradient-gold: linear-gradient(135deg, oklch(0.86 0.13 85) 0%, oklch(0.7 0.14 65) 100%);
-  --gradient-champagne: linear-gradient(180deg, oklch(0.97 0.012 75) 0%, oklch(0.93 0.03 75) 100%);
-  --gradient-veil: linear-gradient(180deg, transparent 0%, oklch(0.2 0.04 25 / 0.85) 100%);
+  --gradient-gold: linear-gradient(135deg, oklch(0.82 0.13 80) 0%, oklch(0.62 0.15 50) 100%);
+  --gradient-burgundy: linear-gradient(135deg, oklch(0.5 0.18 18) 0%, oklch(0.32 0.13 18) 100%);
+  --gradient-veil: linear-gradient(180deg, transparent 0%, oklch(0.1 0.008 30 / 0.95) 100%);
+  --gradient-dim: radial-gradient(60% 60% at 50% 0%, oklch(0.5 0.18 18 / 0.18) 0%, transparent 70%);
 
-  --shadow-soft: 0 2px 8px -2px oklch(0.36 0.13 18 / 0.08), 0 8px 24px -8px oklch(0.36 0.13 18 / 0.12);
-  --shadow-elegant: 0 12px 40px -12px oklch(0.36 0.13 18 / 0.3);
-  --shadow-glow: 0 0 40px oklch(0.78 0.13 80 / 0.35);
-}
-
-.dark {
-  --background: oklch(0.14 0.025 20);
-  --foreground: oklch(0.95 0.012 75);
-
-  --card: oklch(0.2 0.04 20);
-  --card-foreground: oklch(0.95 0.012 75);
-
-  --popover: oklch(0.2 0.04 20);
-  --popover-foreground: oklch(0.95 0.012 75);
-
-  --primary: oklch(0.65 0.18 20);
-  --primary-foreground: oklch(0.14 0.025 20);
-
-  --secondary: oklch(0.26 0.04 20);
-  --secondary-foreground: oklch(0.95 0.012 75);
-
-  --muted: oklch(0.22 0.03 20);
-  --muted-foreground: oklch(0.7 0.03 60);
-
-  --accent: oklch(0.3 0.06 25);
-  --accent-foreground: oklch(0.95 0.012 75);
-
-  --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.98 0 0);
-
-  --border: oklch(0.3 0.04 20);
-  --input: oklch(0.26 0.04 20);
-  --ring: oklch(0.65 0.18 20);
-
-  --burgundy: oklch(0.55 0.18 18);
-  --plum: oklch(0.5 0.13 350);
-  --gold: oklch(0.82 0.13 80);
-  --champagne: oklch(0.4 0.05 70);
-  --rose: oklch(0.7 0.1 25);
-
-  --sidebar: oklch(0.14 0.025 20);
-  --sidebar-foreground: oklch(0.95 0.012 75);
-  --sidebar-primary: oklch(0.65 0.18 20);
-  --sidebar-primary-foreground: oklch(0.14 0.025 20);
-  --sidebar-accent: oklch(0.22 0.03 20);
-  --sidebar-accent-foreground: oklch(0.95 0.012 75);
-  --sidebar-border: oklch(0.3 0.04 20);
-  --sidebar-ring: oklch(0.65 0.18 20);
+  --shadow-soft: 0 2px 8px -2px oklch(0 0 0 / 0.4), 0 8px 24px -8px oklch(0 0 0 / 0.5);
+  --shadow-elegant: 0 12px 40px -12px oklch(0 0 0 / 0.7);
+  --shadow-glow: 0 0 32px oklch(0.78 0.13 75 / 0.35);
+  --shadow-gold-ring: 0 0 0 1px oklch(0.78 0.13 75 / 0.3), 0 8px 24px -8px oklch(0.78 0.13 75 / 0.25);
 }
 
 @layer base {
@@ -182,6 +137,7 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: var(--color-background);
   }
 
   body {
@@ -196,25 +152,32 @@
 }
 
 @layer utilities {
-  .bg-gradient-wine { background-image: var(--gradient-wine); }
   .bg-gradient-gold { background-image: var(--gradient-gold); }
-  .bg-gradient-champagne { background-image: var(--gradient-champagne); }
+  .bg-gradient-burgundy { background-image: var(--gradient-burgundy); }
   .bg-gradient-veil { background-image: var(--gradient-veil); }
+  .bg-gradient-dim { background-image: var(--gradient-dim); }
 
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-elegant { box-shadow: var(--shadow-elegant); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
+  .shadow-gold-ring { box-shadow: var(--shadow-gold-ring); }
 
   .text-gold { color: var(--color-gold); }
+  .text-copper { color: var(--color-copper); }
   .text-burgundy { color: var(--color-burgundy); }
-  .bg-gold { background-color: var(--color-gold); }
-  .bg-burgundy { background-color: var(--color-burgundy); }
-  .bg-champagne { background-color: var(--color-champagne); }
-  .border-gold { border-color: var(--color-gold); }
+  .text-cream { color: var(--color-cream); }
+  .text-success { color: var(--color-success); }
 
-  .glass {
-    background-color: oklch(1 0 0 / 0.6);
-    backdrop-filter: blur(16px);
-    border: 1px solid oklch(1 0 0 / 0.3);
+  .bg-gold { background-color: var(--color-gold); }
+  .bg-copper { background-color: var(--color-copper); }
+  .bg-burgundy { background-color: var(--color-burgundy); }
+
+  .border-gold { border-color: var(--color-gold); }
+  .border-copper { border-color: var(--color-copper); }
+
+  .glass-dark {
+    background-color: oklch(0.13 0.008 30 / 0.7);
+    backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid oklch(1 0 0 / 0.06);
   }
 }

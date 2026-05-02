@@ -84,7 +84,7 @@ function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" disabled={busy} className="h-11 w-full bg-gradient-wine">
+          <Button type="submit" disabled={busy} className="h-11 w-full bg-gradient-gold text-background">
             {busy ? "Vänta…" : mode === "signin" ? "Logga in" : "Skapa konto"}
           </Button>
         </form>

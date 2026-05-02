@@ -61,7 +61,7 @@ function ForYouPage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">Logga in för rekommendationer.</p>
           <Link to="/login">
-            <Button className="mt-4 bg-gradient-wine">Logga in</Button>
+            <Button className="mt-4 bg-gradient-gold text-background">Logga in</Button>
           </Link>
         </div>
       </AppShell>
@@ -71,7 +71,7 @@ function ForYouPage() {
   return (
     <AppShell>
       <div className="flex items-center gap-2">
-        <Sparkles className="h-6 w-6 text-burgundy" />
+        <Sparkles className="h-6 w-6 text-gold" />
         <h1 className="font-display text-3xl">För dig</h1>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
@@ -87,11 +87,11 @@ function ForYouPage() {
           {recommendations.map(({ w }) => (
             <Link key={w.id} to="/wine/$id" params={{ id: w.id }}>
               <Card className="flex items-center gap-3 p-3 shadow-soft hover:shadow-elegant">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-champagne">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/5">
                   {w.image_url ? (
                     <img src={w.image_url} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <Wine className="h-6 w-6 text-burgundy" />
+                    <Wine className="h-6 w-6 text-gold" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
