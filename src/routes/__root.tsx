@@ -30,7 +30,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#5a1a23" },
+      { name: "theme-color", content: "#1a1410" },
       { title: "Winesnap — Skanna vinetiketter" },
       { name: "description", content: "Fota en vinetikett, få producent, druva, smakprofil och matparning direkt." },
       { property: "og:title", content: "Winesnap" },
