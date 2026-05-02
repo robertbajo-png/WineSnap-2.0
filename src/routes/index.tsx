@@ -40,6 +40,7 @@ function HomePage() {
     supabase
       .from("wines")
       .select("id,producer,wine_name,vintage,region,country,image_url,created_at,fruit,tannin,acidity,body,grape_varieties")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         const ws = (data as RecentWine[]) ?? [];
