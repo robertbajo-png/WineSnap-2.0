@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasteRouteImport } from './routes/taste'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ForYouRouteImport } from './routes/for-you'
+import { Route as CellarRouteImport } from './routes/cellar'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,6 +25,11 @@ import { Route as WineIdRouteImport } from './routes/wine.$id'
 const TasteRoute = TasteRouteImport.update({
   id: '/taste',
   path: '/taste',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScanRoute = ScanRouteImport.update({
@@ -50,6 +57,11 @@ const ForYouRoute = ForYouRouteImport.update({
   path: '/for-you',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CellarRoute = CellarRouteImport.update({
+  id: '/cellar',
+  path: '/cellar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -75,11 +87,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/cellar': typeof CellarRoute
   '/for-you': typeof ForYouRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/scan': typeof ScanRoute
+  '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wine/$id': typeof WineIdRoute
 }
@@ -87,11 +101,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/cellar': typeof CellarRoute
   '/for-you': typeof ForYouRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/scan': typeof ScanRoute
+  '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wine/$id': typeof WineIdRoute
 }
@@ -100,11 +116,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/cellar': typeof CellarRoute
   '/for-you': typeof ForYouRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/scan': typeof ScanRoute
+  '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wine/$id': typeof WineIdRoute
 }
@@ -114,11 +132,13 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/cellar'
     | '/for-you'
     | '/history'
     | '/login'
     | '/me'
     | '/scan'
+    | '/search'
     | '/taste'
     | '/wine/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -126,11 +146,13 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/cellar'
     | '/for-you'
     | '/history'
     | '/login'
     | '/me'
     | '/scan'
+    | '/search'
     | '/taste'
     | '/wine/$id'
   id:
@@ -138,11 +160,13 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/cellar'
     | '/for-you'
     | '/history'
     | '/login'
     | '/me'
     | '/scan'
+    | '/search'
     | '/taste'
     | '/wine/$id'
   fileRoutesById: FileRoutesById
@@ -151,11 +175,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
+  CellarRoute: typeof CellarRoute
   ForYouRoute: typeof ForYouRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   ScanRoute: typeof ScanRoute
+  SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
   WineIdRoute: typeof WineIdRoute
 }
@@ -167,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/taste'
       fullPath: '/taste'
       preLoaderRoute: typeof TasteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scan': {
@@ -204,6 +237,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForYouRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cellar': {
+      id: '/cellar'
+      path: '/cellar'
+      fullPath: '/cellar'
+      preLoaderRoute: typeof CellarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -239,11 +279,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
+  CellarRoute: CellarRoute,
   ForYouRoute: ForYouRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   ScanRoute: ScanRoute,
+  SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
   WineIdRoute: WineIdRoute,
 }
