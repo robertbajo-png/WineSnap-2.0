@@ -33,6 +33,8 @@ function ScanPage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [scanned, setScanned] = useState<ScannedWine | null>(null);
+  const [mode, setMode] = useState<"camera" | "text">("camera");
+  const [text, setText] = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -40,6 +42,64 @@ function ScanPage() {
       navigate({ to: "/login" });
     }
   }, [user, loading, navigate]);
+
+  const persistWine = async (w: any, imageUrl: string | null) => {
+    if (!user) throw new Error("Not authenticated");
+    const { data: inserted, error: insErr } = await supabase
+      .from("wines")
+      .insert({
+        user_id: user.id,
+        image_url: imageUrl,
+        producer: w.producer,
+        wine_name: w.wine_name,
+        vintage: w.vintage,
+        grape_varieties: w.grape_varieties,
+        region: w.region,
+        country: w.country,
+        wine_type: w.wine_type,
+        description: w.description,
+        fruit: w.fruit,
+        tannin: w.tannin,
+        acidity: w.acidity,
+        oak: w.oak,
+        sweetness: w.sweetness,
+        body: w.body,
+        primary_notes: w.primary_notes,
+        secondary_notes: w.secondary_notes,
+        tertiary_notes: w.tertiary_notes,
+        food_pairings: w.food_pairings,
+        serving_temp: w.serving_temp,
+        glass_type: w.glass_type,
+        decant: w.decant,
+        ai_raw: w,
+      })
+      .select("id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type")
+      .single();
+    if (insErr) throw insErr;
+    return inserted as ScannedWine;
+  };
+
+  const handleText = async () => {
+    if (!user) return;
+    const q = text.trim();
+    if (q.length < 3) {
+      toast.error("Please describe the wine in a few words");
+      return;
+    }
+    setStage("analyzing");
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-wine", { body: { text: q } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const inserted = await persistWine(data.wine, null);
+      setScanned(inserted);
+      setStage("match");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Something went wrong");
+      setStage("idle");
+    }
+  };
 
   const handleFile = async (file: File) => {
     if (!user) return;
