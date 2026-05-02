@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check, Star } from "lucide-react";
+import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check, Star, Type, Camera, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -32,6 +33,8 @@ function ScanPage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [scanned, setScanned] = useState<ScannedWine | null>(null);
+  const [mode, setMode] = useState<"camera" | "text">("camera");
+  const [text, setText] = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -39,6 +42,64 @@ function ScanPage() {
       navigate({ to: "/login" });
     }
   }, [user, loading, navigate]);
+
+  const persistWine = async (w: any, imageUrl: string | null) => {
+    if (!user) throw new Error("Not authenticated");
+    const { data: inserted, error: insErr } = await supabase
+      .from("wines")
+      .insert({
+        user_id: user.id,
+        image_url: imageUrl,
+        producer: w.producer,
+        wine_name: w.wine_name,
+        vintage: w.vintage,
+        grape_varieties: w.grape_varieties,
+        region: w.region,
+        country: w.country,
+        wine_type: w.wine_type,
+        description: w.description,
+        fruit: w.fruit,
+        tannin: w.tannin,
+        acidity: w.acidity,
+        oak: w.oak,
+        sweetness: w.sweetness,
+        body: w.body,
+        primary_notes: w.primary_notes,
+        secondary_notes: w.secondary_notes,
+        tertiary_notes: w.tertiary_notes,
+        food_pairings: w.food_pairings,
+        serving_temp: w.serving_temp,
+        glass_type: w.glass_type,
+        decant: w.decant,
+        ai_raw: w,
+      })
+      .select("id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type")
+      .single();
+    if (insErr) throw insErr;
+    return inserted as ScannedWine;
+  };
+
+  const handleText = async () => {
+    if (!user) return;
+    const q = text.trim();
+    if (q.length < 3) {
+      toast.error("Please describe the wine in a few words");
+      return;
+    }
+    setStage("analyzing");
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-wine", { body: { text: q } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const inserted = await persistWine(data.wine, null);
+      setScanned(inserted);
+      setStage("match");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Something went wrong");
+      setStage("idle");
+    }
+  };
 
   const handleFile = async (file: File) => {
     if (!user) return;
@@ -66,40 +127,8 @@ function ScanPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const w = data.wine;
-      const { data: inserted, error: insErr } = await supabase
-        .from("wines")
-        .insert({
-          user_id: user.id,
-          image_url: pub.publicUrl,
-          producer: w.producer,
-          wine_name: w.wine_name,
-          vintage: w.vintage,
-          grape_varieties: w.grape_varieties,
-          region: w.region,
-          country: w.country,
-          wine_type: w.wine_type,
-          description: w.description,
-          fruit: w.fruit,
-          tannin: w.tannin,
-          acidity: w.acidity,
-          oak: w.oak,
-          sweetness: w.sweetness,
-          body: w.body,
-          primary_notes: w.primary_notes,
-          secondary_notes: w.secondary_notes,
-          tertiary_notes: w.tertiary_notes,
-          food_pairings: w.food_pairings,
-          serving_temp: w.serving_temp,
-          glass_type: w.glass_type,
-          decant: w.decant,
-          ai_raw: w,
-        })
-        .select("id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type")
-        .single();
-      if (insErr) throw insErr;
-
-      setScanned(inserted as ScannedWine);
+      const inserted = await persistWine(data.wine, pub.publicUrl);
+      setScanned(inserted);
       setStage("match");
     } catch (e) {
       console.error(e);
@@ -109,7 +138,7 @@ function ScanPage() {
   };
 
   if (stage === "match" && scanned) {
-    return <MatchFound wine={scanned} onBack={() => setStage("idle")} />;
+    return <MatchFound wine={scanned} onBack={() => { setStage("idle"); setText(""); }} />;
   }
 
   return (
@@ -126,7 +155,9 @@ function ScanPage() {
         >
           <X className="h-4 w-4" />
         </button>
-        <p className="text-sm text-cream/85">Position label in the frame</p>
+        <p className="text-sm text-cream/85">
+          {mode === "camera" ? "Position label in the frame" : "Describe the wine"}
+        </p>
         <button
           aria-label="Flash"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
@@ -135,56 +166,114 @@ function ScanPage() {
         </button>
       </header>
 
-      {/* Camera viewport */}
-      <div className="relative flex-1 overflow-hidden">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,oklch(0.22_0.02_30)_0%,oklch(0.08_0.005_30)_70%)]"
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          {stage === "analyzing" ? (
-            <div className="flex flex-col items-center gap-3 text-gold">
-              <Loader2 className="h-12 w-12 animate-spin" />
-              <p className="font-display text-lg">Analyzing wine…</p>
-            </div>
-          ) : (
-            <Wine className="h-48 w-48 text-white/10" strokeWidth={0.5} />
-          )}
+      {/* Mode toggle */}
+      <div className="px-5 pt-4">
+        <div className="mx-auto flex w-full max-w-xs items-center rounded-full border border-white/10 bg-white/5 p-1">
+          <button
+            onClick={() => setMode("camera")}
+            disabled={stage === "analyzing"}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+              mode === "camera" ? "bg-gradient-burgundy text-cream shadow-soft" : "text-cream/70 hover:text-cream"
+            }`}
+          >
+            <Camera className="h-4 w-4" /> Scan
+          </button>
+          <button
+            onClick={() => setMode("text")}
+            disabled={stage === "analyzing"}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+              mode === "text" ? "bg-gradient-burgundy text-cream shadow-soft" : "text-cream/70 hover:text-cream"
+            }`}
+          >
+            <Type className="h-4 w-4" /> Type
+          </button>
         </div>
-        <ScanCorners />
-        <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">Align label within the frame</p>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-center gap-12 px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-6">
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={stage === "analyzing"}
-          aria-label="Galleri"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-40"
-        >
-          <ImageIcon className="h-5 w-5" />
-        </button>
+      {mode === "camera" ? (
+        <>
+          {/* Camera viewport */}
+          <div className="relative flex-1 overflow-hidden">
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,oklch(0.22_0.02_30)_0%,oklch(0.08_0.005_30)_70%)]"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              {stage === "analyzing" ? (
+                <div className="flex flex-col items-center gap-3 text-gold">
+                  <Loader2 className="h-12 w-12 animate-spin" />
+                  <p className="font-display text-lg">Analyzing wine…</p>
+                </div>
+              ) : (
+                <Wine className="h-48 w-48 text-white/10" strokeWidth={0.5} />
+              )}
+            </div>
+            <ScanCorners />
+            <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">Align label within the frame</p>
+          </div>
 
-        <button
-          onClick={() => cameraRef.current?.click()}
-          disabled={stage === "analyzing"}
-          aria-label="Skanna etikett"
-          className="relative flex h-20 w-20 items-center justify-center rounded-full ring-2 ring-gold transition-transform active:scale-95 disabled:opacity-60"
-        >
-          <span className="absolute inset-1.5 rounded-full bg-cream" />
-          {stage === "analyzing" && (
-            <Loader2 className="absolute inset-0 m-auto h-8 w-8 animate-spin text-burgundy" />
-          )}
-        </button>
+          {/* Controls */}
+          <div className="flex items-center justify-center gap-12 px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-6">
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={stage === "analyzing"}
+              aria-label="Gallery"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-40"
+            >
+              <ImageIcon className="h-5 w-5" />
+            </button>
 
-        <button
-          aria-label="Hjälp"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
-        >
-          <HelpCircle className="h-5 w-5" />
-        </button>
-      </div>
+            <button
+              onClick={() => cameraRef.current?.click()}
+              disabled={stage === "analyzing"}
+              aria-label="Scan label"
+              className="relative flex h-20 w-20 items-center justify-center rounded-full ring-2 ring-gold transition-transform active:scale-95 disabled:opacity-60"
+            >
+              <span className="absolute inset-1.5 rounded-full bg-cream" />
+              {stage === "analyzing" && (
+                <Loader2 className="absolute inset-0 m-auto h-8 w-8 animate-spin text-burgundy" />
+              )}
+            </button>
+
+            <button
+              aria-label="Help"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-1 flex-col px-5 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+          <div className="flex flex-1 flex-col">
+            <label className="mb-2 text-xs uppercase tracking-wider text-cream/60">
+              Wine description
+            </label>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              disabled={stage === "analyzing"}
+              placeholder="e.g. Château Margaux 2015, or 'a bold Italian red from Tuscany with cherry and leather notes'"
+              className="min-h-[180px] resize-none border-white/10 bg-white/5 text-base text-cream placeholder:text-cream/40 focus-visible:ring-gold/40"
+            />
+            <p className="mt-2 text-xs text-cream/50">
+              Producer, vintage, region, grape — anything you know helps.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleText}
+            disabled={stage === "analyzing" || text.trim().length < 3}
+            className="mt-6 h-14 bg-gradient-burgundy text-cream shadow-soft"
+          >
+            {stage === "analyzing" ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Analyzing…</>
+            ) : (
+              <><Sparkles className="h-4 w-4" /> Identify wine</>
+            )}
+          </Button>
+        </div>
+      )}
 
       <input
         ref={cameraRef}

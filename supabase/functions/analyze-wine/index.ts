@@ -88,9 +88,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { imageBase64, imageUrl, mimeType } = await req.json();
-    if (!imageBase64 && !imageUrl) {
-      return new Response(JSON.stringify({ error: "imageBase64 or imageUrl is required" }), {
+    const { imageBase64, imageUrl, mimeType, text } = await req.json();
+    if (!imageBase64 && !imageUrl && !text) {
+      return new Response(JSON.stringify({ error: "imageBase64, imageUrl or text is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -99,9 +99,20 @@ Deno.serve(async (req: Request) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    const imageContent = imageBase64
-      ? { type: "image_url", image_url: { url: `data:${mimeType ?? "image/jpeg"};base64,${imageBase64}` } }
-      : { type: "image_url", image_url: { url: imageUrl } };
+    let userContent: unknown;
+    if (imageBase64 || imageUrl) {
+      const imageContent = imageBase64
+        ? { type: "image_url", image_url: { url: `data:${mimeType ?? "image/jpeg"};base64,${imageBase64}` } }
+        : { type: "image_url", image_url: { url: imageUrl } };
+      userContent = [
+        { type: "text", text: text
+          ? `Identify this wine from the label and return structured data. Additional context from the user: ${text}`
+          : "Identify this wine from the label and return structured data." },
+        imageContent,
+      ];
+    } else {
+      userContent = `Identify the following wine based on the user's description and return structured data. If details are missing, infer plausible values from the description. User description: "${text}"`;
+    }
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -113,13 +124,7 @@ Deno.serve(async (req: Request) => {
         model: "openai/gpt-5",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Identify this wine from the label and return structured data." },
-              imageContent,
-            ],
-          },
+          { role: "user", content: userContent },
         ],
         tools: [wineTool],
         tool_choice: { type: "function", function: { name: "extract_wine" } },
