@@ -28,7 +28,7 @@ export function aromaIcon(name: string): string {
 export function AromaChip({ name }: { name: string }) {
   return (
     <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-2xl shadow-sog-ring border border-white/10">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-2xl border border-white/10">
         <span aria-hidden>{aromaIcon(name)}</span>
       </div>
       <span className="line-clamp-2 text-center text-[10px] leading-tight text-muted-foreground">
