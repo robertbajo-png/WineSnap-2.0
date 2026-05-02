@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check } from "lucide-react";
+import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/scan")({
-  head: () => ({ meta: [{ title: "Skanna — WineSnap" }] }),
+  head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
   component: ScanPage,
 });
 
@@ -35,7 +35,7 @@ function ScanPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      toast.info("Logga in för att skanna vin");
+      toast.info("Sign in to scan wine labels");
       navigate({ to: "/login" });
     }
   }, [user, loading, navigate]);
@@ -103,7 +103,7 @@ function ScanPage() {
       setStage("match");
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : "Något gick fel");
+      toast.error(e instanceof Error ? e.message : "Something went wrong");
       setStage("idle");
     }
   };
@@ -121,14 +121,14 @@ function ScanPage() {
       <header className="flex items-center justify-between px-5 pt-4">
         <button
           onClick={() => navigate({ to: "/" })}
-          aria-label="Stäng"
+          aria-label="Close"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <X className="h-4 w-4" />
         </button>
-        <p className="text-sm text-cream/80">Placera etiketten i ramen</p>
+        <p className="text-sm text-cream/85">Position label in the frame</p>
         <button
-          aria-label="Snabbskanna"
+          aria-label="Flash"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <Zap className="h-4 w-4 text-gold" />
@@ -145,13 +145,14 @@ function ScanPage() {
           {stage === "analyzing" ? (
             <div className="flex flex-col items-center gap-3 text-gold">
               <Loader2 className="h-12 w-12 animate-spin" />
-              <p className="font-display text-lg">Analyserar vin…</p>
+              <p className="font-display text-lg">Analyzing wine…</p>
             </div>
           ) : (
             <Wine className="h-48 w-48 text-white/10" strokeWidth={0.5} />
           )}
         </div>
         <ScanCorners />
+        <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">Align label within the frame</p>
       </div>
 
       {/* Controls */}
@@ -219,7 +220,7 @@ function ScanCorners() {
 function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void }) {
   const navigate = useNavigate();
   const flag = countryToFlag(wine.country);
-  const wineTypeLabel = (wine.wine_type ?? "Vin").charAt(0).toUpperCase() + (wine.wine_type ?? "vin").slice(1);
+  const wineTypeLabel = (wine.wine_type ?? "Wine").charAt(0).toUpperCase() + (wine.wine_type ?? "wine").slice(1) + " Wine";
 
   return (
     <div
@@ -229,17 +230,16 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
       <header className="flex items-center justify-between px-5 pt-4">
         <button
           onClick={onBack}
-          aria-label="Tillbaka"
+          aria-label="Back"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <X className="h-4 w-4" />
         </button>
-        <p className="font-display text-base">Skanresultat</p>
+        <p className="font-display text-base">Scan Result</p>
         <span className="h-9 w-9" />
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6">
-        {/* Green check halo */}
         <div className="relative">
           <div className="absolute inset-0 rounded-full bg-success/20 blur-2xl" />
           <div className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 border-success bg-success/10 shadow-[0_0_40px_oklch(0.7_0.18_145/0.5)]">
@@ -247,12 +247,11 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
           </div>
         </div>
 
-        <h1 className="mt-6 font-display text-3xl">Match hittad</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Vi hittade en bra match för det här vinet.</p>
+        <h1 className="mt-6 font-display text-3xl">Match Found</h1>
+        <p className="mt-1 text-sm text-muted-foreground">We found a great match for this wine.</p>
 
-        {/* Match card */}
         <div className="mt-8 flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
-          <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/5">
+          <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {wine.image_url ? (
               <img src={wine.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -260,16 +259,21 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-lg leading-tight">
-              {wine.wine_name ?? "Okänt vin"} {wine.vintage ?? ""}
+            <p className="truncate font-display text-lg leading-tight text-cream">
+              {wine.wine_name ?? "Unknown wine"} {wine.vintage ?? ""}
             </p>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            <p className="mt-0.5 truncate text-sm text-gold">
               {[wine.region, wine.country].filter(Boolean).join(", ")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {flag && <span className="mr-1">{flag}</span>}
               {wineTypeLabel}
             </p>
+            <div className="mt-1.5 flex items-center gap-1 text-xs">
+              <Star className="h-3 w-3 fill-gold text-gold" />
+              <span className="font-medium">4.4</span>
+              <span className="text-muted-foreground">128 ratings</span>
+            </div>
             <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
               95% Match
             </div>
@@ -278,14 +282,14 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
-        <Button variant="outline" onClick={onBack} className="h-12 border-white/15 bg-transparent">
-          Skanna igen
+        <Button variant="outline" onClick={() => navigate({ to: "/wine/$id", params: { id: wine.id } })} className="h-12 border-white/15 bg-transparent">
+          View Details
         </Button>
         <Button
-          onClick={() => navigate({ to: "/wine/$id", params: { id: wine.id } })}
+          onClick={() => navigate({ to: "/cellar" })}
           className="h-12 bg-gradient-burgundy text-cream"
         >
-          <Wine className="h-4 w-4" /> Visa detaljer
+          <Wine className="h-4 w-4" /> Save to Cellar
         </Button>
       </div>
     </div>
