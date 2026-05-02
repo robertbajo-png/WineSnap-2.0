@@ -21,6 +21,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
+import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 
 const TasteRoute = TasteRouteImport.update({
   id: '/taste',
@@ -82,12 +83,17 @@ const WineIdRoute = WineIdRouteImport.update({
   path: '/wine/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CellarOverviewRoute = CellarOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => CellarRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
-  '/cellar': typeof CellarRoute
+  '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
@@ -95,13 +101,14 @@ export interface FileRoutesByFullPath {
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/cellar/overview': typeof CellarOverviewRoute
   '/wine/$id': typeof WineIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
-  '/cellar': typeof CellarRoute
+  '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/cellar/overview': typeof CellarOverviewRoute
   '/wine/$id': typeof WineIdRoute
 }
 export interface FileRoutesById {
@@ -116,7 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
-  '/cellar': typeof CellarRoute
+  '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/cellar/overview': typeof CellarOverviewRoute
   '/wine/$id': typeof WineIdRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/search'
     | '/taste'
+    | '/cellar/overview'
     | '/wine/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/search'
     | '/taste'
+    | '/cellar/overview'
     | '/wine/$id'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/search'
     | '/taste'
+    | '/cellar/overview'
     | '/wine/$id'
   fileRoutesById: FileRoutesById
 }
@@ -175,7 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
-  CellarRoute: typeof CellarRoute
+  CellarRoute: typeof CellarRouteWithChildren
   ForYouRoute: typeof ForYouRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
@@ -272,14 +284,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cellar/overview': {
+      id: '/cellar/overview'
+      path: '/overview'
+      fullPath: '/cellar/overview'
+      preLoaderRoute: typeof CellarOverviewRouteImport
+      parentRoute: typeof CellarRoute
+    }
   }
 }
+
+interface CellarRouteChildren {
+  CellarOverviewRoute: typeof CellarOverviewRoute
+}
+
+const CellarRouteChildren: CellarRouteChildren = {
+  CellarOverviewRoute: CellarOverviewRoute,
+}
+
+const CellarRouteWithChildren =
+  CellarRoute._addFileChildren(CellarRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
-  CellarRoute: CellarRoute,
+  CellarRoute: CellarRouteWithChildren,
   ForYouRoute: ForYouRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
