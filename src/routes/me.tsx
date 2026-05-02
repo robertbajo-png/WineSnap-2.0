@@ -45,7 +45,7 @@ function MePage() {
     supabase
       .from("profiles")
       .select("display_name,preferred_types,preferred_regions")
-      .eq("user_id", user.id)
+      .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => setProfile(data as any));
   }, [user]);

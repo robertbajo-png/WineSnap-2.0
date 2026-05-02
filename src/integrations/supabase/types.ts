@@ -16,26 +16,56 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          acidity: number | null
           avatar_url: string | null
+          body: number | null
           created_at: string
           display_name: string | null
           id: string
+          oak: number | null
+          preferred_grapes: string[] | null
+          preferred_regions: string[] | null
+          preferred_types: string[] | null
+          price_max: number | null
+          price_min: number | null
+          sweetness: number | null
+          tannin: number | null
           updated_at: string
           username: string | null
         }
         Insert: {
+          acidity?: number | null
           avatar_url?: string | null
+          body?: number | null
           created_at?: string
           display_name?: string | null
           id: string
+          oak?: number | null
+          preferred_grapes?: string[] | null
+          preferred_regions?: string[] | null
+          preferred_types?: string[] | null
+          price_max?: number | null
+          price_min?: number | null
+          sweetness?: number | null
+          tannin?: number | null
           updated_at?: string
           username?: string | null
         }
         Update: {
+          acidity?: number | null
           avatar_url?: string | null
+          body?: number | null
           created_at?: string
           display_name?: string | null
           id?: string
+          oak?: number | null
+          preferred_grapes?: string[] | null
+          preferred_regions?: string[] | null
+          preferred_types?: string[] | null
+          price_max?: number | null
+          price_min?: number | null
+          sweetness?: number | null
+          tannin?: number | null
           updated_at?: string
           username?: string | null
         }
