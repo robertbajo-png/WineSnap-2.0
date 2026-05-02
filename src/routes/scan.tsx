@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check, Star } from "lucide-react";
+import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check, Star, Type, Camera, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
