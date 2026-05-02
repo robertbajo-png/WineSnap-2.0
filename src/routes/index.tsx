@@ -1,250 +1,125 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Menu, Bell, Camera, Wine, Star } from "lucide-react";
+import { Menu, Bell, Scan, Wine, GraduationCap } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Logo } from "@/components/Logo";
-import { Card } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import heroCellar from "@/assets/hero-cellar.jpg";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "WineSnap — Skanna vinetiketter" },
-      { name: "description", content: "Fota en vinetikett och få producent, druva, smakprofil och matparning på sekunder." },
-      { property: "og:title", content: "WineSnap" },
-      { property: "og:description", content: "Sommelierns insikt — direkt i fickan." },
+      { title: "WineSnap — Build your cellar" },
+      { name: "description", content: "Scan labels, discover wines, and collect what you love." },
+      { property: "og:title", content: "WineSnap — Build your cellar" },
+      { property: "og:description", content: "Scan labels, discover wines, and collect what you love." },
     ],
   }),
   component: HomePage,
 });
 
-type RecentWine = {
-  id: string;
-  producer: string | null;
-  wine_name: string | null;
-  vintage: number | null;
-  region: string | null;
-  country: string | null;
-  image_url: string | null;
-  created_at: string;
-  fruit: number | null;
-  tannin: number | null;
-  acidity: number | null;
-  body: number | null;
-};
-
 function HomePage() {
   const { user, loading } = useAuth();
-  const [recent, setRecent] = useState<RecentWine[]>([]);
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("wines")
-      .select("id,producer,wine_name,vintage,region,country,image_url,created_at,fruit,tannin,acidity,body")
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        const all = (data as RecentWine[]) ?? [];
-        setRecent(all.slice(0, 3));
-        setCount(all.length);
-      });
-  }, [user]);
-
-  const greeting = getGreeting();
-  const regionsCount = new Set(recent.flatMap((w) => (w.region ? [w.region] : []))).size;
 
   return (
     <AppShell>
-      <div className="-mx-5 -mt-6 px-5 pt-4">
+      <div className="-mx-5 -mt-6">
         {/* Top bar */}
-        <header className="flex items-center justify-between">
-          <button aria-label="Meny" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10">
-            <Menu className="h-4 w-4" />
+        <header className="flex items-center justify-between px-5 pt-3">
+          <button aria-label="Menu" className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 hover:bg-white/5">
+            <Menu className="h-5 w-5" strokeWidth={1.6} />
           </button>
           <Logo size="md" />
           {!loading && !user ? (
             <Link to="/login" className="flex h-9 items-center rounded-full bg-white/5 px-3 text-xs font-medium hover:bg-white/10">
-              Logga in
+              Sign in
             </Link>
           ) : (
-            <button aria-label="Notiser" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10">
-              <Bell className="h-4 w-4" />
+            <button aria-label="Notifications" className="relative flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 hover:bg-white/5">
+              <Bell className="h-5 w-5" strokeWidth={1.6} />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-burgundy" />
             </button>
           )}
         </header>
 
-        {/* Greeting */}
-        <section className="mt-7">
-          <h1 className="font-display text-3xl leading-tight">{greeting}</h1>
-          <p className="mt-1.5 max-w-[18rem] text-sm text-muted-foreground">
-            Redo att upptäcka något exceptionellt?
-          </p>
-        </section>
-
-        {/* Big Scan Label CTA */}
-        <Link
-          to="/scan"
-          className="mt-6 flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-gradient-burgundy text-base font-medium text-cream shadow-elegant ring-1 ring-burgundy/40 transition-transform active:scale-[0.99]"
-        >
-          <Camera className="h-5 w-5" />
-          Skanna etikett
-        </Link>
-
-        {/* Recent Scans */}
-        <section className="mt-8">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="font-display text-lg">Senaste skanningar</h2>
-            <Link to="/history" className="text-xs text-gold hover:underline">
-              Se alla
-            </Link>
+        {/* Hero image with title overlay */}
+        <section className="relative mt-2">
+          <div className="relative h-[420px] w-full overflow-hidden">
+            <img src={heroCellar} alt="" width={1024} height={1280} className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background" />
+            <div className="absolute inset-x-0 top-6 text-center">
+              <h1 className="font-display text-4xl text-cream drop-shadow-lg">WineSnap</h1>
+            </div>
           </div>
 
-          {recent.length === 0 ? (
-            <Card className="border-white/8 bg-card/60 p-6 text-center text-sm text-muted-foreground">
-              Inga vin ännu — skanna ditt första.
-            </Card>
-          ) : (
-            <Card className="divide-y divide-white/5 border-white/8 bg-card/60 p-0">
-              {recent.map((w) => (
-                <Link
-                  key={w.id}
-                  to="/wine/$id"
-                  params={{ id: w.id }}
-                  className="flex items-center gap-3 p-3 transition-colors hover:bg-white/5"
-                >
-                  <div className="flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/5">
-                    {w.image_url ? (
-                      <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <Wine className="h-5 w-5 text-gold/60" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-base leading-tight">
-                      {w.wine_name ?? "Okänt vin"} {w.vintage ?? ""}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground/80">{timeAgo(w.created_at)}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <span className="font-display text-sm tabular-nums text-foreground">
-                      {computeRating(w).toFixed(1)}
-                    </span>
-                    <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-                  </div>
-                </Link>
-              ))}
-            </Card>
-          )}
+          <div className="-mt-10 px-6 text-center">
+            <h2 className="font-display text-[32px] leading-[1.1] text-gold">Build your cellar</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Scan labels, discover wines,
+              <br />
+              and collect what you love.
+            </p>
+          </div>
         </section>
 
-        {/* My Cellar */}
-        {count > 0 && (
-          <section className="mt-7">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="font-display text-lg">Min källare</h2>
-              <Link to="/taste" className="text-xs text-gold hover:underline">
-                Visa alla
-              </Link>
-            </div>
+        {/* Feature cards */}
+        <section className="mt-6 grid grid-cols-3 gap-3 px-5">
+          <FeatureCard icon={Scan} title="Scan & Discover" desc="Identify wines in seconds" />
+          <FeatureCard icon={Wine} title="Taste & Learn" desc="Explore flavors, pairings, and more" />
+          <FeatureCard icon={GraduationCap} title="Collect & Grow" desc="Track your bottles and cellar value" />
+        </section>
 
-            <Card className="border-white/8 bg-card/60 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Källarens värde</p>
-                  <p className="mt-0.5 font-display text-3xl">
-                    {(count * 158).toLocaleString("sv-SE")} kr
-                  </p>
-                  <p className="mt-1 text-xs text-success">↑ 12,4% senaste månaden</p>
-                </div>
-                <Sparkline className="h-12 w-28" />
-              </div>
+        {/* Carousel dots */}
+        <div className="mt-5 flex items-center justify-center gap-1.5">
+          <Dot active />
+          <Dot />
+          <Dot />
+        </div>
 
-              <div className="mt-4 grid grid-cols-4 gap-2">
-                <Stat label="Flaskor" value={String(count)} />
-                <Stat label="Regioner" value={String(Math.max(1, regionsCount))} />
-                <Stat label="Druvor" value={String(Math.max(1, Math.min(count, 18)))} />
-                <Stat label="Snitt" value={(recent.length ? avgRating(recent) : 4.2).toFixed(1)} />
-              </div>
-            </Card>
-          </section>
-        )}
+        {/* CTA */}
+        <div className="mt-6 px-5">
+          <Link
+            to="/scan"
+            className="flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-lg text-cream shadow-elegant ring-1 ring-burgundy/40 transition-transform active:scale-[0.99]"
+          >
+            Start Scanning
+          </Link>
+          <p className="mt-3 text-center text-xs text-burgundy">
+            <Link to="/me">I'll set this up later</Link>
+          </p>
+        </div>
       </div>
     </AppShell>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function FeatureCard({
+  icon: Icon,
+  title,
+  desc,
+}: {
+  icon: typeof Scan;
+  title: string;
+  desc: string;
+}) {
   return (
-    <div className="rounded-lg border border-white/8 bg-background/40 p-2.5 text-center">
-      <p className="font-display text-lg leading-none text-gold">{value}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+    <div className="rounded-xl border border-gold/15 bg-card/40 p-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-gold/30 text-gold">
+        <Icon className="h-4 w-4" strokeWidth={1.6} />
+      </div>
+      <p className="mt-3 font-display text-[13px] leading-tight text-cream">{title}</p>
+      <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">{desc}</p>
     </div>
   );
 }
 
-function Sparkline({ className }: { className?: string }) {
-  // En enkel uppåtgående sparkline (illustrativ).
-  const points = [10, 14, 11, 18, 16, 22, 20, 28, 26, 34];
-  const w = 100;
-  const h = 40;
-  const max = Math.max(...points);
-  const min = Math.min(...points);
-  const path = points
-    .map((p, i) => {
-      const x = (i / (points.length - 1)) * w;
-      const y = h - ((p - min) / (max - min)) * h;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+function Dot({ active = false }: { active?: boolean }) {
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className={className} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="sl" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="oklch(0.78 0.13 75)" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="oklch(0.78 0.13 75)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${path} L${w},${h} L0,${h} Z`} fill="url(#sl)" />
-      <path d={path} fill="none" stroke="oklch(0.78 0.13 75)" strokeWidth="1.5" />
-    </svg>
+    <span
+      className={
+        active
+          ? "h-1.5 w-5 rounded-full bg-gold"
+          : "h-1.5 w-1.5 rounded-full bg-white/20"
+      }
+    />
   );
-}
-
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 6) return "God natt";
-  if (h < 11) return "God morgon";
-  if (h < 17) return "God dag";
-  if (h < 22) return "God kväll";
-  return "God natt";
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "nyss";
-  if (mins < 60) return `${mins}m sedan`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h sedan`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d sedan`;
-  const months = Math.floor(days / 30);
-  return `${months}mån sedan`;
-}
-
-function computeRating(w: { fruit: number | null; tannin: number | null; acidity: number | null; body: number | null }): number {
-  const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
-  if (vals.length === 0) return 4.0;
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
-}
-
-function avgRating(ws: RecentWine[]): number {
-  return ws.reduce((s, w) => s + computeRating(w), 0) / ws.length;
 }
