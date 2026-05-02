@@ -384,3 +384,37 @@ function computeMatch(w: WineRow): number {
   const r = computeRating(w);
   return Math.round(70 + (r - 3.5) * 20);
 }
+
+const TYPE_LABEL: Record<string, string> = {
+  red: "Rött vin",
+  white: "Vitt vin",
+  rose: "Rosé",
+  sparkling: "Mousserande",
+  dessert: "Dessertvin",
+  fortified: "Starkvin",
+  orange: "Orange vin",
+  unknown: "Vin",
+};
+
+function countryToFlag(country: string | null | undefined): string | null {
+  if (!country) return null;
+  const map: Record<string, string> = {
+    france: "🇫🇷", frankrike: "🇫🇷",
+    italy: "🇮🇹", italien: "🇮🇹",
+    spain: "🇪🇸", spanien: "🇪🇸",
+    portugal: "🇵🇹",
+    germany: "🇩🇪", tyskland: "🇩🇪",
+    austria: "🇦🇹", österrike: "🇦🇹",
+    usa: "🇺🇸", "united states": "🇺🇸",
+    chile: "🇨🇱",
+    argentina: "🇦🇷",
+    australia: "🇦🇺", australien: "🇦🇺",
+    "new zealand": "🇳🇿", nyazeeland: "🇳🇿",
+    "south africa": "🇿🇦", sydafrika: "🇿🇦",
+    sweden: "🇸🇪", sverige: "🇸🇪",
+    greece: "🇬🇷", grekland: "🇬🇷",
+    hungary: "🇭🇺", ungern: "🇭🇺",
+  };
+  return map[country.trim().toLowerCase()] ?? null;
+}
+
