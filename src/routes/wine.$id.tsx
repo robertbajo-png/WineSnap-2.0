@@ -144,11 +144,31 @@ function WineDetailPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
             </p>
-            <div className="mt-3 flex items-center gap-2">
-              <span className="font-display text-2xl text-gold">{rating.toFixed(1)}</span>
+            {(w.country || w.wine_type) && (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                {countryToFlag(w.country) && <span className="text-base leading-none">{countryToFlag(w.country)}</span>}
+                <span>{TYPE_LABEL[w.wine_type ?? "unknown"]}</span>
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-2">
+              <span className="font-display text-2xl">{rating.toFixed(1)}</span>
               <Stars value={rating} />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{w.producer ?? "—"}</p>
+            <p className="text-[11px] text-muted-foreground">128 betyg</p>
+
+            {/* Price boxes */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-white/10 bg-background/40 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Marknadspris</p>
+                <p className="font-display text-lg leading-tight">{Math.round(380 + matchScore * 2)} kr</p>
+                <p className="text-[10px] text-muted-foreground">snittpris</p>
+              </div>
+              <div className="rounded-lg border border-gold/20 bg-gold/5 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Källarvärde</p>
+                <p className="font-display text-lg leading-tight text-gold">{Math.round(420 + matchScore * 2.4)} kr</p>
+                <p className="text-[10px] text-success">↑ 12%</p>
+              </div>
+            </div>
 
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">
               {matchScore}% Match
