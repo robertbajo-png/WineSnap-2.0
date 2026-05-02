@@ -21,8 +21,7 @@ const REGIONS = ["Bordeaux", "Burgundy", "Tuscany", "Napa Valley", "Rioja", "Bar
 const TYPES = ["Red", "White", "Sparkling"] as const;
 
 type Profile = {
-  id?: string;
-  user_id: string;
+  id: string;
   preferred_types: string[] | null;
   preferred_regions: string[] | null;
   body: number | null;
@@ -46,7 +45,7 @@ function TastePage() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle().then(({ data }) => {
       const p = data as Profile | null;
       if (!p) return;
       if (p.preferred_types) setTypes(p.preferred_types);
@@ -66,7 +65,7 @@ function TastePage() {
   const save = async () => {
     if (!user) return navigate({ to: "/login" });
     const payload = {
-      user_id: user.id,
+      id: user.id,
       preferred_types: types,
       preferred_regions: regions,
       body: Math.round(body / 10),
@@ -75,7 +74,7 @@ function TastePage() {
       tannin: Math.round(tannin / 10),
       acidity: Math.round(acid / 10),
     };
-    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "user_id" });
+    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
     if (error) return toast.error(error.message);
     toast.success("Preferences saved");
     navigate({ to: "/me" });

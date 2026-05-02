@@ -1,18 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, Info } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MeterRow } from "@/components/MeterRow";
-import { RadarChart } from "@/components/RadarChart";
-import { AromaChip } from "@/components/AromaChip";
+import { AromaWheel, AromaSlider } from "@/components/AromaWheel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/wine/$id")({
-  head: () => ({ meta: [{ title: "Vin — WineSnap" }] }),
+  head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
   component: WineDetailPage,
 });
 
@@ -43,278 +41,201 @@ type WineRow = {
   decant: boolean | null;
 };
 
-type Tab = "overview" | "details" | "pairings" | "notes";
+const TABS = ["Overview", "Aromas", "Tasting", "Food", "Reviews"] as const;
+type Tab = typeof TABS[number];
 
 function WineDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [w, setW] = useState<WineRow | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("Aromas");
   const [liked, setLiked] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("wines")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setW(data as WineRow | null);
-        setLoading(false);
-      });
+    supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
+      setW(data as WineRow | null);
+      setLoading(false);
+    });
   }, [id]);
 
   const remove = async () => {
-    if (!confirm("Ta bort detta vin?")) return;
+    if (!confirm("Delete this wine?")) return;
     const { error } = await supabase.from("wines").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Borttaget");
-    navigate({ to: "/history" });
+    toast.success("Removed");
+    navigate({ to: "/cellar" });
   };
 
-  if (loading) {
-    return (
-      <AppShell>
-        <div className="mt-20 text-center text-muted-foreground">Laddar…</div>
-      </AppShell>
-    );
-  }
-  if (!w) {
-    return (
-      <AppShell>
-        <div className="mt-20 text-center">
-          <p className="text-muted-foreground">Vinet kunde inte hittas.</p>
-          <Link to="/history">
-            <Button className="mt-4">Till historik</Button>
-          </Link>
-        </div>
-      </AppShell>
-    );
-  }
+  if (loading) return <AppShell><div className="mt-20 text-center text-muted-foreground">Loading…</div></AppShell>;
+  if (!w) return (
+    <AppShell>
+      <div className="mt-20 text-center">
+        <p className="text-muted-foreground">Wine not found.</p>
+        <Link to="/cellar"><Button className="mt-4">Back to cellar</Button></Link>
+      </div>
+    </AppShell>
+  );
 
-  // Pseudo "match score" — fast 95 är hardcoded i mockup, vi räknar enkelt utifrån fyllighet/data
-  const matchScore = computeMatch(w);
   const rating = computeRating(w);
-  const allAromas = [...(w.primary_notes ?? []), ...(w.secondary_notes ?? []), ...(w.tertiary_notes ?? [])].slice(0, 5);
+  const match = Math.round(70 + (rating - 3.5) * 20);
+  const price = 50 + (w.id.charCodeAt(0) % 80);
+  const aromas = [...(w.primary_notes ?? []), ...(w.secondary_notes ?? []), ...(w.tertiary_notes ?? [])].slice(0, 6);
 
   return (
     <AppShell>
-      <div className="-mx-5 -mt-6 px-5 pt-6">
+      <div className="-mx-5 -mt-6 px-5 pt-3">
         {/* Top bar */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => window.history.back()}
-            aria-label="Tillbaka"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-foreground hover:bg-white/10"
-          >
-            <ArrowLeft className="h-4 w-4" />
+        <header className="flex items-center justify-between">
+          <button onClick={() => window.history.back()} aria-label="Back" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+            <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex gap-2">
-            <button
-              aria-label="Dela"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-foreground hover:bg-white/10"
-            >
-              <Share2 className="h-4 w-4" />
+          <div className="flex gap-1">
+            <button onClick={() => setLiked(!liked)} aria-label="Favorite" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+              <Heart className={cn("h-5 w-5", liked ? "fill-burgundy text-burgundy" : "text-foreground/80")} strokeWidth={1.6} />
             </button>
-            <button
-              aria-label="Favorit"
-              onClick={() => setLiked(!liked)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
-            >
-              <Heart className={cn("h-4 w-4", liked ? "fill-burgundy text-burgundy" : "text-foreground")} />
+            <button aria-label="Share" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+              <Share2 className="h-5 w-5 text-foreground/80" strokeWidth={1.6} />
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Hero: bottle + title */}
-        <div className="mt-6 flex gap-4">
-          <div className="relative flex h-44 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-white/8 to-white/2 shadow-elegant">
-            {w.image_url ? (
-              <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <Wine className="h-10 w-10 text-gold/60" />
-            )}
+        {/* Hero */}
+        <section className="mt-4 flex gap-4">
+          <div className="flex h-36 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-burgundy/40 to-background/60 shadow-elegant">
+            {w.image_url ? <img src={w.image_url} alt="" className="h-full w-full object-cover" /> : <Wine className="h-9 w-9 text-gold/60" />}
           </div>
           <div className="min-w-0 flex-1 pt-1">
-            <h1 className="font-display text-2xl leading-tight">
-              {w.wine_name ?? "Okänt vin"}
-              {w.vintage ? ` ${w.vintage}` : ""}
+            <h1 className="font-display text-[26px] leading-tight text-cream">
+              {w.wine_name ?? "Unknown"}{w.vintage ? ` ${w.vintage}` : ""}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
-            </p>
-            {(w.country || w.wine_type) && (
-              <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                {countryToFlag(w.country) && <span className="text-base leading-none">{countryToFlag(w.country)}</span>}
-                <span>{TYPE_LABEL[w.wine_type ?? "unknown"]}</span>
-              </p>
-            )}
-            <div className="mt-2 flex items-center gap-2">
-              <span className="font-display text-2xl">{rating.toFixed(1)}</span>
-              <Stars value={rating} />
-            </div>
-            <p className="text-[11px] text-muted-foreground">128 betyg</p>
-
-            {/* Price boxes */}
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-white/10 bg-background/40 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Marknadspris</p>
-                <p className="font-display text-lg leading-tight">{Math.round(380 + matchScore * 2)} kr</p>
-                <p className="text-[10px] text-muted-foreground">snittpris</p>
-              </div>
-              <div className="rounded-lg border border-gold/20 bg-gold/5 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Källarvärde</p>
-                <p className="font-display text-lg leading-tight text-gold">{Math.round(420 + matchScore * 2.4)} kr</p>
-                <p className="text-[10px] text-success">↑ 12%</p>
-              </div>
-            </div>
-
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">
-              {matchScore}% Match
-              <Info className="h-3 w-3 opacity-70" />
+            <p className="mt-1 text-sm text-gold">{[w.region, w.country].filter(Boolean).join(", ") || w.producer}</p>
+            <p className="text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">{match}% Match</span>
+              <span className="flex items-center gap-1 text-xs">
+                <Star className="h-3.5 w-3.5 fill-gold text-gold" />
+                <span className="font-medium">{rating.toFixed(1)}</span>
+                <span className="text-muted-foreground">(128 ratings)</span>
+              </span>
+              <span className="font-display text-base text-cream">${price}</span>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Tabs */}
-        <div className="mt-6 flex gap-6 border-b border-white/8 text-sm">
-          {([
-            ["overview", "Översikt"],
-            ["details", "Detaljer"],
-            ["pairings", "Mat"],
-            ["notes", "Noter"],
-          ] as const).map(([key, label]) => (
+        <div className="mt-5 flex gap-5 overflow-x-auto border-b border-white/8 text-sm">
+          {TABS.map((t) => (
             <button
-              key={key}
-              onClick={() => setTab(key)}
+              key={t}
+              onClick={() => setTab(t)}
               className={cn(
-                "relative -mb-px py-2.5 transition-colors",
-                tab === key ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                "relative -mb-px shrink-0 py-2.5 transition-colors",
+                tab === t ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {label}
-              {tab === key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-gold" />}
+              {t}
+              {tab === t && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
             </button>
           ))}
         </div>
 
-        {tab === "overview" && (
+        {tab === "Aromas" && (
           <>
-            {allAromas.length > 0 && (
-              <Section title="Aromprofil">
-                <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
-                  {allAromas.map((a) => (
-                    <AromaChip key={a} name={a} />
+            <Section title="Aromas">
+              <div className="flex items-start gap-4">
+                <AromaWheel size={170} className="shrink-0" />
+                <div className="flex-1 space-y-2">
+                  {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => (
+                    <button key={a + i} className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-card/40 px-3 py-2 text-left">
+                      <span className="flex items-center gap-2">
+                        <span className="text-base">{aromaEmoji(a)}</span>
+                        <span className="text-xs text-cream">{a}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <AromaSlider name={a} value={4 - (i % 2)} />
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </button>
                   ))}
                 </div>
-              </Section>
-            )}
-
-            <Section title="Smakprofil">
-              <Card className="bg-card/60 p-4">
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-3.5 self-center">
-                    <MeterRow left="Lätt" right="Fyllig" value={w.body} />
-                    <MeterRow left="Mjuk" right="Tannin" value={w.tannin} />
-                    <MeterRow left="Torr" right="Söt" value={w.sweetness} />
-                    <MeterRow left="Mild" right="Syrlig" value={w.acidity} />
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <RadarChart
-                      size={180}
-                      axes={[
-                        { label: "Frukt", value: w.fruit },
-                        { label: "Ek", value: w.oak },
-                        { label: "Krydda", value: avg(w.tannin, w.oak) },
-                        { label: "Jord", value: avg(w.body, w.tannin) },
-                        { label: "Blom", value: avg(w.acidity, w.fruit) },
-                        { label: "Ört", value: avg(w.acidity, w.body) },
-                      ]}
-                    />
-                  </div>
-                </div>
-              </Card>
+              </div>
             </Section>
 
-            {w.food_pairings && w.food_pairings.length > 0 && (
-              <Section title="Matparningar" right={<button className="text-xs text-gold">Se alla</button>}>
-                <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
-                  {w.food_pairings.slice(0, 4).map((p, i) => (
-                    <div key={i} className="w-40 shrink-0">
-                      <div className="flex h-28 w-full items-center justify-center rounded-xl bg-gradient-to-b from-white/6 to-white/0 text-3xl">
-                        🍽️
-                      </div>
-                      <p className="mt-2 line-clamp-2 font-display text-sm leading-tight">{p.dish}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{p.reason}</p>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            )}
+            <Section title="Tasting Profile">
+              <Card className="bg-card/50 p-4">
+                <SliderRow label="Body" leftLabel="Light" rightLabel="Full" value={pct(w.body)} />
+                <SliderRow label="Tannins" leftLabel="Low" rightLabel="High" value={pct(w.tannin)} />
+                <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={pct(w.acidity)} />
+                <SliderRow label="Fruit" leftLabel="Low" rightLabel="High" value={pct(w.fruit)} />
+              </Card>
+            </Section>
           </>
         )}
 
-        {tab === "details" && (
+        {tab === "Overview" && (
           <div className="mt-5 space-y-4">
             {w.description && (
-              <Card className="bg-card/60 p-4">
-                <p className="font-display text-base leading-relaxed">{w.description}</p>
+              <Card className="bg-card/50 p-4">
+                <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>
               </Card>
             )}
-            {w.grape_varieties && w.grape_varieties.length > 0 && (
-              <KV label="Druvor" value={w.grape_varieties.join(", ")} />
-            )}
+            <KV label="Producer" value={w.producer ?? "—"} />
             <KV label="Region" value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
-            <KV label="Producent" value={w.producer ?? "—"} />
-            <KV label="Årgång" value={w.vintage ? String(w.vintage) : "—"} />
-            <KV label="Servering" value={w.serving_temp ?? "—"} />
-            <KV label="Glas" value={w.glass_type ?? "—"} />
-            <KV label="Dekantering" value={w.decant == null ? "—" : w.decant ? "Ja" : "Nej"} />
+            <KV label="Grape" value={w.grape_varieties?.join(", ") ?? "—"} />
+            <KV label="Vintage" value={w.vintage ? String(w.vintage) : "—"} />
+            <KV label="Serving" value={w.serving_temp ?? "—"} />
+            <KV label="Glass" value={w.glass_type ?? "—"} />
           </div>
         )}
 
-        {tab === "pairings" && (
+        {tab === "Tasting" && (
+          <div className="mt-5">
+            <Card className="bg-card/50 p-4">
+              <SliderRow label="Body" leftLabel="Light" rightLabel="Full" value={pct(w.body)} />
+              <SliderRow label="Tannins" leftLabel="Low" rightLabel="High" value={pct(w.tannin)} />
+              <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={pct(w.acidity)} />
+              <SliderRow label="Fruit" leftLabel="Low" rightLabel="High" value={pct(w.fruit)} />
+              <SliderRow label="Oak" leftLabel="None" rightLabel="Heavy" value={pct(w.oak)} />
+              <SliderRow label="Sweetness" leftLabel="Dry" rightLabel="Sweet" value={pct(w.sweetness)} />
+            </Card>
+          </div>
+        )}
+
+        {tab === "Food" && (
           <div className="mt-5 space-y-3">
             {(w.food_pairings ?? []).map((p, i) => (
-              <Card key={i} className="bg-card/60 p-4">
-                <p className="font-display text-base">{p.dish}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{p.reason}</p>
+              <Card key={i} className="bg-card/50 p-4">
+                <p className="font-display text-base text-cream">{p.dish}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{p.reason}</p>
               </Card>
             ))}
             {(!w.food_pairings || w.food_pairings.length === 0) && (
-              <p className="py-6 text-center text-sm text-muted-foreground">Inga matparningar.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No pairings yet.</p>
             )}
           </div>
         )}
 
-        {tab === "notes" && (
-          <div className="mt-5 space-y-4">
-            <NoteGroup label="Primära" notes={w.primary_notes ?? []} />
-            <NoteGroup label="Sekundära" notes={w.secondary_notes ?? []} />
-            <NoteGroup label="Tertiära" notes={w.tertiary_notes ?? []} />
+        {tab === "Reviews" && (
+          <div className="mt-5">
+            <Card className="bg-card/50 p-4 text-center text-sm text-muted-foreground">
+              No reviews yet.
+            </Card>
           </div>
         )}
 
-        <Button
-          variant="ghost"
-          onClick={remove}
-          className="mt-10 w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" /> Ta bort vin
+        <Button variant="ghost" onClick={remove} className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive">
+          <Trash2 className="h-4 w-4" /> Delete wine
         </Button>
       </div>
     </AppShell>
   );
 }
 
-function Section({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-6">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="font-display text-lg text-gold">{title}</h2>
-        {right}
-      </div>
+      <h2 className="mb-3 font-display text-lg text-cream">{title}</h2>
       {children}
     </section>
   );
@@ -322,99 +243,48 @@ function Section({ title, right, children }: { title: string; right?: React.Reac
 
 function KV({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between border-b border-white/6 pb-2.5">
+    <div className="flex items-baseline justify-between border-b border-white/8 pb-2.5">
       <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-right font-display text-sm">{value}</span>
+      <span className="text-right font-display text-sm text-cream">{value}</span>
     </div>
   );
 }
 
-function NoteGroup({ label, notes }: { label: string; notes: string[] }) {
-  if (notes.length === 0) return null;
+function SliderRow({ label, leftLabel, rightLabel, value }: { label: string; leftLabel: string; rightLabel: string; value: number }) {
   return (
-    <div>
-      <p className="mb-2 text-xs uppercase tracking-wider text-gold">{label}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {notes.map((n) => (
-          <span key={n} className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs">
-            {n}
-          </span>
-        ))}
+    <div className="grid grid-cols-[64px_36px_1fr_36px] items-center gap-2 py-2">
+      <span className="text-xs text-foreground/80">{label}</span>
+      <span className="text-[10px] text-muted-foreground">{leftLabel}</span>
+      <div className="relative h-1 rounded-full bg-white/10">
+        <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper" style={{ width: `${value}%` }} />
+        <span className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold shadow" style={{ left: `${value}%` }} />
       </div>
+      <span className="text-right text-[10px] text-muted-foreground">{rightLabel}</span>
     </div>
   );
 }
 
-function Stars({ value, max = 5 }: { value: number; max?: number }) {
-  return (
-    <div className="flex">
-      {Array.from({ length: max }).map((_, i) => {
-        const filled = value >= i + 1;
-        const half = !filled && value >= i + 0.5;
-        return (
-          <Star
-            key={i}
-            className={cn(
-              "h-4 w-4",
-              filled || half ? "fill-gold text-gold" : "text-white/15",
-              half && "opacity-60",
-            )}
-          />
-        );
-      })}
-    </div>
-  );
+function pct(v: number | null): number {
+  if (v == null) return 50;
+  return Math.max(0, Math.min(100, v * 10));
 }
 
-function avg(...vals: (number | null | undefined)[]): number | null {
-  const xs = vals.filter((v): v is number => v != null);
-  if (xs.length === 0) return null;
-  return xs.reduce((a, b) => a + b, 0) / xs.length;
-}
-
-function computeRating(w: WineRow): number {
-  // En enkel weighted score 0-5 baserad på balans mellan komponenter
+function computeRating(w: { fruit: number | null; tannin: number | null; acidity: number | null; body: number | null }): number {
   const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
   if (vals.length === 0) return 4.0;
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
   return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
 }
 
-function computeMatch(w: WineRow): number {
-  const r = computeRating(w);
-  return Math.round(70 + (r - 3.5) * 20);
+function aromaEmoji(name: string): string {
+  const n = name.toLowerCase();
+  if (/cherry|berry|plum|currant|strawberry|raspberry/.test(n)) return "🍒";
+  if (/oak|wood|cedar|smoke/.test(n)) return "🪵";
+  if (/vanilla|cream|butter/.test(n)) return "🍦";
+  if (/tobacco|leather|earth/.test(n)) return "🍂";
+  if (/apple|pear|citrus|lemon|lime|grape/.test(n)) return "🍏";
+  if (/floral|rose|violet/.test(n)) return "🌹";
+  if (/spice|pepper|clove|cinnamon/.test(n)) return "🌶️";
+  if (/chocolate|cocoa|coffee/.test(n)) return "🍫";
+  return "🍇";
 }
-
-const TYPE_LABEL: Record<string, string> = {
-  red: "Rött vin",
-  white: "Vitt vin",
-  rose: "Rosé",
-  sparkling: "Mousserande",
-  dessert: "Dessertvin",
-  fortified: "Starkvin",
-  orange: "Orange vin",
-  unknown: "Vin",
-};
-
-function countryToFlag(country: string | null | undefined): string | null {
-  if (!country) return null;
-  const map: Record<string, string> = {
-    france: "🇫🇷", frankrike: "🇫🇷",
-    italy: "🇮🇹", italien: "🇮🇹",
-    spain: "🇪🇸", spanien: "🇪🇸",
-    portugal: "🇵🇹",
-    germany: "🇩🇪", tyskland: "🇩🇪",
-    austria: "🇦🇹", österrike: "🇦🇹",
-    usa: "🇺🇸", "united states": "🇺🇸",
-    chile: "🇨🇱",
-    argentina: "🇦🇷",
-    australia: "🇦🇺", australien: "🇦🇺",
-    "new zealand": "🇳🇿", nyazeeland: "🇳🇿",
-    "south africa": "🇿🇦", sydafrika: "🇿🇦",
-    sweden: "🇸🇪", sverige: "🇸🇪",
-    greece: "🇬🇷", grekland: "🇬🇷",
-    hungary: "🇭🇺", ungern: "🇭🇺",
-  };
-  return map[country.trim().toLowerCase()] ?? null;
-}
-
