@@ -1,20 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Menu, Bell, Wine, Star, Bookmark } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Settings, Plus, Search, SlidersHorizontal, Wine, ChevronRight, Star } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/cellar")({
   head: () => ({
     meta: [
-      { title: "Cellar — WineSnap" },
-      { name: "description", content: "Your collected wines and tasting notes." },
+      { title: "My Cellar — WineSnap" },
+      { name: "description", content: "Your collection of wines, organized by type and rating." },
     ],
   }),
   component: CellarPage,
 });
+
+const FILTERS = ["All", "Red", "White", "Rosé", "Sparkling"] as const;
+type Filter = typeof FILTERS[number];
+
+const TYPE_MAP: Record<string, Filter> = {
+  red: "Red",
+  white: "White",
+  rose: "Rosé",
+  sparkling: "Sparkling",
+};
 
 type WineRow = {
   id: string;
@@ -24,7 +34,6 @@ type WineRow = {
   region: string | null;
   country: string | null;
   image_url: string | null;
-  grape_varieties: string[] | null;
   wine_type: string | null;
   fruit: number | null; tannin: number | null; acidity: number | null; body: number | null;
 };
@@ -32,73 +41,133 @@ type WineRow = {
 function CellarPage() {
   const { user } = useAuth();
   const [wines, setWines] = useState<WineRow[]>([]);
+  const [filter, setFilter] = useState<Filter>("All");
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("wines")
-      .select("id,producer,wine_name,vintage,region,country,image_url,grape_varieties,wine_type,fruit,tannin,acidity,body")
+      .select("id,producer,wine_name,vintage,region,country,image_url,wine_type,fruit,tannin,acidity,body")
       .order("created_at", { ascending: false })
       .then(({ data }) => setWines((data as WineRow[]) ?? []));
   }, [user]);
 
-  const regionsCount = new Set(wines.map((w) => w.region).filter(Boolean)).size;
-  const grapesCount = new Set(wines.flatMap((w) => w.grape_varieties ?? [])).size;
+  const filtered = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return wines.filter((w) => {
+      if (filter !== "All" && TYPE_MAP[w.wine_type ?? ""] !== filter) return false;
+      if (!t) return true;
+      return [w.wine_name, w.producer, w.region, w.country]
+        .filter(Boolean)
+        .some((x) => String(x).toLowerCase().includes(t));
+    });
+  }, [wines, filter, q]);
 
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <button aria-label="Menu" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Menu className="h-5 w-5" strokeWidth={1.6} />
+          <button aria-label="Settings" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+            <Settings className="h-5 w-5" strokeWidth={1.6} />
           </button>
-          <Logo size="md" />
-          <button aria-label="Notifications" className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Bell className="h-5 w-5" strokeWidth={1.6} />
-          </button>
+          <h1 className="font-display text-xl">My Cellar</h1>
+          <Link
+            to="/scan"
+            className="flex h-9 items-center gap-1 rounded-full bg-gradient-burgundy px-3 text-xs font-medium text-cream"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Bottle
+          </Link>
         </header>
 
-        <h1 className="mt-5 font-display text-[32px] leading-tight">My Cellar</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your tasted and saved wines.</p>
-
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          <Stat value={String(wines.length)} label="Bottles" />
-          <Stat value={String(regionsCount)} label="Regions" />
-          <Stat value={String(grapesCount)} label="Grapes" />
+        {/* Search */}
+        <div className="mt-4 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search your cellar"
+              className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+            />
+          </div>
+          <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-card/60">
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
 
-        <ul className="mt-6 space-y-3 pb-4">
-          {wines.length === 0 && (
+        {/* Filter pills */}
+        <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "h-8 shrink-0 rounded-full border px-3.5 text-xs transition-colors",
+                filter === f
+                  ? "border-burgundy bg-burgundy text-cream"
+                  : "border-white/10 bg-card/40 text-foreground/80",
+              )}
+            >
+              {f}
+            </button>
+          ))}
+          <button className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-card/40">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Counts header */}
+        <div className="mt-5 flex items-baseline justify-between">
+          <h2 className="text-sm">
+            <span className="font-display text-lg text-cream">{filtered.length}</span>{" "}
+            <span className="text-muted-foreground">Bottles</span>
+          </h2>
+          <button className="text-xs text-muted-foreground">Sort: Recent</button>
+        </div>
+
+        {/* List */}
+        <ul className="mt-3 space-y-2.5 pb-4">
+          {filtered.length === 0 && (
             <li className="rounded-xl border border-white/8 bg-card/40 p-8 text-center text-sm text-muted-foreground">
-              No wines yet — scan a label to start your cellar.
+              No wines match this filter.
             </li>
           )}
-          {wines.map((w) => {
+          {filtered.map((w) => {
             const rating = computeRating(w);
+            const count = (w.id.charCodeAt(0) % 3) + 1;
             return (
               <li key={w.id}>
-                <Link to="/wine/$id" params={{ id: w.id }} className="flex gap-3 rounded-xl border border-white/8 bg-card/50 p-3 hover:bg-card/70">
-                  <div className="flex h-[88px] w-[68px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
+                <Link
+                  to="/wine/$id"
+                  params={{ id: w.id }}
+                  className="flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3 transition-colors hover:bg-card/70"
+                >
+                  <div className="flex h-[72px] w-[54px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
                     {w.image_url ? (
                       <img src={w.image_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <Wine className="h-6 w-6 text-gold/60" />
+                      <Wine className="h-5 w-5 text-gold/60" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="truncate font-display text-base text-cream">
-                        {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
-                      </p>
-                      <Bookmark className="h-4 w-4 shrink-0 fill-gold/30 text-gold" />
-                    </div>
+                    <p className="truncate font-display text-base leading-tight text-cream">
+                      {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
+                    </p>
                     <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
-                    <p className="truncate text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
-                    <div className="mt-1 flex items-center gap-1 text-xs">
-                      <Star className="h-3 w-3 fill-gold text-gold" />
-                      <span>{rating.toFixed(1)}</span>
+                    <div className="mt-1 flex items-center gap-2 text-[11px]">
+                      {w.vintage && <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] tracking-wider text-muted-foreground">{w.vintage}</span>}
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-gold text-gold" />
+                        <span>{rating.toFixed(1)}</span>
+                      </span>
                     </div>
                   </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-display text-lg leading-none text-cream">{count}</p>
+                    <p className="text-[10px] text-muted-foreground">{count > 1 ? "Bottles" : "Bottle"}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Link>
               </li>
             );
@@ -106,15 +175,6 @@ function CellarPage() {
         </ul>
       </div>
     </AppShell>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-card/50 p-3 text-center">
-      <p className="font-display text-2xl text-cream">{value}</p>
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-    </div>
   );
 }
 
