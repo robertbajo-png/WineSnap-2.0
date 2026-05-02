@@ -160,10 +160,10 @@ function HomePage() {
             </div>
 
             <div className="mt-4 grid grid-cols-4 gap-2">
-              <Stat value={String(Math.max(all.length, 156))} label="Bottles" />
-              <Stat value={String(Math.max(regionsCount, 12))} label="Regions" />
-              <Stat value={String(Math.max(grapesCount, 18))} label="Varietals" />
-              <Stat value={(avg || 4.2).toFixed(1)} label="Avg. Rating" />
+              <Stat value={String(all.length)} label="Bottles" />
+              <Stat value={String(regionsCount)} label="Regions" />
+              <Stat value={String(grapesCount)} label="Varietals" />
+              <Stat value={avg ? avg.toFixed(1) : "—"} label="Avg. Rating" />
             </div>
           </Link>
         </section>
