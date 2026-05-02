@@ -22,6 +22,8 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
+import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
+import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
 
 const TasteRoute = TasteRouteImport.update({
   id: '/taste',
@@ -88,6 +90,16 @@ const CellarOverviewRoute = CellarOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => CellarRoute,
 } as any)
+const WineIdPairingsRoute = WineIdPairingsRouteImport.update({
+  id: '/pairings',
+  path: '/pairings',
+  getParentRoute: () => WineIdRoute,
+} as any)
+const WineIdNotesRoute = WineIdNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => WineIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -102,7 +114,9 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/cellar/overview': typeof CellarOverviewRoute
-  '/wine/$id': typeof WineIdRoute
+  '/wine/$id': typeof WineIdRouteWithChildren
+  '/wine/$id/notes': typeof WineIdNotesRoute
+  '/wine/$id/pairings': typeof WineIdPairingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,7 +131,9 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/cellar/overview': typeof CellarOverviewRoute
-  '/wine/$id': typeof WineIdRoute
+  '/wine/$id': typeof WineIdRouteWithChildren
+  '/wine/$id/notes': typeof WineIdNotesRoute
+  '/wine/$id/pairings': typeof WineIdPairingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,7 +149,9 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/cellar/overview': typeof CellarOverviewRoute
-  '/wine/$id': typeof WineIdRoute
+  '/wine/$id': typeof WineIdRouteWithChildren
+  '/wine/$id/notes': typeof WineIdNotesRoute
+  '/wine/$id/pairings': typeof WineIdPairingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +169,8 @@ export interface FileRouteTypes {
     | '/taste'
     | '/cellar/overview'
     | '/wine/$id'
+    | '/wine/$id/notes'
+    | '/wine/$id/pairings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +186,8 @@ export interface FileRouteTypes {
     | '/taste'
     | '/cellar/overview'
     | '/wine/$id'
+    | '/wine/$id/notes'
+    | '/wine/$id/pairings'
   id:
     | '__root__'
     | '/'
@@ -181,6 +203,8 @@ export interface FileRouteTypes {
     | '/taste'
     | '/cellar/overview'
     | '/wine/$id'
+    | '/wine/$id/notes'
+    | '/wine/$id/pairings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -195,7 +219,7 @@ export interface RootRouteChildren {
   ScanRoute: typeof ScanRoute
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
-  WineIdRoute: typeof WineIdRoute
+  WineIdRoute: typeof WineIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -291,6 +315,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CellarOverviewRouteImport
       parentRoute: typeof CellarRoute
     }
+    '/wine/$id/pairings': {
+      id: '/wine/$id/pairings'
+      path: '/pairings'
+      fullPath: '/wine/$id/pairings'
+      preLoaderRoute: typeof WineIdPairingsRouteImport
+      parentRoute: typeof WineIdRoute
+    }
+    '/wine/$id/notes': {
+      id: '/wine/$id/notes'
+      path: '/notes'
+      fullPath: '/wine/$id/notes'
+      preLoaderRoute: typeof WineIdNotesRouteImport
+      parentRoute: typeof WineIdRoute
+    }
   }
 }
 
@@ -305,6 +343,19 @@ const CellarRouteChildren: CellarRouteChildren = {
 const CellarRouteWithChildren =
   CellarRoute._addFileChildren(CellarRouteChildren)
 
+interface WineIdRouteChildren {
+  WineIdNotesRoute: typeof WineIdNotesRoute
+  WineIdPairingsRoute: typeof WineIdPairingsRoute
+}
+
+const WineIdRouteChildren: WineIdRouteChildren = {
+  WineIdNotesRoute: WineIdNotesRoute,
+  WineIdPairingsRoute: WineIdPairingsRoute,
+}
+
+const WineIdRouteWithChildren =
+  WineIdRoute._addFileChildren(WineIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -317,7 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScanRoute: ScanRoute,
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
-  WineIdRoute: WineIdRoute,
+  WineIdRoute: WineIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check } from "lucide-react";
+import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/scan")({
-  head: () => ({ meta: [{ title: "Skanna — WineSnap" }] }),
+  head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
   component: ScanPage,
 });
 
@@ -35,7 +35,7 @@ function ScanPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      toast.info("Logga in för att skanna vin");
+      toast.info("Sign in to scan wine labels");
       navigate({ to: "/login" });
     }
   }, [user, loading, navigate]);
@@ -103,7 +103,7 @@ function ScanPage() {
       setStage("match");
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : "Något gick fel");
+      toast.error(e instanceof Error ? e.message : "Something went wrong");
       setStage("idle");
     }
   };
@@ -121,14 +121,14 @@ function ScanPage() {
       <header className="flex items-center justify-between px-5 pt-4">
         <button
           onClick={() => navigate({ to: "/" })}
-          aria-label="Stäng"
+          aria-label="Close"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <X className="h-4 w-4" />
         </button>
-        <p className="text-sm text-cream/80">Placera etiketten i ramen</p>
+        <p className="text-sm text-cream/85">Position label in the frame</p>
         <button
-          aria-label="Snabbskanna"
+          aria-label="Flash"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <Zap className="h-4 w-4 text-gold" />
@@ -145,13 +145,14 @@ function ScanPage() {
           {stage === "analyzing" ? (
             <div className="flex flex-col items-center gap-3 text-gold">
               <Loader2 className="h-12 w-12 animate-spin" />
-              <p className="font-display text-lg">Analyserar vin…</p>
+              <p className="font-display text-lg">Analyzing wine…</p>
             </div>
           ) : (
             <Wine className="h-48 w-48 text-white/10" strokeWidth={0.5} />
           )}
         </div>
         <ScanCorners />
+        <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">Align label within the frame</p>
       </div>
 
       {/* Controls */}
