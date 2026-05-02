@@ -87,7 +87,7 @@ function ForYouPage() {
           {recommendations.map(({ w }) => (
             <Link key={w.id} to="/wine/$id" params={{ id: w.id }}>
               <Card className="flex items-center gap-3 p-3 shadow-soft hover:shadow-elegant">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-champagne">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/5">
                   {w.image_url ? (
                     <img src={w.image_url} alt="" className="h-full w-full object-cover" />
                   ) : (
