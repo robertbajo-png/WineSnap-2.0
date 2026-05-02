@@ -220,7 +220,7 @@ function ScanCorners() {
 function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void }) {
   const navigate = useNavigate();
   const flag = countryToFlag(wine.country);
-  const wineTypeLabel = (wine.wine_type ?? "Vin").charAt(0).toUpperCase() + (wine.wine_type ?? "vin").slice(1);
+  const wineTypeLabel = (wine.wine_type ?? "Wine").charAt(0).toUpperCase() + (wine.wine_type ?? "wine").slice(1) + " Wine";
 
   return (
     <div
@@ -230,17 +230,16 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
       <header className="flex items-center justify-between px-5 pt-4">
         <button
           onClick={onBack}
-          aria-label="Tillbaka"
+          aria-label="Back"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <X className="h-4 w-4" />
         </button>
-        <p className="font-display text-base">Skanresultat</p>
+        <p className="font-display text-base">Scan Result</p>
         <span className="h-9 w-9" />
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6">
-        {/* Green check halo */}
         <div className="relative">
           <div className="absolute inset-0 rounded-full bg-success/20 blur-2xl" />
           <div className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 border-success bg-success/10 shadow-[0_0_40px_oklch(0.7_0.18_145/0.5)]">
@@ -248,12 +247,11 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
           </div>
         </div>
 
-        <h1 className="mt-6 font-display text-3xl">Match hittad</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Vi hittade en bra match för det här vinet.</p>
+        <h1 className="mt-6 font-display text-3xl">Match Found</h1>
+        <p className="mt-1 text-sm text-muted-foreground">We found a great match for this wine.</p>
 
-        {/* Match card */}
         <div className="mt-8 flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
-          <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/5">
+          <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {wine.image_url ? (
               <img src={wine.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -261,16 +259,21 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-lg leading-tight">
-              {wine.wine_name ?? "Okänt vin"} {wine.vintage ?? ""}
+            <p className="truncate font-display text-lg leading-tight text-cream">
+              {wine.wine_name ?? "Unknown wine"} {wine.vintage ?? ""}
             </p>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            <p className="mt-0.5 truncate text-sm text-gold">
               {[wine.region, wine.country].filter(Boolean).join(", ")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {flag && <span className="mr-1">{flag}</span>}
               {wineTypeLabel}
             </p>
+            <div className="mt-1.5 flex items-center gap-1 text-xs">
+              <Star className="h-3 w-3 fill-gold text-gold" />
+              <span className="font-medium">4.4</span>
+              <span className="text-muted-foreground">128 ratings</span>
+            </div>
             <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
               95% Match
             </div>
@@ -279,14 +282,14 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
-        <Button variant="outline" onClick={onBack} className="h-12 border-white/15 bg-transparent">
-          Skanna igen
+        <Button variant="outline" onClick={() => navigate({ to: "/wine/$id", params: { id: wine.id } })} className="h-12 border-white/15 bg-transparent">
+          View Details
         </Button>
         <Button
-          onClick={() => navigate({ to: "/wine/$id", params: { id: wine.id } })}
+          onClick={() => navigate({ to: "/cellar" })}
           className="h-12 bg-gradient-burgundy text-cream"
         >
-          <Wine className="h-4 w-4" /> Visa detaljer
+          <Wine className="h-4 w-4" /> Save to Cellar
         </Button>
       </div>
     </div>
