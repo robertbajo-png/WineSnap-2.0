@@ -330,3 +330,21 @@ function aromaEmoji(name: string): string {
   if (/chocolate|cocoa|coffee/.test(n)) return "🍫";
   return "🍇";
 }
+
+function aromaFamily(name: string): string {
+  const n = name.toLowerCase();
+  if (/cherry|berry|plum|currant|strawberry|raspberry|fruit|apple|pear|citrus|lemon|lime|grape/.test(n)) return "Fruit";
+  if (/oak|wood|cedar|smoke/.test(n)) return "Oak";
+  if (/vanilla|cream|butter|chocolate|cocoa|coffee/.test(n)) return "Sweet";
+  if (/tobacco|leather|earth|mushroom/.test(n)) return "Earth";
+  if (/floral|rose|violet|jasmine/.test(n)) return "Floral";
+  if (/spice|pepper|clove|cinnamon|nutmeg/.test(n)) return "Spice";
+  return "Aromatic";
+}
+
+function intensityLabel(v: number): string {
+  if (v >= 4) return "Strong";
+  if (v >= 3) return "Med+";
+  if (v >= 2) return "Med";
+  return "Light";
+}
