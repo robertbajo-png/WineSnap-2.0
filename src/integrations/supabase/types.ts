@@ -245,6 +245,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      recompute_taste_profile: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
