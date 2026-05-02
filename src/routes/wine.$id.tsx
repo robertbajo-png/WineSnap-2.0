@@ -1,15 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Wine, Trash2, Thermometer, GlassWater } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, Info } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MeterRow } from "@/components/MeterRow";
+import { RadarChart } from "@/components/RadarChart";
+import { AromaChip } from "@/components/AromaChip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/wine/$id")({
-  head: () => ({ meta: [{ title: "Vin — Winesnap" }] }),
+  head: () => ({ meta: [{ title: "Vin — WineSnap" }] }),
   component: WineDetailPage,
 });
 
@@ -40,22 +43,15 @@ type WineRow = {
   decant: boolean | null;
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  red: "Rött vin",
-  white: "Vitt vin",
-  rose: "Rosé",
-  sparkling: "Mousserande",
-  dessert: "Dessertvin",
-  fortified: "Starkvin",
-  orange: "Orange vin",
-  unknown: "Vin",
-};
+type Tab = "overview" | "details" | "pairings" | "notes";
 
 function WineDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [w, setW] = useState<WineRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>("overview");
+  const [liked, setLiked] = useState(false);
 
   useEffect(() => {
     supabase
@@ -97,138 +93,274 @@ function WineDetailPage() {
     );
   }
 
+  // Pseudo "match score" — fast 95 är hardcoded i mockup, vi räknar enkelt utifrån fyllighet/data
+  const matchScore = computeMatch(w);
+  const rating = computeRating(w);
+  const allAromas = [...(w.primary_notes ?? []), ...(w.secondary_notes ?? []), ...(w.tertiary_notes ?? [])].slice(0, 5);
+
   return (
     <AppShell>
-      <button
-        onClick={() => window.history.back()}
-        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Tillbaka
-      </button>
-
-      <div className="flex gap-4">
-        <div className="flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-champagne shadow-soft">
-          {w.image_url ? (
-            <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <Wine className="h-8 w-8 text-burgundy" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-wider text-burgundy">
-            {TYPE_LABEL[w.wine_type ?? "unknown"]}
-          </p>
-          <h1 className="mt-1 font-display text-2xl leading-tight">{w.wine_name ?? "Okänt vin"}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {[w.producer, w.vintage].filter(Boolean).join(" • ")}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {[w.region, w.country].filter(Boolean).join(", ")}
-          </p>
-        </div>
-      </div>
-
-      {w.grape_varieties && w.grape_varieties.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {w.grape_varieties.map((g) => (
-            <span
-              key={g}
-              className="rounded-full border border-burgundy/30 bg-burgundy/5 px-2.5 py-0.5 text-xs text-burgundy"
+      <div className="-mx-5 -mt-6 px-5 pt-6">
+        {/* Top bar */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => window.history.back()}
+            aria-label="Tillbaka"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-foreground hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex gap-2">
+            <button
+              aria-label="Dela"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-foreground hover:bg-white/10"
             >
-              {g}
-            </span>
+              <Share2 className="h-4 w-4" />
+            </button>
+            <button
+              aria-label="Favorit"
+              onClick={() => setLiked(!liked)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
+            >
+              <Heart className={cn("h-4 w-4", liked ? "fill-burgundy text-burgundy" : "text-foreground")} />
+            </button>
+          </div>
+        </div>
+
+        {/* Hero: bottle + title */}
+        <div className="mt-6 flex gap-4">
+          <div className="relative flex h-44 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-white/8 to-white/2 shadow-elegant">
+            {w.image_url ? (
+              <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Wine className="h-10 w-10 text-gold/60" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 pt-1">
+            <h1 className="font-display text-2xl leading-tight">
+              {w.wine_name ?? "Okänt vin"}
+              {w.vintage ? ` ${w.vintage}` : ""}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="font-display text-2xl text-gold">{rating.toFixed(1)}</span>
+              <Stars value={rating} />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{w.producer ?? "—"}</p>
+
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">
+              {matchScore}% Match
+              <Info className="h-3 w-3 opacity-70" />
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="mt-6 flex gap-6 border-b border-white/8 text-sm">
+          {([
+            ["overview", "Översikt"],
+            ["details", "Detaljer"],
+            ["pairings", "Mat"],
+            ["notes", "Noter"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={cn(
+                "relative -mb-px py-2.5 transition-colors",
+                tab === key ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+              {tab === key && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-gold" />}
+            </button>
           ))}
         </div>
-      )}
 
-      {w.description && (
-        <Card className="mt-5 p-4">
-          <p className="font-display text-base leading-relaxed text-foreground">{w.description}</p>
-        </Card>
-      )}
-
-      <section className="mt-6">
-        <h2 className="mb-3 font-display text-xl">Smakprofil</h2>
-        <Card className="space-y-3 p-4">
-          <MeterRow label="Frukt" value={w.fruit} />
-          <MeterRow label="Tannin" value={w.tannin} />
-          <MeterRow label="Syra" value={w.acidity} />
-          <MeterRow label="Ek" value={w.oak} />
-          <MeterRow label="Sötma" value={w.sweetness} />
-          <MeterRow label="Fyllighet" value={w.body} />
-        </Card>
-      </section>
-
-      {(w.primary_notes?.length || w.secondary_notes?.length || w.tertiary_notes?.length) && (
-        <section className="mt-6">
-          <h2 className="mb-3 font-display text-xl">Aromer</h2>
-          <Card className="space-y-3 p-4">
-            {w.primary_notes && w.primary_notes.length > 0 && (
-              <NoteGroup label="Primära" notes={w.primary_notes} />
+        {tab === "overview" && (
+          <>
+            {allAromas.length > 0 && (
+              <Section title="Aromprofil">
+                <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
+                  {allAromas.map((a) => (
+                    <AromaChip key={a} name={a} />
+                  ))}
+                </div>
+              </Section>
             )}
-            {w.secondary_notes && w.secondary_notes.length > 0 && (
-              <NoteGroup label="Sekundära" notes={w.secondary_notes} />
-            )}
-            {w.tertiary_notes && w.tertiary_notes.length > 0 && (
-              <NoteGroup label="Tertiära" notes={w.tertiary_notes} />
-            )}
-          </Card>
-        </section>
-      )}
 
-      {w.food_pairings && w.food_pairings.length > 0 && (
-        <section className="mt-6">
-          <h2 className="mb-3 font-display text-xl">Matparning</h2>
-          <div className="space-y-2.5">
-            {w.food_pairings.map((p, i) => (
-              <Card key={i} className="p-4">
+            <Section title="Smakprofil">
+              <Card className="bg-card/60 p-4">
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-3.5 self-center">
+                    <MeterRow left="Lätt" right="Fyllig" value={w.body} />
+                    <MeterRow left="Mjuk" right="Tannin" value={w.tannin} />
+                    <MeterRow left="Torr" right="Söt" value={w.sweetness} />
+                    <MeterRow left="Mild" right="Syrlig" value={w.acidity} />
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <RadarChart
+                      size={180}
+                      axes={[
+                        { label: "Frukt", value: w.fruit },
+                        { label: "Ek", value: w.oak },
+                        { label: "Krydda", value: avg(w.tannin, w.oak) },
+                        { label: "Jord", value: avg(w.body, w.tannin) },
+                        { label: "Blom", value: avg(w.acidity, w.fruit) },
+                        { label: "Ört", value: avg(w.acidity, w.body) },
+                      ]}
+                    />
+                  </div>
+                </div>
+              </Card>
+            </Section>
+
+            {w.food_pairings && w.food_pairings.length > 0 && (
+              <Section title="Matparningar" right={<button className="text-xs text-gold">Se alla</button>}>
+                <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
+                  {w.food_pairings.slice(0, 4).map((p, i) => (
+                    <div key={i} className="w-40 shrink-0">
+                      <div className="flex h-28 w-full items-center justify-center rounded-xl bg-gradient-to-b from-white/6 to-white/0 text-3xl">
+                        🍽️
+                      </div>
+                      <p className="mt-2 line-clamp-2 font-display text-sm leading-tight">{p.dish}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{p.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </>
+        )}
+
+        {tab === "details" && (
+          <div className="mt-5 space-y-4">
+            {w.description && (
+              <Card className="bg-card/60 p-4">
+                <p className="font-display text-base leading-relaxed">{w.description}</p>
+              </Card>
+            )}
+            {w.grape_varieties && w.grape_varieties.length > 0 && (
+              <KV label="Druvor" value={w.grape_varieties.join(", ")} />
+            )}
+            <KV label="Region" value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
+            <KV label="Producent" value={w.producer ?? "—"} />
+            <KV label="Årgång" value={w.vintage ? String(w.vintage) : "—"} />
+            <KV label="Servering" value={w.serving_temp ?? "—"} />
+            <KV label="Glas" value={w.glass_type ?? "—"} />
+            <KV label="Dekantering" value={w.decant == null ? "—" : w.decant ? "Ja" : "Nej"} />
+          </div>
+        )}
+
+        {tab === "pairings" && (
+          <div className="mt-5 space-y-3">
+            {(w.food_pairings ?? []).map((p, i) => (
+              <Card key={i} className="bg-card/60 p-4">
                 <p className="font-display text-base">{p.dish}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{p.reason}</p>
               </Card>
             ))}
+            {(!w.food_pairings || w.food_pairings.length === 0) && (
+              <p className="py-6 text-center text-sm text-muted-foreground">Inga matparningar.</p>
+            )}
           </div>
-        </section>
-      )}
+        )}
 
-      <section className="mt-6">
-        <h2 className="mb-3 font-display text-xl">Servering</h2>
-        <Card className="grid grid-cols-3 gap-2 p-4 text-center">
-          <div>
-            <Thermometer className="mx-auto h-5 w-5 text-burgundy" />
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Temp</p>
-            <p className="font-display text-sm">{w.serving_temp ?? "—"}</p>
+        {tab === "notes" && (
+          <div className="mt-5 space-y-4">
+            <NoteGroup label="Primära" notes={w.primary_notes ?? []} />
+            <NoteGroup label="Sekundära" notes={w.secondary_notes ?? []} />
+            <NoteGroup label="Tertiära" notes={w.tertiary_notes ?? []} />
           </div>
-          <div>
-            <GlassWater className="mx-auto h-5 w-5 text-burgundy" />
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Glas</p>
-            <p className="font-display text-sm">{w.glass_type ?? "—"}</p>
-          </div>
-          <div>
-            <Wine className="mx-auto h-5 w-5 text-burgundy" />
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Dekantera</p>
-            <p className="font-display text-sm">{w.decant == null ? "—" : w.decant ? "Ja" : "Nej"}</p>
-          </div>
-        </Card>
-      </section>
+        )}
 
-      <Button variant="ghost" onClick={remove} className="mt-8 w-full text-destructive hover:text-destructive">
-        <Trash2 className="h-4 w-4" /> Ta bort vin
-      </Button>
+        <Button
+          variant="ghost"
+          onClick={remove}
+          className="mt-10 w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" /> Ta bort vin
+        </Button>
+      </div>
     </AppShell>
   );
 }
 
+function Section({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="mt-6">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="font-display text-lg text-gold">{title}</h2>
+        {right}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function KV({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between border-b border-white/6 pb-2.5">
+      <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-right font-display text-sm">{value}</span>
+    </div>
+  );
+}
+
 function NoteGroup({ label, notes }: { label: string; notes: string[] }) {
+  if (notes.length === 0) return null;
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <div className="mt-1 flex flex-wrap gap-1.5">
+      <p className="mb-2 text-xs uppercase tracking-wider text-gold">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
         {notes.map((n) => (
-          <span key={n} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+          <span key={n} className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs">
             {n}
           </span>
         ))}
       </div>
     </div>
   );
+}
+
+function Stars({ value, max = 5 }: { value: number; max?: number }) {
+  return (
+    <div className="flex">
+      {Array.from({ length: max }).map((_, i) => {
+        const filled = value >= i + 1;
+        const half = !filled && value >= i + 0.5;
+        return (
+          <Star
+            key={i}
+            className={cn(
+              "h-4 w-4",
+              filled || half ? "fill-gold text-gold" : "text-white/15",
+              half && "opacity-60",
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function avg(...vals: (number | null | undefined)[]): number | null {
+  const xs = vals.filter((v): v is number => v != null);
+  if (xs.length === 0) return null;
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+function computeRating(w: WineRow): number {
+  // En enkel weighted score 0-5 baserad på balans mellan komponenter
+  const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
+  if (vals.length === 0) return 4.0;
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
+}
+
+function computeMatch(w: WineRow): number {
+  const r = computeRating(w);
+  return Math.round(70 + (r - 3.5) * 20);
 }

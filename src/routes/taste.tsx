@@ -4,12 +4,13 @@ import { Grape, MapPin, Wine, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MeterRow } from "@/components/MeterRow";
+import { BarMeter } from "@/components/MeterRow";
+import { RadarChart } from "@/components/RadarChart";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/taste")({
-  head: () => ({ meta: [{ title: "Smakprofil — Winesnap" }] }),
+  head: () => ({ meta: [{ title: "Smakprofil — WineSnap" }] }),
   component: TastePage,
 });
 
@@ -89,7 +90,7 @@ function TastePage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">Logga in för att se din smakprofil.</p>
           <Link to="/login">
-            <Button className="mt-4 bg-gradient-wine">Logga in</Button>
+            <Button className="mt-4 bg-gradient-gold text-background">Logga in</Button>
           </Link>
         </div>
       </AppShell>
@@ -98,51 +99,69 @@ function TastePage() {
 
   return (
     <AppShell>
-      <div className="flex items-center gap-2">
-        <Grape className="h-6 w-6 text-burgundy" />
-        <h1 className="font-display text-3xl">Din smakprofil</h1>
+      <div className="flex items-baseline justify-between">
+        <h1 className="font-display text-3xl">Min källare</h1>
+        <span className="text-xs text-muted-foreground">{wines.length} vin</span>
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {wines.length} vin har format din profil
-      </p>
 
       {!stats ? (
-        <p className="mt-10 text-center text-sm text-muted-foreground">
+        <p className="mt-16 text-center text-sm text-muted-foreground">
           Skanna några vin så fyller vi i din smakprofil.
         </p>
       ) : (
         <>
+          {/* Stat grid */}
+          <div className="mt-5 grid grid-cols-4 gap-2">
+            <Stat label="Vin" value={String(wines.length)} />
+            <Stat label="Regioner" value={String(stats.regions.length)} />
+            <Stat label="Druvor" value={String(stats.grapes.length)} />
+            <Stat label="Typer" value={String(stats.types.length)} />
+          </div>
+
+          {/* Summary */}
           <SummaryCard stats={stats} count={wines.length} />
+
+          {/* Radar */}
           <section className="mt-6">
-            <h2 className="mb-3 font-display text-xl">Genomsnitt</h2>
-            <Card className="space-y-3 p-4">
-              <MeterRow label="Frukt" value={stats.avg.fruit} />
-              <MeterRow label="Tannin" value={stats.avg.tannin} />
-              <MeterRow label="Syra" value={stats.avg.acidity} />
-              <MeterRow label="Ek" value={stats.avg.oak} />
-              <MeterRow label="Sötma" value={stats.avg.sweetness} />
-              <MeterRow label="Fyllighet" value={stats.avg.body} />
+            <h2 className="mb-3 font-display text-lg text-gold">Din smakprofil</h2>
+            <Card className="flex items-center justify-center bg-card/60 p-4">
+              <RadarChart
+                size={240}
+                axes={[
+                  { label: "Frukt", value: stats.avg.fruit },
+                  { label: "Tannin", value: stats.avg.tannin },
+                  { label: "Syra", value: stats.avg.acidity },
+                  { label: "Ek", value: stats.avg.oak },
+                  { label: "Sötma", value: stats.avg.sweetness },
+                  { label: "Fyllighet", value: stats.avg.body },
+                ]}
+              />
             </Card>
           </section>
 
           <section className="mt-6">
-            <h2 className="mb-3 font-display text-xl">Favoritdruvor</h2>
-            <Card className="p-4">
+            <h2 className="mb-3 font-display text-lg text-gold">Genomsnitt</h2>
+            <Card className="space-y-3 bg-card/60 p-4">
+              <BarMeter label="Frukt" value={stats.avg.fruit} />
+              <BarMeter label="Tannin" value={stats.avg.tannin} />
+              <BarMeter label="Syra" value={stats.avg.acidity} />
+              <BarMeter label="Ek" value={stats.avg.oak} />
+              <BarMeter label="Sötma" value={stats.avg.sweetness} />
+              <BarMeter label="Fyllighet" value={stats.avg.body} />
+            </Card>
+          </section>
+
+          <section className="mt-6">
+            <h2 className="mb-3 font-display text-lg text-gold">Favoritdruvor</h2>
+            <Card className="bg-card/60 p-4">
               <TopList items={stats.grapes} />
             </Card>
           </section>
 
           <section className="mt-6">
-            <h2 className="mb-3 font-display text-xl">Favoritregioner</h2>
-            <Card className="p-4">
+            <h2 className="mb-3 font-display text-lg text-gold">Favoritregioner</h2>
+            <Card className="bg-card/60 p-4">
               <TopList items={stats.regions} />
-            </Card>
-          </section>
-
-          <section className="mt-6">
-            <h2 className="mb-3 font-display text-xl">Vintyper</h2>
-            <Card className="p-4">
-              <TopList items={stats.types.map(([k, v]) => [TYPE_LABEL[k] ?? k, v] as [string, number])} />
             </Card>
           </section>
         </>
@@ -151,19 +170,28 @@ function TastePage() {
   );
 }
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-card/60 p-3 text-center">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-1 font-display text-2xl text-gold">{value}</p>
+    </div>
+  );
+}
+
 function TopList({ items }: { items: [string, number][] }) {
   if (items.length === 0) return <p className="text-sm text-muted-foreground">Inget än.</p>;
   const max = Math.max(...items.map(([, v]) => v));
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2.5">
       {items.map(([name, count]) => (
         <li key={name}>
           <div className="flex items-baseline justify-between">
             <span className="text-sm">{name}</span>
-            <span className="font-display text-sm tabular-nums text-muted-foreground">{count}</span>
+            <span className="font-display text-sm tabular-nums text-gold">{count}</span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-gradient-wine" style={{ width: `${(count / max) * 100}%` }} />
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/8">
+            <div className="h-full bg-gradient-gold" style={{ width: `${(count / max) * 100}%` }} />
           </div>
         </li>
       ))}
@@ -205,18 +233,18 @@ function SummaryCard({ stats, count }: { stats: Stats; count: number }) {
     : "Skanna fler vin så förfinar vi din profil.";
 
   return (
-    <Card className="mt-6 overflow-hidden border-burgundy/20 bg-gradient-wine/5 p-5">
-      <div className="flex items-center gap-2 text-burgundy">
+    <Card className="mt-5 overflow-hidden border-white/8 bg-gradient-to-br from-burgundy/20 to-card/60 p-5">
+      <div className="flex items-center gap-2 text-gold">
         <Sparkles className="h-4 w-4" />
-        <span className="text-xs font-medium uppercase tracking-widest">Sammanfattning</span>
+        <span className="text-[10px] font-medium uppercase tracking-widest">Smaksammanfattning</span>
       </div>
       <p className="mt-3 font-display text-lg leading-snug">{summary}</p>
       <p className="mt-1 text-xs text-muted-foreground">Baserat på {count} vin</p>
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
-        <Highlight icon={<Grape className="h-4 w-4" />} label="Toppdruva" value={topGrape ?? "—"} />
-        <Highlight icon={<MapPin className="h-4 w-4" />} label="Topp­region" value={topRegion ?? "—"} />
-        <Highlight icon={<Wine className="h-4 w-4" />} label="Rek. typ" value={recommended} />
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        <Highlight icon={<Grape className="h-3.5 w-3.5" />} label="Toppdruva" value={topGrape ?? "—"} />
+        <Highlight icon={<MapPin className="h-3.5 w-3.5" />} label="Region" value={topRegion ?? "—"} />
+        <Highlight icon={<Wine className="h-3.5 w-3.5" />} label="Typ" value={recommended} />
       </div>
     </Card>
   );
@@ -224,12 +252,12 @@ function SummaryCard({ stats, count }: { stats: Stats; count: number }) {
 
 function Highlight({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-      <div className="flex items-center gap-1.5 text-burgundy">
+    <div className="rounded-lg border border-white/8 bg-background/40 p-2.5">
+      <div className="flex items-center gap-1 text-gold">
         {icon}
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>
-      <p className="mt-1.5 font-display text-sm leading-tight line-clamp-2">{value}</p>
+      <p className="mt-1 font-display text-sm leading-tight line-clamp-2">{value}</p>
     </div>
   );
 }
