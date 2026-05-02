@@ -143,22 +143,37 @@ function WineDetailPage() {
         {tab === "Aromas" && (
           <>
             <Section title="Aromas">
-              <div className="flex items-start gap-4">
-                <AromaWheel size={170} className="shrink-0" />
-                <div className="flex-1 space-y-2">
-                  {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => (
-                    <button key={a + i} className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-card/40 px-3 py-2 text-left">
-                      <span className="flex items-center gap-2">
-                        <span className="text-base">{aromaEmoji(a)}</span>
-                        <span className="text-xs text-cream">{a}</span>
+              <div className="flex justify-center">
+                <AromaWheel size={220} />
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => {
+                  const intensity = 4 - (i % 3);
+                  return (
+                    <div
+                      key={a + i}
+                      className="group flex flex-col items-center gap-2 rounded-2xl border border-white/8 bg-gradient-to-b from-white/[0.03] to-transparent p-3 text-center transition-colors hover:border-gold/30"
+                    >
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-burgundy/30 to-card text-2xl shadow-sog ring-1 ring-white/10">
+                        <span aria-hidden>{aromaEmoji(a)}</span>
+                      </div>
+                      <span className="line-clamp-2 font-display text-[13px] leading-tight text-cream">
+                        {a}
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <AromaSlider name={a} value={4 - (i % 2)} />
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4].map((d) => (
+                          <span
+                            key={d}
+                            className={cn(
+                              "h-1 w-1 rounded-full",
+                              d <= intensity ? "bg-gold" : "bg-white/15",
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </Section>
 
