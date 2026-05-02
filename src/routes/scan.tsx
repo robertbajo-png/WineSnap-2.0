@@ -127,40 +127,8 @@ function ScanPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const w = data.wine;
-      const { data: inserted, error: insErr } = await supabase
-        .from("wines")
-        .insert({
-          user_id: user.id,
-          image_url: pub.publicUrl,
-          producer: w.producer,
-          wine_name: w.wine_name,
-          vintage: w.vintage,
-          grape_varieties: w.grape_varieties,
-          region: w.region,
-          country: w.country,
-          wine_type: w.wine_type,
-          description: w.description,
-          fruit: w.fruit,
-          tannin: w.tannin,
-          acidity: w.acidity,
-          oak: w.oak,
-          sweetness: w.sweetness,
-          body: w.body,
-          primary_notes: w.primary_notes,
-          secondary_notes: w.secondary_notes,
-          tertiary_notes: w.tertiary_notes,
-          food_pairings: w.food_pairings,
-          serving_temp: w.serving_temp,
-          glass_type: w.glass_type,
-          decant: w.decant,
-          ai_raw: w,
-        })
-        .select("id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type")
-        .single();
-      if (insErr) throw insErr;
-
-      setScanned(inserted as ScannedWine);
+      const inserted = await persistWine(data.wine, pub.publicUrl);
+      setScanned(inserted);
       setStage("match");
     } catch (e) {
       console.error(e);
