@@ -59,7 +59,7 @@ function AdminPage() {
 
       <Card className="mt-6 p-5">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Totalt antal vin</p>
-        <p className="mt-1 font-display text-4xl text-burgundy">{stats?.wines ?? "—"}</p>
+        <p className="mt-1 font-display text-4xl text-gold">{stats?.wines ?? "—"}</p>
       </Card>
 
       <p className="mt-6 text-sm text-muted-foreground">

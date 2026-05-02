@@ -46,7 +46,7 @@ function MePage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">Logga in för att se din profil.</p>
           <Link to="/login">
-            <Button className="mt-4 bg-gradient-wine">Logga in</Button>
+            <Button className="mt-4 bg-gradient-gold text-background">Logga in</Button>
           </Link>
         </div>
       </AppShell>
@@ -63,13 +63,13 @@ function MePage() {
       <h1 className="font-display text-3xl">Profil</h1>
 
       <Card className="mt-5 p-5 text-center shadow-soft">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-wine font-display text-2xl text-primary-foreground shadow-elegant">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-gold text-background font-display text-2xl text-primary-foreground shadow-elegant">
           {(profile?.display_name ?? user?.email ?? "?").charAt(0).toUpperCase()}
         </div>
         <p className="mt-3 font-display text-xl">{profile?.display_name ?? "—"}</p>
         <p className="text-xs text-muted-foreground">{user?.email}</p>
         <p className="mt-3 text-sm">
-          <span className="font-display text-2xl text-burgundy">{count}</span>{" "}
+          <span className="font-display text-2xl text-gold">{count}</span>{" "}
           <span className="text-muted-foreground">vin sparade</span>
         </p>
       </Card>
@@ -78,14 +78,14 @@ function MePage() {
         {isAdmin && (
           <Link to="/admin">
             <Card className="flex items-center gap-3 p-4 hover:bg-accent">
-              <Shield className="h-5 w-5 text-burgundy" />
+              <Shield className="h-5 w-5 text-gold" />
               <span>Admin</span>
             </Card>
           </Link>
         )}
         <Link to="/about">
           <Card className="flex items-center gap-3 p-4 hover:bg-accent">
-            <Info className="h-5 w-5 text-burgundy" />
+            <Info className="h-5 w-5 text-gold" />
             <span>Om Winesnap</span>
           </Card>
         </Link>
