@@ -21,6 +21,7 @@ function MePage() {
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
   const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[] } | null>(null);
+  const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -48,6 +49,16 @@ function MePage() {
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => setProfile(data as any));
+    supabase
+      .from("taste_profile")
+      .select("favorite_grapes")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const fg = (data?.favorite_grapes ?? {}) as Record<string, number>;
+        const sorted = Object.entries(fg).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+        setTopGrapes(sorted);
+      });
   }, [user]);
 
   const memberSince = user ? new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "—";
