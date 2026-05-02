@@ -142,36 +142,65 @@ function WineDetailPage() {
 
         {tab === "Aromas" && (
           <>
-            <Section title="Aromas">
-              <div className="flex items-start gap-3">
-                <AromaWheel size={150} className="shrink-0" />
-                <ul className="flex-1 space-y-1.5">
-                  {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => {
-                    const intensity = 4 - (i % 3);
-                    return (
-                      <li key={a + i}>
-                        <button className="flex w-full items-center gap-2 rounded-lg border border-white/8 bg-card/40 px-2.5 py-2 text-left transition-colors hover:bg-card/60">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center text-base">
-                            {aromaEmoji(a)}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-[12px] text-cream">{a}</span>
-                          <span className="flex items-center gap-1">
-                            {[1, 2, 3, 4].map((d) => (
-                              <span
-                                key={d}
-                                className={cn(
-                                  "h-1 w-1 rounded-full",
-                                  d <= intensity ? "bg-burgundy" : "bg-white/15",
-                                )}
-                              />
-                            ))}
-                          </span>
-                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+            <Section title="Aroma Profile">
+              {/* Hero wheel with soft glow */}
+              <div className="relative mt-1 flex items-center justify-center py-3">
+                <div className="pointer-events-none absolute h-[260px] w-[260px] rounded-full bg-burgundy/15 blur-3xl" />
+                <div className="pointer-events-none absolute h-[210px] w-[210px] rounded-full bg-gold/10 blur-2xl" />
+                <div className="relative rounded-full border border-white/10 bg-gradient-to-b from-card/60 to-background/40 p-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
+                  <AromaWheel size={220} />
+                </div>
+              </div>
+
+              {/* Aroma legend chips */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+                {["Fruit", "Floral", "Spice", "Oak", "Earth"].map((f) => (
+                  <span key={f} className="rounded-full border border-white/10 bg-card/50 px-2.5 py-1 font-display text-[11px] tracking-wide text-muted-foreground">
+                    {f}
+                  </span>
+                ))}
+              </div>
+
+              {/* Premium aroma cards */}
+              <div className="mt-5 grid grid-cols-2 gap-2.5">
+                {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => {
+                  const intensity = 4 - (i % 3);
+                  const family = aromaFamily(a);
+                  return (
+                    <button
+                      key={a + i}
+                      className="group relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-3 text-left transition-all hover:border-gold/30 hover:shadow-[0_8px_24px_-12px_rgba(212,175,55,0.3)]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-burgundy/40 via-burgundy/15 to-transparent ring-1 ring-inset ring-white/10">
+                          <span className="text-xl leading-none">{aromaEmoji(a)}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-display text-[13px] leading-tight text-cream">{a}</div>
+                          <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">{family}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <div className="flex flex-1 items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((d) => (
+                            <span
+                              key={d}
+                              className={cn(
+                                "h-1 flex-1 rounded-full transition-colors",
+                                d <= intensity + 1
+                                  ? "bg-gradient-to-r from-burgundy to-gold/80"
+                                  : "bg-white/8",
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <span className="font-display text-[10px] uppercase tracking-wider text-gold/80">
+                          {intensityLabel(intensity)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </Section>
 
