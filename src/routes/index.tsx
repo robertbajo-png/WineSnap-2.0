@@ -40,6 +40,7 @@ function HomePage() {
     supabase
       .from("wines")
       .select("id,producer,wine_name,vintage,region,country,image_url,created_at,fruit,tannin,acidity,body,grape_varieties")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         const ws = (data as RecentWine[]) ?? [];
@@ -159,10 +160,10 @@ function HomePage() {
             </div>
 
             <div className="mt-4 grid grid-cols-4 gap-2">
-              <Stat value={String(Math.max(all.length, 156))} label="Bottles" />
-              <Stat value={String(Math.max(regionsCount, 12))} label="Regions" />
-              <Stat value={String(Math.max(grapesCount, 18))} label="Varietals" />
-              <Stat value={(avg || 4.2).toFixed(1)} label="Avg. Rating" />
+              <Stat value={String(all.length)} label="Bottles" />
+              <Stat value={String(regionsCount)} label="Regions" />
+              <Stat value={String(grapesCount)} label="Varietals" />
+              <Stat value={avg ? avg.toFixed(1) : "—"} label="Avg. Rating" />
             </div>
           </Link>
         </section>

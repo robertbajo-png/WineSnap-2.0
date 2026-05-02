@@ -39,18 +39,19 @@ function CellarOverviewPage() {
     supabase
       .from("wines")
       .select("region,grape_varieties,vintage")
+      .eq("user_id", user.id)
       .then(({ data }) => setWines((data as WineRow[]) ?? []));
   }, [user]);
 
-  const bottles = Math.max(wines.length, 156);
-  const value = 24680;
-  const regions = Math.max(new Set(wines.map((w) => w.region).filter(Boolean)).size, 12);
+  const bottles = wines.length;
+  const value = bottles * 158; // est. avg per bottle
+  const regions = new Set(wines.map((w) => w.region).filter(Boolean)).size;
 
   // Drinking window
   const now = new Date().getFullYear();
-  const pastPeak = wines.filter((w) => w.vintage && w.vintage < now - 6).length || 12;
-  const greatNow = wines.filter((w) => w.vintage && w.vintage >= now - 6 && w.vintage <= now - 1).length || 78;
-  const cellarWorthy = wines.filter((w) => w.vintage && w.vintage >= now).length || 66;
+  const pastPeak = wines.filter((w) => w.vintage && w.vintage < now - 6).length;
+  const greatNow = wines.filter((w) => w.vintage && w.vintage >= now - 6 && w.vintage <= now - 1).length;
+  const cellarWorthy = wines.filter((w) => w.vintage && w.vintage >= now).length;
 
   return (
     <AppShell>

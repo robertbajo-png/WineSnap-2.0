@@ -21,6 +21,7 @@ function MePage() {
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
   const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[] } | null>(null);
+  const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -48,6 +49,16 @@ function MePage() {
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => setProfile(data as any));
+    supabase
+      .from("taste_profile")
+      .select("favorite_grapes")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const fg = (data?.favorite_grapes ?? {}) as Record<string, number>;
+        const sorted = Object.entries(fg).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+        setTopGrapes(sorted);
+      });
   }, [user]);
 
   const memberSince = user ? new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "—";
@@ -97,7 +108,7 @@ function MePage() {
             <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={(profile?.preferred_types ?? ["Red", "White"]).join(", ")} />
             <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value="Bold • Dry • Oaked" />
             <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={(profile?.preferred_regions ?? ["Bordeaux", "Tuscany"]).slice(0, 3).join(", ") + ((profile?.preferred_regions?.length ?? 0) > 3 ? ` +${(profile!.preferred_regions!.length) - 3}` : "")} />
-            <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value="Cabernet Sauvignon, Pinot Noir +3" />
+            <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
         </section>
 

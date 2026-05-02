@@ -49,6 +49,7 @@ function CellarPage() {
     supabase
       .from("wines")
       .select("id,producer,wine_name,vintage,region,country,image_url,wine_type,fruit,tannin,acidity,body")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => setWines((data as WineRow[]) ?? []));
   }, [user]);
