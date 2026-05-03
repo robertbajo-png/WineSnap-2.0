@@ -166,7 +166,6 @@ function WineDetailPage() {
               <div className="mt-5 grid grid-cols-2 gap-2.5">
                 {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => {
                   const intensity = 4 - (i % 3);
-                  const family = aromaFamily(a);
                   return (
                     <button
                       key={a + i}
