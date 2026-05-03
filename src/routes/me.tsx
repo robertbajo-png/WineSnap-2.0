@@ -137,6 +137,17 @@ function MePage() {
   );
 }
 
+function tasteProfileSummary(p: { body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null } | null): string | null {
+  if (!p) return null;
+  const parts: string[] = [];
+  if (p.body != null) parts.push(p.body >= 7 ? "Bold" : p.body <= 4 ? "Light" : "Medium");
+  if (p.sweetness != null) parts.push(p.sweetness <= 3 ? "Dry" : p.sweetness >= 7 ? "Sweet" : "Off-dry");
+  if (p.oak != null && p.oak >= 6) parts.push("Oaked");
+  if (p.tannin != null && p.tannin >= 7) parts.push("Tannic");
+  if (p.acidity != null && p.acidity >= 7) parts.push("Crisp");
+  return parts.length ? parts.slice(0, 3).join(" • ") : null;
+}
+
 function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
     <div className="flex flex-col items-center rounded-xl border border-white/10 bg-card/50 px-2 py-3 text-center">
