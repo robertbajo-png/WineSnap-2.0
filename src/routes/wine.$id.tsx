@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,18 @@ type WineRow = {
   decant: boolean | null;
 };
 
-const TABS = ["Overview", "Aromas", "Tasting", "Food", "Reviews"] as const;
+const TABS = ["Overview", "Aromas", "Tasting", "Food", "AI Picks"] as const;
+
+type Suggestion = {
+  producer: string;
+  wine_name: string;
+  region: string;
+  country: string;
+  grape_varieties?: string[];
+  price_range?: string;
+  match_score: number;
+  reason: string;
+};
 type Tab = typeof TABS[number];
 
 function WineDetailPage() {
@@ -54,6 +65,30 @@ function WineDetailPage() {
   const [liked, setLiked] = useState(false);
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
   const [thisWineMode, setThisWineMode] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  const loadSuggestions = async () => {
+    if (!w || suggestLoading) return;
+    setSuggestLoading(true);
+    setSuggestError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("wine-suggestions", { body: w });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setSuggestions((data as any)?.suggestions ?? []);
+    } catch (e: any) {
+      setSuggestError(e?.message ?? "Failed to load suggestions");
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "AI Picks" && !suggestions && !suggestLoading && w) loadSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, w]);
 
   useEffect(() => {
     supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
@@ -308,11 +343,49 @@ function WineDetailPage() {
           </div>
         )}
 
-        {tab === "Reviews" && (
-          <div className="mt-5">
-            <Card className="bg-card/50 p-4 text-center text-sm text-muted-foreground">
-              No reviews yet.
-            </Card>
+        {tab === "AI Picks" && (
+          <div className="mt-5 space-y-3">
+            {suggestLoading && (
+              <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Finding wines you'll love…</span>
+              </div>
+            )}
+            {suggestError && !suggestLoading && (
+              <Card className="bg-card/50 p-4 text-center text-sm text-destructive">
+                {suggestError}
+                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">Retry</Button>
+              </Card>
+            )}
+            {!suggestLoading && !suggestError && suggestions && suggestions.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">No suggestions available.</p>
+            )}
+            {!suggestLoading && suggestions?.map((s, i) => (
+              <Card key={i} className="bg-card/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-base text-cream truncate">{s.wine_name}</p>
+                    <p className="text-xs text-gold">{s.producer}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {[s.region, s.country].filter(Boolean).join(", ")}
+                      {s.grape_varieties?.length ? ` • ${s.grape_varieties.join(", ")}` : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success shrink-0">
+                    {Math.round(s.match_score)}%
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
+                {s.price_range && (
+                  <p className="mt-1.5 font-display text-xs text-cream">{s.price_range}</p>
+                )}
+              </Card>
+            ))}
+            {!suggestLoading && suggestions && suggestions.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => { setSuggestions(null); loadSuggestions(); }} className="w-full">
+                <Sparkles className="h-4 w-4" /> Regenerate
+              </Button>
+            )}
           </div>
         )}
 
