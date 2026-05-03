@@ -343,11 +343,49 @@ function WineDetailPage() {
           </div>
         )}
 
-        {tab === "Reviews" && (
-          <div className="mt-5">
-            <Card className="bg-card/50 p-4 text-center text-sm text-muted-foreground">
-              No reviews yet.
-            </Card>
+        {tab === "AI Picks" && (
+          <div className="mt-5 space-y-3">
+            {suggestLoading && (
+              <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Finding wines you'll love…</span>
+              </div>
+            )}
+            {suggestError && !suggestLoading && (
+              <Card className="bg-card/50 p-4 text-center text-sm text-destructive">
+                {suggestError}
+                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">Retry</Button>
+              </Card>
+            )}
+            {!suggestLoading && !suggestError && suggestions && suggestions.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">No suggestions available.</p>
+            )}
+            {!suggestLoading && suggestions?.map((s, i) => (
+              <Card key={i} className="bg-card/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-base text-cream truncate">{s.wine_name}</p>
+                    <p className="text-xs text-gold">{s.producer}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {[s.region, s.country].filter(Boolean).join(", ")}
+                      {s.grape_varieties?.length ? ` • ${s.grape_varieties.join(", ")}` : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success shrink-0">
+                    {Math.round(s.match_score)}%
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
+                {s.price_range && (
+                  <p className="mt-1.5 font-display text-xs text-cream">{s.price_range}</p>
+                )}
+              </Card>
+            ))}
+            {!suggestLoading && suggestions && suggestions.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => { setSuggestions(null); loadSuggestions(); }} className="w-full">
+                <Sparkles className="h-4 w-4" /> Regenerate
+              </Button>
+            )}
           </div>
         )}
 
