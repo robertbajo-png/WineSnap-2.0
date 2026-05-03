@@ -209,7 +209,7 @@ function WineDetailPage() {
                   <>
                     {thisWineMode && (
                       <p className="mt-4 text-center font-display text-xs uppercase tracking-[0.2em] text-gold/80">
-                        This wine's aromas
+                        {"This wine's aromas"}
                       </p>
                     )}
                   <div className="mt-5 grid grid-cols-2 gap-2.5">
