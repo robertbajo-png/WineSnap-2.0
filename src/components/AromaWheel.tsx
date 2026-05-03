@@ -92,15 +92,20 @@ function centerlineArc(cx: number, cy: number, r: number, a0: number, a1: number
   return `M${p0.x},${p0.y} A${r},${r} 0 ${large} 1 ${p1.x},${p1.y}`;
 }
 
+export const AROMA_FAMILIES = FAMILIES.map((f) => f.name);
+
 export function AromaWheel({
   size = 220,
   className,
   showLabels,
+  selectedFamily,
+  onSelectFamily,
 }: {
   size?: number;
   className?: string;
-  /** Force-show labels regardless of size (defaults: true when size >= 320). */
   showLabels?: boolean;
+  selectedFamily?: string | null;
+  onSelectFamily?: (family: string | null) => void;
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -113,6 +118,7 @@ export function AromaWheel({
   const labels = showLabels ?? size >= 320;
   const stroke = "oklch(0.12 0.008 30)";
   const goldRim = "oklch(0.78 0.13 75 / 0.55)";
+  const interactive = !!onSelectFamily;
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
