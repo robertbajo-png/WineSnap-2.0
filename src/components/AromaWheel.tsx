@@ -100,12 +100,16 @@ export function AromaWheel({
   showLabels,
   selectedFamily,
   onSelectFamily,
+  onSelectCenter,
+  centerActive,
 }: {
   size?: number;
   className?: string;
   showLabels?: boolean;
   selectedFamily?: string | null;
   onSelectFamily?: (family: string | null) => void;
+  onSelectCenter?: () => void;
+  centerActive?: boolean;
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -298,17 +302,39 @@ export function AromaWheel({
       {/* outer rim */}
       <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={goldRim} strokeWidth="1" />
 
-      {/* core disc */}
-      <circle cx={cx} cy={cy} r={rCore} fill="url(#aw-core)" stroke={goldRim} strokeWidth="1" />
-      <text
-        x={cx}
-        y={cy + size * 0.012}
-        textAnchor="middle"
-        fontSize={size * 0.05}
-        className="fill-gold/80 font-display"
+      {/* core disc — click to show this wine's aromas */}
+      <g
+        onClick={onSelectCenter ? (e) => { e.stopPropagation(); onSelectCenter(); } : undefined}
+        style={{ cursor: onSelectCenter ? "pointer" : undefined }}
       >
-        ❦
-      </text>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={rCore}
+          fill="url(#aw-core)"
+          stroke={centerActive ? "oklch(0.85 0.16 75)" : goldRim}
+          strokeWidth={centerActive ? 1.8 : 1}
+        />
+        <text
+          x={cx}
+          y={cy - size * 0.008}
+          textAnchor="middle"
+          fontSize={size * 0.038}
+          className="fill-gold/90 font-display pointer-events-none"
+        >
+          THIS WINE
+        </text>
+        <text
+          x={cx}
+          y={cy + size * 0.032}
+          textAnchor="middle"
+          fontSize={size * 0.022}
+          className="fill-cream/60 font-display pointer-events-none"
+          style={{ letterSpacing: "0.1em" }}
+        >
+          {centerActive ? "showing" : "tap to show"}
+        </text>
+      </g>
     </svg>
   );
 }
