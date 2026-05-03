@@ -137,9 +137,141 @@ export function AromaWheel({
       <circle cx={cx} cy={cy} r={rOuter} fill="url(#aw-glow)" />
 
       {(() => {
-        const elems: React.ReactNode[] = [];
+        const groups: React.ReactNode[] = [];
         const textPaths: React.ReactNode[] = [];
         FAMILIES.forEach((fam, fi) => {
+          const famStart = fi * 60;
+          const famEnd = famStart + 60;
+          const famElems: React.ReactNode[] = [];
+          const isSelected = selectedFamily === fam.name;
+          const dim = !!selectedFamily && !isSelected;
+
+          famElems.push(
+            <path
+              key={`fam-${fi}`}
+              d={arcPath(cx, cy, rInner, rMid, famStart, famEnd)}
+              fill={fam.color}
+              stroke={stroke}
+              strokeWidth={1}
+            />,
+          );
+
+          let subAngle = famStart;
+          fam.subs.forEach((sub, si) => {
+            const subEnd = subAngle + 60 * sub.weight;
+            const midColor = shift(fam.color, 0.06);
+            famElems.push(
+              <path
+                key={`sub-${fi}-${si}`}
+                d={arcPath(cx, cy, rMid, rOuter * 0.78, subAngle, subEnd)}
+                fill={midColor}
+                stroke={stroke}
+                strokeWidth={1}
+              />,
+            );
+
+            if (labels && sub.name && size >= 280) {
+              const r = (rMid + rOuter * 0.78) / 2;
+              const mid = (subAngle + subEnd) / 2;
+              const flip = mid > 90 && mid < 270;
+              const a0 = flip ? subEnd - 1 : subAngle + 1;
+              const a1 = flip ? subAngle + 1 : subEnd - 1;
+              const id = `sub-tp-${fi}-${si}`;
+              textPaths.push(<path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />);
+              famElems.push(
+                <text key={`t-${id}`} fontSize={size * 0.024} className="fill-cream/85 font-display pointer-events-none">
+                  <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">{sub.name}</textPath>
+                </text>,
+              );
+            }
+
+            const leafSpan = (subEnd - subAngle) / sub.leaves.length;
+            sub.leaves.forEach((leaf, li) => {
+              const lStart = subAngle + li * leafSpan;
+              const lEnd = lStart + leafSpan;
+              const leafColor = shift(fam.color, 0.12);
+              famElems.push(
+                <path
+                  key={`leaf-${fi}-${si}-${li}`}
+                  d={arcPath(cx, cy, rOuter * 0.78, rOuter, lStart, lEnd)}
+                  fill={leafColor}
+                  stroke={stroke}
+                  strokeWidth={0.8}
+                />,
+              );
+
+              if (labels && size >= 280) {
+                const r = (rOuter * 0.78 + rOuter) / 2;
+                const mid = (lStart + lEnd) / 2;
+                const flip = mid > 90 && mid < 270;
+                const a0 = flip ? lEnd - 0.5 : lStart + 0.5;
+                const a1 = flip ? lStart + 0.5 : lEnd - 0.5;
+                const id = `leaf-tp-${fi}-${si}-${li}`;
+                textPaths.push(<path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />);
+                famElems.push(
+                  <text key={`t-${id}`} fontSize={size * 0.021} className="fill-cream/75 font-display pointer-events-none">
+                    <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">{leaf}</textPath>
+                  </text>,
+                );
+              }
+            });
+
+            subAngle = subEnd;
+          });
+
+          if (labels && size >= 220) {
+            const mid = famStart + 30;
+            const r = (rInner + rMid) / 2;
+            const p = polar(cx, cy, r, mid);
+            famElems.push(
+              <text
+                key={`fname-${fi}`}
+                x={p.x}
+                y={p.y + size * 0.012}
+                textAnchor="middle"
+                fontSize={size * 0.034}
+                className="fill-cream font-display pointer-events-none"
+              >
+                {fam.name}
+              </text>,
+            );
+          }
+
+          if (isSelected) {
+            famElems.push(
+              <path
+                key={`hl-${fi}`}
+                d={arcPath(cx, cy, rInner - 1, rOuter + 1, famStart, famEnd)}
+                fill="none"
+                stroke="oklch(0.85 0.16 75)"
+                strokeWidth={1.6}
+                className="pointer-events-none"
+              />,
+            );
+          }
+
+          groups.push(
+            <g
+              key={`g-${fi}`}
+              onClick={interactive ? (e) => { e.stopPropagation(); onSelectFamily?.(isSelected ? null : fam.name); } : undefined}
+              style={{
+                cursor: interactive ? "pointer" : undefined,
+                opacity: dim ? 0.35 : 1,
+                transition: "opacity 200ms ease",
+              }}
+            >
+              {famElems}
+            </g>,
+          );
+        });
+
+        return (
+          <>
+            <defs>{textPaths}</defs>
+            {groups}
+          </>
+        );
+      })()}
           const famStart = fi * 60;
           const famEnd = famStart + 60;
 
