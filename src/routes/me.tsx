@@ -45,7 +45,7 @@ function MePage() {
       });
     supabase
       .from("profiles")
-      .select("display_name,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity")
+      .select("display_name,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => setProfile(data as any));
