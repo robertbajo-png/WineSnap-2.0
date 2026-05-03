@@ -65,6 +65,30 @@ function WineDetailPage() {
   const [liked, setLiked] = useState(false);
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
   const [thisWineMode, setThisWineMode] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  const loadSuggestions = async () => {
+    if (!w || suggestLoading) return;
+    setSuggestLoading(true);
+    setSuggestError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("wine-suggestions", { body: w });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setSuggestions((data as any)?.suggestions ?? []);
+    } catch (e: any) {
+      setSuggestError(e?.message ?? "Failed to load suggestions");
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "AI Picks" && !suggestions && !suggestLoading && w) loadSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, w]);
 
   useEffect(() => {
     supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
