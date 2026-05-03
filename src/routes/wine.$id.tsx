@@ -249,6 +249,7 @@ function WineDetailPage() {
                       );
                     })}
                   </div>
+                  </>
                 );
               })()}
             </Section>
