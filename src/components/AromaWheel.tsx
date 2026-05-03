@@ -1,107 +1,310 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Aroma Wheel — koncentriska segment av aromfamiljer.
- * Inspirerad av wine aroma wheel.
+ * Aroma Wheel — 6 family sectors with sub-category and leaf rings.
+ * Inspired by the classic wine aroma wheel.
  */
+
+type Family = {
+  name: string;
+  color: string; // base oklch
+  /** Subcategories with leaf aromas. Sum of weights = 1 within a family. */
+  subs: { name: string; weight: number; leaves: string[] }[];
+};
+
+const FAMILIES: Family[] = [
+  {
+    name: "Fruit",
+    color: "oklch(0.38 0.13 20)",
+    subs: [
+      { name: "Dark fruit", weight: 0.5, leaves: ["Black cherry", "Plum", "Blueberry"] },
+      { name: "Red fruit", weight: 0.5, leaves: ["Raspberry", "Red currant"] },
+    ],
+  },
+  {
+    name: "Floral",
+    color: "oklch(0.34 0.07 300)",
+    subs: [
+      { name: "Floral", weight: 1, leaves: ["Violet", "Rose", "Lavender", "Hibiscus", "Peony"] },
+    ],
+  },
+  {
+    name: "Spice",
+    color: "oklch(0.42 0.11 55)",
+    subs: [
+      { name: "Warm spice", weight: 0.6, leaves: ["Black pepper", "Clove", "Cinnamon"] },
+      { name: "Sweet spice", weight: 0.4, leaves: ["Nutmeg", "Anise"] },
+    ],
+  },
+  {
+    name: "Oak",
+    color: "oklch(0.5 0.12 80)",
+    subs: [
+      { name: "Oak", weight: 1, leaves: ["Cedar", "Vanilla", "Coconut", "Toanut"] },
+    ],
+  },
+  {
+    name: "Earth",
+    color: "oklch(0.38 0.07 130)",
+    subs: [
+      { name: "Vegetal", weight: 1, leaves: ["Forest floor", "Truffle", "Mushroom", "Tobacco leaf"] },
+    ],
+  },
+  {
+    name: "Mineral",
+    color: "oklch(0.34 0.04 230)",
+    subs: [
+      { name: "Stone", weight: 0.55, leaves: ["Wet stone", "Slate", "Gravel", "Talc"] },
+      { name: "Marine", weight: 0.45, leaves: ["Sea breeze"] },
+    ],
+  },
+];
+
+function shift(color: string, dL: number, dC = 0): string {
+  return color.replace(/oklch\(([^)]+)\)/, (_, p) => {
+    const parts = p.trim().split(/\s+/);
+    const l = parseFloat(parts[0]);
+    const c = parseFloat(parts[1]);
+    const h = parts[2];
+    return `oklch(${(l + dL).toFixed(3)} ${(c + dC).toFixed(3)} ${h})`;
+  });
+}
+
+function polar(cx: number, cy: number, r: number, deg: number) {
+  const a = (deg - 90) * (Math.PI / 180);
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
+function arcPath(cx: number, cy: number, rA: number, rB: number, a0: number, a1: number) {
+  const p0 = polar(cx, cy, rB, a0);
+  const p1 = polar(cx, cy, rB, a1);
+  const p2 = polar(cx, cy, rA, a1);
+  const p3 = polar(cx, cy, rA, a0);
+  const large = a1 - a0 > 180 ? 1 : 0;
+  return `M${p0.x},${p0.y} A${rB},${rB} 0 ${large} 1 ${p1.x},${p1.y} L${p2.x},${p2.y} A${rA},${rA} 0 ${large} 0 ${p3.x},${p3.y} Z`;
+}
+
+/** Path along the centerline of an arc (for textPath). */
+function centerlineArc(cx: number, cy: number, r: number, a0: number, a1: number) {
+  const p0 = polar(cx, cy, r, a0);
+  const p1 = polar(cx, cy, r, a1);
+  const large = a1 - a0 > 180 ? 1 : 0;
+  return `M${p0.x},${p0.y} A${r},${r} 0 ${large} 1 ${p1.x},${p1.y}`;
+}
+
 export function AromaWheel({
   size = 220,
   className,
-  highlight = [],
+  showLabels,
 }: {
   size?: number;
   className?: string;
-  highlight?: number[]; // index av segment att lyfta
+  /** Force-show labels regardless of size (defaults: true when size >= 320). */
+  showLabels?: boolean;
 }) {
   const cx = size / 2;
   const cy = size / 2;
-  const rOuter = size / 2 - 4;
-  const rMid = rOuter * 0.72;
+  const pad = Math.max(2, size * 0.018);
+  const rOuter = size / 2 - pad;
+  const rMid = rOuter * 0.7;
   const rInner = rOuter * 0.42;
+  const rCore = rInner * 0.45;
 
-  // 12 segment, varje 30°. Färger som speglar aromfamiljer.
-  const segments: { color: string; ring: 0 | 1 }[] = [
-    // Ytter ring (mörkare/jordiga)
-    { color: "oklch(0.42 0.14 25)", ring: 0 },
-    { color: "oklch(0.5 0.14 35)", ring: 0 },
-    { color: "oklch(0.58 0.13 55)", ring: 0 },
-    { color: "oklch(0.6 0.12 90)", ring: 0 },
-    { color: "oklch(0.45 0.1 130)", ring: 0 },
-    { color: "oklch(0.38 0.07 160)", ring: 0 },
-    { color: "oklch(0.32 0.04 200)", ring: 0 },
-    { color: "oklch(0.36 0.06 260)", ring: 0 },
-    { color: "oklch(0.42 0.1 320)", ring: 0 },
-    { color: "oklch(0.5 0.14 350)", ring: 0 },
-    { color: "oklch(0.45 0.16 15)", ring: 0 },
-    { color: "oklch(0.4 0.15 18)", ring: 0 },
-  ];
-
-  const inner: { color: string }[] = segments.map((s) => ({
-    color: s.color.replace(/oklch\(([^)]+)\)/, (_, p) => {
-      const [l, c, h] = p.split(/\s+/);
-      return `oklch(${(parseFloat(l) + 0.08).toFixed(2)} ${c} ${h})`;
-    }),
-  }));
-
-  const seg = (i: number, rA: number, rB: number) => {
-    const a0 = (i * 30 - 90) * (Math.PI / 180);
-    const a1 = ((i + 1) * 30 - 90) * (Math.PI / 180);
-    const x0 = cx + rB * Math.cos(a0);
-    const y0 = cy + rB * Math.sin(a0);
-    const x1 = cx + rB * Math.cos(a1);
-    const y1 = cy + rB * Math.sin(a1);
-    const x2 = cx + rA * Math.cos(a1);
-    const y2 = cy + rA * Math.sin(a1);
-    const x3 = cx + rA * Math.cos(a0);
-    const y3 = cy + rA * Math.sin(a0);
-    return `M${x0},${y0} A${rB},${rB} 0 0 1 ${x1},${y1} L${x2},${y2} A${rA},${rA} 0 0 0 ${x3},${y3} Z`;
-  };
+  const labels = showLabels ?? size >= 320;
+  const stroke = "oklch(0.12 0.008 30)";
+  const goldRim = "oklch(0.78 0.13 75 / 0.55)";
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
-      {/* outer ring */}
-      {segments.map((s, i) => (
-        <path
-          key={`o${i}`}
-          d={seg(i, rMid, rOuter)}
-          fill={s.color}
-          stroke="oklch(0.13 0.008 30)"
-          strokeWidth="1.5"
-          opacity={highlight.length === 0 || highlight.includes(i) ? 1 : 0.4}
-        />
-      ))}
-      {/* inner ring */}
-      {inner.map((s, i) => (
-        <path
-          key={`i${i}`}
-          d={seg(i, rInner, rMid)}
-          fill={s.color}
-          stroke="oklch(0.13 0.008 30)"
-          strokeWidth="1.5"
-          opacity={highlight.length === 0 || highlight.includes(i) ? 1 : 0.4}
-        />
-      ))}
-      {/* center disc */}
-      <circle cx={cx} cy={cy} r={rInner} fill="oklch(0.18 0.012 30)" stroke="oklch(0.78 0.13 75 / 0.3)" strokeWidth="1" />
-      <circle cx={cx} cy={cy} r={rInner * 0.55} fill="oklch(0.4 0.15 18 / 0.4)" />
-      <text x={cx} y={cy + 4} textAnchor="middle" className="fill-cream font-display" fontSize="11">
-        Aromas
+      <defs>
+        <radialGradient id="aw-core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="oklch(0.22 0.02 30)" />
+          <stop offset="100%" stopColor="oklch(0.12 0.008 30)" />
+        </radialGradient>
+        <radialGradient id="aw-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="60%" stopColor="oklch(0.78 0.13 75 / 0)" />
+          <stop offset="100%" stopColor="oklch(0.78 0.13 75 / 0.18)" />
+        </radialGradient>
+      </defs>
+
+      {/* outer glow halo */}
+      <circle cx={cx} cy={cy} r={rOuter} fill="url(#aw-glow)" />
+
+      {(() => {
+        const elems: React.ReactNode[] = [];
+        const textPaths: React.ReactNode[] = [];
+        FAMILIES.forEach((fam, fi) => {
+          const famStart = fi * 60;
+          const famEnd = famStart + 60;
+
+          // Inner ring (family base color)
+          elems.push(
+            <path
+              key={`fam-${fi}`}
+              d={arcPath(cx, cy, rInner, rMid, famStart, famEnd)}
+              fill={fam.color}
+              stroke={stroke}
+              strokeWidth={1}
+            />,
+          );
+
+          // Mid ring: subcategories
+          let subAngle = famStart;
+          fam.subs.forEach((sub, si) => {
+            const subEnd = subAngle + 60 * sub.weight;
+            const midColor = shift(fam.color, 0.06);
+            elems.push(
+              <path
+                key={`sub-${fi}-${si}`}
+                d={arcPath(cx, cy, rMid, rOuter * 0.78, subAngle, subEnd)}
+                fill={midColor}
+                stroke={stroke}
+                strokeWidth={1}
+              />,
+            );
+
+            // sub label along centerline
+            if (labels && sub.name && size >= 280) {
+              const r = (rMid + rOuter * 0.78) / 2;
+              const mid = (subAngle + subEnd) / 2;
+              const flip = mid > 90 && mid < 270;
+              const a0 = flip ? subEnd - 1 : subAngle + 1;
+              const a1 = flip ? subAngle + 1 : subEnd - 1;
+              const id = `sub-tp-${fi}-${si}`;
+              textPaths.push(
+                <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+              );
+              elems.push(
+                <text
+                  key={`t-${id}`}
+                  fontSize={size * 0.024}
+                  className="fill-cream/85 font-display"
+                >
+                  <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                    {sub.name}
+                  </textPath>
+                </text>,
+              );
+            }
+
+            // Outer ring: leaves
+            const leafSpan = (subEnd - subAngle) / sub.leaves.length;
+            sub.leaves.forEach((leaf, li) => {
+              const lStart = subAngle + li * leafSpan;
+              const lEnd = lStart + leafSpan;
+              const leafColor = shift(fam.color, 0.12);
+              elems.push(
+                <path
+                  key={`leaf-${fi}-${si}-${li}`}
+                  d={arcPath(cx, cy, rOuter * 0.78, rOuter, lStart, lEnd)}
+                  fill={leafColor}
+                  stroke={stroke}
+                  strokeWidth={0.8}
+                />,
+              );
+
+              if (labels && size >= 280) {
+                const r = (rOuter * 0.78 + rOuter) / 2;
+                const mid = (lStart + lEnd) / 2;
+                const flip = mid > 90 && mid < 270;
+                const a0 = flip ? lEnd - 0.5 : lStart + 0.5;
+                const a1 = flip ? lStart + 0.5 : lEnd - 0.5;
+                const id = `leaf-tp-${fi}-${si}-${li}`;
+                textPaths.push(
+                  <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+                );
+                elems.push(
+                  <text
+                    key={`t-${id}`}
+                    fontSize={size * 0.021}
+                    className="fill-cream/75 font-display"
+                  >
+                    <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                      {leaf}
+                    </textPath>
+                  </text>,
+                );
+              }
+            });
+
+            subAngle = subEnd;
+          });
+
+          // Family name in inner ring
+          if (labels && size >= 220) {
+            const mid = famStart + 30;
+            const r = (rInner + rMid) / 2;
+            const p = polar(cx, cy, r, mid);
+            elems.push(
+              <text
+                key={`fname-${fi}`}
+                x={p.x}
+                y={p.y + size * 0.012}
+                textAnchor="middle"
+                fontSize={size * 0.034}
+                className="fill-cream font-display"
+              >
+                {fam.name}
+              </text>,
+            );
+          }
+        });
+
+        return (
+          <>
+            <defs>{textPaths}</defs>
+            {elems}
+          </>
+        );
+      })()}
+
+      {/* gold tick marks on outer rim */}
+      {Array.from({ length: 120 }).map((_, i) => {
+        const a = (i * 3 - 90) * (Math.PI / 180);
+        const r1 = rOuter + pad * 0.2;
+        const r2 = rOuter + pad * (i % 10 === 0 ? 0.9 : 0.5);
+        const x1 = cx + r1 * Math.cos(a);
+        const y1 = cy + r1 * Math.sin(a);
+        const x2 = cx + r2 * Math.cos(a);
+        const y2 = cy + r2 * Math.sin(a);
+        return (
+          <line
+            key={`tk-${i}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={goldRim}
+            strokeWidth={i % 10 === 0 ? 0.9 : 0.5}
+          />
+        );
+      })}
+
+      {/* outer rim */}
+      <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={goldRim} strokeWidth="1" />
+
+      {/* core disc */}
+      <circle cx={cx} cy={cy} r={rCore} fill="url(#aw-core)" stroke={goldRim} strokeWidth="1" />
+      <text
+        x={cx}
+        y={cy + size * 0.012}
+        textAnchor="middle"
+        fontSize={size * 0.05}
+        className="fill-gold/80 font-display"
+      >
+        ❦
       </text>
     </svg>
   );
 }
 
 export function AromaSlider({ name, value }: { name: string; value: number }) {
-  // value 1-4 dots
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4].map((i) => (
         <span
           key={i}
-          className={cn(
-            "h-1.5 w-1.5 rounded-full",
-            i <= value ? "bg-burgundy" : "bg-white/15",
-          )}
+          className={cn("h-1.5 w-1.5 rounded-full", i <= value ? "bg-burgundy" : "bg-white/15")}
         />
       ))}
       <span className="sr-only">{name}</span>
