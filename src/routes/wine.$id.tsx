@@ -4,7 +4,7 @@ import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight } from "luci
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AromaWheel, AromaSlider } from "@/components/AromaWheel";
+import { AromaWheel, AromaSlider, AROMA_FAMILIES } from "@/components/AromaWheel";
 import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -52,6 +52,7 @@ function WineDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("Aromas");
   const [liked, setLiked] = useState(false);
+  const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
@@ -149,57 +150,96 @@ function WineDetailPage() {
                 <div className="pointer-events-none absolute h-[260px] w-[260px] rounded-full bg-burgundy/15 blur-3xl" />
                 <div className="pointer-events-none absolute h-[210px] w-[210px] rounded-full bg-gold/10 blur-2xl" />
                 <div className="relative rounded-full border border-white/10 bg-gradient-to-b from-card/60 to-background/40 p-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
-                  <AromaWheel size={320} />
+                  <AromaWheel
+                    size={320}
+                    selectedFamily={selectedFamily}
+                    onSelectFamily={setSelectedFamily}
+                  />
                 </div>
               </div>
 
               {/* Aroma legend chips */}
               <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-                {["Fruit", "Floral", "Spice", "Oak", "Earth"].map((f) => (
-                  <span key={f} className="rounded-full border border-white/10 bg-card/50 px-2.5 py-1 font-display text-[11px] tracking-wide text-muted-foreground">
-                    {f}
-                  </span>
-                ))}
-              </div>
-
-              {/* Premium aroma cards */}
-              <div className="mt-5 grid grid-cols-2 gap-2.5">
-                {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => {
-                  const intensity = 4 - (i % 3);
+                {AROMA_FAMILIES.map((f) => {
+                  const active = selectedFamily === f;
                   return (
                     <button
-                      key={a + i}
-                      className="group relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-3 text-left transition-all hover:border-gold/30 hover:shadow-[0_8px_24px_-12px_rgba(212,175,55,0.3)]"
+                      key={f}
+                      onClick={() => setSelectedFamily(active ? null : f)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 font-display text-[11px] tracking-wide transition-colors",
+                        active
+                          ? "border-gold/60 bg-gold/15 text-gold"
+                          : "border-white/10 bg-card/50 text-muted-foreground hover:text-cream",
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <AromaIcon name={a} size={52} />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-display text-[13px] leading-tight text-cream">{a}</div>
-                          <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">{aromaFamilyLabel(a)}</div>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <div className="flex flex-1 items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((d) => (
-                            <span
-                              key={d}
-                              className={cn(
-                                "h-1 flex-1 rounded-full transition-colors",
-                                d <= intensity + 1
-                                  ? "bg-gradient-to-r from-burgundy to-gold/80"
-                                  : "bg-white/8",
-                              )}
-                            />
-                          ))}
-                        </div>
-                        <span className="font-display text-[10px] uppercase tracking-wider text-gold/80">
-                          {intensityLabel(intensity)}
-                        </span>
-                      </div>
+                      {f}
                     </button>
                   );
                 })}
+                {selectedFamily && (
+                  <button
+                    onClick={() => setSelectedFamily(null)}
+                    className="rounded-full border border-white/10 bg-card/30 px-2.5 py-1 font-display text-[11px] text-muted-foreground hover:text-cream"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
+
+              {/* Premium aroma cards */}
+              {(() => {
+                const all = aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"];
+                const filtered = selectedFamily
+                  ? all.filter((a) => aromaFamilyLabel(a) === selectedFamily)
+                  : all;
+                if (filtered.length === 0) {
+                  return (
+                    <p className="mt-5 rounded-2xl border border-white/8 bg-card/40 p-6 text-center text-sm text-muted-foreground">
+                      No <span className="text-cream">{selectedFamily}</span> aromas in this wine.
+                    </p>
+                  );
+                }
+                return (
+                  <div className="mt-5 grid grid-cols-2 gap-2.5">
+                    {filtered.slice(0, 6).map((a, i) => {
+                      const intensity = 4 - (i % 3);
+                      return (
+                        <button
+                          key={a + i}
+                          className="group relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-3 text-left transition-all hover:border-gold/30 hover:shadow-[0_8px_24px_-12px_rgba(212,175,55,0.3)]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <AromaIcon name={a} size={52} />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-display text-[13px] leading-tight text-cream">{a}</div>
+                              <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">{aromaFamilyLabel(a)}</div>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center gap-2">
+                            <div className="flex flex-1 items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((d) => (
+                                <span
+                                  key={d}
+                                  className={cn(
+                                    "h-1 flex-1 rounded-full transition-colors",
+                                    d <= intensity + 1
+                                      ? "bg-gradient-to-r from-burgundy to-gold/80"
+                                      : "bg-white/8",
+                                  )}
+                                />
+                              ))}
+                            </div>
+                            <span className="font-display text-[10px] uppercase tracking-wider text-gold/80">
+                              {intensityLabel(intensity)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </Section>
 
             <Section title="Tasting Profile">
