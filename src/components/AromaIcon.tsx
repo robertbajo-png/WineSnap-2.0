@@ -1,78 +1,88 @@
-import {
-  Cherry,
-  Apple,
-  Citrus,
-  Grape,
-  Flower2,
-  Leaf,
-  TreePine,
-  Flame,
-  Coffee,
-  Candy,
-  Wheat,
-  Mountain,
-  Droplet,
-  Sparkles,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import blackCherry from "@/assets/aromas/black-cherry.png";
+import blackberry from "@/assets/aromas/blackberry.png";
+import plum from "@/assets/aromas/plum.png";
+import fig from "@/assets/aromas/fig.png";
+import citrusPeel from "@/assets/aromas/citrus-peel.png";
+import violet from "@/assets/aromas/violet.png";
+import rose from "@/assets/aromas/rose.png";
+import pepper from "@/assets/aromas/pepper.png";
+import bakingSpice from "@/assets/aromas/baking-spice.png";
+import vanilla from "@/assets/aromas/vanilla.png";
+import cocoa from "@/assets/aromas/cocoa.png";
+import coffee from "@/assets/aromas/coffee.png";
+import cedar from "@/assets/aromas/cedar.png";
+import oakBarrel from "@/assets/aromas/oak-barrel.png";
+import tobaccoLeaf from "@/assets/aromas/tobacco-leaf.png";
+import leather from "@/assets/aromas/leather.png";
+import forestFloor from "@/assets/aromas/forest-floor.png";
+import wetStone from "@/assets/aromas/wet-stone.png";
+import graphite from "@/assets/aromas/graphite.png";
+import mushroom from "@/assets/aromas/mushroom.png";
+import driedHerbs from "@/assets/aromas/dried-herbs.png";
+import honey from "@/assets/aromas/honey.png";
+import almond from "@/assets/aromas/almond.png";
+import smoke from "@/assets/aromas/smoke.png";
 
-type Family = "fruit" | "citrus" | "berry" | "floral" | "oak" | "earth" | "spice" | "sweet" | "herb" | "mineral" | "other";
+type Family = "fruit" | "berry" | "citrus" | "floral" | "spice" | "sweet" | "oak" | "earth" | "mineral" | "herb" | "other";
 
-const MAP: { match: RegExp; icon: LucideIcon; family: Family }[] = [
-  { match: /(cherry|körsbär|berry|bär|hallon|raspberry|strawberry|jordgubb|currant|vinbär|blackberry|björnbär)/i, icon: Cherry, family: "berry" },
-  { match: /(plum|plommon|fig|fikon|date|dadel)/i, icon: Cherry, family: "fruit" },
-  { match: /(apple|äpple|pear|päron|quince)/i, icon: Apple, family: "fruit" },
-  { match: /(citrus|lemon|citron|lime|grapefruit|grapefrukt|orange|apelsin)/i, icon: Citrus, family: "citrus" },
-  { match: /(peach|persika|apricot|aprikos|nectarine|tropical|tropisk|pineapple|ananas|mango|passion|melon)/i, icon: Citrus, family: "fruit" },
-  { match: /(grape|druva|raisin|russin)/i, icon: Grape, family: "fruit" },
-  { match: /(floral|flower|blomma|rose|ros|violet|viol|jasmine|jasmin|lavender|lavendel|elderflower|fläder)/i, icon: Flower2, family: "floral" },
-  { match: /(oak|ek|cedar|ceder|wood|trä|cask|fat|barrel)/i, icon: TreePine, family: "oak" },
-  { match: /(smoke|rök|tar|tjära|toast|rostat|char)/i, icon: Flame, family: "oak" },
-  { match: /(vanilla|vanilj|cream|grädde|butter|smör|caramel|karamell|toffee|honey|honung)/i, icon: Candy, family: "sweet" },
-  { match: /(chocolate|choklad|cocoa|kakao|mocha|mocka)/i, icon: Candy, family: "sweet" },
-  { match: /(coffee|kaffe|espresso)/i, icon: Coffee, family: "sweet" },
-  { match: /(tobacco|tobak|leather|läder|earth|jord|forest|skog|mushroom|svamp|truffle|tryffel|undergrowth)/i, icon: Leaf, family: "earth" },
-  { match: /(spice|krydd|pepper|peppar|clove|nejlika|cinnamon|kanel|nutmeg|muskot|anise|anis|licorice|lakrits)/i, icon: Sparkles, family: "spice" },
-  { match: /(herb|ört|mint|eucalyptus|eukalyptus|thyme|timjan|sage|salvia|rosemary|rosmarin|basil|basilika)/i, icon: Leaf, family: "herb" },
-  { match: /(mineral|sten|stone|flint|chalk|krita|slate|skiffer|wet|våt)/i, icon: Mountain, family: "mineral" },
-  { match: /(bread|bröd|yeast|jäst|biscuit|kex|brioche|toast)/i, icon: Wheat, family: "sweet" },
-  { match: /(petrol|kerosene|rubber|gummi)/i, icon: Droplet, family: "other" },
+const MAP: { match: RegExp; src: string; family: Family; label: string }[] = [
+  { match: /(black\s*cherry|cherry|körsbär)/i, src: blackCherry, family: "berry", label: "Black cherry" },
+  { match: /(blackberry|björnbär|raspberry|hallon|strawberry|jordgubb|currant|vinbär|berry|bär)/i, src: blackberry, family: "berry", label: "Blackberry" },
+  { match: /(plum|plommon|prune)/i, src: plum, family: "fruit", label: "Plum" },
+  { match: /(fig|fikon|date|dadel)/i, src: fig, family: "fruit", label: "Fig" },
+  { match: /(citrus|lemon|citron|lime|grapefruit|orange|apelsin|peel)/i, src: citrusPeel, family: "citrus", label: "Citrus" },
+  { match: /(violet|viol)/i, src: violet, family: "floral", label: "Violet" },
+  { match: /(rose|ros\b|jasmine|jasmin|elderflower|fläder|floral|flower|blomma)/i, src: rose, family: "floral", label: "Floral" },
+  { match: /(pepper|peppar)/i, src: pepper, family: "spice", label: "Pepper" },
+  { match: /(cinnamon|kanel|clove|nejlika|nutmeg|muskot|anise|anis|licorice|lakrits|baking\s*spice|spice|krydd)/i, src: bakingSpice, family: "spice", label: "Baking spice" },
+  { match: /(vanilla|vanilj)/i, src: vanilla, family: "sweet", label: "Vanilla" },
+  { match: /(cocoa|kakao|chocolate|choklad)/i, src: cocoa, family: "sweet", label: "Cocoa" },
+  { match: /(coffee|kaffe|espresso|mocha|mocka)/i, src: coffee, family: "sweet", label: "Coffee" },
+  { match: /(cedar|ceder)/i, src: cedar, family: "oak", label: "Cedar" },
+  { match: /(oak|ek|barrel|cask|fat|wood|trä|toast|rostat)/i, src: oakBarrel, family: "oak", label: "Oak" },
+  { match: /(tobacco|tobak)/i, src: tobaccoLeaf, family: "earth", label: "Tobacco" },
+  { match: /(leather|läder)/i, src: leather, family: "earth", label: "Leather" },
+  { match: /(forest|skog|undergrowth|underveg)/i, src: forestFloor, family: "earth", label: "Forest floor" },
+  { match: /(wet\s*stone|flint|chalk|krita|slate|skiffer|mineral|sten)/i, src: wetStone, family: "mineral", label: "Wet stone" },
+  { match: /(graphite|grafit|pencil|lead|petrol|kerosene)/i, src: graphite, family: "mineral", label: "Graphite" },
+  { match: /(mushroom|svamp|truffle|tryffel)/i, src: mushroom, family: "earth", label: "Mushroom" },
+  { match: /(herb|ört|mint|eucalyptus|thyme|timjan|sage|salvia|rosemary|rosmarin|basil|basilika|dried)/i, src: driedHerbs, family: "herb", label: "Herbs" },
+  { match: /(honey|honung)/i, src: honey, family: "sweet", label: "Honey" },
+  { match: /(almond|mandel|nut|nöt|hazelnut|hassel)/i, src: almond, family: "sweet", label: "Almond" },
+  { match: /(smoke|rök|tar|tjära|char)/i, src: smoke, family: "oak", label: "Smoke" },
+  { match: /(earth|jord)/i, src: forestFloor, family: "earth", label: "Earth" },
+  { match: /(apple|äpple|pear|päron|quince|peach|persika|apricot|aprikos|tropical|pineapple|ananas|mango|passion|melon|grape|druva|fruit)/i, src: plum, family: "fruit", label: "Fruit" },
 ];
 
-const FAMILY_STYLES: Record<Family, { gradient: string; ring: string; text: string }> = {
-  berry:    { gradient: "from-burgundy/60 via-burgundy/25 to-transparent", ring: "ring-burgundy/30", text: "text-rose-200" },
-  fruit:    { gradient: "from-rose-500/40 via-rose-500/15 to-transparent", ring: "ring-rose-400/20", text: "text-rose-100" },
-  citrus:   { gradient: "from-amber-300/50 via-amber-300/15 to-transparent", ring: "ring-amber-200/25", text: "text-amber-100" },
-  floral:   { gradient: "from-pink-300/40 via-pink-300/15 to-transparent", ring: "ring-pink-200/20", text: "text-pink-100" },
-  oak:      { gradient: "from-amber-700/50 via-amber-800/20 to-transparent", ring: "ring-amber-600/25", text: "text-amber-200" },
-  earth:    { gradient: "from-stone-500/50 via-stone-600/15 to-transparent", ring: "ring-stone-400/20", text: "text-stone-200" },
-  spice:    { gradient: "from-orange-500/45 via-orange-600/15 to-transparent", ring: "ring-orange-400/20", text: "text-orange-100" },
-  sweet:    { gradient: "from-amber-500/45 via-amber-600/15 to-transparent", ring: "ring-amber-400/20", text: "text-amber-100" },
-  herb:     { gradient: "from-emerald-500/40 via-emerald-600/15 to-transparent", ring: "ring-emerald-400/20", text: "text-emerald-100" },
-  mineral:  { gradient: "from-slate-400/40 via-slate-500/15 to-transparent", ring: "ring-slate-300/20", text: "text-slate-100" },
-  other:    { gradient: "from-gold/40 via-gold/15 to-transparent", ring: "ring-gold/25", text: "text-gold" },
+const FAMILY_LABEL: Record<Family, string> = {
+  berry: "Berry", fruit: "Fruit", citrus: "Citrus", floral: "Floral",
+  spice: "Spice", sweet: "Sweet", oak: "Oak", earth: "Earth",
+  mineral: "Mineral", herb: "Herb", other: "Aromatic",
 };
 
 export function aromaMeta(name: string) {
   const hit = MAP.find((m) => m.match.test(name));
-  const family: Family = hit?.family ?? "other";
-  const Icon = hit?.icon ?? Grape;
-  return { Icon, family, styles: FAMILY_STYLES[family] };
+  return {
+    src: hit?.src ?? blackberry,
+    family: hit?.family ?? ("other" as Family),
+    familyLabel: FAMILY_LABEL[hit?.family ?? "other"],
+  };
 }
 
-export function AromaIcon({ name, className }: { name: string; className?: string }) {
-  const { Icon, styles } = aromaMeta(name);
+export function aromaFamilyLabel(name: string) {
+  return aromaMeta(name).familyLabel;
+}
+
+export function AromaIcon({ name, className, size = 44 }: { name: string; className?: string; size?: number }) {
+  const { src } = aromaMeta(name);
   return (
-    <div
-      className={cn(
-        "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ring-1 ring-inset",
-        styles.gradient,
-        styles.ring,
-        className,
-      )}
-    >
-      <Icon className={cn("h-5 w-5", styles.text)} strokeWidth={1.6} />
-    </div>
+    <img
+      src={src}
+      alt=""
+      style={{ width: size, height: size }}
+      className={cn("shrink-0 rounded-full object-cover select-none", className)}
+      draggable={false}
+    />
   );
 }
