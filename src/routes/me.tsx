@@ -207,6 +207,6 @@ async function updatePref(
 ) {
   if (!userId) return;
   setProfile((p: any) => ({ ...(p ?? {}), ...patch }));
-  await supabase.from("profiles").update(patch).eq("id", userId);
+  await supabase.from("profiles").update(patch as any).eq("id", userId);
 }
 
