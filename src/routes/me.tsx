@@ -20,7 +20,7 @@ function MePage() {
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
-  const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null } | null>(null);
+  const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null; price_min?: number | null; price_max?: number | null; personalized_recs?: boolean; new_arrivals_alerts?: boolean; hide_disliked?: boolean } | null>(null);
   const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ function MePage() {
       });
     supabase
       .from("profiles")
-      .select("display_name,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity")
+      .select("display_name,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => setProfile(data as any));
@@ -86,7 +86,7 @@ function MePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl text-cream">{profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}</p>
-            <p className="text-xs text-gold">Wine Explorer</p>
+            <p className="text-xs text-gold">{explorerTier(bottles)}</p>
             <p className="text-[11px] text-muted-foreground">Member since {memberSince}</p>
           </div>
         </section>
@@ -105,9 +105,9 @@ function MePage() {
             <Link to="/taste" className="text-xs text-burgundy">Edit</Link>
           </div>
           <div className="mt-3 space-y-2.5">
-            <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={(profile?.preferred_types ?? ["Red", "White"]).join(", ")} />
+            <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : "Not set"} />
             <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
-            <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={(profile?.preferred_regions ?? ["Bordeaux", "Tuscany"]).slice(0, 3).join(", ") + ((profile?.preferred_regions?.length ?? 0) > 3 ? ` +${(profile!.preferred_regions!.length) - 3}` : "")} />
+            <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : "Not set"} />
             <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
         </section>
@@ -117,10 +117,10 @@ function MePage() {
           <h2 className="font-display text-lg text-gold">Recommended For You</h2>
           <p className="mt-1 text-xs text-muted-foreground">Customize how we personalize your recommendations.</p>
           <div className="mt-3 space-y-2.5 pb-4">
-            <ToggleRow title="Personalized Recommendations" desc="Get wines tailored to your taste" defaultOn />
-            <ToggleRow title="New Arrivals Alerts" desc="Be first to know about new releases" defaultOn />
-            <FavRow icon={null} label="Price Range" value="$20 – $200+" />
-            <ToggleRow title="Hide Wines I Dislike" desc="Improve results over time" defaultOn />
+            <ToggleRow title="Personalized Recommendations" desc="Get wines tailored to your taste" value={profile?.personalized_recs ?? true} onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)} />
+            <ToggleRow title="New Arrivals Alerts" desc="Be first to know about new releases" value={profile?.new_arrivals_alerts ?? true} onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)} />
+            <FavRow icon={null} label="Price Range" value={priceRangeLabel(profile?.price_min, profile?.price_max)} />
+            <ToggleRow title="Hide Wines I Dislike" desc="Improve results over time" value={profile?.hide_disliked ?? true} onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)} />
           </div>
         </section>
 
@@ -169,8 +169,7 @@ function FavRow({ icon, label, value }: { icon: React.ReactNode; label: string; 
   );
 }
 
-function ToggleRow({ title, desc, defaultOn = false }: { title: string; desc: string; defaultOn?: boolean }) {
-  const [on, setOn] = useState(defaultOn);
+function ToggleRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
       <div className="min-w-0 flex-1">
@@ -178,11 +177,36 @@ function ToggleRow({ title, desc, defaultOn = false }: { title: string; desc: st
         <p className="text-[11px] text-muted-foreground">{desc}</p>
       </div>
       <button
-        onClick={() => setOn(!on)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-success" : "bg-white/15"}`}
+        onClick={() => onChange(!value)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${value ? "bg-success" : "bg-white/15"}`}
       >
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`} />
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`} />
       </button>
     </div>
   );
 }
+
+function explorerTier(bottles: number): string {
+  if (bottles >= 100) return "Wine Connoisseur";
+  if (bottles >= 25) return "Wine Enthusiast";
+  if (bottles >= 5) return "Wine Explorer";
+  return "Wine Novice";
+}
+
+function priceRangeLabel(min?: number | null, max?: number | null): string {
+  if (min == null && max == null) return "Not set";
+  const lo = min ?? 0;
+  const hi = max ?? null;
+  return hi != null ? `$${lo} – $${hi}` : `$${lo}+`;
+}
+
+async function updatePref(
+  userId: string | undefined,
+  patch: Record<string, boolean>,
+  setProfile: React.Dispatch<React.SetStateAction<any>>,
+) {
+  if (!userId) return;
+  setProfile((p: any) => ({ ...(p ?? {}), ...patch }));
+  await supabase.from("profiles").update(patch as any).eq("id", userId);
+}
+

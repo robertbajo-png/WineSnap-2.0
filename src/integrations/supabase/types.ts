@@ -21,8 +21,11 @@ export type Database = {
           body: number | null
           created_at: string
           display_name: string | null
+          hide_disliked: boolean
           id: string
+          new_arrivals_alerts: boolean
           oak: number | null
+          personalized_recs: boolean
           preferred_grapes: string[] | null
           preferred_regions: string[] | null
           preferred_types: string[] | null
@@ -39,8 +42,11 @@ export type Database = {
           body?: number | null
           created_at?: string
           display_name?: string | null
+          hide_disliked?: boolean
           id: string
+          new_arrivals_alerts?: boolean
           oak?: number | null
+          personalized_recs?: boolean
           preferred_grapes?: string[] | null
           preferred_regions?: string[] | null
           preferred_types?: string[] | null
@@ -57,8 +63,11 @@ export type Database = {
           body?: number | null
           created_at?: string
           display_name?: string | null
+          hide_disliked?: boolean
           id?: string
+          new_arrivals_alerts?: boolean
           oak?: number | null
+          personalized_recs?: boolean
           preferred_grapes?: string[] | null
           preferred_regions?: string[] | null
           preferred_types?: string[] | null
