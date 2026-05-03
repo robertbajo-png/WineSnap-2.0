@@ -4,7 +4,7 @@ import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight } from "luci
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AromaWheel, AromaSlider } from "@/components/AromaWheel";
+import { AromaWheel, AromaSlider, AROMA_FAMILIES } from "@/components/AromaWheel";
 import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
