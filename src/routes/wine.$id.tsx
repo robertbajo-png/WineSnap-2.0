@@ -154,7 +154,9 @@ function WineDetailPage() {
                   <AromaWheel
                     size={320}
                     selectedFamily={selectedFamily}
-                    onSelectFamily={setSelectedFamily}
+                    onSelectFamily={(f) => { setSelectedFamily(f); setThisWineMode(false); }}
+                    centerActive={thisWineMode}
+                    onSelectCenter={() => { setThisWineMode((v) => !v); setSelectedFamily(null); }}
                   />
                 </div>
               </div>
@@ -190,10 +192,12 @@ function WineDetailPage() {
 
               {/* Premium aroma cards */}
               {(() => {
-                const all = aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"];
-                const filtered = selectedFamily
-                  ? all.filter((a) => aromaFamilyLabel(a) === selectedFamily)
-                  : all;
+                const wineAromas = aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"];
+                const filtered = thisWineMode
+                  ? wineAromas
+                  : selectedFamily
+                    ? wineAromas.filter((a) => aromaFamilyLabel(a) === selectedFamily)
+                    : wineAromas;
                 if (filtered.length === 0) {
                   return (
                     <p className="mt-5 rounded-2xl border border-white/8 bg-card/40 p-6 text-center text-sm text-muted-foreground">
@@ -202,6 +206,12 @@ function WineDetailPage() {
                   );
                 }
                 return (
+                  <>
+                    {thisWineMode && (
+                      <p className="mt-4 text-center font-display text-xs uppercase tracking-[0.2em] text-gold/80">
+                        This wine's aromas
+                      </p>
+                    )}
                   <div className="mt-5 grid grid-cols-2 gap-2.5">
                     {filtered.slice(0, 6).map((a, i) => {
                       const intensity = 4 - (i % 3);
