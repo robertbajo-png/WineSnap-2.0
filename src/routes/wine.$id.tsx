@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AromaWheel, AromaSlider } from "@/components/AromaWheel";
+import { AromaIcon, aromaMeta } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -172,9 +173,7 @@ function WineDetailPage() {
                       className="group relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-3 text-left transition-all hover:border-gold/30 hover:shadow-[0_8px_24px_-12px_rgba(212,175,55,0.3)]"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-burgundy/40 via-burgundy/15 to-transparent ring-1 ring-inset ring-white/10">
-                          <span className="text-xl leading-none">{aromaEmoji(a)}</span>
-                        </div>
+                        <AromaIcon name={a} />
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-display text-[13px] leading-tight text-cream">{a}</div>
                           <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">{family}</div>
