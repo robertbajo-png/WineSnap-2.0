@@ -20,7 +20,7 @@ function MePage() {
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
-  const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[] } | null>(null);
+  const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null } | null>(null);
   const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ function MePage() {
       });
     supabase
       .from("profiles")
-      .select("display_name,preferred_types,preferred_regions")
+      .select("display_name,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => setProfile(data as any));
@@ -106,7 +106,7 @@ function MePage() {
           </div>
           <div className="mt-3 space-y-2.5">
             <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={(profile?.preferred_types ?? ["Red", "White"]).join(", ")} />
-            <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value="Bold • Dry • Oaked" />
+            <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
             <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={(profile?.preferred_regions ?? ["Bordeaux", "Tuscany"]).slice(0, 3).join(", ") + ((profile?.preferred_regions?.length ?? 0) > 3 ? ` +${(profile!.preferred_regions!.length) - 3}` : "")} />
             <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
@@ -135,6 +135,17 @@ function MePage() {
       </div>
     </AppShell>
   );
+}
+
+function tasteProfileSummary(p: { body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null } | null): string | null {
+  if (!p) return null;
+  const parts: string[] = [];
+  if (p.body != null) parts.push(p.body >= 7 ? "Bold" : p.body <= 4 ? "Light" : "Medium");
+  if (p.sweetness != null) parts.push(p.sweetness <= 3 ? "Dry" : p.sweetness >= 7 ? "Sweet" : "Off-dry");
+  if (p.oak != null && p.oak >= 6) parts.push("Oaked");
+  if (p.tannin != null && p.tannin >= 7) parts.push("Tannic");
+  if (p.acidity != null && p.acidity >= 7) parts.push("Crisp");
+  return parts.length ? parts.slice(0, 3).join(" • ") : null;
 }
 
 function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
