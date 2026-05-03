@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AromaWheel, AromaSlider } from "@/components/AromaWheel";
-import { AromaIcon, aromaMeta } from "@/components/AromaIcon";
+import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -166,17 +166,16 @@ function WineDetailPage() {
               <div className="mt-5 grid grid-cols-2 gap-2.5">
                 {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => {
                   const intensity = 4 - (i % 3);
-                  const family = aromaFamily(a);
                   return (
                     <button
                       key={a + i}
                       className="group relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-3 text-left transition-all hover:border-gold/30 hover:shadow-[0_8px_24px_-12px_rgba(212,175,55,0.3)]"
                     >
                       <div className="flex items-center gap-3">
-                        <AromaIcon name={a} />
+                        <AromaIcon name={a} size={52} />
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-display text-[13px] leading-tight text-cream">{a}</div>
-                          <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">{family}</div>
+                          <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">{aromaFamilyLabel(a)}</div>
                         </div>
                       </div>
                       <div className="mt-3 flex items-center gap-2">
