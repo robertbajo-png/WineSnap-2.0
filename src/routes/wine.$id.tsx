@@ -52,6 +52,7 @@ function WineDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("Aromas");
   const [liked, setLiked] = useState(false);
+  const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
