@@ -149,7 +149,7 @@ function WineDetailPage() {
                 <div className="pointer-events-none absolute h-[260px] w-[260px] rounded-full bg-burgundy/15 blur-3xl" />
                 <div className="pointer-events-none absolute h-[210px] w-[210px] rounded-full bg-gold/10 blur-2xl" />
                 <div className="relative rounded-full border border-white/10 bg-gradient-to-b from-card/60 to-background/40 p-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
-                  <AromaWheel size={220} />
+                  <AromaWheel size={320} />
                 </div>
               </div>
 
