@@ -169,8 +169,7 @@ function FavRow({ icon, label, value }: { icon: React.ReactNode; label: string; 
   );
 }
 
-function ToggleRow({ title, desc, defaultOn = false }: { title: string; desc: string; defaultOn?: boolean }) {
-  const [on, setOn] = useState(defaultOn);
+function ToggleRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
       <div className="min-w-0 flex-1">
@@ -178,11 +177,36 @@ function ToggleRow({ title, desc, defaultOn = false }: { title: string; desc: st
         <p className="text-[11px] text-muted-foreground">{desc}</p>
       </div>
       <button
-        onClick={() => setOn(!on)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-success" : "bg-white/15"}`}
+        onClick={() => onChange(!value)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${value ? "bg-success" : "bg-white/15"}`}
       >
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`} />
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`} />
       </button>
     </div>
   );
 }
+
+function explorerTier(bottles: number): string {
+  if (bottles >= 100) return "Wine Connoisseur";
+  if (bottles >= 25) return "Wine Enthusiast";
+  if (bottles >= 5) return "Wine Explorer";
+  return "Wine Novice";
+}
+
+function priceRangeLabel(min?: number | null, max?: number | null): string {
+  if (min == null && max == null) return "Not set";
+  const lo = min ?? 0;
+  const hi = max ?? null;
+  return hi != null ? `$${lo} – $${hi}` : `$${lo}+`;
+}
+
+async function updatePref(
+  userId: string | undefined,
+  patch: Record<string, boolean>,
+  setProfile: React.Dispatch<React.SetStateAction<any>>,
+) {
+  if (!userId) return;
+  setProfile((p: any) => ({ ...(p ?? {}), ...patch }));
+  await supabase.from("profiles").update(patch).eq("id", userId);
+}
+
