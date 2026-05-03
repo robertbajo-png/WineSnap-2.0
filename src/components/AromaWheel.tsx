@@ -315,25 +315,46 @@ export function AromaWheel({
           stroke={centerActive ? "oklch(0.85 0.16 75)" : goldRim}
           strokeWidth={centerActive ? 1.8 : 1}
         />
+        {/* inner ring */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={rCore * 0.78}
+          fill="none"
+          stroke={goldRim}
+          strokeOpacity={0.5}
+          strokeWidth={0.6}
+        />
+        {/* monogram W */}
         <text
           x={cx}
-          y={cy - size * 0.008}
+          y={cy + size * 0.022}
           textAnchor="middle"
-          fontSize={size * 0.038}
-          className="fill-gold/90 font-display pointer-events-none"
+          fontSize={size * 0.11}
+          className="fill-gold font-display pointer-events-none"
+          style={{ fontWeight: 400, letterSpacing: "0.02em" }}
         >
-          THIS WINE
+          W
         </text>
-        <text
-          x={cx}
-          y={cy + size * 0.032}
-          textAnchor="middle"
-          fontSize={size * 0.022}
-          className="fill-cream/60 font-display pointer-events-none"
-          style={{ letterSpacing: "0.1em" }}
-        >
-          {centerActive ? "showing" : "tap to show"}
-        </text>
+        {/* tiny serifs above + below */}
+        <line
+          x1={cx - rCore * 0.35}
+          x2={cx + rCore * 0.35}
+          y1={cy - rCore * 0.55}
+          y2={cy - rCore * 0.55}
+          stroke={goldRim}
+          strokeOpacity={0.7}
+          strokeWidth={0.7}
+        />
+        <line
+          x1={cx - rCore * 0.35}
+          x2={cx + rCore * 0.35}
+          y1={cy + rCore * 0.55}
+          y2={cy + rCore * 0.55}
+          stroke={goldRim}
+          strokeOpacity={0.7}
+          strokeWidth={0.7}
+        />
       </g>
     </svg>
   );
