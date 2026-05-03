@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AromaWheel, AromaSlider } from "@/components/AromaWheel";
+import { AromaIcon, aromaMeta } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
