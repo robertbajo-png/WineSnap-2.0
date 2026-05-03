@@ -106,7 +106,7 @@ function MePage() {
           </div>
           <div className="mt-3 space-y-2.5">
             <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={(profile?.preferred_types ?? ["Red", "White"]).join(", ")} />
-            <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value="Bold • Dry • Oaked" />
+            <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
             <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={(profile?.preferred_regions ?? ["Bordeaux", "Tuscany"]).slice(0, 3).join(", ") + ((profile?.preferred_regions?.length ?? 0) > 3 ? ` +${(profile!.preferred_regions!.length) - 3}` : "")} />
             <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
