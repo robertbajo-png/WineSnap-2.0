@@ -86,7 +86,7 @@ function MePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl text-cream">{profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}</p>
-            <p className="text-xs text-gold">Wine Explorer</p>
+            <p className="text-xs text-gold">{explorerTier(bottles)}</p>
             <p className="text-[11px] text-muted-foreground">Member since {memberSince}</p>
           </div>
         </section>
@@ -105,9 +105,9 @@ function MePage() {
             <Link to="/taste" className="text-xs text-burgundy">Edit</Link>
           </div>
           <div className="mt-3 space-y-2.5">
-            <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={(profile?.preferred_types ?? ["Red", "White"]).join(", ")} />
+            <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : "Not set"} />
             <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
-            <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={(profile?.preferred_regions ?? ["Bordeaux", "Tuscany"]).slice(0, 3).join(", ") + ((profile?.preferred_regions?.length ?? 0) > 3 ? ` +${(profile!.preferred_regions!.length) - 3}` : "")} />
+            <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : "Not set"} />
             <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
         </section>
@@ -117,10 +117,10 @@ function MePage() {
           <h2 className="font-display text-lg text-gold">Recommended For You</h2>
           <p className="mt-1 text-xs text-muted-foreground">Customize how we personalize your recommendations.</p>
           <div className="mt-3 space-y-2.5 pb-4">
-            <ToggleRow title="Personalized Recommendations" desc="Get wines tailored to your taste" defaultOn />
-            <ToggleRow title="New Arrivals Alerts" desc="Be first to know about new releases" defaultOn />
-            <FavRow icon={null} label="Price Range" value="$20 – $200+" />
-            <ToggleRow title="Hide Wines I Dislike" desc="Improve results over time" defaultOn />
+            <ToggleRow title="Personalized Recommendations" desc="Get wines tailored to your taste" value={profile?.personalized_recs ?? true} onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)} />
+            <ToggleRow title="New Arrivals Alerts" desc="Be first to know about new releases" value={profile?.new_arrivals_alerts ?? true} onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)} />
+            <FavRow icon={null} label="Price Range" value={priceRangeLabel(profile?.price_min, profile?.price_max)} />
+            <ToggleRow title="Hide Wines I Dislike" desc="Improve results over time" value={profile?.hide_disliked ?? true} onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)} />
           </div>
         </section>
 
