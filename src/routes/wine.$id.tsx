@@ -42,7 +42,18 @@ type WineRow = {
   decant: boolean | null;
 };
 
-const TABS = ["Overview", "Aromas", "Tasting", "Food", "Reviews"] as const;
+const TABS = ["Overview", "Aromas", "Tasting", "Food", "AI Picks"] as const;
+
+type Suggestion = {
+  producer: string;
+  wine_name: string;
+  region: string;
+  country: string;
+  grape_varieties?: string[];
+  price_range?: string;
+  match_score: number;
+  reason: string;
+};
 type Tab = typeof TABS[number];
 
 function WineDetailPage() {
