@@ -158,7 +158,7 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
   );
 }
 
-function FavRow({ icon, label, value, to }: { icon: React.ReactNode; label: string; value: string; to?: string }) {
+function FavRow({ icon, label, value, to, hash }: { icon: React.ReactNode; label: string; value: string; to?: string; hash?: string }) {
   const className = "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
   const inner = (
     <>
@@ -168,7 +168,7 @@ function FavRow({ icon, label, value, to }: { icon: React.ReactNode; label: stri
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </>
   );
-  if (to) return <Link to={to} className={className}>{inner}</Link>;
+  if (to) return <Link to={to} hash={hash} className={className}>{inner}</Link>;
   return <button className={className}>{inner}</button>;
 }
 
