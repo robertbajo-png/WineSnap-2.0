@@ -73,6 +73,7 @@ function TastePage() {
   const [tannin, setTannin] = useState(70);
   const [acid, setAcid] = useState(75);
   const [sweet, setSweet] = useState(20);
+  const [showMoreRegions, setShowMoreRegions] = useState(false);
 
   useEffect(() => {
     if (!user) return;
