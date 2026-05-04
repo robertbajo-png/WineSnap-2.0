@@ -228,10 +228,17 @@ function SliderRow({
         <div className="relative h-1.5 rounded-full bg-white/10">
           <div
             className={cn(
-              "absolute left-0 top-0 h-full rounded-full",
+              "pointer-events-none absolute left-0 top-0 h-full rounded-full",
               muted ? "bg-white/30" : "bg-gradient-to-r from-burgundy to-copper",
             )}
             style={{ width: `${value}%` }}
+          />
+          <span
+            className={cn(
+              "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 shadow",
+              muted ? "border-white/40 bg-white" : "border-cream bg-burgundy",
+            )}
+            style={{ left: `${value}%` }}
           />
           <input
             type="range"
@@ -239,14 +246,7 @@ function SliderRow({
             max={100}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value))}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          />
-          <span
-            className={cn(
-              "absolute top-1/2 h-4 w-4 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 shadow",
-              muted ? "border-white/40 bg-white" : "border-cream bg-burgundy",
-            )}
-            style={{ left: `${value}%` }}
+            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
           />
         </div>
         <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
