@@ -95,6 +95,7 @@ function TastePage() {
   const navigate = useNavigate();
   const [types, setTypes] = useState<string[]>(["Red"]);
   const [regions, setRegions] = useState<string[]>(["Bordeaux", "Tuscany"]);
+  const [grapes, setGrapes] = useState<string[]>([]);
   const [body, setBody] = useState(80);
   const [dry, setDry] = useState(85);
   const [oak, setOak] = useState(90);
@@ -102,6 +103,7 @@ function TastePage() {
   const [acid, setAcid] = useState(75);
   const [sweet, setSweet] = useState(20);
   const [showMoreRegions, setShowMoreRegions] = useState(false);
+  const [showMoreGrapes, setShowMoreGrapes] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -110,6 +112,7 @@ function TastePage() {
       if (!p) return;
       if (p.preferred_types) setTypes(p.preferred_types);
       if (p.preferred_regions) setRegions(p.preferred_regions);
+      if (p.preferred_grapes) setGrapes(p.preferred_grapes);
       if (p.body != null) setBody(p.body * 10);
       if (p.sweetness != null) setSweet(p.sweetness * 10);
       if (p.oak != null) setOak(p.oak * 10);
@@ -128,6 +131,7 @@ function TastePage() {
       id: user.id,
       preferred_types: types,
       preferred_regions: regions,
+      preferred_grapes: grapes,
       body: Math.round(body / 10),
       sweetness: Math.round(sweet / 10),
       oak: Math.round(oak / 10),
