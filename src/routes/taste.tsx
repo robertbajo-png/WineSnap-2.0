@@ -227,6 +227,38 @@ function TastePage() {
           </div>
         </section>
 
+        <section className="mt-7">
+          <h2 className="font-display text-base text-gold">4. Grape Varieties</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Pick the grapes you reach for.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[...POPULAR_GRAPES, ...(showMoreGrapes ? MORE_GRAPES : []), ...grapes.filter((g) => !POPULAR_GRAPES.includes(g) && !MORE_GRAPES.includes(g))].map((g) => {
+              const active = grapes.includes(g);
+              return (
+                <button
+                  key={g}
+                  onClick={() => toggle(grapes, setGrapes, g)}
+                  className={cn(
+                    "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition-colors",
+                    active
+                      ? "border-burgundy bg-burgundy text-cream"
+                      : "border-white/15 bg-card/40 text-foreground/80",
+                  )}
+                >
+                  {g}
+                  {active && <Check className="h-3 w-3" />}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowMoreGrapes((v) => !v)}
+              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
+            >
+              {showMoreGrapes ? "− Less" : "+ More"}
+            </button>
+          </div>
+        </section>
+
         <button
           onClick={save}
           className="mt-8 mb-4 flex h-13 h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-base text-cream shadow-elegant ring-1 ring-burgundy/40"
