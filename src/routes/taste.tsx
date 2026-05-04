@@ -50,11 +50,39 @@ const MORE_REGIONS = [
   "Tokaj",
 ];
 const TYPES = ["Red", "White", "Sparkling"] as const;
+const POPULAR_GRAPES = [
+  "Cabernet Sauvignon",
+  "Merlot",
+  "Pinot Noir",
+  "Syrah",
+  "Chardonnay",
+  "Sauvignon Blanc",
+  "Riesling",
+];
+const MORE_GRAPES = [
+  "Tempranillo",
+  "Sangiovese",
+  "Nebbiolo",
+  "Malbec",
+  "Grenache",
+  "Zinfandel",
+  "Cabernet Franc",
+  "Petit Verdot",
+  "Gamay",
+  "Pinot Grigio",
+  "Viognier",
+  "Chenin Blanc",
+  "Gewürztraminer",
+  "Albariño",
+  "Grüner Veltliner",
+  "Semillon",
+];
 
 type Profile = {
   id: string;
   preferred_types: string[] | null;
   preferred_regions: string[] | null;
+  preferred_grapes: string[] | null;
   body: number | null;
   sweetness: number | null;
   oak: number | null;
@@ -67,6 +95,7 @@ function TastePage() {
   const navigate = useNavigate();
   const [types, setTypes] = useState<string[]>(["Red"]);
   const [regions, setRegions] = useState<string[]>(["Bordeaux", "Tuscany"]);
+  const [grapes, setGrapes] = useState<string[]>([]);
   const [body, setBody] = useState(80);
   const [dry, setDry] = useState(85);
   const [oak, setOak] = useState(90);
@@ -74,6 +103,7 @@ function TastePage() {
   const [acid, setAcid] = useState(75);
   const [sweet, setSweet] = useState(20);
   const [showMoreRegions, setShowMoreRegions] = useState(false);
+  const [showMoreGrapes, setShowMoreGrapes] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -82,6 +112,7 @@ function TastePage() {
       if (!p) return;
       if (p.preferred_types) setTypes(p.preferred_types);
       if (p.preferred_regions) setRegions(p.preferred_regions);
+      if (p.preferred_grapes) setGrapes(p.preferred_grapes);
       if (p.body != null) setBody(p.body * 10);
       if (p.sweetness != null) setSweet(p.sweetness * 10);
       if (p.oak != null) setOak(p.oak * 10);
@@ -100,6 +131,7 @@ function TastePage() {
       id: user.id,
       preferred_types: types,
       preferred_regions: regions,
+      preferred_grapes: grapes,
       body: Math.round(body / 10),
       sweetness: Math.round(sweet / 10),
       oak: Math.round(oak / 10),
@@ -191,6 +223,38 @@ function TastePage() {
               className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
             >
               {showMoreRegions ? "− Less" : "+ More"}
+            </button>
+          </div>
+        </section>
+
+        <section className="mt-7">
+          <h2 className="font-display text-base text-gold">4. Grape Varieties</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Pick the grapes you reach for.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[...POPULAR_GRAPES, ...(showMoreGrapes ? MORE_GRAPES : []), ...grapes.filter((g) => !POPULAR_GRAPES.includes(g) && !MORE_GRAPES.includes(g))].map((g) => {
+              const active = grapes.includes(g);
+              return (
+                <button
+                  key={g}
+                  onClick={() => toggle(grapes, setGrapes, g)}
+                  className={cn(
+                    "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition-colors",
+                    active
+                      ? "border-burgundy bg-burgundy text-cream"
+                      : "border-white/15 bg-card/40 text-foreground/80",
+                  )}
+                >
+                  {g}
+                  {active && <Check className="h-3 w-3" />}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowMoreGrapes((v) => !v)}
+              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
+            >
+              {showMoreGrapes ? "− Less" : "+ More"}
             </button>
           </div>
         </section>
