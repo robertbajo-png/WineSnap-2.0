@@ -105,10 +105,10 @@ function MePage() {
             <Link to="/taste" className="text-xs text-burgundy">Edit</Link>
           </div>
           <div className="mt-3 space-y-2.5">
-            <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : "Not set"} />
-            <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
-            <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : "Not set"} />
-            <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
+            <FavRow to="/taste" icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : "Not set"} />
+            <FavRow to="/taste" icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
+            <FavRow to="/taste" icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : "Not set"} />
+            <FavRow to="/taste" icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
         </section>
 
@@ -158,15 +158,18 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
   );
 }
 
-function FavRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <button className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70">
+function FavRow({ icon, label, value, to }: { icon: React.ReactNode; label: string; value: string; to?: string }) {
+  const className = "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
+  const inner = (
+    <>
       {icon && <span className="shrink-0">{icon}</span>}
       <span className="text-sm text-foreground/90">{label}</span>
       <span className="ml-auto truncate text-right text-xs text-muted-foreground">{value}</span>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-    </button>
+    </>
   );
+  if (to) return <Link to={to} className={className}>{inner}</Link>;
+  return <button className={className}>{inner}</button>;
 }
 
 function ToggleRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
