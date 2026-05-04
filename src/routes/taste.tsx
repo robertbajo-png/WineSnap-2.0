@@ -17,7 +17,36 @@ export const Route = createFileRoute("/taste")({
   component: TastePage,
 });
 
-const REGIONS = ["Bordeaux", "Burgundy", "Tuscany", "Napa Valley", "Rioja", "Barossa Valley", "Champagne", "Mosel", "+ More"];
+const REGIONS = [
+  "Bordeaux",
+  "Burgundy",
+  "Tuscany",
+  "Piedmont",
+  "Veneto",
+  "Sicily",
+  "Napa Valley",
+  "Sonoma",
+  "Oregon",
+  "Rioja",
+  "Ribera del Duero",
+  "Priorat",
+  "Douro",
+  "Alentejo",
+  "Barossa Valley",
+  "Margaret River",
+  "Marlborough",
+  "Champagne",
+  "Loire",
+  "Rhône",
+  "Alsace",
+  "Provence",
+  "Mosel",
+  "Rheingau",
+  "Mendoza",
+  "Maipo Valley",
+  "Stellenbosch",
+  "Tokaj",
+];
 const TYPES = ["Red", "White", "Sparkling"] as const;
 
 type Profile = {
@@ -127,7 +156,7 @@ function TastePage() {
             <SliderRow label="Oak" leftLabel="No Oak" rightLabel="Oaked" value={oak} onChange={setOak} />
             <SliderRow label="Tannin" leftLabel="Low" rightLabel="High" value={tannin} onChange={setTannin} />
             <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={acid} onChange={setAcid} />
-            <SliderRow label="Sweetness" leftLabel="Dry" rightLabel="Sweet" value={sweet} onChange={setSweet} muted />
+            <SliderRow label="Sweetness" leftLabel="Dry" rightLabel="Sweet" value={sweet} onChange={setSweet} />
           </div>
         </section>
 
