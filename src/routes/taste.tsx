@@ -50,11 +50,39 @@ const MORE_REGIONS = [
   "Tokaj",
 ];
 const TYPES = ["Red", "White", "Sparkling"] as const;
+const POPULAR_GRAPES = [
+  "Cabernet Sauvignon",
+  "Merlot",
+  "Pinot Noir",
+  "Syrah",
+  "Chardonnay",
+  "Sauvignon Blanc",
+  "Riesling",
+];
+const MORE_GRAPES = [
+  "Tempranillo",
+  "Sangiovese",
+  "Nebbiolo",
+  "Malbec",
+  "Grenache",
+  "Zinfandel",
+  "Cabernet Franc",
+  "Petit Verdot",
+  "Gamay",
+  "Pinot Grigio",
+  "Viognier",
+  "Chenin Blanc",
+  "Gewürztraminer",
+  "Albariño",
+  "Grüner Veltliner",
+  "Semillon",
+];
 
 type Profile = {
   id: string;
   preferred_types: string[] | null;
   preferred_regions: string[] | null;
+  preferred_grapes: string[] | null;
   body: number | null;
   sweetness: number | null;
   oak: number | null;
