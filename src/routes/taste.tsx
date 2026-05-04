@@ -17,25 +17,27 @@ export const Route = createFileRoute("/taste")({
   component: TastePage,
 });
 
-const REGIONS = [
+const POPULAR_REGIONS = [
   "Bordeaux",
   "Burgundy",
   "Tuscany",
+  "Napa Valley",
+  "Rioja",
+  "Champagne",
+  "Barossa Valley",
+];
+const MORE_REGIONS = [
   "Piedmont",
   "Veneto",
   "Sicily",
-  "Napa Valley",
   "Sonoma",
   "Oregon",
-  "Rioja",
   "Ribera del Duero",
   "Priorat",
   "Douro",
   "Alentejo",
-  "Barossa Valley",
   "Margaret River",
   "Marlborough",
-  "Champagne",
   "Loire",
   "Rhône",
   "Alsace",
