@@ -105,10 +105,10 @@ function MePage() {
             <Link to="/taste" className="text-xs text-burgundy">Edit</Link>
           </div>
           <div className="mt-3 space-y-2.5">
-            <FavRow to="/taste" icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : "Not set"} />
-            <FavRow to="/taste" icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
-            <FavRow to="/taste" icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : "Not set"} />
-            <FavRow to="/taste" icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
+            <FavRow to="/taste" hash="types" icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : "Not set"} />
+            <FavRow to="/taste" hash="profile" icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
+            <FavRow to="/taste" hash="regions" icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : "Not set"} />
+            <FavRow to="/taste" hash="grapes" icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
         </section>
 
@@ -158,7 +158,7 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
   );
 }
 
-function FavRow({ icon, label, value, to }: { icon: React.ReactNode; label: string; value: string; to?: string }) {
+function FavRow({ icon, label, value, to, hash }: { icon: React.ReactNode; label: string; value: string; to?: string; hash?: string }) {
   const className = "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
   const inner = (
     <>
@@ -168,7 +168,7 @@ function FavRow({ icon, label, value, to }: { icon: React.ReactNode; label: stri
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </>
   );
-  if (to) return <Link to={to} className={className}>{inner}</Link>;
+  if (to) return <Link to={to} hash={hash} className={className}>{inner}</Link>;
   return <button className={className}>{inner}</button>;
 }
 

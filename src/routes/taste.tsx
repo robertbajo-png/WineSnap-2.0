@@ -158,7 +158,7 @@ function TastePage() {
           <span className="h-9 w-9" />
         </header>
 
-        <section className="mt-6">
+        <section id="types" className="mt-6 scroll-mt-20">
           <h2 className="font-display text-base text-gold">1. Wine Types</h2>
           <div className="mt-3 flex gap-2">
             {TYPES.map((t) => {
@@ -182,7 +182,7 @@ function TastePage() {
           </div>
         </section>
 
-        <section className="mt-6">
+        <section id="profile" className="mt-6 scroll-mt-20">
           <h2 className="font-display text-base text-gold">2. Taste Profile</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Adjust the sliders to match your palate.</p>
           <div className="mt-4 space-y-4">
@@ -195,7 +195,7 @@ function TastePage() {
           </div>
         </section>
 
-        <section className="mt-7">
+        <section id="regions" className="mt-7 scroll-mt-20">
           <h2 className="font-display text-base text-gold">3. Favorite Regions</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Select up to 5 regions you love.</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -227,7 +227,7 @@ function TastePage() {
           </div>
         </section>
 
-        <section className="mt-7">
+        <section id="grapes" className="mt-7 scroll-mt-20">
           <h2 className="font-display text-base text-gold">4. Grape Varieties</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Pick the grapes you reach for.</p>
           <div className="mt-3 flex flex-wrap gap-2">
