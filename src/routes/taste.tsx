@@ -166,7 +166,7 @@ function TastePage() {
           <h2 className="font-display text-base text-gold">3. Favorite Regions</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Select up to 5 regions you love.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {REGIONS.map((r) => {
+            {[...POPULAR_REGIONS, ...(showMoreRegions ? MORE_REGIONS : []), ...regions.filter((r) => !POPULAR_REGIONS.includes(r) && !MORE_REGIONS.includes(r))].map((r) => {
               const active = regions.includes(r);
               return (
                 <button
@@ -184,6 +184,13 @@ function TastePage() {
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setShowMoreRegions((v) => !v)}
+              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
+            >
+              {showMoreRegions ? "− Less" : "+ More"}
+            </button>
           </div>
         </section>
 
