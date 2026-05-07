@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Settings, Wine, GlassWater, Star, ChevronRight, Camera, Grape, MapPin, BookmarkIcon, LogOut } from "lucide-react";
+import { Settings, Wine, GlassWater, Star, ChevronRight, Camera, Grape, MapPin, BookmarkIcon, LogOut, Languages } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n, type Lang } from "@/i18n";
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/me")({
 
 function MePage() {
   const { user } = useAuth();
+  const { t, lang, setLang } = useI18n();
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
@@ -61,14 +63,14 @@ function MePage() {
       });
   }, [user]);
 
-  const memberSince = user ? new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "—";
+  const memberSince = user ? new Date(user.created_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US", { month: "long", year: "numeric" }) : "—";
 
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
           <span className="h-9 w-9" />
-          <h1 className="font-display text-xl text-gold">Profile</h1>
+          <h1 className="font-display text-xl text-gold">{t("profile.title")}</h1>
           <button aria-label="Settings" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
             <Settings className="h-5 w-5" strokeWidth={1.6} />
           </button>
@@ -86,50 +88,68 @@ function MePage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl text-cream">{profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}</p>
-            <p className="text-xs text-gold">{explorerTier(bottles)}</p>
-            <p className="text-[11px] text-muted-foreground">Member since {memberSince}</p>
+            <p className="text-xs text-gold">{t(explorerTierKey(bottles))}</p>
+            <p className="text-[11px] text-muted-foreground">{t("profile.memberSince")} {memberSince}</p>
           </div>
         </section>
 
         {/* Stats */}
         <section className="mt-5 grid grid-cols-3 gap-2">
-          <StatBox icon={<Wine className="h-4 w-4 text-gold" />} value={String(bottles)} label="Bottles" />
-          <StatBox icon={<GlassWater className="h-4 w-4 text-gold" />} value={String(tasted)} label="Tasted" />
-          <StatBox icon={<Star className="h-4 w-4 fill-gold text-gold" />} value={avg ? avg.toFixed(1) : "—"} label="Avg. Rating" />
+          <StatBox icon={<Wine className="h-4 w-4 text-gold" />} value={String(bottles)} label={t("profile.bottles")} />
+          <StatBox icon={<GlassWater className="h-4 w-4 text-gold" />} value={String(tasted)} label={t("profile.tasted")} />
+          <StatBox icon={<Star className="h-4 w-4 fill-gold text-gold" />} value={avg ? avg.toFixed(1) : "—"} label={t("profile.avgRating")} />
         </section>
 
         {/* Favorites */}
         <section className="mt-7">
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg text-gold">Favorites</h2>
-            <Link to="/taste" className="text-xs text-burgundy">Edit</Link>
+            <h2 className="font-display text-lg text-gold">{t("profile.favorites")}</h2>
+            <Link to="/taste" className="text-xs text-burgundy">{t("profile.edit")}</Link>
           </div>
           <div className="mt-3 space-y-2.5">
-            <FavRow to="/taste" hash="types" icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : "Not set"} />
-            <FavRow to="/taste" hash="profile" icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value={tasteProfileSummary(profile) ?? "Not set"} />
-            <FavRow to="/taste" hash="regions" icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : "Not set"} />
-            <FavRow to="/taste" hash="grapes" icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
+            <FavRow to="/taste" hash="types" icon={<Wine className="h-4 w-4 text-gold" />} label={t("profile.wineTypes")} value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : t("profile.notSet")} />
+            <FavRow to="/taste" hash="profile" icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label={t("profile.tasteProfile")} value={tasteProfileSummary(profile) ?? t("profile.notSet")} />
+            <FavRow to="/taste" hash="regions" icon={<MapPin className="h-4 w-4 text-gold" />} label={t("profile.regions")} value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : t("profile.notSet")} />
+            <FavRow to="/taste" hash="grapes" icon={<Grape className="h-4 w-4 text-gold" />} label={t("profile.grapes")} value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
           </div>
         </section>
 
         {/* Recommended For You */}
         <section className="mt-7">
-          <h2 className="font-display text-lg text-gold">Recommended For You</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Customize how we personalize your recommendations.</p>
+          <h2 className="font-display text-lg text-gold">{t("profile.recommended")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("profile.recommendedDesc")}</p>
           <div className="mt-3 space-y-2.5 pb-4">
-            <ToggleRow title="Personalized Recommendations" desc="Get wines tailored to your taste" value={profile?.personalized_recs ?? true} onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)} />
-            <ToggleRow title="New Arrivals Alerts" desc="Be first to know about new releases" value={profile?.new_arrivals_alerts ?? true} onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)} />
-            <FavRow icon={null} label="Price Range" value={priceRangeLabel(profile?.price_min, profile?.price_max)} />
-            <ToggleRow title="Hide Wines I Dislike" desc="Improve results over time" value={profile?.hide_disliked ?? true} onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)} />
+            <ToggleRow title={t("profile.personalized")} desc={t("profile.personalizedDesc")} value={profile?.personalized_recs ?? true} onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)} />
+            <ToggleRow title={t("profile.newArrivals")} desc={t("profile.newArrivalsDesc")} value={profile?.new_arrivals_alerts ?? true} onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)} />
+            <FavRow icon={null} label={t("profile.priceRange")} value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))} />
+            <ToggleRow title={t("profile.hideDisliked")} desc={t("profile.hideDislikedDesc")} value={profile?.hide_disliked ?? true} onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)} />
+          </div>
+        </section>
+
+        {/* Language */}
+        <section className="mt-2">
+          <h2 className="font-display text-lg text-gold">{t("profile.language")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("profile.languageDesc")}</p>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-card/40 p-1.5">
+            <Languages className="ml-2 h-4 w-4 text-gold" />
+            {(["en", "sv"] as Lang[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm transition-colors ${lang === l ? "bg-burgundy/40 text-cream" : "text-muted-foreground hover:bg-white/5"}`}
+              >
+                {l === "en" ? "English" : "Svenska"}
+              </button>
+            ))}
           </div>
         </section>
 
         {user && (
           <button
             onClick={() => supabase.auth.signOut()}
-            className="mb-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-sm text-muted-foreground hover:bg-white/5"
+            className="mt-6 mb-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-sm text-muted-foreground hover:bg-white/5"
           >
-            <LogOut className="h-4 w-4" /> Sign out
+            <LogOut className="h-4 w-4" /> {t("profile.signOut")}
           </button>
         )}
       </div>
@@ -189,15 +209,15 @@ function ToggleRow({ title, desc, value, onChange }: { title: string; desc: stri
   );
 }
 
-function explorerTier(bottles: number): string {
-  if (bottles >= 100) return "Wine Connoisseur";
-  if (bottles >= 25) return "Wine Enthusiast";
-  if (bottles >= 5) return "Wine Explorer";
-  return "Wine Novice";
+function explorerTierKey(bottles: number): "tier.connoisseur" | "tier.enthusiast" | "tier.explorer" | "tier.novice" {
+  if (bottles >= 100) return "tier.connoisseur";
+  if (bottles >= 25) return "tier.enthusiast";
+  if (bottles >= 5) return "tier.explorer";
+  return "tier.novice";
 }
 
-function priceRangeLabel(min?: number | null, max?: number | null): string {
-  if (min == null && max == null) return "Not set";
+function priceRangeLabel(min?: number | null, max?: number | null, notSet = "Not set"): string {
+  if (min == null && max == null) return notSet;
   const lo = min ?? 0;
   const hi = max ?? null;
   return hi != null ? `$${lo} – $${hi}` : `$${lo}+`;

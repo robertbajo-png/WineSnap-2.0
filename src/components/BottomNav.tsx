@@ -1,16 +1,18 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Home, Sparkles, Camera, Wine, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n";
 
 export function BottomNav() {
   const { pathname } = useLocation();
+  const t = useT();
   const left = [
-    { to: "/", icon: Home, label: "Home" },
-    { to: "/for-you", icon: Sparkles, label: "For You" },
+    { to: "/", icon: Home, label: t("nav.home") },
+    { to: "/for-you", icon: Sparkles, label: t("nav.forYou") },
   ] as const;
   const right = [
-    { to: "/cellar", icon: Wine, label: "Cellar" },
-    { to: "/me", icon: User, label: "Profile" },
+    { to: "/cellar", icon: Wine, label: t("nav.cellar") },
+    { to: "/me", icon: User, label: t("nav.profile") },
   ] as const;
   const scanActive = pathname === "/scan";
 

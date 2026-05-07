@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ScanLine, Wine, BookOpen } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useT } from "@/i18n";
 import heroBottle from "@/assets/hero-bottle.jpg";
 
 export const Route = createFileRoute("/")({
@@ -13,13 +14,13 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-const FEATURES = [
-  { icon: ScanLine, title: "Scan & Discover", desc: "Identify wines in seconds" },
-  { icon: Wine, title: "Taste & Learn", desc: "Explore flavors, pairings, and more" },
-  { icon: BookOpen, title: "Collect & Grow", desc: "Track your bottles and cellar value" },
-] as const;
-
 function HomePage() {
+  const t = useT();
+  const FEATURES = [
+    { icon: ScanLine, title: t("home.feat.scan.title"), desc: t("home.feat.scan.desc") },
+    { icon: Wine, title: t("home.feat.taste.title"), desc: t("home.feat.taste.desc") },
+    { icon: BookOpen, title: t("home.feat.collect.title"), desc: t("home.feat.collect.desc") },
+  ] as const;
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 flex min-h-[calc(100vh-7rem)] flex-col">
@@ -40,12 +41,10 @@ function HomePage() {
           {/* Hero copy */}
           <div className="absolute inset-x-0 bottom-6 px-6 text-center">
             <h2 className="font-display text-[34px] leading-tight text-cream">
-              Build your cellar
+              {t("home.title")}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/75">
-              Scan labels, discover wines,
-              <br />
-              and collect what you love.
+            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/75">
+              {t("home.subtitle")}
             </p>
           </div>
         </div>
@@ -79,14 +78,14 @@ function HomePage() {
             to="/scan"
             className="mt-5 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-lg text-cream shadow-elegant ring-1 ring-burgundy/40"
           >
-            Start Scanning
+            {t("home.cta.start")}
           </Link>
 
           <Link
             to="/cellar"
             className="mt-3 mb-4 block text-center font-display text-sm text-gold"
           >
-            I'll set this up later
+            {t("home.cta.later")}
           </Link>
         </div>
       </div>
