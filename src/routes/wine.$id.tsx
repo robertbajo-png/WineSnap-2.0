@@ -116,8 +116,6 @@ function WineDetailPage() {
   );
 
   const rating = computeRating(w);
-  const match = Math.round(70 + (rating - 3.5) * 20);
-  const price = 50 + (w.id.charCodeAt(0) % 80);
   const aromas = [...(w.primary_notes ?? []), ...(w.secondary_notes ?? []), ...(w.tertiary_notes ?? [])].slice(0, 6);
 
   return (
@@ -128,14 +126,9 @@ function WineDetailPage() {
           <button onClick={() => window.history.back()} aria-label="Back" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex gap-1">
-            <button onClick={() => setLiked(!liked)} aria-label="Favorite" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-              <Heart className={cn("h-5 w-5", liked ? "fill-burgundy text-burgundy" : "text-foreground/80")} strokeWidth={1.6} />
-            </button>
-            <button aria-label="Share" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-              <Share2 className="h-5 w-5 text-foreground/80" strokeWidth={1.6} />
-            </button>
-          </div>
+          <Link to="/wine/$id/notes" params={{ id: w.id }} className="text-xs text-burgundy hover:underline">
+            Edit notes
+          </Link>
         </header>
 
         {/* Hero */}
@@ -150,13 +143,10 @@ function WineDetailPage() {
             <p className="mt-1 text-sm text-gold">{[w.region, w.country].filter(Boolean).join(", ") || w.producer}</p>
             <p className="text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <span className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">{match}% Match</span>
               <span className="flex items-center gap-1 text-xs">
                 <Star className="h-3.5 w-3.5 fill-gold text-gold" />
                 <span className="font-medium">{rating.toFixed(1)}</span>
-                <span className="text-muted-foreground">(128 ratings)</span>
               </span>
-              <span className="font-display text-base text-cream">${price}</span>
             </div>
           </div>
         </section>
