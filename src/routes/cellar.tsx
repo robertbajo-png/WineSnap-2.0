@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Settings, Plus, Search, SlidersHorizontal, Wine, ChevronRight, Star } from "lucide-react";
+import { Plus, Search, Wine, ChevronRight, Star, BarChart3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
