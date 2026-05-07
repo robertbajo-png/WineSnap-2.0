@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,7 +62,6 @@ function WineDetailPage() {
   const [w, setW] = useState<WineRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("Aromas");
-  const [liked, setLiked] = useState(false);
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
   const [thisWineMode, setThisWineMode] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
