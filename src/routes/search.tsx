@@ -1,10 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search as SearchIcon, X, ChevronDown, SlidersHorizontal, Bookmark, Star, Wine, Menu, Bell } from "lucide-react";
+import { Search as SearchIcon, X, Star, Wine } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/search")({
   head: () => ({
@@ -57,27 +56,20 @@ function SearchPage() {
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
-        <header className="flex items-center justify-between">
-          <button aria-label="Menu" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Menu className="h-5 w-5" strokeWidth={1.6} />
-          </button>
+        <header className="flex items-center justify-center">
           <Logo size="md" />
-          <button aria-label="Notifications" className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Bell className="h-5 w-5" strokeWidth={1.6} />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-burgundy" />
-          </button>
         </header>
 
         <h1 className="mt-5 font-display text-[32px] leading-tight">Search</h1>
 
-        {/* Search bar + Filters */}
-        <div className="mt-4 flex items-center gap-2">
-          <div className="relative flex-1">
+        {/* Search bar */}
+        <div className="mt-4">
+          <div className="relative">
             <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Cabernet"
+              placeholder="Cabernet, Bordeaux, producer…"
               className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
             />
             {q && (
@@ -86,20 +78,6 @@ function SearchPage() {
               </button>
             )}
           </div>
-          <button className="flex h-11 items-center gap-1.5 rounded-xl border border-burgundy/40 bg-burgundy/10 px-3.5 text-sm text-burgundy">
-            <SlidersHorizontal className="h-4 w-4" />
-            Filters
-          </button>
-        </div>
-
-        {/* Filter chips */}
-        <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
-          {["Region", "Varietal", "Price", "Rating"].map((f) => (
-            <FilterChip key={f}>{f}</FilterChip>
-          ))}
-          <button className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-card/60">
-            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-          </button>
         </div>
 
         {/* Results header */}
@@ -123,19 +101,8 @@ function SearchPage() {
   );
 }
 
-function FilterChip({ children }: { children: React.ReactNode }) {
-  return (
-    <button className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-card/60 px-3 text-xs text-foreground/90">
-      {children}
-      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-    </button>
-  );
-}
-
 function ResultCard({ w }: { w: WineRow }) {
   const rating = computeRating(w);
-  const match = Math.round(70 + (rating - 3.5) * 20);
-  const price = 65 + (w.id.charCodeAt(0) % 60);
   return (
     <li>
       <Link
@@ -151,24 +118,14 @@ function ResultCard({ w }: { w: WineRow }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="truncate font-display text-base leading-tight text-cream">
-              {w.wine_name ?? w.producer ?? "Unknown wine"} {w.vintage ?? ""}
-            </p>
-            <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </div>
+          <p className="truncate font-display text-base leading-tight text-cream">
+            {w.wine_name ?? w.producer ?? "Unknown wine"} {w.vintage ?? ""}
+          </p>
           <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
           <p className="truncate text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
           <div className="mt-1 flex items-center gap-1.5 text-xs">
             <Star className="h-3 w-3 fill-gold text-gold" />
             <span className="font-medium">{rating.toFixed(1)}</span>
-            <span className="text-muted-foreground">({30 + (w.id.charCodeAt(1) % 120)} ratings)</span>
-          </div>
-          <div className="mt-1.5 flex items-center justify-between">
-            <span className={cn(
-              "rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success",
-            )}>{match}% Match</span>
-            <span className="font-display text-base text-cream">${price}</span>
           </div>
         </div>
       </Link>

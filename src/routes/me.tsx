@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Settings, Wine, GlassWater, Star, ChevronRight, Camera, Grape, MapPin, BookmarkIcon, LogOut, Languages } from "lucide-react";
+import { Wine, GlassWater, Star, ChevronRight, Grape, MapPin, BookmarkIcon, LogOut, Languages } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -71,9 +71,7 @@ function MePage() {
         <header className="flex items-center justify-between">
           <span className="h-9 w-9" />
           <h1 className="font-display text-xl text-gold">{t("profile.title")}</h1>
-          <button aria-label="Settings" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Settings className="h-5 w-5" strokeWidth={1.6} />
-          </button>
+          <span className="h-9 w-9" />
         </header>
 
         {/* Avatar + name */}
@@ -82,9 +80,6 @@ function MePage() {
             <div className="flex h-full w-full items-center justify-center font-display text-2xl text-gold">
               {(profile?.display_name ?? user?.email ?? "A")[0].toUpperCase()}
             </div>
-            <button className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-gold text-background">
-              <Camera className="h-3 w-3" />
-            </button>
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl text-cream">{profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}</p>
@@ -121,7 +116,7 @@ function MePage() {
           <div className="mt-3 space-y-2.5 pb-4">
             <ToggleRow title={t("profile.personalized")} desc={t("profile.personalizedDesc")} value={profile?.personalized_recs ?? true} onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)} />
             <ToggleRow title={t("profile.newArrivals")} desc={t("profile.newArrivalsDesc")} value={profile?.new_arrivals_alerts ?? true} onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)} />
-            <FavRow icon={null} label={t("profile.priceRange")} value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))} />
+            <FavRow icon={null} label={t("profile.priceRange")} value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))} onClick={() => editPriceRange(user?.id, profile, setProfile, lang)} />
             <ToggleRow title={t("profile.hideDisliked")} desc={t("profile.hideDislikedDesc")} value={profile?.hide_disliked ?? true} onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)} />
           </div>
         </section>
@@ -178,7 +173,7 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
   );
 }
 
-function FavRow({ icon, label, value, to, hash }: { icon: React.ReactNode; label: string; value: string; to?: string; hash?: string }) {
+function FavRow({ icon, label, value, to, hash, onClick }: { icon: React.ReactNode; label: string; value: string; to?: string; hash?: string; onClick?: () => void }) {
   const className = "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
   const inner = (
     <>
@@ -189,7 +184,7 @@ function FavRow({ icon, label, value, to, hash }: { icon: React.ReactNode; label
     </>
   );
   if (to) return <Link to={to} hash={hash} className={className}>{inner}</Link>;
-  return <button className={className}>{inner}</button>;
+  return <button onClick={onClick} className={className}>{inner}</button>;
 }
 
 function ToggleRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
@@ -225,11 +220,29 @@ function priceRangeLabel(min?: number | null, max?: number | null, notSet = "Not
 
 async function updatePref(
   userId: string | undefined,
-  patch: Record<string, boolean>,
+  patch: Record<string, boolean | number | null>,
   setProfile: React.Dispatch<React.SetStateAction<any>>,
 ) {
   if (!userId) return;
   setProfile((p: any) => ({ ...(p ?? {}), ...patch }));
   await supabase.from("profiles").update(patch as any).eq("id", userId);
+}
+
+async function editPriceRange(
+  userId: string | undefined,
+  profile: any,
+  setProfile: React.Dispatch<React.SetStateAction<any>>,
+  lang: Lang,
+) {
+  if (!userId) return;
+  const promptMin = lang === "sv" ? "Min-pris ($), lämna tomt för att rensa" : "Min price ($), leave empty to clear";
+  const promptMax = lang === "sv" ? "Max-pris ($), lämna tomt för att rensa" : "Max price ($), leave empty to clear";
+  const minStr = window.prompt(promptMin, profile?.price_min != null ? String(profile.price_min) : "");
+  if (minStr === null) return;
+  const maxStr = window.prompt(promptMax, profile?.price_max != null ? String(profile.price_max) : "");
+  if (maxStr === null) return;
+  const min = minStr.trim() === "" ? null : Number(minStr);
+  const max = maxStr.trim() === "" ? null : Number(maxStr);
+  await updatePref(userId, { price_min: Number.isFinite(min as number) ? (min as number) : null, price_max: Number.isFinite(max as number) ? (max as number) : null }, setProfile);
 }
 
