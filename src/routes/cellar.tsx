@@ -69,9 +69,9 @@ function CellarPage() {
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <button aria-label="Settings" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Settings className="h-5 w-5" strokeWidth={1.6} />
-          </button>
+          <Link to="/cellar/overview" aria-label="Cellar overview" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+            <BarChart3 className="h-5 w-5" strokeWidth={1.6} />
+          </Link>
           <h1 className="font-display text-xl">My Cellar</h1>
           <Link
             to="/scan"
@@ -82,8 +82,8 @@ function CellarPage() {
         </header>
 
         {/* Search */}
-        <div className="mt-4 flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="mt-4">
+          <div className="relative">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={q}
@@ -92,9 +92,6 @@ function CellarPage() {
               className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
             />
           </div>
-          <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-card/60">
-            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-          </button>
         </div>
 
         {/* Filter pills */}
@@ -113,18 +110,14 @@ function CellarPage() {
               {f}
             </button>
           ))}
-          <button className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-card/40">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
         </div>
 
         {/* Counts header */}
-        <div className="mt-5 flex items-baseline justify-between">
+        <div className="mt-5">
           <h2 className="text-sm">
             <span className="font-display text-lg text-cream">{filtered.length}</span>{" "}
             <span className="text-muted-foreground">Bottles</span>
           </h2>
-          <button className="text-xs text-muted-foreground">Sort: Recent</button>
         </div>
 
         {/* List */}
