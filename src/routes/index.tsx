@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ScanLine, Wine, BookOpen } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useT } from "@/i18n";
 import heroBottle from "@/assets/hero-bottle.jpg";
 
 export const Route = createFileRoute("/")({
@@ -13,13 +14,13 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-const FEATURES = [
-  { icon: ScanLine, title: "Scan & Discover", desc: "Identify wines in seconds" },
-  { icon: Wine, title: "Taste & Learn", desc: "Explore flavors, pairings, and more" },
-  { icon: BookOpen, title: "Collect & Grow", desc: "Track your bottles and cellar value" },
-] as const;
-
 function HomePage() {
+  const t = useT();
+  const FEATURES = [
+    { icon: ScanLine, title: t("home.feat.scan.title"), desc: t("home.feat.scan.desc") },
+    { icon: Wine, title: t("home.feat.taste.title"), desc: t("home.feat.taste.desc") },
+    { icon: BookOpen, title: t("home.feat.collect.title"), desc: t("home.feat.collect.desc") },
+  ] as const;
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 flex min-h-[calc(100vh-7rem)] flex-col">
