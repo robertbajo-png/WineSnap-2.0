@@ -101,19 +101,8 @@ function SearchPage() {
   );
 }
 
-function FilterChip({ children }: { children: React.ReactNode }) {
-  return (
-    <button className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-card/60 px-3 text-xs text-foreground/90">
-      {children}
-      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-    </button>
-  );
-}
-
 function ResultCard({ w }: { w: WineRow }) {
   const rating = computeRating(w);
-  const match = Math.round(70 + (rating - 3.5) * 20);
-  const price = 65 + (w.id.charCodeAt(0) % 60);
   return (
     <li>
       <Link
@@ -129,24 +118,14 @@ function ResultCard({ w }: { w: WineRow }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="truncate font-display text-base leading-tight text-cream">
-              {w.wine_name ?? w.producer ?? "Unknown wine"} {w.vintage ?? ""}
-            </p>
-            <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </div>
+          <p className="truncate font-display text-base leading-tight text-cream">
+            {w.wine_name ?? w.producer ?? "Unknown wine"} {w.vintage ?? ""}
+          </p>
           <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
           <p className="truncate text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
           <div className="mt-1 flex items-center gap-1.5 text-xs">
             <Star className="h-3 w-3 fill-gold text-gold" />
             <span className="font-medium">{rating.toFixed(1)}</span>
-            <span className="text-muted-foreground">({30 + (w.id.charCodeAt(1) % 120)} ratings)</span>
-          </div>
-          <div className="mt-1.5 flex items-center justify-between">
-            <span className={cn(
-              "rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success",
-            )}>{match}% Match</span>
-            <span className="font-display text-base text-cream">${price}</span>
           </div>
         </div>
       </Link>
