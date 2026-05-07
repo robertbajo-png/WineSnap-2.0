@@ -41,12 +41,10 @@ function HomePage() {
           {/* Hero copy */}
           <div className="absolute inset-x-0 bottom-6 px-6 text-center">
             <h2 className="font-display text-[34px] leading-tight text-cream">
-              Build your cellar
+              {t("home.title")}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/75">
-              Scan labels, discover wines,
-              <br />
-              and collect what you love.
+            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/75">
+              {t("home.subtitle")}
             </p>
           </div>
         </div>
@@ -80,14 +78,14 @@ function HomePage() {
             to="/scan"
             className="mt-5 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-lg text-cream shadow-elegant ring-1 ring-burgundy/40"
           >
-            Start Scanning
+            {t("home.cta.start")}
           </Link>
 
           <Link
             to="/cellar"
             className="mt-3 mb-4 block text-center font-display text-sm text-gold"
           >
-            I'll set this up later
+            {t("home.cta.later")}
           </Link>
         </div>
       </div>
