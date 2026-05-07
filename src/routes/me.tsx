@@ -209,15 +209,15 @@ function ToggleRow({ title, desc, value, onChange }: { title: string; desc: stri
   );
 }
 
-function explorerTier(bottles: number): string {
-  if (bottles >= 100) return "Wine Connoisseur";
-  if (bottles >= 25) return "Wine Enthusiast";
-  if (bottles >= 5) return "Wine Explorer";
-  return "Wine Novice";
+function explorerTierKey(bottles: number): "tier.connoisseur" | "tier.enthusiast" | "tier.explorer" | "tier.novice" {
+  if (bottles >= 100) return "tier.connoisseur";
+  if (bottles >= 25) return "tier.enthusiast";
+  if (bottles >= 5) return "tier.explorer";
+  return "tier.novice";
 }
 
-function priceRangeLabel(min?: number | null, max?: number | null): string {
-  if (min == null && max == null) return "Not set";
+function priceRangeLabel(min?: number | null, max?: number | null, notSet = "Not set"): string {
+  if (min == null && max == null) return notSet;
   const lo = min ?? 0;
   const hi = max ?? null;
   return hi != null ? `$${lo} – $${hi}` : `$${lo}+`;
