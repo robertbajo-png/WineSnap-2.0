@@ -28,14 +28,14 @@ function NotesPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [w, setW] = useState<WineRow | null>(null);
-  const [rating, setRating] = useState(4);
-  const [aromas, setAromas] = useState<string[]>(["Black cherry", "Oak", "Vanilla", "Cedar", "Tobacco"]);
-  const [acidity, setAcidity] = useState(70);
-  const [tannin, setTannin] = useState(80);
-  const [body, setBody] = useState(85);
-  const [sweetness, setSweetness] = useState(15);
+  const [rating, setRating] = useState(0);
+  const [aromas, setAromas] = useState<string[]>([]);
+  const [acidity, setAcidity] = useState(50);
+  const [tannin, setTannin] = useState(50);
+  const [body, setBody] = useState(50);
+  const [sweetness, setSweetness] = useState(50);
   const [finish, setFinish] = useState<"Short" | "Medium" | "Long">("Medium");
-  const [text, setText] = useState("Beautiful balance of dark fruit and oak. Firm tannins with a long, elegant finish.");
+  const [text, setText] = useState("");
 
   useEffect(() => {
     supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {

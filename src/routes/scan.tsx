@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { X, Zap, ImageIcon, HelpCircle, Loader2, Wine, Check, Star, Type, Camera, Sparkles } from "lucide-react";
+import { X, ImageIcon, Loader2, Wine, Check, Type, Camera, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -158,12 +158,7 @@ function ScanPage() {
         <p className="text-sm text-cream/85">
           {mode === "camera" ? "Position label in the frame" : "Describe the wine"}
         </p>
-        <button
-          aria-label="Flash"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
-        >
-          <Zap className="h-4 w-4 text-gold" />
-        </button>
+        <span className="h-9 w-9" />
       </header>
 
       {/* Mode toggle */}
@@ -235,12 +230,7 @@ function ScanPage() {
               )}
             </button>
 
-            <button
-              aria-label="Help"
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </button>
+            <span className="h-12 w-12" />
           </div>
         </>
       ) : (
@@ -358,13 +348,8 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
               {flag && <span className="mr-1">{flag}</span>}
               {wineTypeLabel}
             </p>
-            <div className="mt-1.5 flex items-center gap-1 text-xs">
-              <Star className="h-3 w-3 fill-gold text-gold" />
-              <span className="font-medium">4.4</span>
-              <span className="text-muted-foreground">128 ratings</span>
-            </div>
             <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
-              95% Match
+              <Check className="h-3 w-3" /> Saved to your cellar
             </div>
           </div>
         </div>
