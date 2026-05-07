@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Settings, Wine, GlassWater, Star, ChevronRight, Camera, Grape, MapPin, BookmarkIcon, LogOut } from "lucide-react";
+import { Settings, Wine, GlassWater, Star, ChevronRight, Camera, Grape, MapPin, BookmarkIcon, LogOut, Languages } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n, type Lang } from "@/i18n";
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/me")({
 
 function MePage() {
   const { user } = useAuth();
+  const { t, lang, setLang } = useI18n();
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
