@@ -71,9 +71,7 @@ function MePage() {
         <header className="flex items-center justify-between">
           <span className="h-9 w-9" />
           <h1 className="font-display text-xl text-gold">{t("profile.title")}</h1>
-          <button aria-label="Settings" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Settings className="h-5 w-5" strokeWidth={1.6} />
-          </button>
+          <span className="h-9 w-9" />
         </header>
 
         {/* Avatar + name */}
@@ -82,9 +80,6 @@ function MePage() {
             <div className="flex h-full w-full items-center justify-center font-display text-2xl text-gold">
               {(profile?.display_name ?? user?.email ?? "A")[0].toUpperCase()}
             </div>
-            <button className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-gold text-background">
-              <Camera className="h-3 w-3" />
-            </button>
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-display text-2xl text-cream">{profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}</p>
