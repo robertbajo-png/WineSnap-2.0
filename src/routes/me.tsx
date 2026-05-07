@@ -173,7 +173,7 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
   );
 }
 
-function FavRow({ icon, label, value, to, hash }: { icon: React.ReactNode; label: string; value: string; to?: string; hash?: string }) {
+function FavRow({ icon, label, value, to, hash, onClick }: { icon: React.ReactNode; label: string; value: string; to?: string; hash?: string; onClick?: () => void }) {
   const className = "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
   const inner = (
     <>
@@ -184,7 +184,7 @@ function FavRow({ icon, label, value, to, hash }: { icon: React.ReactNode; label
     </>
   );
   if (to) return <Link to={to} hash={hash} className={className}>{inner}</Link>;
-  return <button className={className}>{inner}</button>;
+  return <button onClick={onClick} className={className}>{inner}</button>;
 }
 
 function ToggleRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
@@ -220,11 +220,29 @@ function priceRangeLabel(min?: number | null, max?: number | null, notSet = "Not
 
 async function updatePref(
   userId: string | undefined,
-  patch: Record<string, boolean>,
+  patch: Record<string, boolean | number | null>,
   setProfile: React.Dispatch<React.SetStateAction<any>>,
 ) {
   if (!userId) return;
   setProfile((p: any) => ({ ...(p ?? {}), ...patch }));
   await supabase.from("profiles").update(patch as any).eq("id", userId);
+}
+
+async function editPriceRange(
+  userId: string | undefined,
+  profile: any,
+  setProfile: React.Dispatch<React.SetStateAction<any>>,
+  lang: Lang,
+) {
+  if (!userId) return;
+  const promptMin = lang === "sv" ? "Min-pris ($), lämna tomt för att rensa" : "Min price ($), leave empty to clear";
+  const promptMax = lang === "sv" ? "Max-pris ($), lämna tomt för att rensa" : "Max price ($), leave empty to clear";
+  const minStr = window.prompt(promptMin, profile?.price_min != null ? String(profile.price_min) : "");
+  if (minStr === null) return;
+  const maxStr = window.prompt(promptMax, profile?.price_max != null ? String(profile.price_max) : "");
+  if (maxStr === null) return;
+  const min = minStr.trim() === "" ? null : Number(minStr);
+  const max = maxStr.trim() === "" ? null : Number(maxStr);
+  await updatePref(userId, { price_min: Number.isFinite(min as number) ? (min as number) : null, price_max: Number.isFinite(max as number) ? (max as number) : null }, setProfile);
 }
 
