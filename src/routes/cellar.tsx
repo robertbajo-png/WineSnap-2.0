@@ -129,7 +129,6 @@ function CellarPage() {
           )}
           {filtered.map((w) => {
             const rating = computeRating(w);
-            const count = (w.id.charCodeAt(0) % 3) + 1;
             return (
               <li key={w.id}>
                 <Link
@@ -156,10 +155,6 @@ function CellarPage() {
                         <span>{rating.toFixed(1)}</span>
                       </span>
                     </div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="font-display text-lg leading-none text-cream">{count}</p>
-                    <p className="text-[10px] text-muted-foreground">{count > 1 ? "Bottles" : "Bottle"}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Link>
