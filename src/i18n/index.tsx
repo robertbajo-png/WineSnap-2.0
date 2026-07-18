@@ -272,6 +272,27 @@ const en = {
   "edit.grapes": "Grape varieties",
   "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
   "edit.description": "Description",
+
+  // Restaurant Mode
+  "restaurant.title": "Restaurant Mode",
+  "restaurant.subtitle": "Snap the wine list or paste it — we'll pick the best matches for your palate.",
+  "restaurant.type": "Paste list",
+  "restaurant.snap": "Snap menu",
+  "restaurant.textPh": "Paste the wine list here — one wine per line if possible. E.g.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
+  "restaurant.textHint": "Producer, region, vintage — anything you can copy helps.",
+  "restaurant.snapCta": "Take a photo of the menu",
+  "restaurant.needText": "Paste at least a few wines first",
+  "restaurant.needImage": "Snap the wine list first",
+  "restaurant.working": "Consulting the sommelier…",
+  "restaurant.findBest": "Find my best matches",
+  "restaurant.rerank": "Re-rank",
+  "restaurant.picks": "Sommelier picks",
+  "restaurant.safe": "Safe pick",
+  "restaurant.balanced": "Balanced",
+  "restaurant.stretch": "Stretch",
+  "restaurant.emptyTitle": "Ready when you are",
+  "restaurant.emptyDesc": "Paste the wine list or snap the menu — we'll rank the best matches for your taste.",
+  "home.cta.restaurant": "Restaurant Mode",
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
