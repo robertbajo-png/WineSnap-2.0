@@ -1,0 +1,16 @@
+{
+  "name": "WineSnap",
+  "short_name": "WineSnap",
+  "description": "Scan wine labels, discover wines, and build your cellar.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e0709",
+  "theme_color": "#5a1a23",
+  "categories": ["food", "lifestyle"],
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

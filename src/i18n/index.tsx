@@ -293,6 +293,18 @@ const en = {
   "restaurant.emptyTitle": "Ready when you are",
   "restaurant.emptyDesc": "Paste the wine list or snap the menu — we'll rank the best matches for your taste.",
   "home.cta.restaurant": "Restaurant Mode",
+
+  // Onboarding
+  "onboard.skip": "Skip",
+  "onboard.next": "Next",
+  "onboard.back": "Back",
+  "onboard.finish": "Get started",
+  "onboard.step1.title": "Welcome to WineSnap",
+  "onboard.step1.desc": "Snap any wine label and get producer, region, taste profile and food pairings in seconds.",
+  "onboard.step2.title": "Build your cellar",
+  "onboard.step2.desc": "Every scan is saved to your cellar. Rate wines and add notes to remember what you loved.",
+  "onboard.step3.title": "Personal recommendations",
+  "onboard.step3.desc": "Your taste profile powers For You picks and restaurant menu matches — tuned to you.",
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
@@ -567,6 +579,17 @@ const sv: Record<keyof typeof en, string> = {
   "restaurant.emptyTitle": "Redo när du är",
   "restaurant.emptyDesc": "Klistra in vinlistan eller fota menyn — vi rankar bästa matchningarna för din smak.",
   "home.cta.restaurant": "Restaurangläge",
+
+  "onboard.skip": "Hoppa över",
+  "onboard.next": "Nästa",
+  "onboard.back": "Tillbaka",
+  "onboard.finish": "Kom igång",
+  "onboard.step1.title": "Välkommen till WineSnap",
+  "onboard.step1.desc": "Fota en vinetikett och få producent, region, smakprofil och matparningar på sekunder.",
+  "onboard.step2.title": "Bygg din källare",
+  "onboard.step2.desc": "Varje skanning sparas i din källare. Betygsätt viner och lägg till noter för att minnas vad du älskade.",
+  "onboard.step3.title": "Personliga rekommendationer",
+  "onboard.step3.desc": "Din smakprofil driver För dig-tips och restaurangmenymatchningar — anpassade efter dig.",
 };
 
 const dict = { en, sv } as const;

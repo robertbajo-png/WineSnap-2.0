@@ -13,6 +13,7 @@ import { Route as TasteRouteImport } from './routes/taste'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RestaurantRouteImport } from './routes/restaurant'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -45,6 +46,11 @@ const ScanRoute = ScanRouteImport.update({
 const RestaurantRoute = RestaurantRouteImport.update({
   id: '/restaurant',
   path: '/restaurant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeRoute = MeRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/onboarding': typeof OnboardingRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/onboarding': typeof OnboardingRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/onboarding': typeof OnboardingRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/login'
     | '/me'
+    | '/onboarding'
     | '/restaurant'
     | '/scan'
     | '/search'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/login'
     | '/me'
+    | '/onboarding'
     | '/restaurant'
     | '/scan'
     | '/search'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/login'
     | '/me'
+    | '/onboarding'
     | '/restaurant'
     | '/scan'
     | '/search'
@@ -240,6 +252,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
+  OnboardingRoute: typeof OnboardingRoute
   RestaurantRoute: typeof RestaurantRoute
   ScanRoute: typeof ScanRoute
   SearchRoute: typeof SearchRoute
@@ -275,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/restaurant'
       fullPath: '/restaurant'
       preLoaderRoute: typeof RestaurantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me': {
@@ -406,6 +426,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
+  OnboardingRoute: OnboardingRoute,
   RestaurantRoute: RestaurantRoute,
   ScanRoute: ScanRoute,
   SearchRoute: SearchRoute,

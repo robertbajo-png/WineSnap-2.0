@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          properties: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          id?: string
+          properties?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          properties?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           acidity: number | null
@@ -25,6 +49,7 @@ export type Database = {
           id: string
           new_arrivals_alerts: boolean
           oak: number | null
+          onboarded_at: string | null
           personalized_recs: boolean
           preferred_grapes: string[] | null
           preferred_regions: string[] | null
@@ -46,6 +71,7 @@ export type Database = {
           id: string
           new_arrivals_alerts?: boolean
           oak?: number | null
+          onboarded_at?: string | null
           personalized_recs?: boolean
           preferred_grapes?: string[] | null
           preferred_regions?: string[] | null
@@ -67,6 +93,7 @@ export type Database = {
           id?: string
           new_arrivals_alerts?: boolean
           oak?: number | null
+          onboarded_at?: string | null
           personalized_recs?: boolean
           preferred_grapes?: string[] | null
           preferred_regions?: string[] | null

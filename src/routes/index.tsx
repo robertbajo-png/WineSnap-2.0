@@ -1,7 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { ScanLine, Wine, BookOpen, UtensilsCrossed } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useT } from "@/i18n";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import heroBottle from "@/assets/hero-bottle.jpg";
 
 export const Route = createFileRoute("/")({
@@ -16,6 +19,21 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const t = useT();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("onboarded_at")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data && !data.onboarded_at) navigate({ to: "/onboarding" });
+      });
+  }, [user, navigate]);
+
   const FEATURES = [
     { icon: ScanLine, title: t("home.feat.scan.title"), desc: t("home.feat.scan.desc") },
     { icon: Wine, title: t("home.feat.taste.title"), desc: t("home.feat.taste.desc") },
