@@ -149,7 +149,7 @@ function WineDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <Link to="/wine/$id/notes" params={{ id: w.id }} className="text-xs text-burgundy hover:underline">
-            Edit notes
+            {t("wine.editNotes")}
           </Link>
         </header>
 
@@ -175,24 +175,24 @@ function WineDetailPage() {
 
         {/* Tabs */}
         <div className="mt-5 flex gap-5 overflow-x-auto border-b border-white/8 text-sm">
-          {TABS.map((t) => (
+          {TAB_KEYS.map((k) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={k}
+              onClick={() => setTab(k)}
               className={cn(
                 "relative -mb-px shrink-0 py-2.5 transition-colors",
-                tab === t ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
+                tab === k ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t}
-              {tab === t && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
+              {t(`wine.tab.${k}` as any)}
+              {tab === k && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
             </button>
           ))}
         </div>
 
-        {tab === "Aromas" && (
+        {tab === "aromas" && (
           <>
-            <Section title="Aroma Profile">
+            <Section title={t("wine.aromaProfile")}>
               {/* Hero wheel with soft glow */}
               <div className="relative mt-1 flex items-center justify-center py-3">
                 <div className="pointer-events-none absolute h-[260px] w-[260px] rounded-full bg-burgundy/15 blur-3xl" />
