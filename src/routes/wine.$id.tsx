@@ -102,7 +102,7 @@ function WineDetailPage() {
   };
 
   useEffect(() => {
-    if (tab === "AI Picks" && !suggestions && !suggestLoading && w) loadSuggestions();
+    if (tab === "ai" && !suggestions && !suggestLoading && w) loadSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, w]);
 
@@ -111,22 +111,28 @@ function WineDetailPage() {
       setW(data as WineRow | null);
       setLoading(false);
     });
+    supabase.from("tasting_notes")
+      .select("id,rating,notes,aromas,finish,location,tasted_at")
+      .eq("wine_id", id)
+      .order("tasted_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => setNotes((data as TastingNote[]) ?? []));
   }, [id]);
 
   const remove = async () => {
-    if (!confirm("Delete this wine?")) return;
+    if (!confirm(t("wine.deleteConfirm"))) return;
     const { error } = await supabase.from("wines").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Removed");
+    toast.success(t("wine.removed"));
     navigate({ to: "/cellar" });
   };
 
-  if (loading) return <AppShell><div className="mt-20 text-center text-muted-foreground">Loading…</div></AppShell>;
+  if (loading) return <AppShell><WineDetailSkeleton /></AppShell>;
   if (!w) return (
     <AppShell>
       <div className="mt-20 text-center">
-        <p className="text-muted-foreground">Wine not found.</p>
-        <Link to="/cellar"><Button className="mt-4">Back to cellar</Button></Link>
+        <p className="text-muted-foreground">{t("wine.notFound")}</p>
+        <Link to="/cellar"><Button className="mt-4">{t("wine.backToCellar")}</Button></Link>
       </div>
     </AppShell>
   );
