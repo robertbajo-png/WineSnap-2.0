@@ -22,6 +22,8 @@ export const Route = createFileRoute("/cellar")({
 
 const FILTERS = ["All", "Red", "White", "Rosé", "Sparkling"] as const;
 type Filter = typeof FILTERS[number];
+const SORTS = ["newest", "oldest", "rating", "vintage", "name"] as const;
+type Sort = typeof SORTS[number];
 
 const TYPE_MAP: Record<string, Filter> = { red: "Red", white: "White", rose: "Rosé", sparkling: "Sparkling" };
 
@@ -34,6 +36,7 @@ type WineRow = {
   country: string | null;
   image_url: string | null;
   wine_type: string | null;
+  created_at: string;
   fruit: number | null; tannin: number | null; acidity: number | null; body: number | null;
 };
 
@@ -43,13 +46,14 @@ function CellarPage() {
   const [wines, setWines] = useState<WineRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("All");
+  const [sort, setSort] = useState<Sort>("newest");
   const [q, setQ] = useState("");
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     supabase
       .from("wines")
-      .select("id,producer,wine_name,vintage,region,country,image_url,wine_type,fruit,tannin,acidity,body")
+      .select("id,producer,wine_name,vintage,region,country,image_url,wine_type,created_at,fruit,tannin,acidity,body")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -60,14 +64,25 @@ function CellarPage() {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return wines.filter((w) => {
+    const list = wines.filter((w) => {
       if (filter !== "All" && TYPE_MAP[w.wine_type ?? ""] !== filter) return false;
       if (!term) return true;
       return [w.wine_name, w.producer, w.region, w.country]
         .filter(Boolean)
         .some((x) => String(x).toLowerCase().includes(term));
     });
-  }, [wines, filter, q]);
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      switch (sort) {
+        case "oldest": return +new Date(a.created_at) - +new Date(b.created_at);
+        case "rating": return computeRating(b) - computeRating(a);
+        case "vintage": return (b.vintage ?? 0) - (a.vintage ?? 0);
+        case "name": return (a.wine_name ?? a.producer ?? "").localeCompare(b.wine_name ?? b.producer ?? "");
+        default: return +new Date(b.created_at) - +new Date(a.created_at);
+      }
+    });
+    return sorted;
+  }, [wines, filter, q, sort]);
 
   const filterLabel = (f: Filter) => {
     if (f === "All") return t("cellar.filter.all");
