@@ -272,6 +272,27 @@ const en = {
   "edit.grapes": "Grape varieties",
   "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
   "edit.description": "Description",
+
+  // Restaurant Mode
+  "restaurant.title": "Restaurant Mode",
+  "restaurant.subtitle": "Snap the wine list or paste it — we'll pick the best matches for your palate.",
+  "restaurant.type": "Paste list",
+  "restaurant.snap": "Snap menu",
+  "restaurant.textPh": "Paste the wine list here — one wine per line if possible. E.g.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
+  "restaurant.textHint": "Producer, region, vintage — anything you can copy helps.",
+  "restaurant.snapCta": "Take a photo of the menu",
+  "restaurant.needText": "Paste at least a few wines first",
+  "restaurant.needImage": "Snap the wine list first",
+  "restaurant.working": "Consulting the sommelier…",
+  "restaurant.findBest": "Find my best matches",
+  "restaurant.rerank": "Re-rank",
+  "restaurant.picks": "Sommelier picks",
+  "restaurant.safe": "Safe pick",
+  "restaurant.balanced": "Balanced",
+  "restaurant.stretch": "Stretch",
+  "restaurant.emptyTitle": "Ready when you are",
+  "restaurant.emptyDesc": "Paste the wine list or snap the menu — we'll rank the best matches for your taste.",
+  "home.cta.restaurant": "Restaurant Mode",
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
@@ -526,6 +547,26 @@ const sv: Record<keyof typeof en, string> = {
   "edit.grapes": "Druvsorter",
   "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
   "edit.description": "Beskrivning",
+
+  "restaurant.title": "Restaurangläge",
+  "restaurant.subtitle": "Fota vinlistan eller klistra in den — vi väljer de bästa vinerna för din smak.",
+  "restaurant.type": "Klistra in",
+  "restaurant.snap": "Fota meny",
+  "restaurant.textPh": "Klistra in vinlistan här — helst ett vin per rad. T.ex.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
+  "restaurant.textHint": "Producent, region, årgång — allt du kan kopiera hjälper.",
+  "restaurant.snapCta": "Ta en bild på menyn",
+  "restaurant.needText": "Klistra in några viner först",
+  "restaurant.needImage": "Fota vinlistan först",
+  "restaurant.working": "Konsulterar sommeliern…",
+  "restaurant.findBest": "Hitta mina bästa matchningar",
+  "restaurant.rerank": "Rangordna igen",
+  "restaurant.picks": "Sommelierens val",
+  "restaurant.safe": "Säkert val",
+  "restaurant.balanced": "Balanserat",
+  "restaurant.stretch": "Utmaning",
+  "restaurant.emptyTitle": "Redo när du är",
+  "restaurant.emptyDesc": "Klistra in vinlistan eller fota menyn — vi rankar bästa matchningarna för din smak.",
+  "home.cta.restaurant": "Restaurangläge",
 };
 
 const dict = { en, sv } as const;

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ScanLine, Wine, BookOpen } from "lucide-react";
+import { ScanLine, Wine, BookOpen, UtensilsCrossed } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useT } from "@/i18n";
 import heroBottle from "@/assets/hero-bottle.jpg";
@@ -79,6 +79,14 @@ function HomePage() {
             className="mt-5 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-lg text-cream shadow-elegant ring-1 ring-burgundy/40"
           >
             {t("home.cta.start")}
+          </Link>
+
+          <Link
+            to="/restaurant"
+            className="mt-3 flex h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-card/40 font-display text-sm text-gold"
+          >
+            <UtensilsCrossed className="h-4 w-4" />
+            {t("home.cta.restaurant")}
           </Link>
 
           <Link
