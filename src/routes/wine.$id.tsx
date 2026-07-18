@@ -340,6 +340,35 @@ function WineDetailPage() {
                 <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>
               </Card>
             )}
+            {(() => {
+              const win = computeDrinkingWindow(w.vintage, w.wine_type);
+              if (!win) return null;
+              const statusKey = win.status === "too-young" ? "wine.window.tooYoung" : win.status === "past-peak" ? "wine.window.pastPeak" : "wine.window.greatNow";
+              const dot = win.status === "great-now" ? "bg-success" : win.status === "too-young" ? "bg-gold" : "bg-destructive";
+              const now = new Date().getFullYear();
+              const pct = Math.max(0, Math.min(100, ((now - win.start) / Math.max(1, win.end - win.start)) * 100));
+              return (
+                <Card className="bg-card/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gold" />
+                      <span className="text-xs uppercase tracking-wider text-muted-foreground">{t("wine.window")}</span>
+                    </div>
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-cream">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+                      {t(statusKey as any)}
+                    </span>
+                  </div>
+                  <div className="relative mt-3 h-1.5 rounded-full bg-white/8">
+                    <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-burgundy via-gold to-copper" style={{ width: `${pct}%` }} />
+                    <span className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold" style={{ left: `${pct}%` }} />
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {t("wine.window.range").replace("{start}", String(win.start)).replace("{end}", String(win.end)).replace("{peak}", String(win.peak))}
+                  </p>
+                </Card>
+              );
+            })()}
             <KV label={t("wine.producer")} value={w.producer ?? "—"} />
             <KV label={t("wine.region")} value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
             <KV label={t("wine.grape")} value={w.grape_varieties?.join(", ") ?? "—"} />
