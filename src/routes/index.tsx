@@ -82,6 +82,14 @@ function HomePage() {
           </Link>
 
           <Link
+            to="/restaurant"
+            className="mt-3 flex h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-card/40 font-display text-sm text-gold"
+          >
+            <UtensilsCrossed className="h-4 w-4" />
+            {t("home.cta.restaurant")}
+          </Link>
+
+          <Link
             to="/cellar"
             className="mt-3 mb-4 block text-center font-display text-sm text-gold"
           >
