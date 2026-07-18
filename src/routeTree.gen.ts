@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as TasteRouteImport } from './routes/taste'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
@@ -28,6 +29,11 @@ import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
 import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
 
+const WishlistRoute = WishlistRouteImport.update({
+  id: '/wishlist',
+  path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasteRoute = TasteRouteImport.update({
   id: '/taste',
   path: '/taste',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/search'
     | '/taste'
+    | '/wishlist'
     | '/cellar/overview'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/search'
     | '/taste'
+    | '/wishlist'
     | '/cellar/overview'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/search'
     | '/taste'
+    | '/wishlist'
     | '/cellar/overview'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -257,11 +269,19 @@ export interface RootRouteChildren {
   ScanRoute: typeof ScanRoute
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
+  WishlistRoute: typeof WishlistRoute
   WineIdRoute: typeof WineIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wishlist': {
+      id: '/wishlist'
+      path: '/wishlist'
+      fullPath: '/wishlist'
+      preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/taste': {
       id: '/taste'
       path: '/taste'
@@ -431,6 +451,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScanRoute: ScanRoute,
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
+  WishlistRoute: WishlistRoute,
   WineIdRoute: WineIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport

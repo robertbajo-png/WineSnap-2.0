@@ -305,6 +305,21 @@ const en = {
   "onboard.step2.desc": "Every scan is saved to your cellar. Rate wines and add notes to remember what you loved.",
   "onboard.step3.title": "Personal recommendations",
   "onboard.step3.desc": "Your taste profile powers For You picks and restaurant menu matches — tuned to you.",
+
+  // Wishlist
+  "wishlist.title": "Wishlist",
+  "wishlist.subtitle": "Wines you want to try — set a target price and get alerted.",
+  "wishlist.emptyTitle": "Nothing saved yet",
+  "wishlist.emptyDesc": "Tap the bookmark on any wine to save it here.",
+  "wishlist.discover": "Get suggestions",
+  "wishlist.setTarget": "Set target price",
+  "wishlist.setTargetPrompt": "Target price (leave empty to clear)",
+  "wishlist.alertOn": "Price alert on",
+  "wishlist.alertOff": "Price alert off",
+  "wishlist.view": "View",
+  "wishlist.signIn": "Sign in to see your wishlist",
+  "wishlist.saveBtn": "Save to wishlist",
+  "profile.wishlist": "Wishlist",
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
@@ -590,6 +605,20 @@ const sv: Record<keyof typeof en, string> = {
   "onboard.step2.desc": "Varje skanning sparas i din källare. Betygsätt viner och lägg till noter för att minnas vad du älskade.",
   "onboard.step3.title": "Personliga rekommendationer",
   "onboard.step3.desc": "Din smakprofil driver För dig-tips och restaurangmenymatchningar — anpassade efter dig.",
+
+  "wishlist.title": "Önskelista",
+  "wishlist.subtitle": "Viner du vill prova — sätt målpris och få avisering.",
+  "wishlist.emptyTitle": "Inget sparat än",
+  "wishlist.emptyDesc": "Tryck på bokmärket på ett vin för att spara här.",
+  "wishlist.discover": "Få förslag",
+  "wishlist.setTarget": "Sätt målpris",
+  "wishlist.setTargetPrompt": "Målpris (lämna tomt för att rensa)",
+  "wishlist.alertOn": "Prisalert på",
+  "wishlist.alertOff": "Prisalert av",
+  "wishlist.view": "Visa",
+  "wishlist.signIn": "Logga in för att se din önskelista",
+  "wishlist.saveBtn": "Spara i önskelistan",
+  "profile.wishlist": "Önskelista",
 };
 
 const dict = { en, sv } as const;
