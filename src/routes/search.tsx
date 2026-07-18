@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search as SearchIcon, X, Star, Wine } from "lucide-react";
+import { Search as SearchIcon, X, Star, Wine, Camera } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Logo } from "@/components/Logo";
+import { EmptyState } from "@/components/EmptyState";
+import { CellarRowSkeleton } from "@/components/Skeleton";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/search")({
   head: () => ({
@@ -31,8 +35,10 @@ type WineRow = {
 };
 
 function SearchPage() {
+  const t = useT();
   const [q, setQ] = useState("");
   const [wines, setWines] = useState<WineRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase
@@ -40,16 +46,19 @@ function SearchPage() {
       .select("id,producer,wine_name,vintage,region,country,image_url,grape_varieties,fruit,tannin,acidity,body")
       .order("created_at", { ascending: false })
       .limit(50)
-      .then(({ data }) => setWines((data as WineRow[]) ?? []));
+      .then(({ data }) => {
+        setWines((data as WineRow[]) ?? []);
+        setLoading(false);
+      });
   }, []);
 
   const filtered = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    if (!t) return wines;
+    const term = q.trim().toLowerCase();
+    if (!term) return wines;
     return wines.filter((w) =>
       [w.wine_name, w.producer, w.region, w.country, ...(w.grape_varieties ?? [])]
         .filter(Boolean)
-        .some((x) => String(x).toLowerCase().includes(t)),
+        .some((x) => String(x).toLowerCase().includes(term)),
     );
   }, [q, wines]);
 
@@ -60,16 +69,15 @@ function SearchPage() {
           <Logo size="md" />
         </header>
 
-        <h1 className="mt-5 font-display text-[32px] leading-tight">Search</h1>
+        <h1 className="mt-5 font-display text-[32px] leading-tight">{t("search.title")}</h1>
 
-        {/* Search bar */}
         <div className="mt-4">
           <div className="relative">
             <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Cabernet, Bordeaux, producer…"
+              placeholder={t("search.ph")}
               className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
             />
             {q && (
@@ -80,17 +88,31 @@ function SearchPage() {
           </div>
         </div>
 
-        {/* Results header */}
         <div className="mt-5 flex items-baseline justify-between">
-          <h2 className="font-display text-xl">Discover</h2>
-          <span className="text-xs text-muted-foreground">{filtered.length} results</span>
+          <h2 className="font-display text-xl">{t("search.discover")}</h2>
+          <span className="text-xs text-muted-foreground">{filtered.length} {t("search.results")}</span>
         </div>
 
-        {/* Result list */}
         <ul className="mt-3 space-y-3 pb-4">
-          {filtered.length === 0 ? (
-            <li className="rounded-xl border border-white/8 bg-card/40 p-8 text-center text-sm text-muted-foreground">
-              No wines yet — scan your first.
+          {loading ? (
+            <>
+              <li><CellarRowSkeleton /></li>
+              <li><CellarRowSkeleton /></li>
+              <li><CellarRowSkeleton /></li>
+            </>
+          ) : filtered.length === 0 ? (
+            <li>
+              <EmptyState
+                icon={Wine}
+                title={wines.length === 0 ? t("search.empty") : t("search.noMatch")}
+                action={
+                  wines.length === 0 ? (
+                    <Link to="/scan">
+                      <Button className="bg-gradient-burgundy text-cream"><Camera className="h-4 w-4" /> {t("nav.scan")}</Button>
+                    </Link>
+                  ) : undefined
+                }
+              />
             </li>
           ) : (
             filtered.map((w) => <ResultCard key={w.id} w={w} />)
@@ -119,7 +141,7 @@ function ResultCard({ w }: { w: WineRow }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-base leading-tight text-cream">
-            {w.wine_name ?? w.producer ?? "Unknown wine"} {w.vintage ?? ""}
+            {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
           </p>
           <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
           <p className="truncate text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
