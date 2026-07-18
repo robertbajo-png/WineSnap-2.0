@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2, Plus, Share2, Pencil, Clock } from "lucide-react";
+import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2, Plus, Share2, Pencil, Clock, Bookmark } from "lucide-react";
+import { addToWishlist } from "@/lib/wishlist";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -164,6 +165,18 @@ function WineDetailPage() {
               className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
             >
               <Share2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => addToWishlist({
+                id: w.id, producer: w.producer, wine_name: w.wine_name ?? "", vintage: w.vintage,
+                region: w.region, country: w.country, wine_type: w.wine_type,
+                grape_varieties: w.grape_varieties, image_url: w.image_url, description: w.description,
+                source: "cellar",
+              })}
+              aria-label={t("wishlist.saveBtn")}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            >
+              <Bookmark className="h-4 w-4" />
             </button>
             <Link to="/wine/$id/edit" params={{ id: w.id }} aria-label={t("wine.edit")} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
               <Pencil className="h-4 w-4" />
