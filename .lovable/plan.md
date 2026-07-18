@@ -1,68 +1,53 @@
-## Winesnap 2.0
+# Plan för fortsatt utveckling av Winesnap 2.0
 
-En elegant mobil-först webbapp där användaren fotar en vinetikett och får tillbaka detaljerad vininfo, smakprofil och matförslag. Bygger på samma struktur som ScentSnap men med ett rikt vintema och utan betalvägg.
+Appen har nu ett komplett grundflöde: scan (foto + text), cellar, taste-profil, AI-förslag, wine detail med aroma-hjul, profil och i18n. Här är en prioriterad roadmap i fyra faser.
 
-### Designsystem — Burgundy & Champagne
-- **Primär**: djup burgundy/bordeaux (vinröd)
-- **Bakgrund**: varm champagne/cream
-- **Accent**: gyllene champagne, mjuk roséskimmer
-- **Typografi**: serif (Cormorant Garamond) för rubriker, Inter för UI — lyxig vinkänsla
-- **Komponenter**: rundade kort, mjuka skuggor, gradient-knappar i burgundy→plommon, guldlinjer som accent
-- Ljust läge som standard, mörkt läge förberett
+## Fas 1 – Polish & färdigställande (kort)
+Slutför det som fortfarande är halvfärdigt innan nya features.
 
-### Sidor & navigation
-Bottennav (mobil) + topplogga, samma flöde som ScentSnap:
-- **/** — Hem: stor "Fota vinetikett"-knapp + "Ladda upp bild" + senaste fynd
-- **/for-you** — Personliga rekommendationer baserat på din smakprofil
-- **/history** — Alla vin du skannat, sökbar/filtrerbar (rött/vitt/rosé/mousserande)
-- **/taste** — Din smakprofil: favoritdruvor, regioner, smakvärldar (visualiserad)
-- **/wine/$id** — Detaljvy för ett specifikt vin
-- **/me** — Profil + inställningar
-- **/login** — E-postinloggning (Lovable Cloud auth)
-- **/admin** — Adminvy (rolltabell)
-- **/about** — Om appen
+1. **Fullständig svensk översättning**
+   Idag är bara nav, home och profile översatta. Översätt: taste, cellar, cellar.overview, scan, for-you, wine.$id (+ tabs), search, login, about.
+2. **Tomma states överallt**
+   Standardiserade "empty state"-komponenter (ikon + rubrik + CTA) på: cellar, for-you, history, search utan träffar.
+3. **Loading & error states**
+   Skeletons istället för spinners på cellar, wine detail, for-you. Toast + retry vid AI-fel.
+4. **Tasting Notes: spara + lista**
+   Just nu är editorn löst kopplad. Skapa `tasting_notes`-tabell (wine_id, user_id, rating, aromas[], palate, finish, notes, tasted_at, location) med RLS och lista tidigare noter under vinet.
 
-### Kärnfunktion: Skanna vin
-1. Användare fotar/laddar upp etikett
-2. Bilden skickas till en edge function som anropar Lovable AI (vision-modell)
-3. AI returnerar strukturerad data:
-   - **Vininfo**: producent, vinnamn, druva(or), årgång, region, land, vintyp (rött/vitt/rosé/mousserande)
-   - **Beskrivning**: kort sommelierstil-text
-   - **Smakprofil** (visualiserad som mätare):
-     - Frukt, tannin, syra, ek, sötma, fyllighet
-   - **Aromnoter** i pyramid (primära/sekundära/tertiära)
-   - **Matparning**: 3–5 konkreta rätter som passar
-   - **Servering**: temperatur, glas, dekantering ja/nej
-4. Resultatet sparas i historiken och uppdaterar smakprofilen
+## Fas 2 – Vinupplevelsen (medel)
+Fördjupa kärnfunktionerna.
 
-### Smakprofil
-Räknas fram från användarens skannade vin — visar favoritregioner, druvor och smakvärldar. Driver "För dig"-rekommendationer.
+5. **Delning & export**
+   Delbar publik vy `/w/:shareId` (read-only) för ett vin, plus "Dela"-knapp med Web Share API.
+6. **Sök & filter i Cellar**
+   Riktig sökruta + filterchips (typ, land, årgång, rating) och sortering (nyast, högst betyg, äldst årgång).
+7. **Drickfönster & notifikationer**
+   Beräkna optimalt drickfönster per vin (AI vid scan) och visa "Dags att öppna"-lista på hem.
+8. **Foto-hantering**
+   Beskär/rotera etikett innan uppladdning, visa både etikett + genererad "hero"-bild på wine detail.
+9. **Manuell redigering**
+   Låt användaren rätta AI-fält (producent, årgång, region, druvor, pris) på wine detail.
 
-### Matparning (visualiserat)
-Korta kort med rätt + en mening om varför det passar (ex: "Lammfilé — tanninerna mjukas upp av fettet").
+## Fas 3 – Social & upptäckt (större)
+10. **Vänner & flöde**
+    Följ andra användare, se deras senaste scans/betyg i ett flöde.
+11. **Wishlist**
+    Separat lista utöver cellar (viner du vill prova). AI-förslag kan sparas hit direkt.
+12. **Restaurangläge**
+    Snabbläge: fota en vinlista → AI föreslår 2–3 val baserat på din taste-profil och budget.
 
-### Backend (Lovable Cloud)
-- **Auth**: e-post + lösenord, eventuellt Google senare
-- **Tabeller**:
-  - `profiles` — användarprofil
-  - `user_roles` — separat rolltabell (admin/user) med has_role-funktion
-  - `wines` — sparade vinskanningar (foto-URL, AI-output JSON, taggar)
-  - `taste_profile` — sammanräknade preferenser per användare
-- **Storage**: bucket för vinetikett-foton
-- **Edge functions**:
-  - `analyze-wine` — tar bild, anropar Lovable AI vision, returnerar strukturerad JSON
-  - `recommend-wines` — bygger "För dig"-listan utifrån smakprofilen
+## Fas 4 – Kvalitet & drift
+13. **PWA + offline**
+    Installerbar, offline-cache för cellar och senaste wine detail.
+14. **Onboarding**
+    3-stegs intro första gången (välj typer/regioner/druvor → gå direkt in i taste-profilen).
+15. **Analytics & telemetri**
+    Enkel event-logg (scans, favoriter, AI-förslag klickade) för att styra vidareutveckling.
+16. **Säkerhetsgenomgång**
+    Kör linter, gå igenom RLS på alla tabeller, roterbara nycklar, rate limit på edge functions.
 
-### Vad som INTE ingår nu
-- Ingen paywall, inga Stripe-komponenter (kan läggas till senare)
-- Ingen e-handel/inköpslänkar (kan läggas till senare)
+## Föreslagen ordning att köra
+Fas 1 i sin helhet först (1 iteration), sedan välj **en** feature från Fas 2 i taget. Fas 3 kräver mer designdiskussion – ta den när Fas 1–2 sitter.
 
-### Leverans i denna iteration
-1. Sätta upp burgundy/champagne-designsystem i `styles.css`
-2. Aktivera Lovable Cloud + skapa tabeller, RLS, storage-bucket
-3. Bygga alla routes med skelett + bottennav + AppShell
-4. Implementera skanna-flödet end-to-end (kamera/upload → edge function → resultatkort)
-5. Historik + smakprofil + "För dig" baserat på riktig data
-6. Login + me + admin
-
-Efter detta kan vi iterera på finputs (matparningsbilder, animationer, delning, mörkt läge etc.).
+## Vad vill du att jag börjar med?
+Säg t.ex. "kör Fas 1" eller peka ut specifika punkter (t.ex. "1, 2 och 4"), så gör jag en detaljerad implementationsplan för just det.
