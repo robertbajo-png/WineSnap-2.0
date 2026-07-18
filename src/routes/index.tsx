@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ScanLine, Wine, BookOpen } from "lucide-react";
+import { ScanLine, Wine, BookOpen, UtensilsCrossed } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useT } from "@/i18n";
 import heroBottle from "@/assets/hero-bottle.jpg";
