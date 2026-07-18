@@ -547,6 +547,26 @@ const sv: Record<keyof typeof en, string> = {
   "edit.grapes": "Druvsorter",
   "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
   "edit.description": "Beskrivning",
+
+  "restaurant.title": "Restaurangläge",
+  "restaurant.subtitle": "Fota vinlistan eller klistra in den — vi väljer de bästa vinerna för din smak.",
+  "restaurant.type": "Klistra in",
+  "restaurant.snap": "Fota meny",
+  "restaurant.textPh": "Klistra in vinlistan här — helst ett vin per rad. T.ex.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
+  "restaurant.textHint": "Producent, region, årgång — allt du kan kopiera hjälper.",
+  "restaurant.snapCta": "Ta en bild på menyn",
+  "restaurant.needText": "Klistra in några viner först",
+  "restaurant.needImage": "Fota vinlistan först",
+  "restaurant.working": "Konsulterar sommeliern…",
+  "restaurant.findBest": "Hitta mina bästa matchningar",
+  "restaurant.rerank": "Rangordna igen",
+  "restaurant.picks": "Sommelierens val",
+  "restaurant.safe": "Säkert val",
+  "restaurant.balanced": "Balanserat",
+  "restaurant.stretch": "Utmaning",
+  "restaurant.emptyTitle": "Redo när du är",
+  "restaurant.emptyDesc": "Klistra in vinlistan eller fota menyn — vi rankar bästa matchningarna för din smak.",
+  "home.cta.restaurant": "Restaurangläge",
 };
 
 const dict = { en, sv } as const;
