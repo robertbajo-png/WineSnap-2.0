@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { Sparkles, Wine, RefreshCw, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/for-you")({
   head: () => ({
@@ -33,6 +35,7 @@ const CACHE_KEY = "winesnap:suggestions:v1";
 
 function ForYouPage() {
   const { user, loading } = useAuth();
+  const t = useT();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +75,7 @@ function ForYouPage() {
       setGeneratedAt(ts);
       localStorage.setItem(CACHE_KEY, JSON.stringify({ suggestions: list, generatedAt: ts }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate suggestions");
+      setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setBusy(false);
     }
@@ -82,8 +85,8 @@ function ForYouPage() {
     return (
       <AppShell>
         <div className="mt-20 text-center">
-          <p className="text-muted-foreground">Sign in to see suggestions.</p>
-          <Link to="/login"><Button className="mt-4 bg-gradient-burgundy text-cream">Sign in</Button></Link>
+          <p className="text-muted-foreground">{t("foryou.signIn")}</p>
+          <Link to="/login"><Button className="mt-4 bg-gradient-burgundy text-cream">{t("login.signIn")}</Button></Link>
         </div>
       </AppShell>
     );
@@ -96,12 +99,12 @@ function ForYouPage() {
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-gold" />
-              <h1 className="font-display text-3xl text-cream">Suggestions</h1>
+              <h1 className="font-display text-3xl text-cream">{t("foryou.title")}</h1>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {generatedAt
-                ? `Updated ${new Date(generatedAt).toLocaleString()}`
-                : "AI picks based on your taste & cellar"}
+                ? `${t("foryou.updated")} ${new Date(generatedAt).toLocaleString()}`
+                : t("foryou.subtitle")}
             </p>
           </div>
           <button
@@ -110,26 +113,32 @@ function ForYouPage() {
             className="mt-1 flex h-9 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-xs text-gold disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            {suggestions.length ? "Refresh" : "Generate"}
+            {suggestions.length ? t("foryou.refresh") : t("foryou.generate")}
           </button>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">{error}</div>
+          <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+            {error}
+            <Button variant="ghost" size="sm" onClick={generate} className="ml-2 h-6 text-xs">{t("common.retry")}</Button>
+          </div>
         )}
 
         {!suggestions.length && !busy ? (
-          <div className="mt-12 rounded-xl border border-white/8 bg-card/40 p-8 text-center">
-            <Wine className="mx-auto h-10 w-10 text-gold/60" />
-            <p className="mt-3 text-sm text-muted-foreground">Tap Generate to get personalized wine picks based on your taste profile and cellar.</p>
-            <Button onClick={generate} className="mt-4 bg-gradient-burgundy text-cream">
-              <Sparkles className="h-4 w-4" /> Generate suggestions
-            </Button>
-          </div>
+          <EmptyState
+            icon={Wine}
+            title={t("foryou.title")}
+            description={t("foryou.emptyDesc")}
+            action={
+              <Button onClick={generate} className="bg-gradient-burgundy text-cream">
+                <Sparkles className="h-4 w-4" /> {t("foryou.generateBtn")}
+              </Button>
+            }
+          />
         ) : busy && !suggestions.length ? (
           <div className="mt-12 flex flex-col items-center text-center text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-gold" />
-            <p className="mt-3 text-sm">Pouring through your taste profile…</p>
+            <p className="mt-3 text-sm">{t("foryou.working")}</p>
           </div>
         ) : (
           <div className="mt-6 space-y-3 pb-4">

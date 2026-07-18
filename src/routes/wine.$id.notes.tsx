@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Star, Wine, Plus, Calendar, MapPin, ChevronDown } from "lucide-react";
+import { Star, Wine, Plus, Calendar, MapPin, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/wine/$id/notes")({
   head: () => ({ meta: [{ title: "Tasting Notes — WineSnap" }] }),
@@ -18,73 +20,93 @@ type WineRow = {
   vintage: number | null;
   region: string | null;
   country: string | null;
-  notes: string | null;
-  user_rating: number | null;
   primary_notes: string[] | null;
-  acidity: number | null; tannin: number | null; body: number | null; sweetness: number | null;
 };
 
 function NotesPage() {
   const { id } = Route.useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const t = useT();
   const [w, setW] = useState<WineRow | null>(null);
   const [rating, setRating] = useState(0);
   const [aromas, setAromas] = useState<string[]>([]);
+  const [newAroma, setNewAroma] = useState("");
   const [acidity, setAcidity] = useState(50);
   const [tannin, setTannin] = useState(50);
   const [body, setBody] = useState(50);
   const [sweetness, setSweetness] = useState(50);
   const [finish, setFinish] = useState<"Short" | "Medium" | "Long">("Medium");
   const [text, setText] = useState("");
+  const [location, setLocation] = useState("Home");
+  const [tastedAt, setTastedAt] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
+    supabase.from("wines").select("id,image_url,wine_name,vintage,region,country,primary_notes").eq("id", id).maybeSingle().then(({ data }) => {
       const r = data as WineRow | null;
       setW(r);
-      if (r) {
-        if (r.user_rating != null) setRating(r.user_rating);
-        if (r.primary_notes?.length) setAromas(r.primary_notes.slice(0, 5));
-        if (r.notes) setText(r.notes);
-        if (r.acidity != null) setAcidity(r.acidity * 10);
-        if (r.tannin != null) setTannin(r.tannin * 10);
-        if (r.body != null) setBody(r.body * 10);
-        if (r.sweetness != null) setSweetness(r.sweetness * 10);
-      }
+      if (r?.primary_notes?.length) setAromas(r.primary_notes.slice(0, 5));
     });
   }, [id]);
 
   const removeAroma = (a: string) => setAromas(aromas.filter((x) => x !== a));
+  const addAroma = () => {
+    const a = newAroma.trim();
+    if (!a) return;
+    if (aromas.includes(a)) { setNewAroma(""); return; }
+    setAromas([...aromas, a]);
+    setNewAroma("");
+  };
 
   const save = async () => {
-    const { error } = await supabase
-      .from("wines")
-      .update({
-        user_rating: Math.round(rating),
-        notes: text,
+    if (!user) { navigate({ to: "/login" }); return; }
+    setSaving(true);
+    const noteRow = {
+      user_id: user.id,
+      wine_id: id,
+      rating: Math.round(rating * 10) / 10 || null,
+      aromas,
+      body: Math.round(body / 10),
+      tannin: Math.round(tannin / 10),
+      acidity: Math.round(acidity / 10),
+      sweetness: Math.round(sweetness / 10),
+      finish,
+      notes: text || null,
+      location: location || null,
+      tasted_at: tastedAt,
+    };
+    const [{ error: noteErr }, { error: wineErr }] = await Promise.all([
+      supabase.from("tasting_notes").insert(noteRow as any),
+      supabase.from("wines").update({
+        user_rating: Math.round(rating) || null,
+        notes: text || null,
         primary_notes: aromas,
         acidity: Math.round(acidity / 10),
         tannin: Math.round(tannin / 10),
         body: Math.round(body / 10),
         sweetness: Math.round(sweetness / 10),
-      })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Note saved");
+      }).eq("id", id),
+    ]);
+    setSaving(false);
+    if (noteErr || wineErr) return toast.error((noteErr || wineErr)!.message);
+    toast.success(t("notes.saved"));
     navigate({ to: "/wine/$id", params: { id } });
   };
 
-  if (!w) return <AppShell><div className="mt-20 text-center text-muted-foreground">Loading…</div></AppShell>;
+  if (!w) return <AppShell><div className="mt-20 text-center text-muted-foreground">{t("common.loading")}</div></AppShell>;
 
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <button onClick={() => window.history.back()} className="text-sm text-foreground/80">Cancel</button>
-          <h1 className="font-display text-xl text-gold">Tasting Notes</h1>
-          <button onClick={save} className="rounded-full bg-gradient-burgundy px-3.5 py-1.5 text-xs font-medium text-cream">Save Note</button>
+          <button onClick={() => window.history.back()} className="text-sm text-foreground/80">{t("common.cancel")}</button>
+          <h1 className="font-display text-xl text-gold">{t("notes.title")}</h1>
+          <button onClick={save} disabled={saving} className="rounded-full bg-gradient-burgundy px-3.5 py-1.5 text-xs font-medium text-cream disabled:opacity-50">
+            {saving ? t("login.wait") : t("notes.save")}
+          </button>
         </header>
 
-        {/* Wine card */}
         <section className="mt-4 flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3">
           <div className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {w.image_url ? <img src={w.image_url} alt="" className="h-full w-full object-cover" /> : <Wine className="h-5 w-5 text-gold/60" />}
@@ -92,21 +114,15 @@ function NotesPage() {
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-base text-cream">{w.wine_name ?? "Unknown"} {w.vintage ?? ""}</p>
             <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
-            <div className="mt-0.5 flex items-center gap-1 text-[11px]">
-              <span className="rounded border border-white/10 bg-white/5 px-1.5 text-[10px] tracking-wider text-muted-foreground">{w.vintage ?? "—"}</span>
-              <Star className="ml-1 h-3 w-3 fill-gold text-gold" />
-              <span>{rating.toFixed(1)}</span>
-            </div>
           </div>
         </section>
 
-        {/* Overall Rating */}
         <section className="mt-5">
-          <p className="text-sm text-foreground/85">Overall Rating</p>
+          <p className="text-sm text-foreground/85">{t("notes.overall")}</p>
           <div className="mt-2 flex items-center gap-3">
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((i) => (
-                <button key={i} onClick={() => setRating(i)} aria-label={`${i} stars`}>
+                <button key={i} onClick={() => setRating(i)} aria-label={`${i}`}>
                   <Star className={cn("h-7 w-7", i <= rating ? "fill-gold text-gold" : "text-white/15")} />
                 </button>
               ))}
@@ -115,43 +131,41 @@ function NotesPage() {
           </div>
         </section>
 
-        {/* Aromas */}
         <section className="mt-6">
-          <div className="flex items-baseline justify-between">
-            <p className="text-sm text-foreground/85">Aromas</p>
-            <button className="text-xs text-burgundy">Edit</button>
-          </div>
+          <p className="text-sm text-foreground/85">{t("notes.aromas")}</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {aromas.map((a) => (
-              <button
-                key={a}
-                onClick={() => removeAroma(a)}
-                className="flex h-9 items-center gap-1.5 rounded-full border border-white/12 bg-card/40 px-3 text-xs"
-              >
-                <span className="text-sm">{aromaEmoji(a)}</span>
-                <span>{a}</span>
+              <button key={a} onClick={() => removeAroma(a)} className="flex h-9 items-center gap-1.5 rounded-full border border-white/12 bg-card/40 px-3 text-xs">
+                <span>{a}</span><X className="h-3 w-3 opacity-70" />
               </button>
             ))}
-            <button className="flex h-9 items-center gap-1 rounded-full border border-dashed border-gold/40 px-3 text-xs text-gold">
-              <Plus className="h-3 w-3" /> Add Aroma
+          </div>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={newAroma}
+              onChange={(e) => setNewAroma(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAroma(); } }}
+              placeholder={t("notes.addAromaPh")}
+              className="h-9 flex-1 rounded-full border border-dashed border-gold/40 bg-transparent px-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-gold focus:outline-none"
+            />
+            <button onClick={addAroma} className="flex h-9 items-center gap-1 rounded-full border border-gold/40 px-3 text-xs text-gold">
+              <Plus className="h-3 w-3" /> {t("notes.addAroma")}
             </button>
           </div>
         </section>
 
-        {/* Palate */}
         <section className="mt-6">
-          <p className="text-sm text-foreground/85">Palate</p>
+          <p className="text-sm text-foreground/85">{t("notes.palate")}</p>
           <div className="mt-3 space-y-3.5">
-            <PalateRow label="Acidity" leftLabel="Low" rightLabel="High" value={acidity} onChange={setAcidity} />
-            <PalateRow label="Tannin" leftLabel="Low" rightLabel="High" value={tannin} onChange={setTannin} />
-            <PalateRow label="Body" leftLabel="Light" rightLabel="Full" value={body} onChange={setBody} />
-            <PalateRow label="Sweetness" leftLabel="Dry" rightLabel="Sweet" value={sweetness} onChange={setSweetness} />
+            <PalateRow label={t("taste.acidity")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={acidity} onChange={setAcidity} />
+            <PalateRow label={t("taste.tannin")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={tannin} onChange={setTannin} />
+            <PalateRow label={t("taste.body")} leftLabel={t("taste.light")} rightLabel={t("taste.bold")} value={body} onChange={setBody} />
+            <PalateRow label={t("taste.sweetness")} leftLabel={t("taste.dry")} rightLabel={t("taste.sweet")} value={sweetness} onChange={setSweetness} />
           </div>
         </section>
 
-        {/* Finish */}
         <section className="mt-6">
-          <p className="text-sm text-foreground/85">Finish</p>
+          <p className="text-sm text-foreground/85">{t("notes.finish")}</p>
           <div className="mt-2 flex gap-2">
             {(["Short", "Medium", "Long"] as const).map((f) => (
               <button
@@ -162,35 +176,32 @@ function NotesPage() {
                   finish === f ? "border-burgundy bg-burgundy text-cream" : "border-white/10 bg-card/40 text-foreground/80",
                 )}
               >
-                {f}
+                {f === "Short" ? t("notes.short") : f === "Medium" ? t("notes.medium") : t("notes.long")}
               </button>
             ))}
           </div>
         </section>
 
-        {/* Notes */}
         <section className="mt-6">
-          <p className="text-sm text-foreground/85">Notes</p>
+          <p className="text-sm text-foreground/85">{t("notes.notes")}</p>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={3}
+            placeholder={t("notes.notesPh")}
             className="mt-2 w-full rounded-xl border border-white/10 bg-card/40 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
           />
         </section>
 
-        {/* Date + Location */}
         <section className="mt-3 mb-4 grid grid-cols-2 gap-2">
-          <button className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-card/40 px-3 text-xs text-foreground/85">
+          <label className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-card/40 px-3 text-xs text-foreground/85">
             <Calendar className="h-3.5 w-3.5 text-gold" />
-            <span>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-            <ChevronDown className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-          <button className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-card/40 px-3 text-xs text-foreground/85">
+            <input type="date" value={tastedAt} onChange={(e) => setTastedAt(e.target.value)} className="flex-1 bg-transparent focus:outline-none" />
+          </label>
+          <label className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-card/40 px-3 text-xs text-foreground/85">
             <MapPin className="h-3.5 w-3.5 text-gold" />
-            <span>Home</span>
-            <ChevronDown className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
-          </button>
+            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t("notes.locationPh")} className="flex-1 bg-transparent focus:outline-none placeholder:text-muted-foreground" />
+          </label>
         </section>
       </div>
     </AppShell>
@@ -203,24 +214,11 @@ function PalateRow({ label, leftLabel, rightLabel, value, onChange }: { label: s
       <span className="text-xs text-foreground/85">{label}</span>
       <span className="text-[10px] text-muted-foreground">{leftLabel}</span>
       <div className="relative h-1 rounded-full bg-white/10">
-        <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper" style={{ width: `${value}%` }} />
-        <input type="range" min={0} max={100} value={value} onChange={(e) => onChange(parseInt(e.target.value))} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
-        <span className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold shadow" style={{ left: `${value}%` }} />
+        <div className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper" style={{ width: `${value}%` }} />
+        <span className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold shadow" style={{ left: `${value}%` }} />
+        <input type="range" min={0} max={100} value={value} onChange={(e) => onChange(parseInt(e.target.value))} className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />
       </div>
       <span className="text-right text-[10px] text-muted-foreground">{rightLabel}</span>
     </div>
   );
-}
-
-function aromaEmoji(name: string): string {
-  const n = name.toLowerCase();
-  if (/cherry|berry|plum|currant|strawberry|raspberry/.test(n)) return "🍒";
-  if (/oak|wood|cedar|smoke/.test(n)) return "🪵";
-  if (/vanilla|cream|butter/.test(n)) return "🍦";
-  if (/tobacco|leather|earth/.test(n)) return "🍂";
-  if (/apple|pear|citrus|lemon|lime/.test(n)) return "🍏";
-  if (/floral|rose|violet/.test(n)) return "🌹";
-  if (/spice|pepper|clove|cinnamon/.test(n)) return "🌶️";
-  if (/chocolate|cocoa|coffee/.test(n)) return "🍫";
-  return "🍇";
 }

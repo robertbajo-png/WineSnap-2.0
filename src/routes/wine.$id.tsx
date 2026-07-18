@@ -1,14 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2, Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AromaWheel, AromaSlider, AROMA_FAMILIES } from "@/components/AromaWheel";
+import { WineDetailSkeleton } from "@/components/Skeleton";
+import { AromaWheel, AROMA_FAMILIES } from "@/components/AromaWheel";
 import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useT, useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -44,6 +46,9 @@ type WineRow = {
 
 const TABS = ["Overview", "Aromas", "Tasting", "Food", "AI Picks"] as const;
 
+const TAB_KEYS = ["overview", "aromas", "tasting", "food", "ai"] as const;
+type Tab = typeof TAB_KEYS[number];
+
 type Suggestion = {
   producer: string;
   wine_name: string;
@@ -54,19 +59,31 @@ type Suggestion = {
   match_score: number;
   reason: string;
 };
-type Tab = typeof TABS[number];
+
+type TastingNote = {
+  id: string;
+  rating: number | null;
+  notes: string | null;
+  aromas: string[] | null;
+  finish: string | null;
+  location: string | null;
+  tasted_at: string;
+};
 
 function WineDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const t = useT();
+  const { lang } = useI18n();
   const [w, setW] = useState<WineRow | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("Aromas");
+  const [tab, setTab] = useState<Tab>("aromas");
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
   const [thisWineMode, setThisWineMode] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<TastingNote[]>([]);
 
   const loadSuggestions = async () => {
     if (!w || suggestLoading) return;
@@ -85,7 +102,7 @@ function WineDetailPage() {
   };
 
   useEffect(() => {
-    if (tab === "AI Picks" && !suggestions && !suggestLoading && w) loadSuggestions();
+    if (tab === "ai" && !suggestions && !suggestLoading && w) loadSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, w]);
 
@@ -94,22 +111,28 @@ function WineDetailPage() {
       setW(data as WineRow | null);
       setLoading(false);
     });
+    supabase.from("tasting_notes")
+      .select("id,rating,notes,aromas,finish,location,tasted_at")
+      .eq("wine_id", id)
+      .order("tasted_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => setNotes((data as TastingNote[]) ?? []));
   }, [id]);
 
   const remove = async () => {
-    if (!confirm("Delete this wine?")) return;
+    if (!confirm(t("wine.deleteConfirm"))) return;
     const { error } = await supabase.from("wines").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Removed");
+    toast.success(t("wine.removed"));
     navigate({ to: "/cellar" });
   };
 
-  if (loading) return <AppShell><div className="mt-20 text-center text-muted-foreground">Loading…</div></AppShell>;
+  if (loading) return <AppShell><WineDetailSkeleton /></AppShell>;
   if (!w) return (
     <AppShell>
       <div className="mt-20 text-center">
-        <p className="text-muted-foreground">Wine not found.</p>
-        <Link to="/cellar"><Button className="mt-4">Back to cellar</Button></Link>
+        <p className="text-muted-foreground">{t("wine.notFound")}</p>
+        <Link to="/cellar"><Button className="mt-4">{t("wine.backToCellar")}</Button></Link>
       </div>
     </AppShell>
   );
@@ -126,7 +149,7 @@ function WineDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <Link to="/wine/$id/notes" params={{ id: w.id }} className="text-xs text-burgundy hover:underline">
-            Edit notes
+            {t("wine.editNotes")}
           </Link>
         </header>
 
@@ -152,24 +175,24 @@ function WineDetailPage() {
 
         {/* Tabs */}
         <div className="mt-5 flex gap-5 overflow-x-auto border-b border-white/8 text-sm">
-          {TABS.map((t) => (
+          {TAB_KEYS.map((k) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={k}
+              onClick={() => setTab(k)}
               className={cn(
                 "relative -mb-px shrink-0 py-2.5 transition-colors",
-                tab === t ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
+                tab === k ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t}
-              {tab === t && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
+              {t(`wine.tab.${k}` as any)}
+              {tab === k && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
             </button>
           ))}
         </div>
 
-        {tab === "Aromas" && (
+        {tab === "aromas" && (
           <>
-            <Section title="Aroma Profile">
+            <Section title={t("wine.aromaProfile")}>
               {/* Hero wheel with soft glow */}
               <div className="relative mt-1 flex items-center justify-center py-3">
                 <div className="pointer-events-none absolute h-[260px] w-[260px] rounded-full bg-burgundy/15 blur-3xl" />
@@ -209,7 +232,7 @@ function WineDetailPage() {
                     onClick={() => setSelectedFamily(null)}
                     className="rounded-full border border-white/10 bg-card/30 px-2.5 py-1 font-display text-[11px] text-muted-foreground hover:text-cream"
                   >
-                    Clear
+                    {t("common.clear")}
                   </button>
                 )}
               </div>
@@ -225,7 +248,7 @@ function WineDetailPage() {
                 if (filtered.length === 0) {
                   return (
                     <p className="mt-5 rounded-2xl border border-white/8 bg-card/40 p-6 text-center text-sm text-muted-foreground">
-                      No <span className="text-cream">{selectedFamily}</span> aromas in this wine.
+                      {t("wine.noFamilyAromas")}
                     </p>
                   );
                 }
@@ -233,7 +256,7 @@ function WineDetailPage() {
                   <>
                     {thisWineMode && (
                       <p className="mt-4 text-center font-display text-xs uppercase tracking-[0.2em] text-gold/80">
-                        {"This wine's aromas"}
+                        {t("wine.thisWineAromas")}
                       </p>
                     )}
                   <div className="mt-5 grid grid-cols-2 gap-2.5">
@@ -278,47 +301,86 @@ function WineDetailPage() {
               })()}
             </Section>
 
-            <Section title="Tasting Profile">
+            <Section title={t("wine.tastingProfile")}>
               <Card className="bg-card/50 p-4">
-                <SliderRow label="Body" leftLabel="Light" rightLabel="Full" value={pct(w.body)} />
-                <SliderRow label="Tannins" leftLabel="Low" rightLabel="High" value={pct(w.tannin)} />
-                <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={pct(w.acidity)} />
-                <SliderRow label="Fruit" leftLabel="Low" rightLabel="High" value={pct(w.fruit)} />
+                <SliderRow label={t("taste.body")} leftLabel={t("taste.light")} rightLabel={t("taste.bold")} value={pct(w.body)} />
+                <SliderRow label={t("wine.tannins")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.tannin)} />
+                <SliderRow label={t("taste.acidity")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.acidity)} />
+                <SliderRow label={t("wine.fruit")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.fruit)} />
               </Card>
             </Section>
           </>
         )}
 
-        {tab === "Overview" && (
+        {tab === "overview" && (
           <div className="mt-5 space-y-4">
             {w.description && (
               <Card className="bg-card/50 p-4">
                 <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>
               </Card>
             )}
-            <KV label="Producer" value={w.producer ?? "—"} />
-            <KV label="Region" value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
-            <KV label="Grape" value={w.grape_varieties?.join(", ") ?? "—"} />
-            <KV label="Vintage" value={w.vintage ? String(w.vintage) : "—"} />
-            <KV label="Serving" value={w.serving_temp ?? "—"} />
-            <KV label="Glass" value={w.glass_type ?? "—"} />
+            <KV label={t("wine.producer")} value={w.producer ?? "—"} />
+            <KV label={t("wine.region")} value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
+            <KV label={t("wine.grape")} value={w.grape_varieties?.join(", ") ?? "—"} />
+            <KV label={t("wine.vintage")} value={w.vintage ? String(w.vintage) : "—"} />
+            <KV label={t("wine.serving")} value={w.serving_temp ?? "—"} />
+            <KV label={t("wine.glass")} value={w.glass_type ?? "—"} />
+
+            <Section title={t("wine.notesSection")}>
+              {notes.length === 0 ? (
+                <Card className="bg-card/50 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">{t("wine.notesEmpty")}</p>
+                  <Link to="/wine/$id/notes" params={{ id: w.id }} className="mt-3 inline-flex items-center gap-1 text-xs text-burgundy hover:underline">
+                    <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
+                  </Link>
+                </Card>
+              ) : (
+                <div className="space-y-2.5">
+                  {notes.map((n) => (
+                    <Card key={n.id} className="bg-card/50 p-3.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          {n.rating != null && (
+                            <>
+                              <Star className="h-3.5 w-3.5 fill-gold text-gold" />
+                              <span className="font-display text-sm text-cream">{n.rating.toFixed(1)}</span>
+                            </>
+                          )}
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {new Date(n.tasted_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {n.location ? ` • ${n.location}` : ""}
+                        </span>
+                      </div>
+                      {n.notes && <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">{n.notes}</p>}
+                      {n.aromas && n.aromas.length > 0 && (
+                        <p className="mt-1.5 text-[11px] text-gold">{n.aromas.join(" • ")}</p>
+                      )}
+                    </Card>
+                  ))}
+                  <Link to="/wine/$id/notes" params={{ id: w.id }} className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-xs text-gold hover:bg-gold/5">
+                    <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
+                  </Link>
+                </div>
+              )}
+            </Section>
           </div>
         )}
 
-        {tab === "Tasting" && (
+        {tab === "tasting" && (
           <div className="mt-5">
             <Card className="bg-card/50 p-4">
-              <SliderRow label="Body" leftLabel="Light" rightLabel="Full" value={pct(w.body)} />
-              <SliderRow label="Tannins" leftLabel="Low" rightLabel="High" value={pct(w.tannin)} />
-              <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={pct(w.acidity)} />
-              <SliderRow label="Fruit" leftLabel="Low" rightLabel="High" value={pct(w.fruit)} />
-              <SliderRow label="Oak" leftLabel="None" rightLabel="Heavy" value={pct(w.oak)} />
-              <SliderRow label="Sweetness" leftLabel="Dry" rightLabel="Sweet" value={pct(w.sweetness)} />
+              <SliderRow label={t("taste.body")} leftLabel={t("taste.light")} rightLabel={t("taste.bold")} value={pct(w.body)} />
+              <SliderRow label={t("wine.tannins")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.tannin)} />
+              <SliderRow label={t("taste.acidity")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.acidity)} />
+              <SliderRow label={t("wine.fruit")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.fruit)} />
+              <SliderRow label={t("taste.oak")} leftLabel={t("taste.noOak")} rightLabel={t("taste.oaked")} value={pct(w.oak)} />
+              <SliderRow label={t("taste.sweetness")} leftLabel={t("taste.dry")} rightLabel={t("taste.sweet")} value={pct(w.sweetness)} />
             </Card>
           </div>
         )}
 
-        {tab === "Food" && (
+        {tab === "food" && (
           <div className="mt-5 space-y-3">
             {(w.food_pairings ?? []).map((p, i) => (
               <Card key={i} className="bg-card/50 p-4">
@@ -327,27 +389,27 @@ function WineDetailPage() {
               </Card>
             ))}
             {(!w.food_pairings || w.food_pairings.length === 0) && (
-              <p className="py-6 text-center text-sm text-muted-foreground">No pairings yet.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("wine.noPairings")}</p>
             )}
           </div>
         )}
 
-        {tab === "AI Picks" && (
+        {tab === "ai" && (
           <div className="mt-5 space-y-3">
             {suggestLoading && (
               <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Finding wines you'll love…</span>
+                <span className="text-sm">{t("wine.finding")}</span>
               </div>
             )}
             {suggestError && !suggestLoading && (
               <Card className="bg-card/50 p-4 text-center text-sm text-destructive">
                 {suggestError}
-                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">Retry</Button>
+                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">{t("common.retry")}</Button>
               </Card>
             )}
             {!suggestLoading && !suggestError && suggestions && suggestions.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">No suggestions available.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("wine.noSuggestions")}</p>
             )}
             {!suggestLoading && suggestions?.map((s, i) => (
               <Card key={i} className="bg-card/50 p-4">
@@ -372,14 +434,14 @@ function WineDetailPage() {
             ))}
             {!suggestLoading && suggestions && suggestions.length > 0 && (
               <Button variant="ghost" size="sm" onClick={() => { setSuggestions(null); loadSuggestions(); }} className="w-full">
-                <Sparkles className="h-4 w-4" /> Regenerate
+                <Sparkles className="h-4 w-4" /> {t("wine.regenerate")}
               </Button>
             )}
           </div>
         )}
 
         <Button variant="ghost" onClick={remove} className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive">
-          <Trash2 className="h-4 w-4" /> Delete wine
+          <Trash2 className="h-4 w-4" /> {t("wine.delete")}
         </Button>
       </div>
     </AppShell>

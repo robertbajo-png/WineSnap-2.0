@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Heart, Bookmark, Wine, Star, Thermometer } from "lucide-react";
+import { ArrowLeft, Wine, Star, Thermometer } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/wine/$id/pairings")({
   head: () => ({ meta: [{ title: "Pairings — WineSnap" }] }),
@@ -23,27 +24,25 @@ type WineRow = {
   fruit: number | null; tannin: number | null; acidity: number | null; body: number | null;
 };
 
-const CATEGORIES = ["Best Matches", "Meat", "Pasta & Risotto", "Cheese"] as const;
-type Category = typeof CATEGORIES[number];
-
 const FALLBACK: { dish: string; reason: string; emoji: string; match: number }[] = [
-  { dish: "Steak", reason: "The rich, savory flavors of steak highlight the wine's structure and dark fruit.", emoji: "🥩", match: 92 },
-  { dish: "Mushroom risotto", reason: "Earthy mushrooms and creamy risotto complement the wine's depth and elegance.", emoji: "🍚", match: 89 },
-  { dish: "Aged cheddar", reason: "Sharp, aged cheddar brings out the wine's complexity and smooth tannins.", emoji: "🧀", match: 85 },
+  { dish: "Steak", reason: "Rich, savory flavors highlight the wine's structure and dark fruit.", emoji: "🥩", match: 92 },
+  { dish: "Mushroom risotto", reason: "Earthy mushrooms complement the wine's depth and elegance.", emoji: "🍚", match: 89 },
+  { dish: "Aged cheddar", reason: "Sharp cheese brings out the wine's complexity and smooth tannins.", emoji: "🧀", match: 85 },
   { dish: "Herb-roasted lamb", reason: "Herbs and lamb enhance the wine's aromas and balanced finish.", emoji: "🍖", match: 84 },
 ];
 
 function PairingsPage() {
   const { id } = Route.useParams();
+  const t = useT();
   const [w, setW] = useState<WineRow | null>(null);
-  const [cat, setCat] = useState<Category>("Best Matches");
-  const [liked, setLiked] = useState(false);
+  const CATEGORIES = [t("pairings.best"), t("pairings.meat"), t("pairings.pasta"), t("pairings.cheese")];
+  const [cat, setCat] = useState<string>(CATEGORIES[0]);
 
   useEffect(() => {
     supabase.from("wines").select("id,image_url,wine_name,vintage,region,country,food_pairings,serving_temp,fruit,tannin,acidity,body").eq("id", id).maybeSingle().then(({ data }) => setW(data as WineRow | null));
   }, [id]);
 
-  if (!w) return <AppShell><div className="mt-20 text-center text-muted-foreground">Loading…</div></AppShell>;
+  if (!w) return <AppShell><div className="mt-20 text-center text-muted-foreground">{t("common.loading")}</div></AppShell>;
 
   const rating = computeRating(w);
   const pairings = (w.food_pairings && w.food_pairings.length ? w.food_pairings : FALLBACK).slice(0, 6);
@@ -55,13 +54,10 @@ function PairingsPage() {
           <button onClick={() => window.history.back()} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="font-display text-xl text-gold">Pairings</h1>
-          <button onClick={() => setLiked(!liked)} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Heart className={cn("h-5 w-5", liked ? "fill-burgundy text-burgundy" : "text-foreground/80")} />
-          </button>
+          <h1 className="font-display text-xl text-gold">{t("pairings.title")}</h1>
+          <span className="h-9 w-9" />
         </header>
 
-        {/* Wine summary */}
         <section className="mt-4 flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3">
           <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {w.image_url ? <img src={w.image_url} alt="" className="h-full w-full object-cover" /> : <Wine className="h-5 w-5 text-gold/60" />}
@@ -74,16 +70,8 @@ function PairingsPage() {
               <span>{rating.toFixed(1)}</span>
             </div>
           </div>
-          <div className="relative h-14 w-14 shrink-0">
-            <CircleProgress value={92} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="font-display text-base leading-none text-cream">92</span>
-              <span className="text-[8px] text-success">Great Match</span>
-            </div>
-          </div>
         </section>
 
-        {/* Categories */}
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
           {CATEGORIES.map((c) => (
             <button
@@ -99,7 +87,6 @@ function PairingsPage() {
           ))}
         </div>
 
-        {/* Pairings list */}
         <ul className="mt-4 space-y-3 pb-3">
           {pairings.map((p, i) => {
             const fb = FALLBACK[i] ?? FALLBACK[0];
@@ -112,15 +99,12 @@ function PairingsPage() {
                     {emoji}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-display text-base leading-tight text-cream">{p.dish}</p>
-                      <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    </div>
+                    <p className="font-display text-base leading-tight text-cream">{p.dish}</p>
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{p.reason}</p>
                   </div>
                   <div className="flex shrink-0 flex-col items-center justify-center">
                     <span className="font-display text-base leading-none text-cream">{match}</span>
-                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Match</span>
+                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("pairings.match")}</span>
                   </div>
                 </div>
               </li>
@@ -128,39 +112,15 @@ function PairingsPage() {
           })}
         </ul>
 
-        {/* Serving tip */}
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-gold/20 bg-gold/5 p-3.5">
           <Thermometer className="h-5 w-5 shrink-0 text-gold" />
           <div className="min-w-0 flex-1 text-xs">
-            <p className="font-medium text-gold">Serving Tip</p>
-            <p className="mt-0.5 text-foreground/80">
-              {w.serving_temp ?? "Decant for 30–60 minutes and serve at 16–18°C (60–64°F) for the best experience."}
-            </p>
+            <p className="font-medium text-gold">{t("pairings.servingTip")}</p>
+            <p className="mt-0.5 text-foreground/80">{w.serving_temp ?? t("pairings.servingDefault")}</p>
           </div>
         </div>
       </div>
     </AppShell>
-  );
-}
-
-function CircleProgress({ value }: { value: number }) {
-  const r = 24;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
-      <circle cx="28" cy="28" r={r} fill="none" stroke="oklch(1 0 0 / 0.08)" strokeWidth="3" />
-      <circle
-        cx="28"
-        cy="28"
-        r={r}
-        fill="none"
-        stroke="oklch(0.7 0.18 145)"
-        strokeWidth="3"
-        strokeDasharray={c}
-        strokeDashoffset={c - (c * value) / 100}
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
 

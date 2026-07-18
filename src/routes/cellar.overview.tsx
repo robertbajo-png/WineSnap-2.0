@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/cellar/overview")({
   head: () => ({
@@ -33,6 +34,7 @@ const PALETTE = [
 
 function CellarOverviewPage() {
   const { user } = useAuth();
+  const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
 
   useEffect(() => {
@@ -93,21 +95,19 @@ function CellarOverviewPage() {
           <button onClick={() => window.history.back()} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="font-display text-xl text-gold">Cellar Overview</h1>
+          <h1 className="font-display text-xl text-gold">{t("overview.title")}</h1>
           <span className="h-9 w-9" />
         </header>
 
-        {/* Quick stats */}
         <section className="mt-5 grid grid-cols-3 gap-2">
-          <Stat value={String(bottles)} label="Bottles" />
-          <Stat value={String(regions)} label="Regions" />
-          <Stat value={String(countries)} label="Countries" />
+          <Stat value={String(bottles)} label={t("overview.bottles")} />
+          <Stat value={String(regions)} label={t("overview.regions")} />
+          <Stat value={String(countries)} label={t("overview.countries")} />
         </section>
 
-        {/* Value by Region */}
         {regionStats.length > 0 && (
           <section className="mt-6">
-            <h2 className="font-display text-base text-cream">Bottles by Region</h2>
+            <h2 className="font-display text-base text-cream">{t("overview.byRegion")}</h2>
             <div className="mt-3 flex items-center gap-4">
               <DonutChart segments={regionStats.map((r) => r.pct)} colors={PALETTE} size={130} />
               <div className="flex-1 space-y-2 text-xs">
@@ -124,22 +124,20 @@ function CellarOverviewPage() {
           </section>
         )}
 
-        {/* Drinking Window */}
         {bottles > 0 && (
           <section className="mt-7">
-            <h2 className="font-display text-base text-cream">Drinking Window</h2>
+            <h2 className="font-display text-base text-cream">{t("overview.window")}</h2>
             <div className="mt-3 grid grid-cols-3 gap-3">
-              <WindowCard value={pastPeak} title="Past Peak" sub={`< ${now - 6}`} barColor="oklch(0.55 0.2 25)" />
-              <WindowCard value={greatNow} title="Great Now" sub={`${now - 6} – ${now}`} barColor="oklch(0.7 0.18 145)" highlight />
-              <WindowCard value={cellarWorthy} title="Cellar Worthy" sub={`${now + 1}+`} barColor="oklch(0.78 0.13 75)" />
+              <WindowCard value={pastPeak} title={t("overview.pastPeak")} sub={`< ${now - 6}`} barColor="oklch(0.55 0.2 25)" />
+              <WindowCard value={greatNow} title={t("overview.greatNow")} sub={`${now - 6} – ${now}`} barColor="oklch(0.7 0.18 145)" highlight />
+              <WindowCard value={cellarWorthy} title={t("overview.cellarWorthy")} sub={`${now + 1}+`} barColor="oklch(0.78 0.13 75)" />
             </div>
           </section>
         )}
 
-        {/* Top Varietals */}
         {varietalStats.length > 0 && (
           <section className="mt-7 mb-4">
-            <h2 className="font-display text-base text-cream">Top Varietals</h2>
+            <h2 className="font-display text-base text-cream">{t("overview.topVarietals")}</h2>
             <div className="mt-3 space-y-2.5">
               {varietalStats.map((v) => (
                 <div key={v.name} className="flex items-center gap-3 text-xs">
@@ -158,9 +156,7 @@ function CellarOverviewPage() {
         )}
 
         {bottles === 0 && (
-          <p className="mt-10 text-center text-sm text-muted-foreground">
-            Add bottles to your cellar to see analytics.
-          </p>
+          <p className="mt-10 text-center text-sm text-muted-foreground">{t("overview.empty")}</p>
         )}
       </div>
     </AppShell>
