@@ -331,6 +331,92 @@ export type Database = {
         }
         Relationships: []
       }
+      wishlist: {
+        Row: {
+          ai_data: Json | null
+          country: string | null
+          created_at: string
+          current_price: number | null
+          description: string | null
+          grape_varieties: string[] | null
+          id: string
+          image_url: string | null
+          last_price_check: string | null
+          notes: string | null
+          notify_on_drop: boolean
+          price_currency: string | null
+          priority: number
+          producer: string | null
+          region: string | null
+          source: string
+          target_price: number | null
+          updated_at: string
+          user_id: string
+          vintage: number | null
+          wine_id: string | null
+          wine_name: string
+          wine_type: string | null
+        }
+        Insert: {
+          ai_data?: Json | null
+          country?: string | null
+          created_at?: string
+          current_price?: number | null
+          description?: string | null
+          grape_varieties?: string[] | null
+          id?: string
+          image_url?: string | null
+          last_price_check?: string | null
+          notes?: string | null
+          notify_on_drop?: boolean
+          price_currency?: string | null
+          priority?: number
+          producer?: string | null
+          region?: string | null
+          source?: string
+          target_price?: number | null
+          updated_at?: string
+          user_id: string
+          vintage?: number | null
+          wine_id?: string | null
+          wine_name: string
+          wine_type?: string | null
+        }
+        Update: {
+          ai_data?: Json | null
+          country?: string | null
+          created_at?: string
+          current_price?: number | null
+          description?: string | null
+          grape_varieties?: string[] | null
+          id?: string
+          image_url?: string | null
+          last_price_check?: string | null
+          notes?: string | null
+          notify_on_drop?: boolean
+          price_currency?: string | null
+          priority?: number
+          producer?: string | null
+          region?: string | null
+          source?: string
+          target_price?: number | null
+          updated_at?: string
+          user_id?: string
+          vintage?: number | null
+          wine_id?: string | null
+          wine_name?: string
+          wine_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
