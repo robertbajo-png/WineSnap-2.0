@@ -106,6 +106,7 @@ function MePage() {
             <FavRow to="/taste" hash="profile" icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label={t("profile.tasteProfile")} value={tasteProfileSummary(profile) ?? t("profile.notSet")} />
             <FavRow to="/taste" hash="regions" icon={<MapPin className="h-4 w-4 text-gold" />} label={t("profile.regions")} value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : t("profile.notSet")} />
             <FavRow to="/taste" hash="grapes" icon={<Grape className="h-4 w-4 text-gold" />} label={t("profile.grapes")} value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
+            <FavRow to="/wishlist" icon={<Bookmark className="h-4 w-4 text-gold" />} label={t("profile.wishlist")} value={t("common.more")} />
           </div>
         </section>
 
