@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2, Plus, Share2, Pencil, Clock } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT, useI18n } from "@/i18n";
+import { computeDrinkingWindow } from "@/lib/drinkingWindow";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -148,9 +149,29 @@ function WineDetailPage() {
           <button onClick={() => window.history.back()} aria-label="Back" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <Link to="/wine/$id/notes" params={{ id: w.id }} className="text-xs text-burgundy hover:underline">
-            {t("wine.editNotes")}
-          </Link>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={async () => {
+                const url = window.location.href;
+                const shareData = { title: `${w.wine_name ?? ""} ${w.vintage ?? ""}`.trim(), text: t("wine.shareText"), url };
+                if (navigator.share) {
+                  try { await navigator.share(shareData); } catch { /* cancelled */ }
+                } else {
+                  try { await navigator.clipboard.writeText(url); toast.success(t("wine.linkCopied")); } catch { /* noop */ }
+                }
+              }}
+              aria-label={t("wine.share")}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+            <Link to="/wine/$id/edit" params={{ id: w.id }} aria-label={t("wine.edit")} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+              <Pencil className="h-4 w-4" />
+            </Link>
+            <Link to="/wine/$id/notes" params={{ id: w.id }} className="ml-1 text-xs text-burgundy hover:underline">
+              {t("wine.editNotes")}
+            </Link>
+          </div>
         </header>
 
         {/* Hero */}

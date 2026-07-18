@@ -132,11 +132,21 @@ function CellarPage() {
           ))}
         </div>
 
-        <div className="mt-5">
+        <div className="mt-5 flex items-center justify-between gap-3">
           <h2 className="text-sm">
             <span className="font-display text-lg text-cream">{filtered.length}</span>{" "}
             <span className="text-muted-foreground">{t("cellar.bottles")}</span>
           </h2>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+            className="h-8 rounded-full border border-white/10 bg-card/40 px-3 text-xs text-foreground/80 focus:border-gold/40 focus:outline-none"
+            aria-label={t("cellar.sort")}
+          >
+            {SORTS.map((s) => (
+              <option key={s} value={s}>{t(`cellar.sort.${s}` as const)}</option>
+            ))}
+          </select>
         </div>
 
         <ul className="mt-3 space-y-2.5 pb-4">
