@@ -46,6 +46,9 @@ type WineRow = {
 
 const TABS = ["Overview", "Aromas", "Tasting", "Food", "AI Picks"] as const;
 
+const TAB_KEYS = ["overview", "aromas", "tasting", "food", "ai"] as const;
+type Tab = typeof TAB_KEYS[number];
+
 type Suggestion = {
   producer: string;
   wine_name: string;
@@ -56,19 +59,31 @@ type Suggestion = {
   match_score: number;
   reason: string;
 };
-type Tab = typeof TABS[number];
+
+type TastingNote = {
+  id: string;
+  rating: number | null;
+  notes: string | null;
+  aromas: string[] | null;
+  finish: string | null;
+  location: string | null;
+  tasted_at: string;
+};
 
 function WineDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const t = useT();
+  const { lang } = useI18n();
   const [w, setW] = useState<WineRow | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("Aromas");
+  const [tab, setTab] = useState<Tab>("aromas");
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
   const [thisWineMode, setThisWineMode] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<TastingNote[]>([]);
 
   const loadSuggestions = async () => {
     if (!w || suggestLoading) return;
