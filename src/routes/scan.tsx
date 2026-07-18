@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/scan")({
   head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
