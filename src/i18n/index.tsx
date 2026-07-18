@@ -242,6 +242,36 @@ const en = {
   "foryou.generateBtn": "Generate suggestions",
   "foryou.working": "Pouring through your taste profile…",
   "foryou.signIn": "Sign in to see suggestions.",
+
+  // Cellar sort
+  "cellar.sort": "Sort",
+  "cellar.sort.newest": "Newest",
+  "cellar.sort.oldest": "Oldest",
+  "cellar.sort.rating": "Top rated",
+  "cellar.sort.vintage": "Vintage",
+  "cellar.sort.name": "Name",
+
+  // Wine detail — share & edit
+  "wine.share": "Share",
+  "wine.edit": "Edit",
+  "wine.shareText": "Check out this wine on WineSnap",
+  "wine.linkCopied": "Link copied",
+  "wine.window": "Drinking Window",
+  "wine.window.tooYoung": "Too young — cellar it",
+  "wine.window.greatNow": "Drinking great now",
+  "wine.window.pastPeak": "Past peak",
+  "wine.window.range": "Best {start}–{end}, peak {peak}",
+
+  // Edit wine
+  "edit.title": "Edit wine",
+  "edit.save": "Save changes",
+  "edit.saved": "Wine updated",
+  "edit.wineName": "Wine name",
+  "edit.type": "Type",
+  "edit.country": "Country",
+  "edit.grapes": "Grape varieties",
+  "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
+  "edit.description": "Description",
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
@@ -469,6 +499,33 @@ const sv: Record<keyof typeof en, string> = {
   "foryou.generateBtn": "Generera förslag",
   "foryou.working": "Går igenom din smakprofil…",
   "foryou.signIn": "Logga in för att se förslag.",
+
+  "cellar.sort": "Sortera",
+  "cellar.sort.newest": "Nyast",
+  "cellar.sort.oldest": "Äldst",
+  "cellar.sort.rating": "Högst betyg",
+  "cellar.sort.vintage": "Årgång",
+  "cellar.sort.name": "Namn",
+
+  "wine.share": "Dela",
+  "wine.edit": "Redigera",
+  "wine.shareText": "Kolla in det här vinet på WineSnap",
+  "wine.linkCopied": "Länk kopierad",
+  "wine.window": "Drickfönster",
+  "wine.window.tooYoung": "För ungt — lagra",
+  "wine.window.greatNow": "Drick nu",
+  "wine.window.pastPeak": "Över toppen",
+  "wine.window.range": "Bäst {start}–{end}, topp {peak}",
+
+  "edit.title": "Redigera vin",
+  "edit.save": "Spara ändringar",
+  "edit.saved": "Vinet uppdaterat",
+  "edit.wineName": "Vinnamn",
+  "edit.type": "Typ",
+  "edit.country": "Land",
+  "edit.grapes": "Druvsorter",
+  "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
+  "edit.description": "Beskrivning",
 };
 
 const dict = { en, sv } as const;

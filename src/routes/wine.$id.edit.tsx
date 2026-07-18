@@ -72,7 +72,7 @@ function EditPage() {
       vintage: form.vintage ? Number(form.vintage) || null : null,
       region: form.region.trim() || null,
       country: form.country.trim() || null,
-      wine_type: form.wine_type,
+      wine_type: form.wine_type as "red" | "white" | "rose" | "sparkling" | "dessert" | "fortified",
       grape_varieties: form.grape_varieties.split(",").map((s) => s.trim()).filter(Boolean),
       description: form.description.trim() || null,
       serving_temp: form.serving_temp.trim() || null,
