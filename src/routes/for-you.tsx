@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Wine, RefreshCw, Loader2 } from "lucide-react";
+import { Sparkles, Wine, RefreshCw, Loader2, Bookmark } from "lucide-react";
+import { addToWishlist } from "@/lib/wishlist";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
@@ -164,6 +165,18 @@ function ForYouPage() {
                   <p className="mt-1.5 text-[11px] text-muted-foreground">{s.price_range}</p>
                 ) : null}
                 <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    onClick={() => addToWishlist({
+                      producer: s.producer, wine_name: s.wine_name, vintage: s.vintage,
+                      region: s.region, country: s.country, wine_type: s.wine_type,
+                      grape_varieties: s.grape_varieties, source: "ai", ai_data: s as never,
+                    })}
+                    className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-[11px] text-gold hover:bg-background/70"
+                  >
+                    <Bookmark className="h-3 w-3" /> {t("wishlist.saveBtn")}
+                  </button>
+                </div>
               </article>
             ))}
           </div>
