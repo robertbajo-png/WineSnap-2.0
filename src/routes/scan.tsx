@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
+import { logEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/scan")({
   head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
