@@ -232,7 +232,7 @@ function WineDetailPage() {
                     onClick={() => setSelectedFamily(null)}
                     className="rounded-full border border-white/10 bg-card/30 px-2.5 py-1 font-display text-[11px] text-muted-foreground hover:text-cream"
                   >
-                    Clear
+                    {t("common.clear")}
                   </button>
                 )}
               </div>
@@ -248,7 +248,7 @@ function WineDetailPage() {
                 if (filtered.length === 0) {
                   return (
                     <p className="mt-5 rounded-2xl border border-white/8 bg-card/40 p-6 text-center text-sm text-muted-foreground">
-                      No <span className="text-cream">{selectedFamily}</span> aromas in this wine.
+                      {t("wine.noFamilyAromas")}
                     </p>
                   );
                 }
@@ -256,7 +256,7 @@ function WineDetailPage() {
                   <>
                     {thisWineMode && (
                       <p className="mt-4 text-center font-display text-xs uppercase tracking-[0.2em] text-gold/80">
-                        {"This wine's aromas"}
+                        {t("wine.thisWineAromas")}
                       </p>
                     )}
                   <div className="mt-5 grid grid-cols-2 gap-2.5">
