@@ -125,6 +125,68 @@ export type Database = {
         }
         Relationships: []
       }
+      tasting_notes: {
+        Row: {
+          acidity: number | null
+          aromas: string[] | null
+          body: number | null
+          created_at: string
+          finish: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          rating: number | null
+          sweetness: number | null
+          tannin: number | null
+          tasted_at: string
+          updated_at: string
+          user_id: string
+          wine_id: string
+        }
+        Insert: {
+          acidity?: number | null
+          aromas?: string[] | null
+          body?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          rating?: number | null
+          sweetness?: number | null
+          tannin?: number | null
+          tasted_at?: string
+          updated_at?: string
+          user_id: string
+          wine_id: string
+        }
+        Update: {
+          acidity?: number | null
+          aromas?: string[] | null
+          body?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          rating?: number | null
+          sweetness?: number | null
+          tannin?: number | null
+          tasted_at?: string
+          updated_at?: string
+          user_id?: string
+          wine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasting_notes_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
