@@ -1,14 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2, Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AromaWheel, AromaSlider, AROMA_FAMILIES } from "@/components/AromaWheel";
+import { WineDetailSkeleton } from "@/components/Skeleton";
+import { AromaWheel, AROMA_FAMILIES } from "@/components/AromaWheel";
 import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useT, useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
