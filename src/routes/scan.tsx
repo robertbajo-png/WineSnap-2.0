@@ -30,6 +30,7 @@ type ScannedWine = {
 function ScanPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const t = useT();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
@@ -39,10 +40,10 @@ function ScanPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      toast.info("Sign in to scan wine labels");
+      toast.info(t("scan.signInInfo"));
       navigate({ to: "/login" });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, t]);
 
   const persistWine = async (w: any, imageUrl: string | null) => {
     if (!user) throw new Error("Not authenticated");
@@ -84,7 +85,7 @@ function ScanPage() {
     if (!user) return;
     const q = text.trim();
     if (q.length < 3) {
-      toast.error("Please describe the wine in a few words");
+      toast.error(t("scan.describeError"));
       return;
     }
     setStage("analyzing");
@@ -97,7 +98,7 @@ function ScanPage() {
       setStage("match");
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : "Something went wrong");
+      toast.error(e instanceof Error ? e.message : t("common.error"));
       setStage("idle");
     }
   };
@@ -133,7 +134,7 @@ function ScanPage() {
       setStage("match");
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : "Something went wrong");
+      toast.error(e instanceof Error ? e.message : t("common.error"));
       setStage("idle");
     }
   };
@@ -151,13 +152,13 @@ function ScanPage() {
       <header className="flex items-center justify-between px-5 pt-4">
         <button
           onClick={() => navigate({ to: "/" })}
-          aria-label="Close"
+          aria-label={t("scan.close")}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <X className="h-4 w-4" />
         </button>
         <p className="text-sm text-cream/85">
-          {mode === "camera" ? "Position label in the frame" : "Describe the wine"}
+          {mode === "camera" ? t("scan.positionLabel") : t("scan.describeWine")}
         </p>
         <span className="h-9 w-9" />
       </header>
@@ -172,7 +173,7 @@ function ScanPage() {
               mode === "camera" ? "bg-gradient-burgundy text-cream shadow-soft" : "text-cream/70 hover:text-cream"
             }`}
           >
-            <Camera className="h-4 w-4" /> Scan
+            <Camera className="h-4 w-4" /> {t("scan.scan")}
           </button>
           <button
             onClick={() => setMode("text")}
@@ -181,7 +182,7 @@ function ScanPage() {
               mode === "text" ? "bg-gradient-burgundy text-cream shadow-soft" : "text-cream/70 hover:text-cream"
             }`}
           >
-            <Type className="h-4 w-4" /> Type
+            <Type className="h-4 w-4" /> {t("scan.type")}
           </button>
         </div>
       </div>
@@ -198,14 +199,14 @@ function ScanPage() {
               {stage === "analyzing" ? (
                 <div className="flex flex-col items-center gap-3 text-gold">
                   <Loader2 className="h-12 w-12 animate-spin" />
-                  <p className="font-display text-lg">Analyzing wine…</p>
+                  <p className="font-display text-lg">{t("scan.analyzing")}</p>
                 </div>
               ) : (
                 <Wine className="h-48 w-48 text-white/10" strokeWidth={0.5} />
               )}
             </div>
             <ScanCorners />
-            <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">Align label within the frame</p>
+            <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">{t("scan.align")}</p>
           </div>
 
           {/* Controls */}
@@ -299,6 +300,7 @@ function ScanCorners() {
 
 function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void }) {
   const navigate = useNavigate();
+  const t = useT();
   const flag = countryToFlag(wine.country);
   const wineTypeLabel = (wine.wine_type ?? "Wine").charAt(0).toUpperCase() + (wine.wine_type ?? "wine").slice(1) + " Wine";
 
@@ -310,12 +312,12 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
       <header className="flex items-center justify-between px-5 pt-4">
         <button
           onClick={onBack}
-          aria-label="Back"
+          aria-label={t("common.back")}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
         >
           <X className="h-4 w-4" />
         </button>
-        <p className="font-display text-base">Scan Result</p>
+        <p className="font-display text-base">{t("scan.result")}</p>
         <span className="h-9 w-9" />
       </header>
 
@@ -327,8 +329,8 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
           </div>
         </div>
 
-        <h1 className="mt-6 font-display text-3xl">Match Found</h1>
-        <p className="mt-1 text-sm text-muted-foreground">We found a great match for this wine.</p>
+        <h1 className="mt-6 font-display text-3xl">{t("scan.matchFound")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("scan.matchDesc")}</p>
 
         <div className="mt-8 flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
           <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
@@ -340,7 +342,7 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-lg leading-tight text-cream">
-              {wine.wine_name ?? "Unknown wine"} {wine.vintage ?? ""}
+              {wine.wine_name ?? "Unknown"} {wine.vintage ?? ""}
             </p>
             <p className="mt-0.5 truncate text-sm text-gold">
               {[wine.region, wine.country].filter(Boolean).join(", ")}
@@ -350,7 +352,7 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
               {wineTypeLabel}
             </p>
             <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
-              <Check className="h-3 w-3" /> Saved to your cellar
+              <Check className="h-3 w-3" /> {t("scan.savedToCellar")}
             </div>
           </div>
         </div>
@@ -358,13 +360,13 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
         <Button variant="outline" onClick={() => navigate({ to: "/wine/$id", params: { id: wine.id } })} className="h-12 border-white/15 bg-transparent">
-          View Details
+          {t("scan.viewDetails")}
         </Button>
         <Button
           onClick={() => navigate({ to: "/cellar" })}
           className="h-12 bg-gradient-burgundy text-cream"
         >
-          <Wine className="h-4 w-4" /> Save to Cellar
+          <Wine className="h-4 w-4" /> {t("scan.saveToCellar")}
         </Button>
       </div>
     </div>
