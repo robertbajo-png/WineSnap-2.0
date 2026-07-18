@@ -95,6 +95,7 @@ function ScanPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const inserted = await persistWine(data.wine, null);
+      logEvent("wine_scanned", { mode: "text", wine_id: inserted.id, wine_type: inserted.wine_type });
       setScanned(inserted);
       setStage("match");
     } catch (e) {
@@ -131,6 +132,7 @@ function ScanPage() {
       if (data?.error) throw new Error(data.error);
 
       const inserted = await persistWine(data.wine, pub.publicUrl);
+      logEvent("wine_scanned", { mode: "camera", wine_id: inserted.id, wine_type: inserted.wine_type });
       setScanned(inserted);
       setStage("match");
     } catch (e) {
