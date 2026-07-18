@@ -301,47 +301,86 @@ function WineDetailPage() {
               })()}
             </Section>
 
-            <Section title="Tasting Profile">
+            <Section title={t("wine.tastingProfile")}>
               <Card className="bg-card/50 p-4">
-                <SliderRow label="Body" leftLabel="Light" rightLabel="Full" value={pct(w.body)} />
-                <SliderRow label="Tannins" leftLabel="Low" rightLabel="High" value={pct(w.tannin)} />
-                <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={pct(w.acidity)} />
-                <SliderRow label="Fruit" leftLabel="Low" rightLabel="High" value={pct(w.fruit)} />
+                <SliderRow label={t("taste.body")} leftLabel={t("taste.light")} rightLabel={t("taste.bold")} value={pct(w.body)} />
+                <SliderRow label={t("wine.tannins")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.tannin)} />
+                <SliderRow label={t("taste.acidity")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.acidity)} />
+                <SliderRow label={t("wine.fruit")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.fruit)} />
               </Card>
             </Section>
           </>
         )}
 
-        {tab === "Overview" && (
+        {tab === "overview" && (
           <div className="mt-5 space-y-4">
             {w.description && (
               <Card className="bg-card/50 p-4">
                 <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>
               </Card>
             )}
-            <KV label="Producer" value={w.producer ?? "—"} />
-            <KV label="Region" value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
-            <KV label="Grape" value={w.grape_varieties?.join(", ") ?? "—"} />
-            <KV label="Vintage" value={w.vintage ? String(w.vintage) : "—"} />
-            <KV label="Serving" value={w.serving_temp ?? "—"} />
-            <KV label="Glass" value={w.glass_type ?? "—"} />
+            <KV label={t("wine.producer")} value={w.producer ?? "—"} />
+            <KV label={t("wine.region")} value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
+            <KV label={t("wine.grape")} value={w.grape_varieties?.join(", ") ?? "—"} />
+            <KV label={t("wine.vintage")} value={w.vintage ? String(w.vintage) : "—"} />
+            <KV label={t("wine.serving")} value={w.serving_temp ?? "—"} />
+            <KV label={t("wine.glass")} value={w.glass_type ?? "—"} />
+
+            <Section title={t("wine.notesSection")}>
+              {notes.length === 0 ? (
+                <Card className="bg-card/50 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">{t("wine.notesEmpty")}</p>
+                  <Link to="/wine/$id/notes" params={{ id: w.id }} className="mt-3 inline-flex items-center gap-1 text-xs text-burgundy hover:underline">
+                    <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
+                  </Link>
+                </Card>
+              ) : (
+                <div className="space-y-2.5">
+                  {notes.map((n) => (
+                    <Card key={n.id} className="bg-card/50 p-3.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          {n.rating != null && (
+                            <>
+                              <Star className="h-3.5 w-3.5 fill-gold text-gold" />
+                              <span className="font-display text-sm text-cream">{n.rating.toFixed(1)}</span>
+                            </>
+                          )}
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {new Date(n.tasted_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {n.location ? ` • ${n.location}` : ""}
+                        </span>
+                      </div>
+                      {n.notes && <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">{n.notes}</p>}
+                      {n.aromas && n.aromas.length > 0 && (
+                        <p className="mt-1.5 text-[11px] text-gold">{n.aromas.join(" • ")}</p>
+                      )}
+                    </Card>
+                  ))}
+                  <Link to="/wine/$id/notes" params={{ id: w.id }} className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-xs text-gold hover:bg-gold/5">
+                    <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
+                  </Link>
+                </div>
+              )}
+            </Section>
           </div>
         )}
 
-        {tab === "Tasting" && (
+        {tab === "tasting" && (
           <div className="mt-5">
             <Card className="bg-card/50 p-4">
-              <SliderRow label="Body" leftLabel="Light" rightLabel="Full" value={pct(w.body)} />
-              <SliderRow label="Tannins" leftLabel="Low" rightLabel="High" value={pct(w.tannin)} />
-              <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={pct(w.acidity)} />
-              <SliderRow label="Fruit" leftLabel="Low" rightLabel="High" value={pct(w.fruit)} />
-              <SliderRow label="Oak" leftLabel="None" rightLabel="Heavy" value={pct(w.oak)} />
-              <SliderRow label="Sweetness" leftLabel="Dry" rightLabel="Sweet" value={pct(w.sweetness)} />
+              <SliderRow label={t("taste.body")} leftLabel={t("taste.light")} rightLabel={t("taste.bold")} value={pct(w.body)} />
+              <SliderRow label={t("wine.tannins")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.tannin)} />
+              <SliderRow label={t("taste.acidity")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.acidity)} />
+              <SliderRow label={t("wine.fruit")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.fruit)} />
+              <SliderRow label={t("taste.oak")} leftLabel={t("taste.noOak")} rightLabel={t("taste.oaked")} value={pct(w.oak)} />
+              <SliderRow label={t("taste.sweetness")} leftLabel={t("taste.dry")} rightLabel={t("taste.sweet")} value={pct(w.sweetness)} />
             </Card>
           </div>
         )}
 
-        {tab === "Food" && (
+        {tab === "food" && (
           <div className="mt-5 space-y-3">
             {(w.food_pairings ?? []).map((p, i) => (
               <Card key={i} className="bg-card/50 p-4">
@@ -350,27 +389,27 @@ function WineDetailPage() {
               </Card>
             ))}
             {(!w.food_pairings || w.food_pairings.length === 0) && (
-              <p className="py-6 text-center text-sm text-muted-foreground">No pairings yet.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("wine.noPairings")}</p>
             )}
           </div>
         )}
 
-        {tab === "AI Picks" && (
+        {tab === "ai" && (
           <div className="mt-5 space-y-3">
             {suggestLoading && (
               <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Finding wines you'll love…</span>
+                <span className="text-sm">{t("wine.finding")}</span>
               </div>
             )}
             {suggestError && !suggestLoading && (
               <Card className="bg-card/50 p-4 text-center text-sm text-destructive">
                 {suggestError}
-                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">Retry</Button>
+                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">{t("common.retry")}</Button>
               </Card>
             )}
             {!suggestLoading && !suggestError && suggestions && suggestions.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">No suggestions available.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("wine.noSuggestions")}</p>
             )}
             {!suggestLoading && suggestions?.map((s, i) => (
               <Card key={i} className="bg-card/50 p-4">
@@ -395,14 +434,14 @@ function WineDetailPage() {
             ))}
             {!suggestLoading && suggestions && suggestions.length > 0 && (
               <Button variant="ghost" size="sm" onClick={() => { setSuggestions(null); loadSuggestions(); }} className="w-full">
-                <Sparkles className="h-4 w-4" /> Regenerate
+                <Sparkles className="h-4 w-4" /> {t("wine.regenerate")}
               </Button>
             )}
           </div>
         )}
 
         <Button variant="ghost" onClick={remove} className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive">
-          <Trash2 className="h-4 w-4" /> Delete wine
+          <Trash2 className="h-4 w-4" /> {t("wine.delete")}
         </Button>
       </div>
     </AppShell>
