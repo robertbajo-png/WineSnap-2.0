@@ -26,11 +26,17 @@ type Form = {
   description: string;
   serving_temp: string;
   glass_type: string;
+  purchase_price: string;
+  purchase_currency: string;
+  purchased_at: string;
+  consumed_at: string;
+  quantity: string;
 };
 
 const empty: Form = {
   producer: "", wine_name: "", vintage: "", region: "", country: "",
   wine_type: "red", grape_varieties: "", description: "", serving_temp: "", glass_type: "",
+  purchase_price: "", purchase_currency: "SEK", purchased_at: "", consumed_at: "", quantity: "1",
 };
 
 function EditPage() {
@@ -44,17 +50,29 @@ function EditPage() {
   useEffect(() => {
     supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
       if (data) {
+        const d = data as typeof data & {
+          purchase_price?: number | null;
+          purchase_currency?: string | null;
+          purchased_at?: string | null;
+          consumed_at?: string | null;
+          quantity?: number | null;
+        };
         setForm({
-          producer: data.producer ?? "",
-          wine_name: data.wine_name ?? "",
-          vintage: data.vintage ? String(data.vintage) : "",
-          region: data.region ?? "",
-          country: data.country ?? "",
-          wine_type: data.wine_type ?? "red",
-          grape_varieties: (data.grape_varieties ?? []).join(", "),
-          description: data.description ?? "",
-          serving_temp: data.serving_temp ?? "",
-          glass_type: data.glass_type ?? "",
+          producer: d.producer ?? "",
+          wine_name: d.wine_name ?? "",
+          vintage: d.vintage ? String(d.vintage) : "",
+          region: d.region ?? "",
+          country: d.country ?? "",
+          wine_type: d.wine_type ?? "red",
+          grape_varieties: (d.grape_varieties ?? []).join(", "),
+          description: d.description ?? "",
+          serving_temp: d.serving_temp ?? "",
+          glass_type: d.glass_type ?? "",
+          purchase_price: d.purchase_price != null ? String(d.purchase_price) : "",
+          purchase_currency: d.purchase_currency ?? "SEK",
+          purchased_at: d.purchased_at ?? "",
+          consumed_at: d.consumed_at ?? "",
+          quantity: d.quantity != null ? String(d.quantity) : "1",
         });
       }
       setLoading(false);
@@ -66,6 +84,8 @@ function EditPage() {
 
   const save = async () => {
     setSaving(true);
+    const price = form.purchase_price ? Number(form.purchase_price) : null;
+    const qty = form.quantity ? Math.max(1, Math.floor(Number(form.quantity))) : 1;
     const payload = {
       producer: form.producer.trim() || null,
       wine_name: form.wine_name.trim() || null,
@@ -77,7 +97,12 @@ function EditPage() {
       description: form.description.trim() || null,
       serving_temp: form.serving_temp.trim() || null,
       glass_type: form.glass_type.trim() || null,
-    };
+      purchase_price: Number.isFinite(price as number) ? price : null,
+      purchase_currency: form.purchase_currency.trim().toUpperCase() || null,
+      purchased_at: form.purchased_at || null,
+      consumed_at: form.consumed_at || null,
+      quantity: qty,
+    } as never;
     const { error } = await supabase.from("wines").update(payload).eq("id", id);
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -132,6 +157,19 @@ function EditPage() {
             <Field label={t("wine.serving")} value={form.serving_temp} onChange={upd("serving_temp")} placeholder="16–18°C" />
             <Field label={t("wine.glass")} value={form.glass_type} onChange={upd("glass_type")} />
           </div>
+
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <p className="mb-3 text-[11px] uppercase tracking-wider text-gold/80">{t("edit.purchase")}</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label={t("edit.price")} value={form.purchase_price} onChange={upd("purchase_price")} inputMode="numeric" placeholder="199" />
+              <Field label={t("edit.currency")} value={form.purchase_currency} onChange={upd("purchase_currency")} placeholder="SEK" />
+              <Field label={t("edit.quantity")} value={form.quantity} onChange={upd("quantity")} inputMode="numeric" placeholder="1" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <DateField label={t("edit.purchasedAt")} value={form.purchased_at} onChange={upd("purchased_at")} />
+              <DateField label={t("edit.consumedAt")} value={form.consumed_at} onChange={upd("consumed_at")} />
+            </div>
+          </div>
         </Card>
 
         <Button onClick={save} disabled={saving} className="mt-5 w-full bg-gradient-burgundy text-cream">
@@ -158,6 +196,24 @@ function Field({ label, value, onChange, placeholder, inputMode }: {
         placeholder={placeholder}
         inputMode={inputMode}
         className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-sm focus:border-gold/40 focus:outline-none"
+      />
+    </div>
+  );
+}
+
+function DateField({ label, value, onChange }: {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div>
+      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</label>
+      <input
+        type="date"
+        value={value}
+        onChange={onChange}
+        className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-sm text-foreground/90 focus:border-gold/40 focus:outline-none"
       />
     </div>
   );
