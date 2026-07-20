@@ -140,7 +140,22 @@ function WishlistPage() {
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <Header title={t("wishlist.title")} />
-        <p className="mt-1 text-xs text-muted-foreground">{t("wishlist.subtitle")}</p>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <p className="text-xs text-muted-foreground">{t("wishlist.subtitle")}</p>
+          {rows?.length ? (
+            <button
+              onClick={checkNow}
+              disabled={checking}
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-[11px] text-gold disabled:opacity-50"
+            >
+              {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {checking ? t("wishlist.checking") : t("wishlist.checkNow")}
+            </button>
+          ) : null}
+        </div>
+        {rows?.length ? (
+          <p className="mt-1 text-[10px] text-muted-foreground/70">{t("wishlist.autoNote")}</p>
+        ) : null}
 
         {!rows?.length ? (
           <EmptyState
