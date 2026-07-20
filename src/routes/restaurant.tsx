@@ -190,25 +190,10 @@ function RestaurantPage() {
           onClick={() => setMode("camera")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm ${mode === "camera" ? "bg-gradient-burgundy text-cream" : "text-muted-foreground"}`}
         >
-      </div>
-
-      <p className="mt-3 text-center text-xs text-muted-foreground">{t("restaurant.subtitle")}</p>
-
-      {/* Mode toggle */}
-      <div className="mt-5 flex rounded-full border border-white/10 bg-card/50 p-1">
-        <button
-          onClick={() => setMode("text")}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm ${mode === "text" ? "bg-gradient-burgundy text-cream" : "text-muted-foreground"}`}
-        >
-          <Type className="h-4 w-4" /> {t("restaurant.type")}
-        </button>
-        <button
-          onClick={() => setMode("camera")}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm ${mode === "camera" ? "bg-gradient-burgundy text-cream" : "text-muted-foreground"}`}
-        >
           <Camera className="h-4 w-4" /> {t("restaurant.snap")}
         </button>
       </div>
+
 
       {/* Input */}
       {mode === "text" ? (
