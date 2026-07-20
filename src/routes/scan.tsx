@@ -39,6 +39,7 @@ function ScanPage() {
   const [scanned, setScanned] = useState<ScannedWine | null>(null);
   const [mode, setMode] = useState<"camera" | "text">("camera");
   const [text, setText] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -106,13 +107,14 @@ function ScanPage() {
     }
   };
 
-  const handleFile = async (file: File) => {
+  const handleFile = async (file: File | Blob) => {
     if (!user) return;
     setStage("analyzing");
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, file);
+      const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+      const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, file, {
+        contentType: "image/jpeg",
+      });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
 
@@ -127,12 +129,21 @@ function ScanPage() {
       });
 
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { imageBase64: base64, mimeType: file.type },
+        body: { imageBase64: base64, mimeType: "image/jpeg" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const inserted = await persistWine(data.wine, pub.publicUrl);
+      // Also register the label in wine_photos
+      await supabase.from("wine_photos").insert({
+        wine_id: inserted.id,
+        user_id: user.id,
+        url: pub.publicUrl,
+        storage_path: path,
+        kind: "label",
+        sort_order: 0,
+      });
       logEvent("wine_scanned", { mode: "camera", wine_id: inserted.id, wine_type: inserted.wine_type });
       setScanned(inserted);
       setStage("match");
