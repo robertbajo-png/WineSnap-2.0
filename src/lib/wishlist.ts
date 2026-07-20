@@ -50,7 +50,11 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
     ai_data: (input.ai_data ?? null) as never,
   };
 
-  const { error } = await supabase.from("wishlist").insert(row as never);
+  const { data: inserted, error } = await supabase
+    .from("wishlist")
+    .insert(row as never)
+    .select("id")
+    .single();
   if (error) {
     // Unique violation on (user_id, wine_id) → already saved
     if ((error as { code?: string }).code === "23505") {
@@ -63,5 +67,62 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
   }
   toast.success("Added to wishlist");
   logEvent("wishlist_added", { source: row.source, wine_id: row.wine_id });
+
+  // Fire-and-forget: try to auto-match to a Systembolaget product so price
+  // monitoring works immediately without the user pasting a product ID.
+  const wishlistId = (inserted as { id?: string } | null)?.id;
+  if (wishlistId) {
+    void matchAndAttachSystembolaget(wishlistId, {
+      producer: row.producer,
+      wine_name: row.wine_name,
+      vintage: row.vintage,
+      region: row.region,
+      country: row.country,
+      wine_type: row.wine_type,
+    });
+  }
   return true;
+}
+
+async function matchAndAttachSystembolaget(
+  wishlistId: string,
+  input: {
+    producer: string | null;
+    wine_name: string;
+    vintage: number | null;
+    region: string | null;
+    country: string | null;
+    wine_type: string | null;
+  },
+): Promise<void> {
+  try {
+    const res = await fetch("/api/public/hooks/match-systembolaget", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      match: {
+        systembolaget_id: string;
+        url: string;
+        price: number;
+      } | null;
+    };
+    if (!data.match) return;
+
+    await supabase
+      .from("wishlist")
+      .update({
+        systembolaget_id: data.match.systembolaget_id,
+        systembolaget_url: data.match.url,
+        last_checked_price: data.match.price,
+        last_checked_at: new Date().toISOString(),
+        price_source: "systembolaget",
+      } as never)
+      .eq("id", wishlistId);
+    logEvent("wishlist_systembolaget_matched", { wishlist_id: wishlistId, sb_id: data.match.systembolaget_id });
+  } catch (e) {
+    console.error("[wishlist] auto-match failed", e);
+  }
 }
