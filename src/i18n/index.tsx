@@ -628,6 +628,16 @@ const sv: Record<keyof typeof en, string> = {
   "wishlist.view": "Visa",
   "wishlist.signIn": "Logga in för att se din önskelista",
   "wishlist.saveBtn": "Spara i önskelistan",
+  "wishlist.checkNow": "Kontrollera priser nu",
+  "wishlist.checking": "Kontrollerar…",
+  "wishlist.checkedToast": "Kontrollerade:",
+  "wishlist.alertsToast": "Larm:",
+  "wishlist.priceDropped": "Priset har sjunkit!",
+  "wishlist.currentPrice": "Nu",
+  "wishlist.lastChecked": "Senast kontrollerat",
+  "wishlist.viewAtSb": "Visa på Systembolaget",
+  "wishlist.markSeen": "Markera som sett",
+  "wishlist.autoNote": "Priserna kontrolleras automatiskt en gång per dygn.",
   "profile.wishlist": "Önskelista",
 };
 
