@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Type, Loader2, Sparkles, Wine, RefreshCw } from "lucide-react";
+import { ArrowLeft, Camera, Type, Loader2, Sparkles, Wine, RefreshCw, History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
@@ -44,10 +44,37 @@ function RestaurantPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [restaurantName, setRestaurantName] = useState("");
+  type HistoryRow = {
+    id: string;
+    restaurant_name: string | null;
+    created_at: string;
+    matches: Pick[];
+    menu_text: string | null;
+    image_url: string | null;
+  };
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const loadHistory = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("restaurant_scans")
+      .select("id,restaurant_name,created_at,matches,menu_text,image_url")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setHistory((data as HistoryRow[] | null) ?? []);
+  };
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const onImage = async (file: File) => {
     const reader = new FileReader();
@@ -82,7 +109,19 @@ function RestaurantPage() {
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
-      setPicks(data?.picks ?? []);
+      const nextPicks: Pick[] = data?.picks ?? [];
+      setPicks(nextPicks);
+      // Save to history
+      if (nextPicks.length > 0) {
+        await supabase.from("restaurant_scans").insert({
+          user_id: user.id,
+          restaurant_name: restaurantName.trim() || null,
+          image_url: mode === "camera" ? image : null,
+          menu_text: mode === "text" ? text : null,
+          matches: nextPicks as unknown as import("@/integrations/supabase/types").Json,
+        });
+        loadHistory();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -103,13 +142,44 @@ function RestaurantPage() {
           <ArrowLeft className="h-5 w-5 text-cream" />
         </button>
         <h1 className="font-display text-lg text-cream">{t("restaurant.title")}</h1>
-        <div className="w-10" />
+        <button
+          onClick={() => setShowHistory((v) => !v)}
+          className={`flex h-10 w-10 items-center justify-center rounded-full border ${showHistory ? "border-gold/50 bg-gold/10 text-gold" : "border-white/10 text-cream"}`}
+          aria-label="History"
+        >
+          <History className="h-5 w-5" />
+        </button>
       </div>
 
       <p className="mt-3 text-center text-xs text-muted-foreground">{t("restaurant.subtitle")}</p>
 
+      {showHistory ? (
+        <HistorySection
+          history={history}
+          onDelete={async (id) => {
+            await supabase.from("restaurant_scans").delete().eq("id", id);
+            loadHistory();
+          }}
+          onReopen={(row) => {
+            setShowHistory(false);
+            setPicks(row.matches ?? []);
+            setRestaurantName(row.restaurant_name ?? "");
+            if (row.menu_text) { setMode("text"); setText(row.menu_text); setImage(null); }
+            else if (row.image_url) { setMode("camera"); setImage(row.image_url); setText(""); }
+          }}
+        />
+      ) : (
+      <>
+      {/* Restaurant name */}
+      <input
+        value={restaurantName}
+        onChange={(e) => setRestaurantName(e.target.value)}
+        placeholder="Restaurant name (optional)"
+        className="mt-4 w-full rounded-xl border border-white/10 bg-card/50 px-3 py-2 text-sm text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+      />
+
       {/* Mode toggle */}
-      <div className="mt-5 flex rounded-full border border-white/10 bg-card/50 p-1">
+      <div className="mt-3 flex rounded-full border border-white/10 bg-card/50 p-1">
         <button
           onClick={() => setMode("text")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm ${mode === "text" ? "bg-gradient-burgundy text-cream" : "text-muted-foreground"}`}
@@ -123,6 +193,7 @@ function RestaurantPage() {
           <Camera className="h-4 w-4" /> {t("restaurant.snap")}
         </button>
       </div>
+
 
       {/* Input */}
       {mode === "text" ? (
@@ -234,6 +305,72 @@ function RestaurantPage() {
           />
         </div>
       )}
+      </>
+      )}
+    </div>
+  );
+}
+
+function HistorySection({
+  history,
+  onDelete,
+  onReopen,
+}: {
+  history: Array<{
+    id: string;
+    restaurant_name: string | null;
+    created_at: string;
+    matches: Pick[];
+    menu_text: string | null;
+    image_url: string | null;
+  }>;
+  onDelete: (id: string) => void;
+  onReopen: (row: {
+    id: string;
+    restaurant_name: string | null;
+    matches: Pick[];
+    menu_text: string | null;
+    image_url: string | null;
+  }) => void;
+}) {
+  if (history.length === 0) {
+    return (
+      <div className="mt-10 text-center text-sm text-muted-foreground">
+        No saved restaurant scans yet.
+      </div>
+    );
+  }
+  return (
+    <div className="mt-4 space-y-3">
+      {history.map((h) => {
+        const top = h.matches?.[0];
+        return (
+          <div key={h.id} className="rounded-2xl border border-white/10 bg-card/50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <button onClick={() => onReopen(h)} className="min-w-0 flex-1 text-left">
+                <p className="truncate font-display text-cream">
+                  {h.restaurant_name || (h.menu_text ? "Text menu" : "Photo menu")}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {new Date(h.created_at).toLocaleString()} · {h.matches?.length ?? 0} picks
+                </p>
+                {top && (
+                  <p className="mt-2 text-xs text-foreground/80">
+                    <span className="text-gold">#{Math.round(top.match_score)}</span> {top.wine_name}
+                  </p>
+                )}
+              </button>
+              <button
+                onClick={() => onDelete(h.id)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-destructive"
+                aria-label="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

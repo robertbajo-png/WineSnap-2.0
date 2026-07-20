@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
+import { WorldMap } from "@/components/WorldMap";
 
 export const Route = createFileRoute("/cellar/overview")({
   head: () => ({
@@ -253,6 +254,19 @@ function CellarOverviewPage() {
                 ))}
               </div>
             </div>
+          </section>
+        )}
+
+        {active.length > 0 && (
+          <section className="mt-7">
+            <h2 className="font-display text-base text-cream">World map</h2>
+            <WorldMap
+              points={active.map((w) => ({
+                region: w.region,
+                country: w.country,
+                count: w.quantity ?? 1,
+              }))}
+            />
           </section>
         )}
 

@@ -24,6 +24,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
+import { Route as WShareIdRouteImport } from './routes/w.$shareId'
 import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
@@ -106,6 +107,11 @@ const WineIdRoute = WineIdRouteImport.update({
   path: '/wine/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WShareIdRoute = WShareIdRouteImport.update({
+  id: '/w/$shareId',
+  path: '/w/$shareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CellarOverviewRoute = CellarOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
@@ -296,6 +308,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
   WishlistRoute: typeof WishlistRoute
+  WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
   ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
@@ -408,6 +421,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/w/$shareId': {
+      id: '/w/$shareId'
+      path: '/w/$shareId'
+      fullPath: '/w/$shareId'
+      preLoaderRoute: typeof WShareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cellar/overview': {
       id: '/cellar/overview'
       path: '/overview'
@@ -494,6 +514,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
   WishlistRoute: WishlistRoute,
+  WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
   ApiPublicHooksCheckWishlistPricesRoute:
     ApiPublicHooksCheckWishlistPricesRoute,
@@ -502,12 +523,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
