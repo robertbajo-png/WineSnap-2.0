@@ -28,6 +28,7 @@ import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
 import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
+import { Route as ApiPublicHooksMatchSystembolagetRouteImport } from './routes/api/public/hooks/match-systembolaget'
 import { Route as ApiPublicHooksCheckWishlistPricesRouteImport } from './routes/api/public/hooks/check-wishlist-prices'
 
 const WishlistRoute = WishlistRouteImport.update({
@@ -125,6 +126,12 @@ const WineIdEditRoute = WineIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => WineIdRoute,
 } as any)
+const ApiPublicHooksMatchSystembolagetRoute =
+  ApiPublicHooksMatchSystembolagetRouteImport.update({
+    id: '/api/public/hooks/match-systembolaget',
+    path: '/api/public/hooks/match-systembolaget',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksCheckWishlistPricesRoute =
   ApiPublicHooksCheckWishlistPricesRouteImport.update({
     id: '/api/public/hooks/check-wishlist-prices',
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
   '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
+  '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -175,6 +183,7 @@ export interface FileRoutesByTo {
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
   '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
+  '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -198,6 +207,7 @@ export interface FileRoutesById {
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
   '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
+  '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
     | '/api/public/hooks/check-wishlist-prices'
+    | '/api/public/hooks/match-systembolaget'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
     | '/api/public/hooks/check-wishlist-prices'
+    | '/api/public/hooks/match-systembolaget'
   id:
     | '__root__'
     | '/'
@@ -266,6 +278,7 @@ export interface FileRouteTypes {
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
     | '/api/public/hooks/check-wishlist-prices'
+    | '/api/public/hooks/match-systembolaget'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -285,6 +298,7 @@ export interface RootRouteChildren {
   WishlistRoute: typeof WishlistRoute
   WineIdRoute: typeof WineIdRouteWithChildren
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
+  ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -422,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdEditRouteImport
       parentRoute: typeof WineIdRoute
     }
+    '/api/public/hooks/match-systembolaget': {
+      id: '/api/public/hooks/match-systembolaget'
+      path: '/api/public/hooks/match-systembolaget'
+      fullPath: '/api/public/hooks/match-systembolaget'
+      preLoaderRoute: typeof ApiPublicHooksMatchSystembolagetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/check-wishlist-prices': {
       id: '/api/public/hooks/check-wishlist-prices'
       path: '/api/public/hooks/check-wishlist-prices'
@@ -476,16 +497,8 @@ const rootRouteChildren: RootRouteChildren = {
   WineIdRoute: WineIdRouteWithChildren,
   ApiPublicHooksCheckWishlistPricesRoute:
     ApiPublicHooksCheckWishlistPricesRoute,
+  ApiPublicHooksMatchSystembolagetRoute: ApiPublicHooksMatchSystembolagetRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
