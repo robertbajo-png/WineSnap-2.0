@@ -319,6 +319,16 @@ const en = {
   "wishlist.view": "View",
   "wishlist.signIn": "Sign in to see your wishlist",
   "wishlist.saveBtn": "Save to wishlist",
+  "wishlist.checkNow": "Check prices now",
+  "wishlist.checking": "Checking…",
+  "wishlist.checkedToast": "Checked:",
+  "wishlist.alertsToast": "Alerts:",
+  "wishlist.priceDropped": "Price dropped!",
+  "wishlist.currentPrice": "Now",
+  "wishlist.lastChecked": "Last checked",
+  "wishlist.viewAtSb": "View at Systembolaget",
+  "wishlist.markSeen": "Mark as seen",
+  "wishlist.autoNote": "Prices are checked automatically once a day.",
   "profile.wishlist": "Wishlist",
 } as const;
 
@@ -618,6 +628,16 @@ const sv: Record<keyof typeof en, string> = {
   "wishlist.view": "Visa",
   "wishlist.signIn": "Logga in för att se din önskelista",
   "wishlist.saveBtn": "Spara i önskelistan",
+  "wishlist.checkNow": "Kontrollera priser nu",
+  "wishlist.checking": "Kontrollerar…",
+  "wishlist.checkedToast": "Kontrollerade:",
+  "wishlist.alertsToast": "Larm:",
+  "wishlist.priceDropped": "Priset har sjunkit!",
+  "wishlist.currentPrice": "Nu",
+  "wishlist.lastChecked": "Senast kontrollerat",
+  "wishlist.viewAtSb": "Visa på Systembolaget",
+  "wishlist.markSeen": "Markera som sett",
+  "wishlist.autoNote": "Priserna kontrolleras automatiskt en gång per dygn.",
   "profile.wishlist": "Önskelista",
 };
 

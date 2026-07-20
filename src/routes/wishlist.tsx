@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Bookmark, Trash2, Wine, Plus, Bell, BellOff, Tag } from "lucide-react";
+import { Bookmark, Trash2, Wine, Plus, Bell, BellOff, Tag, TrendingDown, RefreshCw, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
@@ -32,22 +32,57 @@ type Row = {
   notes: string | null;
   source: string;
   created_at: string;
+  last_checked_price: number | null;
+  last_checked_at: string | null;
+  systembolaget_url: string | null;
+  price_alert_triggered_at: string | null;
+  price_alert_seen_at: string | null;
 };
 
 function WishlistPage() {
   const { user, loading } = useAuth();
   const t = useT();
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("wishlist")
-      .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at")
+      .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => setRows((data ?? []) as Row[]));
   }, [user]);
+
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/public/hooks/check-wishlist-prices", { method: "POST" });
+      const json = (await res.json().catch(() => ({}))) as { checked?: number; triggered?: number };
+      if (!res.ok) throw new Error("check failed");
+      toast.success(`${t("wishlist.checkedToast")} ${json.checked ?? 0} · ${t("wishlist.alertsToast")} ${json.triggered ?? 0}`);
+      if (user) {
+        const { data } = await supabase
+          .from("wishlist")
+          .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        setRows((data ?? []) as Row[]);
+      }
+    } catch {
+      toast.error(t("common.error"));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const markSeen = async (r: Row) => {
+    if (!r.price_alert_triggered_at || r.price_alert_seen_at) return;
+    const now = new Date().toISOString();
+    setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, price_alert_seen_at: now } : x)) ?? null);
+    await supabase.from("wishlist").update({ price_alert_seen_at: now }).eq("id", r.id);
+  };
 
   const remove = async (id: string) => {
     setRows((r) => r?.filter((x) => x.id !== id) ?? null);
@@ -105,7 +140,22 @@ function WishlistPage() {
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <Header title={t("wishlist.title")} />
-        <p className="mt-1 text-xs text-muted-foreground">{t("wishlist.subtitle")}</p>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <p className="text-xs text-muted-foreground">{t("wishlist.subtitle")}</p>
+          {rows?.length ? (
+            <button
+              onClick={checkNow}
+              disabled={checking}
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-[11px] text-gold disabled:opacity-50"
+            >
+              {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {checking ? t("wishlist.checking") : t("wishlist.checkNow")}
+            </button>
+          ) : null}
+        </div>
+        {rows?.length ? (
+          <p className="mt-1 text-[10px] text-muted-foreground/70">{t("wishlist.autoNote")}</p>
+        ) : null}
 
         {!rows?.length ? (
           <EmptyState
@@ -123,7 +173,26 @@ function WishlistPage() {
         ) : (
           <div className="mt-5 space-y-3 pb-4">
             {rows.map((r) => (
-              <article key={r.id} className="rounded-xl border border-white/8 bg-card/50 p-3">
+              <article
+                key={r.id}
+                onClick={() => markSeen(r)}
+                className={`rounded-xl border p-3 ${
+                  r.price_alert_triggered_at && !r.price_alert_seen_at
+                    ? "border-success/60 bg-success/5"
+                    : "border-white/8 bg-card/50"
+                }`}
+              >
+                {r.price_alert_triggered_at && !r.price_alert_seen_at && (
+                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-success/15 px-2 py-1 text-[11px] font-medium text-success">
+                    <TrendingDown className="h-3 w-3" />
+                    {t("wishlist.priceDropped")}
+                    {r.last_checked_price != null && r.target_price != null && (
+                      <span className="ml-auto opacity-80">
+                        {r.price_currency ?? "kr"} {r.last_checked_price} ≤ {r.target_price}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
                     {r.image_url ? (
@@ -144,18 +213,26 @@ function WishlistPage() {
                     {r.grape_varieties?.length ? (
                       <p className="mt-0.5 text-[10px] text-muted-foreground">{r.grape_varieties.join(", ")}</p>
                     ) : null}
+                    {r.last_checked_price != null && (
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {t("wishlist.currentPrice")}: {r.price_currency ?? "kr"} {r.last_checked_price}
+                        {r.last_checked_at && (
+                          <span className="opacity-60"> · {new Date(r.last_checked_at).toLocaleDateString()}</span>
+                        )}
+                      </p>
+                    )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button
-                        onClick={() => setTargetPrice(r)}
+                        onClick={(e) => { e.stopPropagation(); setTargetPrice(r); }}
                         className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-[11px] text-gold hover:bg-background/70"
                       >
                         <Tag className="h-3 w-3" />
                         {r.target_price != null
-                          ? `${r.price_currency ?? "€"}${r.target_price}`
+                          ? `${r.price_currency ?? "kr"} ${r.target_price}`
                           : t("wishlist.setTarget")}
                       </button>
                       <button
-                        onClick={() => toggleNotify(r)}
+                        onClick={(e) => { e.stopPropagation(); toggleNotify(r); }}
                         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] ${
                           r.notify_on_drop
                             ? "border-success/40 bg-success/10 text-success"
@@ -165,6 +242,17 @@ function WishlistPage() {
                         {r.notify_on_drop ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
                         {r.notify_on_drop ? t("wishlist.alertOn") : t("wishlist.alertOff")}
                       </button>
+                      {r.systembolaget_url && (
+                        <a
+                          href={r.systembolaget_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[11px] text-burgundy hover:underline"
+                        >
+                          {t("wishlist.viewAtSb")}
+                        </a>
+                      )}
                       {r.wine_id && (
                         <Link
                           to="/wine/$id"
@@ -177,7 +265,7 @@ function WishlistPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => remove(r.id)}
+                    onClick={(e) => { e.stopPropagation(); remove(r.id); }}
                     aria-label={t("common.delete")}
                     className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-white/5 hover:text-destructive"
                   >
