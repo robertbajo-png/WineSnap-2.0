@@ -32,6 +32,11 @@ type Row = {
   notes: string | null;
   source: string;
   created_at: string;
+  last_checked_price: number | null;
+  last_checked_at: string | null;
+  systembolaget_url: string | null;
+  price_alert_triggered_at: string | null;
+  price_alert_seen_at: string | null;
 };
 
 function WishlistPage() {
