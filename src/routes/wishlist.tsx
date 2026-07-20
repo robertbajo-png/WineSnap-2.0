@@ -43,16 +43,46 @@ function WishlistPage() {
   const { user, loading } = useAuth();
   const t = useT();
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("wishlist")
-      .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at")
+      .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => setRows((data ?? []) as Row[]));
   }, [user]);
+
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/public/hooks/check-wishlist-prices", { method: "POST" });
+      const json = (await res.json().catch(() => ({}))) as { checked?: number; triggered?: number };
+      if (!res.ok) throw new Error("check failed");
+      toast.success(`${t("wishlist.checkedToast")} ${json.checked ?? 0} · ${t("wishlist.alertsToast")} ${json.triggered ?? 0}`);
+      if (user) {
+        const { data } = await supabase
+          .from("wishlist")
+          .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        setRows((data ?? []) as Row[]);
+      }
+    } catch {
+      toast.error(t("common.error"));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const markSeen = async (r: Row) => {
+    if (!r.price_alert_triggered_at || r.price_alert_seen_at) return;
+    const now = new Date().toISOString();
+    setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, price_alert_seen_at: now } : x)) ?? null);
+    await supabase.from("wishlist").update({ price_alert_seen_at: now }).eq("id", r.id);
+  };
 
   const remove = async (id: string) => {
     setRows((r) => r?.filter((x) => x.id !== id) ?? null);
