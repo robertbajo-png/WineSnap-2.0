@@ -265,7 +265,7 @@ function WishlistPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => remove(r.id)}
+                    onClick={(e) => { e.stopPropagation(); remove(r.id); }}
                     aria-label={t("common.delete")}
                     className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-white/5 hover:text-destructive"
                   >
