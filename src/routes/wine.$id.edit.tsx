@@ -157,6 +157,19 @@ function EditPage() {
             <Field label={t("wine.serving")} value={form.serving_temp} onChange={upd("serving_temp")} placeholder="16–18°C" />
             <Field label={t("wine.glass")} value={form.glass_type} onChange={upd("glass_type")} />
           </div>
+
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <p className="mb-3 text-[11px] uppercase tracking-wider text-gold/80">{t("edit.purchase")}</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label={t("edit.price")} value={form.purchase_price} onChange={upd("purchase_price")} inputMode="numeric" placeholder="199" />
+              <Field label={t("edit.currency")} value={form.purchase_currency} onChange={upd("purchase_currency")} placeholder="SEK" />
+              <Field label={t("edit.quantity")} value={form.quantity} onChange={upd("quantity")} inputMode="numeric" placeholder="1" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <DateField label={t("edit.purchasedAt")} value={form.purchased_at} onChange={upd("purchased_at")} />
+              <DateField label={t("edit.consumedAt")} value={form.consumed_at} onChange={upd("consumed_at")} />
+            </div>
+          </div>
         </Card>
 
         <Button onClick={save} disabled={saving} className="mt-5 w-full bg-gradient-burgundy text-cream">
