@@ -107,6 +107,45 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_scans: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          location: string | null
+          matches: Json
+          menu_text: string | null
+          notes: string | null
+          restaurant_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          matches?: Json
+          menu_text?: string | null
+          notes?: string | null
+          restaurant_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          matches?: Json
+          menu_text?: string | null
+          notes?: string | null
+          restaurant_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       taste_profile: {
         Row: {
           avg_acidity: number | null
@@ -292,6 +331,7 @@ export type Database = {
           grape_varieties: string[] | null
           id: string
           image_url: string | null
+          is_public: boolean
           notes: string | null
           oak: number | null
           primary_notes: string[] | null
@@ -303,6 +343,7 @@ export type Database = {
           region: string | null
           secondary_notes: string[] | null
           serving_temp: string | null
+          share_id: string | null
           sweetness: number | null
           tannin: number | null
           tertiary_notes: string[] | null
@@ -328,6 +369,7 @@ export type Database = {
           grape_varieties?: string[] | null
           id?: string
           image_url?: string | null
+          is_public?: boolean
           notes?: string | null
           oak?: number | null
           primary_notes?: string[] | null
@@ -339,6 +381,7 @@ export type Database = {
           region?: string | null
           secondary_notes?: string[] | null
           serving_temp?: string | null
+          share_id?: string | null
           sweetness?: number | null
           tannin?: number | null
           tertiary_notes?: string[] | null
@@ -364,6 +407,7 @@ export type Database = {
           grape_varieties?: string[] | null
           id?: string
           image_url?: string | null
+          is_public?: boolean
           notes?: string | null
           oak?: number | null
           primary_notes?: string[] | null
@@ -375,6 +419,7 @@ export type Database = {
           region?: string | null
           secondary_notes?: string[] | null
           serving_temp?: string | null
+          share_id?: string | null
           sweetness?: number | null
           tannin?: number | null
           tertiary_notes?: string[] | null
