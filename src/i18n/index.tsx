@@ -347,6 +347,19 @@ const en = {
   "wishlist.markSeen": "Mark as seen",
   "wishlist.autoNote": "Prices are checked automatically once a day.",
   "profile.wishlist": "Wishlist",
+  "crop.adjust": "Adjust label",
+  "crop.retake": "Retake",
+  "crop.use": "Use photo",
+  "photos.title": "Photos",
+  "photos.add": "Add photo",
+  "photos.empty": "No extra photos yet.",
+  "photos.delete": "Delete photo",
+  "photos.deleteConfirm": "Delete this photo?",
+  "photos.uploading": "Uploading…",
+  "photos.kind.label": "Label",
+  "photos.kind.bottle": "Bottle",
+  "photos.kind.context": "In the moment",
+  "photos.kind.hero": "Hero",
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
@@ -673,6 +686,19 @@ const sv: Record<keyof typeof en, string> = {
   "wishlist.markSeen": "Markera som sett",
   "wishlist.autoNote": "Priserna kontrolleras automatiskt en gång per dygn.",
   "profile.wishlist": "Önskelista",
+  "crop.adjust": "Justera etikett",
+  "crop.retake": "Ta om",
+  "crop.use": "Använd bild",
+  "photos.title": "Bilder",
+  "photos.add": "Lägg till bild",
+  "photos.empty": "Inga extra bilder än.",
+  "photos.delete": "Radera bild",
+  "photos.deleteConfirm": "Radera den här bilden?",
+  "photos.uploading": "Laddar upp…",
+  "photos.kind.label": "Etikett",
+  "photos.kind.bottle": "Flaska",
+  "photos.kind.context": "Ögonblicket",
+  "photos.kind.hero": "Hero",
 };
 
 const dict = { en, sv } as const;
