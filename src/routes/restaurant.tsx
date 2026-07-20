@@ -118,7 +118,7 @@ function RestaurantPage() {
           restaurant_name: restaurantName.trim() || null,
           image_url: mode === "camera" ? image : null,
           menu_text: mode === "text" ? text : null,
-          matches: nextPicks as unknown as object,
+          matches: nextPicks as unknown as import("@/integrations/supabase/types").Json,
         });
         loadHistory();
       }
