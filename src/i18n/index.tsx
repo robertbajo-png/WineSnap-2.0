@@ -319,6 +319,16 @@ const en = {
   "wishlist.view": "View",
   "wishlist.signIn": "Sign in to see your wishlist",
   "wishlist.saveBtn": "Save to wishlist",
+  "wishlist.checkNow": "Check prices now",
+  "wishlist.checking": "Checking…",
+  "wishlist.checkedToast": "Checked:",
+  "wishlist.alertsToast": "Alerts:",
+  "wishlist.priceDropped": "Price dropped!",
+  "wishlist.currentPrice": "Now",
+  "wishlist.lastChecked": "Last checked",
+  "wishlist.viewAtSb": "View at Systembolaget",
+  "wishlist.markSeen": "Mark as seen",
+  "wishlist.autoNote": "Prices are checked automatically once a day.",
   "profile.wishlist": "Wishlist",
 } as const;
 
