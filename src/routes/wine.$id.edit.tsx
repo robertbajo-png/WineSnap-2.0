@@ -26,11 +26,17 @@ type Form = {
   description: string;
   serving_temp: string;
   glass_type: string;
+  purchase_price: string;
+  purchase_currency: string;
+  purchased_at: string;
+  consumed_at: string;
+  quantity: string;
 };
 
 const empty: Form = {
   producer: "", wine_name: "", vintage: "", region: "", country: "",
   wine_type: "red", grape_varieties: "", description: "", serving_temp: "", glass_type: "",
+  purchase_price: "", purchase_currency: "SEK", purchased_at: "", consumed_at: "", quantity: "1",
 };
 
 function EditPage() {
