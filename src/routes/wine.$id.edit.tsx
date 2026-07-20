@@ -50,17 +50,29 @@ function EditPage() {
   useEffect(() => {
     supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
       if (data) {
+        const d = data as typeof data & {
+          purchase_price?: number | null;
+          purchase_currency?: string | null;
+          purchased_at?: string | null;
+          consumed_at?: string | null;
+          quantity?: number | null;
+        };
         setForm({
-          producer: data.producer ?? "",
-          wine_name: data.wine_name ?? "",
-          vintage: data.vintage ? String(data.vintage) : "",
-          region: data.region ?? "",
-          country: data.country ?? "",
-          wine_type: data.wine_type ?? "red",
-          grape_varieties: (data.grape_varieties ?? []).join(", "),
-          description: data.description ?? "",
-          serving_temp: data.serving_temp ?? "",
-          glass_type: data.glass_type ?? "",
+          producer: d.producer ?? "",
+          wine_name: d.wine_name ?? "",
+          vintage: d.vintage ? String(d.vintage) : "",
+          region: d.region ?? "",
+          country: d.country ?? "",
+          wine_type: d.wine_type ?? "red",
+          grape_varieties: (d.grape_varieties ?? []).join(", "),
+          description: d.description ?? "",
+          serving_temp: d.serving_temp ?? "",
+          glass_type: d.glass_type ?? "",
+          purchase_price: d.purchase_price != null ? String(d.purchase_price) : "",
+          purchase_currency: d.purchase_currency ?? "SEK",
+          purchased_at: d.purchased_at ?? "",
+          consumed_at: d.consumed_at ?? "",
+          quantity: d.quantity != null ? String(d.quantity) : "1",
         });
       }
       setLoading(false);
@@ -72,6 +84,8 @@ function EditPage() {
 
   const save = async () => {
     setSaving(true);
+    const price = form.purchase_price ? Number(form.purchase_price) : null;
+    const qty = form.quantity ? Math.max(1, Math.floor(Number(form.quantity))) : 1;
     const payload = {
       producer: form.producer.trim() || null,
       wine_name: form.wine_name.trim() || null,
@@ -83,7 +97,12 @@ function EditPage() {
       description: form.description.trim() || null,
       serving_temp: form.serving_temp.trim() || null,
       glass_type: form.glass_type.trim() || null,
-    };
+      purchase_price: Number.isFinite(price as number) ? price : null,
+      purchase_currency: form.purchase_currency.trim().toUpperCase() || null,
+      purchased_at: form.purchased_at || null,
+      consumed_at: form.consumed_at || null,
+      quantity: qty,
+    } as never;
     const { error } = await supabase.from("wines").update(payload).eq("id", id);
     setSaving(false);
     if (error) return toast.error(error.message);
