@@ -135,6 +135,17 @@ const en = {
   "overview.cellarWorthy": "Cellar Worthy",
   "overview.topVarietals": "Top Varietals",
   "overview.empty": "Add bottles to your cellar to see analytics.",
+  "overview.totalValue": "Cellar Value",
+  "overview.avgBottle": "Avg. Bottle",
+  "overview.consumed": "Consumed",
+  "overview.avgRating": "Avg. Rating",
+  "overview.priced": "with price",
+  "overview.rated": "rated",
+  "overview.addPrices": "Add purchase prices to track value",
+  "overview.byType": "By Type",
+  "overview.vintages": "Vintages",
+  "overview.ratings": "Rating Distribution",
+  "overview.growth": "Cellar Growth",
 
   // Scan
   "scan.close": "Close",
