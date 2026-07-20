@@ -158,6 +158,22 @@ function ScanPage() {
     return <MatchFound wine={scanned} onBack={() => { setStage("idle"); setText(""); }} />;
   }
 
+  if (pendingFile) {
+    return (
+      <LabelCropper
+        file={pendingFile}
+        busy={stage === "analyzing"}
+        onCancel={() => { setPendingFile(null); setStage("idle"); }}
+        onConfirm={async (blob) => {
+          const file = pendingFile;
+          setPendingFile(null);
+          await handleFile(blob);
+          void file;
+        }}
+      />
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col bg-background text-foreground"
