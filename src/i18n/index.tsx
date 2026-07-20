@@ -282,6 +282,12 @@ const en = {
   "edit.country": "Country",
   "edit.grapes": "Grape varieties",
   "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
+  "edit.purchase": "Purchase & Consumption",
+  "edit.price": "Price",
+  "edit.currency": "Currency",
+  "edit.quantity": "Bottles",
+  "edit.purchasedAt": "Purchased on",
+  "edit.consumedAt": "Consumed on",
   "edit.description": "Description",
 
   // Restaurant Mode
