@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/public/hooks/check-wishlist-prices")(
               triggered += 1;
             }
 
-            await supabaseAdmin.from("wishlist").update(patch).eq("id", row.id);
+            await supabaseAdmin.from("wishlist").update(patch as never).eq("id", row.id);
           } catch (e) {
             console.error("[wishlist-prices] row failed", row.id, e);
           }
