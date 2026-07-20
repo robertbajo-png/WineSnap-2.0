@@ -611,6 +611,12 @@ const sv: Record<keyof typeof en, string> = {
   "edit.country": "Land",
   "edit.grapes": "Druvsorter",
   "edit.grapesPh": "Cabernet Sauvignon, Merlot…",
+  "edit.purchase": "Köp & konsumtion",
+  "edit.price": "Pris",
+  "edit.currency": "Valuta",
+  "edit.quantity": "Flaskor",
+  "edit.purchasedAt": "Inköpt",
+  "edit.consumedAt": "Drucken",
   "edit.description": "Beskrivning",
 
   "restaurant.title": "Restaurangläge",
