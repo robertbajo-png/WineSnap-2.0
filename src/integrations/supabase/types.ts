@@ -240,6 +240,7 @@ export type Database = {
           acidity: number | null
           ai_raw: Json | null
           body: number | null
+          consumed_at: string | null
           country: string | null
           created_at: string
           decant: boolean | null
@@ -254,6 +255,10 @@ export type Database = {
           oak: number | null
           primary_notes: string[] | null
           producer: string | null
+          purchase_currency: string | null
+          purchase_price: number | null
+          purchased_at: string | null
+          quantity: number
           region: string | null
           secondary_notes: string[] | null
           serving_temp: string | null
@@ -271,6 +276,7 @@ export type Database = {
           acidity?: number | null
           ai_raw?: Json | null
           body?: number | null
+          consumed_at?: string | null
           country?: string | null
           created_at?: string
           decant?: boolean | null
@@ -285,6 +291,10 @@ export type Database = {
           oak?: number | null
           primary_notes?: string[] | null
           producer?: string | null
+          purchase_currency?: string | null
+          purchase_price?: number | null
+          purchased_at?: string | null
+          quantity?: number
           region?: string | null
           secondary_notes?: string[] | null
           serving_temp?: string | null
@@ -302,6 +312,7 @@ export type Database = {
           acidity?: number | null
           ai_raw?: Json | null
           body?: number | null
+          consumed_at?: string | null
           country?: string | null
           created_at?: string
           decant?: boolean | null
@@ -316,6 +327,10 @@ export type Database = {
           oak?: number | null
           primary_notes?: string[] | null
           producer?: string | null
+          purchase_currency?: string | null
+          purchase_price?: number | null
+          purchased_at?: string | null
+          quantity?: number
           region?: string | null
           secondary_notes?: string[] | null
           serving_temp?: string | null
