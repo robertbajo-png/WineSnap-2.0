@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT, useI18n } from "@/i18n";
 import { computeDrinkingWindow } from "@/lib/drinkingWindow";
+import { PhotoGallery } from "@/components/PhotoGallery";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -348,6 +349,9 @@ function WineDetailPage() {
 
         {tab === "overview" && (
           <div className="mt-5 space-y-4">
+            <Section title={t("photos.title")}>
+              <PhotoGallery wineId={w.id} fallbackUrl={w.image_url} />
+            </Section>
             {w.description && (
               <Card className="bg-card/50 p-4">
                 <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>

@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
+import { LabelCropper } from "@/components/LabelCropper";
 
 export const Route = createFileRoute("/scan")({
   head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
@@ -38,6 +39,7 @@ function ScanPage() {
   const [scanned, setScanned] = useState<ScannedWine | null>(null);
   const [mode, setMode] = useState<"camera" | "text">("camera");
   const [text, setText] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -105,13 +107,14 @@ function ScanPage() {
     }
   };
 
-  const handleFile = async (file: File) => {
+  const handleFile = async (file: File | Blob) => {
     if (!user) return;
     setStage("analyzing");
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, file);
+      const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+      const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, file, {
+        contentType: "image/jpeg",
+      });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
 
@@ -126,12 +129,21 @@ function ScanPage() {
       });
 
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { imageBase64: base64, mimeType: file.type },
+        body: { imageBase64: base64, mimeType: "image/jpeg" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const inserted = await persistWine(data.wine, pub.publicUrl);
+      // Also register the label in wine_photos
+      await supabase.from("wine_photos").insert({
+        wine_id: inserted.id,
+        user_id: user.id,
+        url: pub.publicUrl,
+        storage_path: path,
+        kind: "label",
+        sort_order: 0,
+      });
       logEvent("wine_scanned", { mode: "camera", wine_id: inserted.id, wine_type: inserted.wine_type });
       setScanned(inserted);
       setStage("match");
@@ -144,6 +156,22 @@ function ScanPage() {
 
   if (stage === "match" && scanned) {
     return <MatchFound wine={scanned} onBack={() => { setStage("idle"); setText(""); }} />;
+  }
+
+  if (pendingFile) {
+    return (
+      <LabelCropper
+        file={pendingFile}
+        busy={stage === "analyzing"}
+        onCancel={() => { setPendingFile(null); setStage("idle"); }}
+        onConfirm={async (blob) => {
+          const file = pendingFile;
+          setPendingFile(null);
+          await handleFile(blob);
+          void file;
+        }}
+      />
+    );
   }
 
   return (
@@ -276,14 +304,22 @@ function ScanPage() {
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) setPendingFile(f);
+          e.target.value = "";
+        }}
       />
       <input
         ref={fileRef}
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) setPendingFile(f);
+          e.target.value = "";
+        }}
       />
     </div>
   );

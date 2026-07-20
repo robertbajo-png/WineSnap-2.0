@@ -235,6 +235,47 @@ export type Database = {
         }
         Relationships: []
       }
+      wine_photos: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          sort_order: number
+          storage_path: string | null
+          url: string
+          user_id: string
+          wine_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          sort_order?: number
+          storage_path?: string | null
+          url: string
+          user_id: string
+          wine_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          sort_order?: number
+          storage_path?: string | null
+          url?: string
+          user_id?: string
+          wine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wine_photos_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wines: {
         Row: {
           acidity: number | null
