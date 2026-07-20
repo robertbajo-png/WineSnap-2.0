@@ -304,14 +304,22 @@ function ScanPage() {
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) setPendingFile(f);
+          e.target.value = "";
+        }}
       />
       <input
         ref={fileRef}
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) setPendingFile(f);
+          e.target.value = "";
+        }}
       />
     </div>
   );
