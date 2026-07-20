@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Type, Loader2, Sparkles, Wine, RefreshCw } from "lucide-react";
+import { ArrowLeft, Camera, Type, Loader2, Sparkles, Wine, RefreshCw, History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/EmptyState";
@@ -44,10 +44,37 @@ function RestaurantPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [restaurantName, setRestaurantName] = useState("");
+  type HistoryRow = {
+    id: string;
+    restaurant_name: string | null;
+    created_at: string;
+    matches: Pick[];
+    menu_text: string | null;
+    image_url: string | null;
+  };
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const loadHistory = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("restaurant_scans")
+      .select("id,restaurant_name,created_at,matches,menu_text,image_url")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setHistory((data as HistoryRow[] | null) ?? []);
+  };
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const onImage = async (file: File) => {
     const reader = new FileReader();
