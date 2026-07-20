@@ -109,7 +109,19 @@ function RestaurantPage() {
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
-      setPicks(data?.picks ?? []);
+      const nextPicks: Pick[] = data?.picks ?? [];
+      setPicks(nextPicks);
+      // Save to history
+      if (nextPicks.length > 0) {
+        await supabase.from("restaurant_scans").insert({
+          user_id: user.id,
+          restaurant_name: restaurantName.trim() || null,
+          image_url: mode === "camera" ? image : null,
+          menu_text: mode === "text" ? text : null,
+          matches: nextPicks as unknown as object,
+        });
+        loadHistory();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -130,7 +142,54 @@ function RestaurantPage() {
           <ArrowLeft className="h-5 w-5 text-cream" />
         </button>
         <h1 className="font-display text-lg text-cream">{t("restaurant.title")}</h1>
-        <div className="w-10" />
+        <button
+          onClick={() => setShowHistory((v) => !v)}
+          className={`flex h-10 w-10 items-center justify-center rounded-full border ${showHistory ? "border-gold/50 bg-gold/10 text-gold" : "border-white/10 text-cream"}`}
+          aria-label="History"
+        >
+          <History className="h-5 w-5" />
+        </button>
+      </div>
+
+      <p className="mt-3 text-center text-xs text-muted-foreground">{t("restaurant.subtitle")}</p>
+
+      {showHistory ? (
+        <HistorySection
+          history={history}
+          onDelete={async (id) => {
+            await supabase.from("restaurant_scans").delete().eq("id", id);
+            loadHistory();
+          }}
+          onReopen={(row) => {
+            setShowHistory(false);
+            setPicks(row.matches ?? []);
+            setRestaurantName(row.restaurant_name ?? "");
+            if (row.menu_text) { setMode("text"); setText(row.menu_text); setImage(null); }
+            else if (row.image_url) { setMode("camera"); setImage(row.image_url); setText(""); }
+          }}
+        />
+      ) : (
+      <>
+      {/* Restaurant name */}
+      <input
+        value={restaurantName}
+        onChange={(e) => setRestaurantName(e.target.value)}
+        placeholder="Restaurant name (optional)"
+        className="mt-4 w-full rounded-xl border border-white/10 bg-card/50 px-3 py-2 text-sm text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+      />
+
+      {/* Mode toggle */}
+      <div className="mt-3 flex rounded-full border border-white/10 bg-card/50 p-1">
+        <button
+          onClick={() => setMode("text")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm ${mode === "text" ? "bg-gradient-burgundy text-cream" : "text-muted-foreground"}`}
+        >
+          <Type className="h-4 w-4" /> {t("restaurant.type")}
+        </button>
+        <button
+          onClick={() => setMode("camera")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm ${mode === "camera" ? "bg-gradient-burgundy text-cream" : "text-muted-foreground"}`}
+        >
       </div>
 
       <p className="mt-3 text-center text-xs text-muted-foreground">{t("restaurant.subtitle")}</p>
