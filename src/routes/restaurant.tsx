@@ -320,6 +320,72 @@ function RestaurantPage() {
           />
         </div>
       )}
+      </>
+      )}
+    </div>
+  );
+}
+
+function HistorySection({
+  history,
+  onDelete,
+  onReopen,
+}: {
+  history: Array<{
+    id: string;
+    restaurant_name: string | null;
+    created_at: string;
+    matches: Pick[];
+    menu_text: string | null;
+    image_url: string | null;
+  }>;
+  onDelete: (id: string) => void;
+  onReopen: (row: {
+    id: string;
+    restaurant_name: string | null;
+    matches: Pick[];
+    menu_text: string | null;
+    image_url: string | null;
+  }) => void;
+}) {
+  if (history.length === 0) {
+    return (
+      <div className="mt-10 text-center text-sm text-muted-foreground">
+        No saved restaurant scans yet.
+      </div>
+    );
+  }
+  return (
+    <div className="mt-4 space-y-3">
+      {history.map((h) => {
+        const top = h.matches?.[0];
+        return (
+          <div key={h.id} className="rounded-2xl border border-white/10 bg-card/50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <button onClick={() => onReopen(h)} className="min-w-0 flex-1 text-left">
+                <p className="truncate font-display text-cream">
+                  {h.restaurant_name || (h.menu_text ? "Text menu" : "Photo menu")}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {new Date(h.created_at).toLocaleString()} · {h.matches?.length ?? 0} picks
+                </p>
+                {top && (
+                  <p className="mt-2 text-xs text-foreground/80">
+                    <span className="text-gold">#{Math.round(top.match_score)}</span> {top.wine_name}
+                  </p>
+                )}
+              </button>
+              <button
+                onClick={() => onDelete(h.id)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5 hover:text-destructive"
+                aria-label="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
