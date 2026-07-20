@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
+import { LabelCropper } from "@/components/LabelCropper";
 
 export const Route = createFileRoute("/scan")({
   head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
