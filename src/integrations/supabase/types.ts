@@ -341,14 +341,21 @@ export type Database = {
           grape_varieties: string[] | null
           id: string
           image_url: string | null
+          last_checked_at: string | null
+          last_checked_price: number | null
           last_price_check: string | null
           notes: string | null
           notify_on_drop: boolean
+          price_alert_seen_at: string | null
+          price_alert_triggered_at: string | null
           price_currency: string | null
+          price_source: string | null
           priority: number
           producer: string | null
           region: string | null
           source: string
+          systembolaget_id: string | null
+          systembolaget_url: string | null
           target_price: number | null
           updated_at: string
           user_id: string
@@ -366,14 +373,21 @@ export type Database = {
           grape_varieties?: string[] | null
           id?: string
           image_url?: string | null
+          last_checked_at?: string | null
+          last_checked_price?: number | null
           last_price_check?: string | null
           notes?: string | null
           notify_on_drop?: boolean
+          price_alert_seen_at?: string | null
+          price_alert_triggered_at?: string | null
           price_currency?: string | null
+          price_source?: string | null
           priority?: number
           producer?: string | null
           region?: string | null
           source?: string
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
           target_price?: number | null
           updated_at?: string
           user_id: string
@@ -391,14 +405,21 @@ export type Database = {
           grape_varieties?: string[] | null
           id?: string
           image_url?: string | null
+          last_checked_at?: string | null
+          last_checked_price?: number | null
           last_price_check?: string | null
           notes?: string | null
           notify_on_drop?: boolean
+          price_alert_seen_at?: string | null
+          price_alert_triggered_at?: string | null
           price_currency?: string | null
+          price_source?: string | null
           priority?: number
           producer?: string | null
           region?: string | null
           source?: string
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
           target_price?: number | null
           updated_at?: string
           user_id?: string
