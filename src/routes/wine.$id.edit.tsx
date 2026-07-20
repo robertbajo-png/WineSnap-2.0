@@ -200,3 +200,21 @@ function Field({ label, value, onChange, placeholder, inputMode }: {
     </div>
   );
 }
+
+function DateField({ label, value, onChange }: {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div>
+      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</label>
+      <input
+        type="date"
+        value={value}
+        onChange={onChange}
+        className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-sm text-foreground/90 focus:border-gold/40 focus:outline-none"
+      />
+    </div>
+  );
+}
