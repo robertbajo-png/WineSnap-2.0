@@ -154,7 +154,27 @@ function WineDetailPage() {
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                const url = window.location.href;
+                // Ensure the wine is public and has a share_id, then share the public /w/:shareId link
+                const { data: row } = await supabase
+                  .from("wines")
+                  .select("share_id,is_public")
+                  .eq("id", w.id)
+                  .maybeSingle();
+                let shareId = row?.share_id as string | null | undefined;
+                if (!row?.is_public || !shareId) {
+                  const { data: upd } = await supabase
+                    .from("wines")
+                    .update({ is_public: true })
+                    .eq("id", w.id)
+                    .select("share_id")
+                    .maybeSingle();
+                  shareId = upd?.share_id ?? shareId;
+                }
+                if (!shareId) {
+                  toast.error(t("common.error"));
+                  return;
+                }
+                const url = `${window.location.origin}/w/${encodeURIComponent(shareId)}`;
                 const shareData = { title: `${w.wine_name ?? ""} ${w.vintage ?? ""}`.trim(), text: t("wine.shareText"), url };
                 if (navigator.share) {
                   try { await navigator.share(shareData); } catch { /* cancelled */ }
