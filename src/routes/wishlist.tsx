@@ -173,7 +173,26 @@ function WishlistPage() {
         ) : (
           <div className="mt-5 space-y-3 pb-4">
             {rows.map((r) => (
-              <article key={r.id} className="rounded-xl border border-white/8 bg-card/50 p-3">
+              <article
+                key={r.id}
+                onClick={() => markSeen(r)}
+                className={`rounded-xl border p-3 ${
+                  r.price_alert_triggered_at && !r.price_alert_seen_at
+                    ? "border-success/60 bg-success/5"
+                    : "border-white/8 bg-card/50"
+                }`}
+              >
+                {r.price_alert_triggered_at && !r.price_alert_seen_at && (
+                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-success/15 px-2 py-1 text-[11px] font-medium text-success">
+                    <TrendingDown className="h-3 w-3" />
+                    {t("wishlist.priceDropped")}
+                    {r.last_checked_price != null && r.target_price != null && (
+                      <span className="ml-auto opacity-80">
+                        {r.price_currency ?? "kr"} {r.last_checked_price} ≤ {r.target_price}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
                     {r.image_url ? (
@@ -194,18 +213,26 @@ function WishlistPage() {
                     {r.grape_varieties?.length ? (
                       <p className="mt-0.5 text-[10px] text-muted-foreground">{r.grape_varieties.join(", ")}</p>
                     ) : null}
+                    {r.last_checked_price != null && (
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {t("wishlist.currentPrice")}: {r.price_currency ?? "kr"} {r.last_checked_price}
+                        {r.last_checked_at && (
+                          <span className="opacity-60"> · {new Date(r.last_checked_at).toLocaleDateString()}</span>
+                        )}
+                      </p>
+                    )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button
-                        onClick={() => setTargetPrice(r)}
+                        onClick={(e) => { e.stopPropagation(); setTargetPrice(r); }}
                         className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-[11px] text-gold hover:bg-background/70"
                       >
                         <Tag className="h-3 w-3" />
                         {r.target_price != null
-                          ? `${r.price_currency ?? "€"}${r.target_price}`
+                          ? `${r.price_currency ?? "kr"} ${r.target_price}`
                           : t("wishlist.setTarget")}
                       </button>
                       <button
-                        onClick={() => toggleNotify(r)}
+                        onClick={(e) => { e.stopPropagation(); toggleNotify(r); }}
                         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] ${
                           r.notify_on_drop
                             ? "border-success/40 bg-success/10 text-success"
@@ -215,6 +242,17 @@ function WishlistPage() {
                         {r.notify_on_drop ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
                         {r.notify_on_drop ? t("wishlist.alertOn") : t("wishlist.alertOff")}
                       </button>
+                      {r.systembolaget_url && (
+                        <a
+                          href={r.systembolaget_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[11px] text-burgundy hover:underline"
+                        >
+                          {t("wishlist.viewAtSb")}
+                        </a>
+                      )}
                       {r.wine_id && (
                         <Link
                           to="/wine/$id"
