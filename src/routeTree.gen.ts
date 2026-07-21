@@ -26,6 +26,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as WShareIdRouteImport } from './routes/w.$shareId'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
@@ -118,6 +119,11 @@ const WShareIdRoute = WShareIdRouteImport.update({
   path: '/w/$shareId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CellarOverviewRoute = CellarOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -321,6 +333,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
   WishlistRoute: typeof WishlistRoute
+  UUsernameRoute: typeof UUsernameRoute
   WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
@@ -448,6 +461,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WShareIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cellar/overview': {
       id: '/cellar/overview'
       path: '/overview'
@@ -535,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
   WishlistRoute: WishlistRoute,
+  UUsernameRoute: UUsernameRoute,
   WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
   ApiPublicHooksCheckWishlistPricesRoute:
