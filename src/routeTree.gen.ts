@@ -18,6 +18,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as ForYouRouteImport } from './routes/for-you'
 import { Route as CellarRouteImport } from './routes/cellar'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -75,6 +76,11 @@ const LoginRoute = LoginRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForYouRoute = ForYouRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CellarRoute: typeof CellarRouteWithChildren
   ForYouRoute: typeof ForYouRoute
+  FriendsRoute: typeof FriendsRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/for-you': {
@@ -505,6 +525,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CellarRoute: CellarRouteWithChildren,
   ForYouRoute: ForYouRoute,
+  FriendsRoute: FriendsRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
