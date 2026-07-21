@@ -22,7 +22,7 @@ function MePage() {
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
-  const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null; price_min?: number | null; price_max?: number | null; personalized_recs?: boolean; new_arrivals_alerts?: boolean; hide_disliked?: boolean } | null>(null);
+  const [profile, setProfile] = useState<{ display_name?: string; username?: string | null; bio?: string | null; is_public?: boolean; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null; price_min?: number | null; price_max?: number | null; personalized_recs?: boolean; new_arrivals_alerts?: boolean; hide_disliked?: boolean } | null>(null);
   const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
