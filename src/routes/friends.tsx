@@ -85,7 +85,7 @@ function FriendsPage() {
           </div>
         ) : feed.length === 0 ? (
           <EmptyState
-            icon={<Users className="h-8 w-8 text-gold" />}
+            icon={Users}
             title={t("friends.empty.title")}
             description={t("friends.empty.desc")}
             action={
