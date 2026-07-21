@@ -244,6 +244,81 @@ function ToggleRow({ title, desc, value, onChange }: { title: string; desc: stri
   );
 }
 
+function TextRow({
+  label,
+  value,
+  placeholder,
+  onSave,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onSave: (v: string) => Promise<void> | void;
+  multiline?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
+      >
+        <span className="text-sm text-foreground/90">{label}</span>
+        <span className="ml-auto max-w-[55%] truncate text-right text-xs text-muted-foreground">
+          {value ? value : placeholder ?? "—"}
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {multiline ? (
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          className="mt-1 w-full resize-none bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+        />
+      ) : (
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          className="mt-1 w-full bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+        />
+      )}
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          onClick={() => {
+            setDraft(value);
+            setEditing(false);
+          }}
+          className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/5"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            await onSave(draft);
+            setEditing(false);
+          }}
+          className="rounded-lg bg-burgundy px-3 py-1.5 text-xs text-cream"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function explorerTierKey(bottles: number): "tier.connoisseur" | "tier.enthusiast" | "tier.explorer" | "tier.novice" {
   if (bottles >= 100) return "tier.connoisseur";
   if (bottles >= 25) return "tier.enthusiast";
