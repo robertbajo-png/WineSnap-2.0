@@ -360,7 +360,35 @@ const en = {
   "photos.kind.bottle": "Bottle",
   "photos.kind.context": "In the moment",
   "photos.kind.hero": "Hero",
+
+  // Friends / social
+  "friends.title": "Friends",
+  "friends.subtitle": "See what people you follow are drinking.",
+  "friends.tab.feed": "Feed",
+  "friends.tab.discover": "Discover",
+  "friends.empty.title": "Your feed is quiet",
+  "friends.empty.desc": "Follow other wine lovers to see their latest scans here.",
+  "friends.empty.cta": "Discover people",
+  "friends.search.ph": "Search by name or @username",
+  "friends.search.hint": "Search for someone by name or username.",
+  "friends.search.none": "No public profiles matched.",
+  "friends.follow": "Follow",
+  "friends.following": "Following",
+  "friends.followers": "Followers",
+  "friends.publicWines": "Public wines",
+  "friends.profilePrivate": "This profile is private.",
+  "friends.noPublicWines": "No public wines yet.",
+  "profile.social": "Social",
+  "profile.publicProfile": "Public profile",
+  "profile.publicProfileDesc": "Let others find you and see your public wines.",
+  "profile.username": "Username",
+  "profile.usernamePh": "yourhandle",
+  "profile.bio": "Bio",
+  "profile.bioPh": "A short line about your taste…",
+  "profile.friends": "Friends",
+  "profile.friendsDesc": "Follow other wine lovers and see their feed.",
 } as const;
+
 
 const sv: Record<keyof typeof en, string> = {
   "nav.home": "Hem",
