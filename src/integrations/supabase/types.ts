@@ -38,15 +38,38 @@ export type Database = {
         }
         Relationships: []
       }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           acidity: number | null
           avatar_url: string | null
+          bio: string | null
           body: number | null
           created_at: string
           display_name: string | null
           hide_disliked: boolean
           id: string
+          is_public: boolean
           new_arrivals_alerts: boolean
           oak: number | null
           onboarded_at: string | null
@@ -64,11 +87,13 @@ export type Database = {
         Insert: {
           acidity?: number | null
           avatar_url?: string | null
+          bio?: string | null
           body?: number | null
           created_at?: string
           display_name?: string | null
           hide_disliked?: boolean
           id: string
+          is_public?: boolean
           new_arrivals_alerts?: boolean
           oak?: number | null
           onboarded_at?: string | null
@@ -86,11 +111,13 @@ export type Database = {
         Update: {
           acidity?: number | null
           avatar_url?: string | null
+          bio?: string | null
           body?: number | null
           created_at?: string
           display_name?: string | null
           hide_disliked?: boolean
           id?: string
+          is_public?: boolean
           new_arrivals_alerts?: boolean
           oak?: number | null
           onboarded_at?: string | null
