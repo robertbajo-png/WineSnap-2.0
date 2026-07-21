@@ -18,6 +18,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as ForYouRouteImport } from './routes/for-you'
 import { Route as CellarRouteImport } from './routes/cellar'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -25,6 +26,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as WShareIdRouteImport } from './routes/w.$shareId'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
@@ -77,6 +79,11 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForYouRoute = ForYouRouteImport.update({
   id: '/for-you',
   path: '/for-you',
@@ -110,6 +117,11 @@ const WineIdRoute = WineIdRouteImport.update({
 const WShareIdRoute = WShareIdRouteImport.update({
   id: '/w/$shareId',
   path: '/w/$shareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CellarOverviewRoute = CellarOverviewRouteImport.update({
@@ -151,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -161,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -175,6 +189,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -185,6 +200,7 @@ export interface FileRoutesByTo {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -200,6 +216,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
@@ -210,6 +227,7 @@ export interface FileRoutesById {
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/wine/$id/edit': typeof WineIdEditRoute
@@ -226,6 +244,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
@@ -236,6 +255,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -250,6 +270,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
@@ -260,6 +281,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -274,6 +296,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
@@ -284,6 +307,7 @@ export interface FileRouteTypes {
     | '/taste'
     | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
     | '/wine/$id/edit'
@@ -299,6 +323,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CellarRoute: typeof CellarRouteWithChildren
   ForYouRoute: typeof ForYouRoute
+  FriendsRoute: typeof FriendsRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
@@ -308,6 +333,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
   WishlistRoute: typeof WishlistRoute
+  UUsernameRoute: typeof UUsernameRoute
   WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
@@ -379,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/for-you': {
       id: '/for-you'
       path: '/for-you'
@@ -426,6 +459,13 @@ declare module '@tanstack/react-router' {
       path: '/w/$shareId'
       fullPath: '/w/$shareId'
       preLoaderRoute: typeof WShareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cellar/overview': {
@@ -505,6 +545,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CellarRoute: CellarRouteWithChildren,
   ForYouRoute: ForYouRoute,
+  FriendsRoute: FriendsRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
@@ -514,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
   WishlistRoute: WishlistRoute,
+  UUsernameRoute: UUsernameRoute,
   WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
   ApiPublicHooksCheckWishlistPricesRoute:
@@ -523,12 +565,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

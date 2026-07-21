@@ -360,7 +360,35 @@ const en = {
   "photos.kind.bottle": "Bottle",
   "photos.kind.context": "In the moment",
   "photos.kind.hero": "Hero",
+
+  // Friends / social
+  "friends.title": "Friends",
+  "friends.subtitle": "See what people you follow are drinking.",
+  "friends.tab.feed": "Feed",
+  "friends.tab.discover": "Discover",
+  "friends.empty.title": "Your feed is quiet",
+  "friends.empty.desc": "Follow other wine lovers to see their latest scans here.",
+  "friends.empty.cta": "Discover people",
+  "friends.search.ph": "Search by name or @username",
+  "friends.search.hint": "Search for someone by name or username.",
+  "friends.search.none": "No public profiles matched.",
+  "friends.follow": "Follow",
+  "friends.following": "Following",
+  "friends.followers": "Followers",
+  "friends.publicWines": "Public wines",
+  "friends.profilePrivate": "This profile is private.",
+  "friends.noPublicWines": "No public wines yet.",
+  "profile.social": "Social",
+  "profile.publicProfile": "Public profile",
+  "profile.publicProfileDesc": "Let others find you and see your public wines.",
+  "profile.username": "Username",
+  "profile.usernamePh": "yourhandle",
+  "profile.bio": "Bio",
+  "profile.bioPh": "A short line about your taste…",
+  "profile.friends": "Friends",
+  "profile.friendsDesc": "Follow other wine lovers and see their feed.",
 } as const;
+
 
 const sv: Record<keyof typeof en, string> = {
   "nav.home": "Hem",
@@ -699,7 +727,34 @@ const sv: Record<keyof typeof en, string> = {
   "photos.kind.bottle": "Flaska",
   "photos.kind.context": "Ögonblicket",
   "photos.kind.hero": "Hero",
+
+  "friends.title": "Vänner",
+  "friends.subtitle": "Se vad personerna du följer dricker.",
+  "friends.tab.feed": "Flöde",
+  "friends.tab.discover": "Upptäck",
+  "friends.empty.title": "Ditt flöde är tomt",
+  "friends.empty.desc": "Följ andra vinälskare för att se deras senaste skanningar här.",
+  "friends.empty.cta": "Hitta personer",
+  "friends.search.ph": "Sök på namn eller @användarnamn",
+  "friends.search.hint": "Sök efter någon på namn eller användarnamn.",
+  "friends.search.none": "Inga publika profiler matchade.",
+  "friends.follow": "Följ",
+  "friends.following": "Följer",
+  "friends.followers": "Följare",
+  "friends.publicWines": "Publika viner",
+  "friends.profilePrivate": "Den här profilen är privat.",
+  "friends.noPublicWines": "Inga publika viner ännu.",
+  "profile.social": "Socialt",
+  "profile.publicProfile": "Publik profil",
+  "profile.publicProfileDesc": "Låt andra hitta dig och se dina publika viner.",
+  "profile.username": "Användarnamn",
+  "profile.usernamePh": "dittnamn",
+  "profile.bio": "Bio",
+  "profile.bioPh": "En kort rad om din smak…",
+  "profile.friends": "Vänner",
+  "profile.friendsDesc": "Följ andra vinälskare och se deras flöde.",
 };
+
 
 const dict = { en, sv } as const;
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Wine, GlassWater, Star, ChevronRight, Grape, MapPin, BookmarkIcon, LogOut, Languages, Bookmark } from "lucide-react";
+import { Wine, GlassWater, Star, ChevronRight, Grape, MapPin, BookmarkIcon, LogOut, Languages, Bookmark, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,7 +22,7 @@ function MePage() {
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
-  const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null; price_min?: number | null; price_max?: number | null; personalized_recs?: boolean; new_arrivals_alerts?: boolean; hide_disliked?: boolean } | null>(null);
+  const [profile, setProfile] = useState<{ display_name?: string; username?: string | null; bio?: string | null; is_public?: boolean; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null; price_min?: number | null; price_max?: number | null; personalized_recs?: boolean; new_arrivals_alerts?: boolean; hide_disliked?: boolean } | null>(null);
   const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ function MePage() {
       });
     supabase
       .from("profiles")
-      .select("display_name,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked")
+      .select("display_name,username,bio,is_public,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => setProfile(data as any));
@@ -119,6 +119,45 @@ function MePage() {
             <ToggleRow title={t("profile.newArrivals")} desc={t("profile.newArrivalsDesc")} value={profile?.new_arrivals_alerts ?? true} onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)} />
             <FavRow icon={null} label={t("profile.priceRange")} value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))} onClick={() => editPriceRange(user?.id, profile, setProfile, lang)} />
             <ToggleRow title={t("profile.hideDisliked")} desc={t("profile.hideDislikedDesc")} value={profile?.hide_disliked ?? true} onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)} />
+          </div>
+        </section>
+
+        {/* Social */}
+        <section className="mt-7">
+          <h2 className="font-display text-lg text-gold">{t("profile.social")}</h2>
+          <div className="mt-3 space-y-2.5">
+            <Link to="/friends" className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70">
+              <Users className="h-4 w-4 text-gold" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground/90">{t("profile.friends")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("profile.friendsDesc")}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+            <ToggleRow
+              title={t("profile.publicProfile")}
+              desc={t("profile.publicProfileDesc")}
+              value={profile?.is_public ?? false}
+              onChange={(v) => updatePref(user?.id, { is_public: v } as any, setProfile)}
+            />
+            <TextRow
+              label={t("profile.username")}
+              placeholder={t("profile.usernamePh")}
+              value={profile?.username ?? ""}
+              onSave={async (v) => {
+                const clean = v.trim().replace(/^@/, "").toLowerCase();
+                await updatePref(user?.id, { username: clean || null } as any, setProfile);
+              }}
+            />
+            <TextRow
+              label={t("profile.bio")}
+              placeholder={t("profile.bioPh")}
+              value={profile?.bio ?? ""}
+              onSave={async (v) => {
+                await updatePref(user?.id, { bio: v.trim() || null } as any, setProfile);
+              }}
+              multiline
+            />
           </div>
         </section>
 
@@ -201,6 +240,81 @@ function ToggleRow({ title, desc, value, onChange }: { title: string; desc: stri
       >
         <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`} />
       </button>
+    </div>
+  );
+}
+
+function TextRow({
+  label,
+  value,
+  placeholder,
+  onSave,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onSave: (v: string) => Promise<void> | void;
+  multiline?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
+      >
+        <span className="text-sm text-foreground/90">{label}</span>
+        <span className="ml-auto max-w-[55%] truncate text-right text-xs text-muted-foreground">
+          {value ? value : placeholder ?? "—"}
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {multiline ? (
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          className="mt-1 w-full resize-none bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+        />
+      ) : (
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          className="mt-1 w-full bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+        />
+      )}
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          onClick={() => {
+            setDraft(value);
+            setEditing(false);
+          }}
+          className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/5"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            await onSave(draft);
+            setEditing(false);
+          }}
+          className="rounded-lg bg-burgundy px-3 py-1.5 text-xs text-cream"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 }
