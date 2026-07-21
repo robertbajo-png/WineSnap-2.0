@@ -122,6 +122,45 @@ function MePage() {
           </div>
         </section>
 
+        {/* Social */}
+        <section className="mt-7">
+          <h2 className="font-display text-lg text-gold">{t("profile.social")}</h2>
+          <div className="mt-3 space-y-2.5">
+            <Link to="/friends" className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70">
+              <Users className="h-4 w-4 text-gold" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground/90">{t("profile.friends")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("profile.friendsDesc")}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+            <ToggleRow
+              title={t("profile.publicProfile")}
+              desc={t("profile.publicProfileDesc")}
+              value={profile?.is_public ?? false}
+              onChange={(v) => updatePref(user?.id, { is_public: v } as any, setProfile)}
+            />
+            <TextRow
+              label={t("profile.username")}
+              placeholder={t("profile.usernamePh")}
+              value={profile?.username ?? ""}
+              onSave={async (v) => {
+                const clean = v.trim().replace(/^@/, "").toLowerCase();
+                await updatePref(user?.id, { username: clean || null } as any, setProfile);
+              }}
+            />
+            <TextRow
+              label={t("profile.bio")}
+              placeholder={t("profile.bioPh")}
+              value={profile?.bio ?? ""}
+              onSave={async (v) => {
+                await updatePref(user?.id, { bio: v.trim() || null } as any, setProfile);
+              }}
+              multiline
+            />
+          </div>
+        </section>
+
         {/* Language */}
         <section className="mt-2">
           <h2 className="font-display text-lg text-gold">{t("profile.language")}</h2>
