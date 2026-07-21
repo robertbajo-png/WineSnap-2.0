@@ -727,7 +727,34 @@ const sv: Record<keyof typeof en, string> = {
   "photos.kind.bottle": "Flaska",
   "photos.kind.context": "Ögonblicket",
   "photos.kind.hero": "Hero",
+
+  "friends.title": "Vänner",
+  "friends.subtitle": "Se vad personerna du följer dricker.",
+  "friends.tab.feed": "Flöde",
+  "friends.tab.discover": "Upptäck",
+  "friends.empty.title": "Ditt flöde är tomt",
+  "friends.empty.desc": "Följ andra vinälskare för att se deras senaste skanningar här.",
+  "friends.empty.cta": "Hitta personer",
+  "friends.search.ph": "Sök på namn eller @användarnamn",
+  "friends.search.hint": "Sök efter någon på namn eller användarnamn.",
+  "friends.search.none": "Inga publika profiler matchade.",
+  "friends.follow": "Följ",
+  "friends.following": "Följer",
+  "friends.followers": "Följare",
+  "friends.publicWines": "Publika viner",
+  "friends.profilePrivate": "Den här profilen är privat.",
+  "friends.noPublicWines": "Inga publika viner ännu.",
+  "profile.social": "Socialt",
+  "profile.publicProfile": "Publik profil",
+  "profile.publicProfileDesc": "Låt andra hitta dig och se dina publika viner.",
+  "profile.username": "Användarnamn",
+  "profile.usernamePh": "dittnamn",
+  "profile.bio": "Bio",
+  "profile.bioPh": "En kort rad om din smak…",
+  "profile.friends": "Vänner",
+  "profile.friendsDesc": "Följ andra vinälskare och se deras flöde.",
 };
+
 
 const dict = { en, sv } as const;
 
