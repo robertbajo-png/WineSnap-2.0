@@ -219,8 +219,10 @@ function ScanPage() {
           void file;
         }}
       />
+      </Suspense>
     );
   }
+
 
   return (
     <div
