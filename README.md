@@ -7,7 +7,7 @@ Scan a wine label (or type the wine), get producer, grape, flavour profile and f
 - TanStack Start (React 19, Vite 7) — file routes in `src/routes`
 - Tailwind v4 via `src/styles.css`
 - Lovable Cloud (Postgres + Auth + Storage) — client in `src/integrations/supabase`
-- AI: `openai/gpt-5` for label/text analysis, `google/gemini-3-flash-preview` for suggestions, restaurant matching and Systembolaget matching
+- AI: `openai/gpt-5.6-terra` for label/text analysis, `google/gemini-3.7-flash` for suggestions, restaurant matching and Systembolaget matching
 
 ## Key surfaces
 
