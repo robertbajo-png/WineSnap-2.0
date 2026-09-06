@@ -102,7 +102,7 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
 - Favorite regions: ${favRegions}
 - Favorite types: ${favTypes}`;
 
-    const userContent: any[] = [
+    const userContent: Array<Record<string, unknown>> = [
       { type: "text", text: `${profileBlock}\n\nRestaurant wine list:\n${text || "(see image)"}` },
     ];
     if (image) {
