@@ -2,6 +2,9 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { QueryProvider } from "@/components/QueryProvider";
 
 import appCss from "../styles.css?url";
 
@@ -122,8 +125,13 @@ function RootComponent() {
   }, []);
 
   return (
-    <I18nProvider>
-      <Outlet />
-    </I18nProvider>
+    <AuthProvider>
+      <QueryProvider>
+        <I18nProvider>
+          <ServiceWorkerRegistration />
+          <Outlet />
+        </I18nProvider>
+      </QueryProvider>
+    </AuthProvider>
   );
 }

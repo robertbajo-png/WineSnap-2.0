@@ -27,6 +27,7 @@ import { useT, useI18n } from "@/i18n";
 import type { TKey } from "@/i18n";
 import { computeDrinkingWindow } from "@/lib/drinkingWindow";
 import { PhotoGallery } from "@/components/PhotoGallery";
+import { WineImage } from "@/components/WineImage";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -279,7 +280,7 @@ function WineDetailPage() {
         <section className="mt-4 flex gap-4">
           <div className="flex h-36 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-burgundy/40 to-background/60 shadow-elegant">
             {w.image_url ? (
-              <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage src={w.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <Wine className="h-9 w-9 text-gold/60" />
             )}

@@ -1,28 +1,28 @@
 import { cn } from "@/lib/utils";
-import blackCherry from "@/assets/aromas/black-cherry.png";
-import blackberry from "@/assets/aromas/blackberry.png";
-import plum from "@/assets/aromas/plum.png";
-import fig from "@/assets/aromas/fig.png";
-import citrusPeel from "@/assets/aromas/citrus-peel.png";
-import violet from "@/assets/aromas/violet.png";
-import rose from "@/assets/aromas/rose.png";
-import pepper from "@/assets/aromas/pepper.png";
-import bakingSpice from "@/assets/aromas/baking-spice.png";
-import vanilla from "@/assets/aromas/vanilla.png";
-import cocoa from "@/assets/aromas/cocoa.png";
-import coffee from "@/assets/aromas/coffee.png";
-import cedar from "@/assets/aromas/cedar.png";
-import oakBarrel from "@/assets/aromas/oak-barrel.png";
-import tobaccoLeaf from "@/assets/aromas/tobacco-leaf.png";
-import leather from "@/assets/aromas/leather.png";
-import forestFloor from "@/assets/aromas/forest-floor.png";
-import wetStone from "@/assets/aromas/wet-stone.png";
-import graphite from "@/assets/aromas/graphite.png";
-import mushroom from "@/assets/aromas/mushroom.png";
-import driedHerbs from "@/assets/aromas/dried-herbs.png";
-import honey from "@/assets/aromas/honey.png";
-import almond from "@/assets/aromas/almond.png";
-import smoke from "@/assets/aromas/smoke.png";
+import blackCherry from "@/assets/aromas/black-cherry.webp";
+import blackberry from "@/assets/aromas/blackberry.webp";
+import plum from "@/assets/aromas/plum.webp";
+import fig from "@/assets/aromas/fig.webp";
+import citrusPeel from "@/assets/aromas/citrus-peel.webp";
+import violet from "@/assets/aromas/violet.webp";
+import rose from "@/assets/aromas/rose.webp";
+import pepper from "@/assets/aromas/pepper.webp";
+import bakingSpice from "@/assets/aromas/baking-spice.webp";
+import vanilla from "@/assets/aromas/vanilla.webp";
+import cocoa from "@/assets/aromas/cocoa.webp";
+import coffee from "@/assets/aromas/coffee.webp";
+import cedar from "@/assets/aromas/cedar.webp";
+import oakBarrel from "@/assets/aromas/oak-barrel.webp";
+import tobaccoLeaf from "@/assets/aromas/tobacco-leaf.webp";
+import leather from "@/assets/aromas/leather.webp";
+import forestFloor from "@/assets/aromas/forest-floor.webp";
+import wetStone from "@/assets/aromas/wet-stone.webp";
+import graphite from "@/assets/aromas/graphite.webp";
+import mushroom from "@/assets/aromas/mushroom.webp";
+import driedHerbs from "@/assets/aromas/dried-herbs.webp";
+import honey from "@/assets/aromas/honey.webp";
+import almond from "@/assets/aromas/almond.webp";
+import smoke from "@/assets/aromas/smoke.webp";
 
 type Family =
   | "fruit"
@@ -172,6 +172,8 @@ export function AromaIcon({
       alt=""
       style={{ width: size, height: size }}
       className={cn("shrink-0 rounded-full object-cover select-none", className)}
+      loading="lazy"
+      decoding="async"
       draggable={false}
     />
   );

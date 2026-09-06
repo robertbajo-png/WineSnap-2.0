@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Search, UserPlus, UserCheck, Users, Star } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { WineImage } from "@/components/WineImage";
 import { useAuth } from "@/hooks/useAuth";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
@@ -171,7 +172,7 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
     <div className="flex gap-3 rounded-xl border border-white/10 bg-card/40 p-3">
       <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-background">
         {item.image_url ? (
-          <img
+          <WineImage
             src={item.image_url}
             alt={item.wine_name ?? ""}
             className="h-full w-full object-cover"

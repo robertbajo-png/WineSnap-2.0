@@ -8,6 +8,7 @@ import { CellarRowSkeleton } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useT } from "@/i18n";
+import { WineImage } from "@/components/WineImage";
 
 export const Route = createFileRoute("/search")({
   head: () => ({
@@ -65,7 +66,7 @@ function SearchPage() {
   }, [q, wines]);
 
   return (
-    <AppShell>
+    <AppShell width="wide">
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-center">
           <Logo size="md" />
@@ -100,7 +101,7 @@ function SearchPage() {
           </span>
         </div>
 
-        <ul className="mt-3 space-y-3 pb-4">
+        <ul className="mt-3 grid gap-3 pb-4 md:grid-cols-2">
           {loading ? (
             <>
               <li>
@@ -149,7 +150,12 @@ function ResultCard({ w }: { w: WineRow }) {
       >
         <div className="relative flex h-[88px] w-[68px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
           {w.image_url ? (
-            <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+            <WineImage
+              src={w.image_url}
+              alt={w.wine_name ?? ""}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
           ) : (
             <Wine className="h-6 w-6 text-gold/60" />
           )}

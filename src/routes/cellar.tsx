@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { EmptyState } from "@/components/EmptyState";
 import { CellarRowSkeleton } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
+import { WineImage } from "@/components/WineImage";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -224,7 +225,11 @@ function CellarPage() {
                   >
                     <div className="flex h-[72px] w-[54px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
                       {w.image_url ? (
-                        <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                        <WineImage
+                          src={w.image_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
                         <Wine className="h-5 w-5 text-gold/60" />
                       )}

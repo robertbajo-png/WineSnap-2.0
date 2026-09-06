@@ -1,19 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { readBoundedJson, requireRequestUser, routeError } from "@/lib/server/requestAuth";
 
-const str = (max: number) => z.string().trim().max(max).nullish();
-
-const matchInputSchema = z.object({
-  producer: str(160),
-  wine_name: z.string().trim().min(1, "wine_name is required").max(200),
-  vintage: z.union([z.number().int().min(1800).max(2200), z.string().trim().max(12)]).nullish(),
-  region: str(160),
-  country: str(160),
-  wine_type: str(40),
-});
-
-const FETCH_TIMEOUT_MS = 8000;
-const AI_TIMEOUT_MS = 20000;
+const MatchInputSchema = z
+  .object({
+    producer: z.string().trim().max(300).nullable().optional(),
+    wine_name: z.string().trim().min(1).max(300),
+    vintage: z
+      .union([z.number().int().min(1700).max(2200), z.string().trim().max(20)])
+      .nullable()
+      .optional(),
+    region: z.string().trim().max(200).nullable().optional(),
+    country: z.string().trim().max(100).nullable().optional(),
+    wine_type: z.string().trim().max(50).nullable().optional(),
+  })
+  .strict();
 
 /**
  * POST /api/public/hooks/match-systembolaget
@@ -30,48 +31,15 @@ export const Route = createFileRoute("/api/public/hooks/match-systembolaget")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-        if (!LOVABLE_API_KEY) {
-          return Response.json({ error: "LOVABLE_API_KEY missing" }, { status: 500 });
-        }
-
-        // This endpoint spends AI credits, so only signed-in users may call it.
-        const auth = request.headers.get("authorization") ?? "";
-        if (!auth.startsWith("Bearer ")) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
-        }
-        const SUPABASE_URL = process.env.SUPABASE_URL;
-        const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
-        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-          return Response.json({ error: "Server not configured" }, { status: 500 });
-        }
-        const { createClient } = await import("@supabase/supabase-js");
-        const authClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-          auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
-        });
-        const token = auth.slice("Bearer ".length);
-        const { data: claims, error: claimsError } = await authClient.auth.getClaims(token);
-        if (claimsError || !claims?.claims?.sub) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        let parsedBody: unknown;
         try {
-          parsedBody = await request.json();
-        } catch {
-          return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-        }
-
-        const parsed = matchInputSchema.safeParse(parsedBody);
-        if (!parsed.success) {
-          return Response.json(
-            { error: "Invalid input", issues: parsed.error.issues.map((i) => i.message) },
-            { status: 400 },
-          );
-        }
-        const body: MatchInput = parsed.data;
-
-        try {
+          await requireRequestUser(request, "systembolaget-match");
+          const parsed = MatchInputSchema.safeParse(await readBoundedJson(request, 20_000));
+          if (!parsed.success) {
+            return Response.json({ error: "Invalid wine data" }, { status: 400 });
+          }
+          const body = parsed.data;
+          const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+          if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
           const candidates = await searchCandidates(body);
           if (!candidates.length) {
             return Response.json({
@@ -104,26 +72,15 @@ export const Route = createFileRoute("/api/public/hooks/match-systembolaget")({
             confidence: pick.confidence,
             reason: pick.reason,
           });
-        } catch (e) {
-          console.error("[match-systembolaget]", e);
-          return Response.json(
-            { error: e instanceof Error ? e.message : "Unknown error" },
-            { status: 500 },
-          );
+        } catch (error) {
+          return routeError(error);
         }
       },
     },
   },
 });
 
-type MatchInput = {
-  producer?: string | null;
-  wine_name?: string | null;
-  vintage?: number | string | null;
-  region?: string | null;
-  country?: string | null;
-  wine_type?: string | null;
-};
+type MatchInput = z.infer<typeof MatchInputSchema>;
 
 type Candidate = {
   productNumber: string;
@@ -158,7 +115,7 @@ async function searchCandidates(input: MatchInput): Promise<Candidate[]> {
       const url = `${base}/products?query=${encodeURIComponent(q)}&limit=8`;
       const res = await fetch(url, {
         headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(8_000),
       });
       if (!res.ok) continue;
       const json = (await res.json()) as unknown;
@@ -168,8 +125,8 @@ async function searchCandidates(input: MatchInput): Promise<Candidate[]> {
         if (!c) continue;
         if (!seen.has(c.productNumber)) seen.set(c.productNumber, c);
       }
-    } catch (e) {
-      console.error("[match-systembolaget] search failed", q, e);
+    } catch (error) {
+      console.error("[match-systembolaget] external search failed", error);
     }
   }
 
@@ -269,9 +226,8 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     body: JSON.stringify({
-      model: "google/gemini-3.7-flash",
+      model: "google/gemini-3-flash-preview",
       messages: [
         {
           role: "system",
@@ -283,11 +239,11 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
       tools: [tool],
       tool_choice: { type: "function", function: { name: "select_match" } },
     }),
+    signal: AbortSignal.timeout(20_000),
   });
 
   if (!resp.ok) {
-    const t = await resp.text();
-    console.error("[match-systembolaget] AI error", resp.status, t);
+    console.error("[match-systembolaget] AI gateway error", resp.status);
     return null;
   }
 
@@ -302,7 +258,7 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
     const idx = parsed.index == null ? null : Number(parsed.index);
     const confidence = Math.max(0, Math.min(100, Number(parsed.confidence) || 0));
     // Require reasonable confidence to accept a match
-    if (idx == null || !Number.isFinite(idx) || confidence < 55) {
+    if (idx == null || !Number.isFinite(idx) || confidence < 75) {
       return { index: null, confidence, reason: parsed.reason || "Low confidence." };
     }
     return { index: idx, confidence, reason: parsed.reason || "" };

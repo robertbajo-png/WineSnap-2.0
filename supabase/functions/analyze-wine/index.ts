@@ -1,13 +1,81 @@
 // Edge function: analyze-wine
-// Receives { imageBase64, mimeType } or { imageUrl } and returns structured wine data via Lovable AI vision (GPT-5).
+// Receives { imageBase64, mimeType } or { imageUrl } and returns structured wine data via Lovable AI vision.
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { z } from "npm:zod@3.25.76";
+import {
+  corsHeaders as getCorsHeaders,
+  enforceRateLimit,
+  errorResponse,
+  readJson,
+} from "../_shared/http.ts";
+
+const AnalyzeRequestSchema = z
+  .object({
+    imageBase64: z.string().max(14_000_000).optional(),
+    imageUrl: z
+      .string()
+      .url()
+      .max(2_048)
+      .refine((url) => url.startsWith("https://"), "imageUrl must use HTTPS")
+      .optional(),
+    mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional(),
+    text: z.string().trim().min(3).max(2_000).optional(),
+  })
+  .strict()
+  .refine(
+    (value) => Boolean(value.imageBase64 || value.imageUrl || value.text),
+    "An image or text is required",
+  );
+
+const boundedText = z.string().max(2_000);
+const WineResultSchema = z
+  .object({
+    producer: boundedText,
+    wine_name: boundedText,
+    vintage: z
+      .number()
+      .int()
+      .min(1700)
+      .max(new Date().getUTCFullYear() + 1)
+      .nullable()
+      .optional(),
+    grape_varieties: z.array(z.string().max(100)).max(20),
+    region: boundedText,
+    country: boundedText,
+    wine_type: z.enum([
+      "red",
+      "white",
+      "rose",
+      "sparkling",
+      "dessert",
+      "fortified",
+      "orange",
+      "unknown",
+    ]),
+    description: boundedText,
+    fruit: z.number().min(0).max(10),
+    tannin: z.number().min(0).max(10),
+    acidity: z.number().min(0).max(10),
+    oak: z.number().min(0).max(10),
+    sweetness: z.number().min(0).max(10),
+    body: z.number().min(0).max(10),
+    primary_notes: z.array(z.string().max(100)).max(20),
+    secondary_notes: z.array(z.string().max(100)).max(20),
+    tertiary_notes: z.array(z.string().max(100)).max(20),
+    food_pairings: z
+      .array(z.object({ dish: z.string().max(200), reason: z.string().max(500) }).strict())
+      .max(8),
+    serving_temp: z.string().max(100),
+    glass_type: z.string().max(100),
+    decant: z.boolean(),
+    confidence: z.enum(["high", "medium", "low"]),
+    identification_basis: z.enum(["label", "description", "inference"]),
+    inferred_fields: z.array(z.string().max(100)).max(30),
+  })
+  .strict();
 
 const SYSTEM_PROMPT = `You are an experienced sommelier. When given a wine label image, identify the wine and return structured data.
-If you cannot identify a specific wine, make your BEST inference from visible clues (region, grape, producer, vintage) and fill in plausible details.
+Never present an inferred value as if it was read from the label. If you cannot identify a specific wine, make a cautious inference, set confidence to low, and list every inferred field.
 ALWAYS respond in English. ALWAYS use the extract_wine tool to respond.`;
 
 const wineTool = {
@@ -74,6 +142,12 @@ const wineTool = {
         glass_type: { type: "string", description: "Glass type, e.g. 'Bordeaux glass'" },
         decant: { type: "boolean", description: "Should it be decanted?" },
         confidence: { type: "string", enum: ["high", "medium", "low"] },
+        identification_basis: { type: "string", enum: ["label", "description", "inference"] },
+        inferred_fields: {
+          type: "array",
+          items: { type: "string" },
+          description: "Fields that were inferred rather than read directly",
+        },
       },
       required: [
         "producer",
@@ -97,6 +171,8 @@ const wineTool = {
         "glass_type",
         "decant",
         "confidence",
+        "identification_basis",
+        "inferred_fields",
       ],
       additionalProperties: false,
     },
@@ -104,16 +180,14 @@ const wineTool = {
 };
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { imageBase64, imageUrl, mimeType, text } = await req.json();
-    if (!imageBase64 && !imageUrl && !text) {
-      return new Response(JSON.stringify({ error: "imageBase64, imageUrl or text is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    await enforceRateLimit(req, "analyze-wine");
+    const { imageBase64, imageUrl, mimeType, text } = AnalyzeRequestSchema.parse(
+      await readJson(req, 14_500_000),
+    );
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
@@ -157,8 +231,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!aiRes.ok) {
-      const t = await aiRes.text();
-      console.error("AI error:", aiRes.status, t);
+      console.error("AI gateway error", aiRes.status);
       if (aiRes.status === 429) {
         return new Response(
           JSON.stringify({ error: "Too many requests, please try again shortly." }),
@@ -183,19 +256,12 @@ Deno.serve(async (req: Request) => {
     const data = await aiRes.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("AI returned no tool call");
-    const wine = JSON.parse(toolCall.function.arguments);
+    const wine = WineResultSchema.parse(JSON.parse(toolCall.function.arguments));
 
     return new Response(JSON.stringify({ wine }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("analyze-wine error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return errorResponse(req, e);
   }
 });

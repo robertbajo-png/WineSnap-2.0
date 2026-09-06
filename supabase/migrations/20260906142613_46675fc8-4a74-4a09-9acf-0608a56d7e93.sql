@@ -1,4 +1,5 @@
 DROP POLICY IF EXISTS "Profiles viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 
 CREATE POLICY "Users can view own profile"
 ON public.profiles

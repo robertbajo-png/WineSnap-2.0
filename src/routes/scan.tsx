@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
+import { WineImage } from "@/components/WineImage";
 const LabelCropper = lazy(() =>
   import("@/components/LabelCropper").then((m) => ({ default: m.LabelCropper })),
 );
@@ -142,13 +143,14 @@ function ScanPage() {
   const handleFile = async (file: File | Blob) => {
     if (!user) return;
     setStage("analyzing");
+    let uploadedPath: string | null = null;
     try {
       const path = `${user.id}/${crypto.randomUUID()}.jpg`;
       const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, file, {
         contentType: "image/jpeg",
       });
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
+      uploadedPath = path;
 
       const base64 = await new Promise<string>((res, rej) => {
         const r = new FileReader();
@@ -166,16 +168,18 @@ function ScanPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const inserted = await persistWine(data.wine, pub.publicUrl);
+      const inserted = await persistWine(data.wine, path);
       // Also register the label in wine_photos
-      await supabase.from("wine_photos").insert({
+      const { error: photoError } = await supabase.from("wine_photos").insert({
         wine_id: inserted.id,
         user_id: user.id,
-        url: pub.publicUrl,
+        url: path,
         storage_path: path,
         kind: "label",
         sort_order: 0,
       });
+      if (photoError) throw photoError;
+      uploadedPath = null;
       logEvent("wine_scanned", {
         mode: "camera",
         wine_id: inserted.id,
@@ -184,6 +188,9 @@ function ScanPage() {
       setScanned(inserted);
       setStage("match");
     } catch (e) {
+      if (uploadedPath) {
+        await supabase.storage.from("wine-labels").remove([uploadedPath]);
+      }
       console.error(e);
       toast.error(e instanceof Error ? e.message : t("common.error"));
       setStage("idle");
@@ -436,7 +443,7 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
         <div className="mt-8 flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
           <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {wine.image_url ? (
-              <img src={wine.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage src={wine.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <Wine className="h-7 w-7 text-gold/60" />
             )}

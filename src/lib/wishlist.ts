@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logEvent } from "@/lib/analytics";
+import { authFetch } from "@/lib/authFetch";
 
 type WineLike = {
   id?: string | null;
@@ -98,16 +99,12 @@ async function matchAndAttachSystembolaget(
   },
 ): Promise<void> {
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) return;
-    const res = await fetch("/api/public/hooks/match-systembolaget", {
+    const res = await authFetch("/api/public/hooks/match-systembolaget", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
     if (!res.ok) return;
-
     const data = (await res.json()) as {
       match: {
         systembolaget_id: string;

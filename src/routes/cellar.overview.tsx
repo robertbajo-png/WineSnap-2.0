@@ -194,7 +194,7 @@ function CellarOverviewPage() {
   }, [wines]);
 
   return (
-    <AppShell>
+    <AppShell width="wide">
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
           <button

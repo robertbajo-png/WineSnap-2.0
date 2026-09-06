@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Wine, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { WineImage } from "@/components/WineImage";
 
 export const Route = createFileRoute("/w/$shareId")({
   head: () => ({
@@ -47,15 +48,14 @@ function PublicWinePage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("wines")
+      const { data, error } = await supabase
+        .from("public_wines")
         .select(
           "id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type,description,fruit,tannin,acidity,oak,sweetness,body,primary_notes,secondary_notes,tertiary_notes,serving_temp,glass_type",
         )
         .eq("share_id", shareId)
-        .eq("is_public", true)
         .maybeSingle();
-      if (!data) setNotFound(true);
+      if (error || !data) setNotFound(true);
       else setW(data as PublicWine);
       setLoading(false);
     })();
@@ -113,7 +113,11 @@ function PublicWinePage() {
       <div className="mx-auto mt-6 max-w-md">
         {w.image_url && (
           <div className="overflow-hidden rounded-3xl border border-white/10 shadow-elegant">
-            <img src={w.image_url} alt={w.wine_name ?? "Wine"} className="w-full object-cover" />
+            <WineImage
+              src={w.image_url}
+              alt={w.wine_name ?? "Wine"}
+              className="w-full object-cover"
+            />
           </div>
         )}
 

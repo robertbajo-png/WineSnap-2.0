@@ -15,26 +15,30 @@ export const Route = createFileRoute("/admin")({
 function AdminPage() {
   const { user, loading } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
-  const [stats, setStats] = useState<{ wines: number } | null>(null);
+  const [stats, setStats] = useState<{
+    users: number;
+    wines: number;
+    public_wines: number;
+    wishlist_items: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(({ data }) => setAllowed(!!data));
+    supabase.rpc("get_admin_stats").then(({ data, error }) => {
+      if (error || !data || Array.isArray(data) || typeof data !== "object") {
+        setAllowed(false);
+        return;
+      }
+      const result = data as Record<string, unknown>;
+      setStats({
+        users: Number(result.users ?? 0),
+        wines: Number(result.wines ?? 0),
+        public_wines: Number(result.public_wines ?? 0),
+        wishlist_items: Number(result.wishlist_items ?? 0),
+      });
+      setAllowed(true);
+    });
   }, [user]);
-
-  useEffect(() => {
-    if (!allowed) return;
-    supabase
-      .from("wines")
-      .select("id", { count: "exact", head: true })
-      .then(({ count }) => setStats({ wines: count ?? 0 }));
-  }, [allowed]);
 
   if (loading || allowed === null) {
     return (
@@ -66,10 +70,19 @@ function AdminPage() {
       </Link>
       <h1 className="font-display text-3xl">Admin</h1>
 
-      <Card className="mt-6 p-5">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Totalt antal vin</p>
-        <p className="mt-1 font-display text-4xl text-gold">{stats?.wines ?? "—"}</p>
-      </Card>
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          ["Användare", stats?.users],
+          ["Viner", stats?.wines],
+          ["Delade viner", stats?.public_wines],
+          ["Önskelistan", stats?.wishlist_items],
+        ].map(([label, value]) => (
+          <Card key={String(label)} className="p-5">
+            <p className="text-xs uppercase text-muted-foreground">{label}</p>
+            <p className="mt-1 font-display text-3xl text-gold">{value ?? "—"}</p>
+          </Card>
+        ))}
+      </div>
 
       <p className="mt-6 text-sm text-muted-foreground">
         Roller hanteras direkt i databasen via tabellen{" "}

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Star, Wine, Plus, Calendar, MapPin, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { WineImage } from "@/components/WineImage";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -135,7 +136,7 @@ function NotesPage() {
         <section className="mt-4 flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3">
           <div className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {w.image_url ? (
-              <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage src={w.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <Wine className="h-5 w-5 text-gold/60" />
             )}
