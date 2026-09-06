@@ -88,8 +88,10 @@ const en = {
   // About
   "about.back": "Back",
   "about.title": "About WineSnap",
-  "about.body1": "WineSnap lets you snap a wine label and get producer, grape, region, taste profile and food pairings in seconds. Everything is saved to your history and builds a personal taste profile that powers your For You feed.",
-  "about.body2": "Powered by AI vision and an in-house sommelier model. Your photos are stored privately in your account.",
+  "about.body1":
+    "WineSnap lets you snap a wine label and get producer, grape, region, taste profile and food pairings in seconds. Everything is saved to your history and builds a personal taste profile that powers your For You feed.",
+  "about.body2":
+    "Powered by AI vision and an in-house sommelier model. Your photos are stored privately in your account.",
 
   // Taste
   "taste.title": "Taste Preferences",
@@ -103,13 +105,23 @@ const en = {
   "taste.grapesSub": "Pick the grapes you reach for.",
   "taste.save": "Save Preferences",
   "taste.saved": "Preferences saved",
-  "taste.body": "Body", "taste.light": "Light", "taste.bold": "Bold",
-  "taste.dry": "Dry", "taste.sweet": "Sweet",
-  "taste.oak": "Oak", "taste.noOak": "No Oak", "taste.oaked": "Oaked",
-  "taste.tannin": "Tannin", "taste.low": "Low", "taste.high": "High",
+  "taste.body": "Body",
+  "taste.light": "Light",
+  "taste.bold": "Bold",
+  "taste.dry": "Dry",
+  "taste.sweet": "Sweet",
+  "taste.oak": "Oak",
+  "taste.noOak": "No Oak",
+  "taste.oaked": "Oaked",
+  "taste.tannin": "Tannin",
+  "taste.low": "Low",
+  "taste.high": "High",
   "taste.acidity": "Acidity",
   "taste.sweetness": "Sweetness",
-  "type.red": "Red", "type.white": "White", "type.sparkling": "Sparkling", "type.rose": "Rosé",
+  "type.red": "Red",
+  "type.white": "White",
+  "type.sparkling": "Sparkling",
+  "type.rose": "Rosé",
 
   // Cellar
   "cellar.title": "My Cellar",
@@ -156,7 +168,8 @@ const en = {
   "scan.analyzing": "Analyzing wine…",
   "scan.align": "Align label within the frame",
   "scan.descLabel": "Wine description",
-  "scan.descPh": "e.g. Château Margaux 2015, or 'a bold Italian red from Tuscany with cherry and leather notes'",
+  "scan.descPh":
+    "e.g. Château Margaux 2015, or 'a bold Italian red from Tuscany with cherry and leather notes'",
   "scan.descHint": "Producer, vintage, region, grape — anything you know helps.",
   "scan.identify": "Identify wine",
   "scan.describeError": "Please describe the wine in a few words",
@@ -216,7 +229,9 @@ const en = {
   "notes.addAromaPh": "Aroma name",
   "notes.palate": "Palate",
   "notes.finish": "Finish",
-  "notes.short": "Short", "notes.medium": "Medium", "notes.long": "Long",
+  "notes.short": "Short",
+  "notes.medium": "Medium",
+  "notes.long": "Long",
   "notes.notes": "Notes",
   "notes.notesPh": "Write your impressions…",
   "notes.date": "Date",
@@ -228,7 +243,8 @@ const en = {
   // Pairings
   "pairings.title": "Pairings",
   "pairings.servingTip": "Serving Tip",
-  "pairings.servingDefault": "Decant for 30–60 minutes and serve at 16–18°C (60–64°F) for the best experience.",
+  "pairings.servingDefault":
+    "Decant for 30–60 minutes and serve at 16–18°C (60–64°F) for the best experience.",
   "pairings.best": "Best Matches",
   "pairings.meat": "Meat",
   "pairings.pasta": "Pasta & Risotto",
@@ -249,7 +265,8 @@ const en = {
   "foryou.updated": "Updated",
   "foryou.refresh": "Refresh",
   "foryou.generate": "Generate",
-  "foryou.emptyDesc": "Tap Generate to get personalized wine picks based on your taste profile and cellar.",
+  "foryou.emptyDesc":
+    "Tap Generate to get personalized wine picks based on your taste profile and cellar.",
   "foryou.generateBtn": "Generate suggestions",
   "foryou.working": "Pouring through your taste profile…",
   "foryou.signIn": "Sign in to see suggestions.",
@@ -292,10 +309,12 @@ const en = {
 
   // Restaurant Mode
   "restaurant.title": "Restaurant Mode",
-  "restaurant.subtitle": "Snap the wine list or paste it — we'll pick the best matches for your palate.",
+  "restaurant.subtitle":
+    "Snap the wine list or paste it — we'll pick the best matches for your palate.",
   "restaurant.type": "Paste list",
   "restaurant.snap": "Snap menu",
-  "restaurant.textPh": "Paste the wine list here — one wine per line if possible. E.g.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
+  "restaurant.textPh":
+    "Paste the wine list here — one wine per line if possible. E.g.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
   "restaurant.textHint": "Producer, region, vintage — anything you can copy helps.",
   "restaurant.snapCta": "Take a photo of the menu",
   "restaurant.needText": "Paste at least a few wines first",
@@ -308,7 +327,8 @@ const en = {
   "restaurant.balanced": "Balanced",
   "restaurant.stretch": "Stretch",
   "restaurant.emptyTitle": "Ready when you are",
-  "restaurant.emptyDesc": "Paste the wine list or snap the menu — we'll rank the best matches for your taste.",
+  "restaurant.emptyDesc":
+    "Paste the wine list or snap the menu — we'll rank the best matches for your taste.",
   "home.cta.restaurant": "Restaurant Mode",
 
   // Onboarding
@@ -317,11 +337,14 @@ const en = {
   "onboard.back": "Back",
   "onboard.finish": "Get started",
   "onboard.step1.title": "Welcome to WineSnap",
-  "onboard.step1.desc": "Snap any wine label and get producer, region, taste profile and food pairings in seconds.",
+  "onboard.step1.desc":
+    "Snap any wine label and get producer, region, taste profile and food pairings in seconds.",
   "onboard.step2.title": "Build your cellar",
-  "onboard.step2.desc": "Every scan is saved to your cellar. Rate wines and add notes to remember what you loved.",
+  "onboard.step2.desc":
+    "Every scan is saved to your cellar. Rate wines and add notes to remember what you loved.",
   "onboard.step3.title": "Personal recommendations",
-  "onboard.step3.desc": "Your taste profile powers For You picks and restaurant menu matches — tuned to you.",
+  "onboard.step3.desc":
+    "Your taste profile powers For You picks and restaurant menu matches — tuned to you.",
 
   // Wishlist
   "wishlist.title": "Wishlist",
@@ -388,7 +411,6 @@ const en = {
   "profile.friends": "Friends",
   "profile.friendsDesc": "Follow other wine lovers and see their feed.",
 } as const;
-
 
 const sv: Record<keyof typeof en, string> = {
   "nav.home": "Hem",
@@ -470,8 +492,10 @@ const sv: Record<keyof typeof en, string> = {
 
   "about.back": "Tillbaka",
   "about.title": "Om WineSnap",
-  "about.body1": "WineSnap låter dig fota en vinetikett och få fram producent, druva, region, smakprofil och matparning på sekunder. Allt sparas i din historik och bygger din personliga smakprofil som driver flödet 'För dig'.",
-  "about.body2": "Drivs av AI-vision och en intern sommeliersmodell. Bilderna sparas privat i ditt konto.",
+  "about.body1":
+    "WineSnap låter dig fota en vinetikett och få fram producent, druva, region, smakprofil och matparning på sekunder. Allt sparas i din historik och bygger din personliga smakprofil som driver flödet 'För dig'.",
+  "about.body2":
+    "Drivs av AI-vision och en intern sommeliersmodell. Bilderna sparas privat i ditt konto.",
 
   "taste.title": "Smakpreferenser",
   "taste.subtitle": "Berätta vad du gillar mest.",
@@ -484,13 +508,23 @@ const sv: Record<keyof typeof en, string> = {
   "taste.grapesSub": "Välj druvorna du oftast tar till.",
   "taste.save": "Spara preferenser",
   "taste.saved": "Preferenser sparade",
-  "taste.body": "Kropp", "taste.light": "Lätt", "taste.bold": "Fyllig",
-  "taste.dry": "Torr", "taste.sweet": "Söt",
-  "taste.oak": "Ek", "taste.noOak": "Ingen ek", "taste.oaked": "Ekad",
-  "taste.tannin": "Tannin", "taste.low": "Låg", "taste.high": "Hög",
+  "taste.body": "Kropp",
+  "taste.light": "Lätt",
+  "taste.bold": "Fyllig",
+  "taste.dry": "Torr",
+  "taste.sweet": "Söt",
+  "taste.oak": "Ek",
+  "taste.noOak": "Ingen ek",
+  "taste.oaked": "Ekad",
+  "taste.tannin": "Tannin",
+  "taste.low": "Låg",
+  "taste.high": "Hög",
   "taste.acidity": "Syra",
   "taste.sweetness": "Sötma",
-  "type.red": "Rött", "type.white": "Vitt", "type.sparkling": "Mousserande", "type.rose": "Rosé",
+  "type.red": "Rött",
+  "type.white": "Vitt",
+  "type.sparkling": "Mousserande",
+  "type.rose": "Rosé",
 
   "cellar.title": "Min källare",
   "cellar.overview": "Källaröversikt",
@@ -534,7 +568,8 @@ const sv: Record<keyof typeof en, string> = {
   "scan.analyzing": "Analyserar vinet…",
   "scan.align": "Placera etiketten inom ramen",
   "scan.descLabel": "Vinbeskrivning",
-  "scan.descPh": "T.ex. Château Margaux 2015, eller 'ett fylligt italienskt rött från Toscana med körsbär och läder'",
+  "scan.descPh":
+    "T.ex. Château Margaux 2015, eller 'ett fylligt italienskt rött från Toscana med körsbär och läder'",
   "scan.descHint": "Producent, årgång, region, druva — allt du vet hjälper.",
   "scan.identify": "Identifiera vinet",
   "scan.describeError": "Beskriv vinet med några ord",
@@ -592,7 +627,9 @@ const sv: Record<keyof typeof en, string> = {
   "notes.addAromaPh": "Aromens namn",
   "notes.palate": "Gom",
   "notes.finish": "Eftersmak",
-  "notes.short": "Kort", "notes.medium": "Medel", "notes.long": "Lång",
+  "notes.short": "Kort",
+  "notes.medium": "Medel",
+  "notes.long": "Lång",
   "notes.notes": "Anteckningar",
   "notes.notesPh": "Skriv dina intryck…",
   "notes.date": "Datum",
@@ -661,10 +698,12 @@ const sv: Record<keyof typeof en, string> = {
   "edit.description": "Beskrivning",
 
   "restaurant.title": "Restaurangläge",
-  "restaurant.subtitle": "Fota vinlistan eller klistra in den — vi väljer de bästa vinerna för din smak.",
+  "restaurant.subtitle":
+    "Fota vinlistan eller klistra in den — vi väljer de bästa vinerna för din smak.",
   "restaurant.type": "Klistra in",
   "restaurant.snap": "Fota meny",
-  "restaurant.textPh": "Klistra in vinlistan här — helst ett vin per rad. T.ex.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
+  "restaurant.textPh":
+    "Klistra in vinlistan här — helst ett vin per rad. T.ex.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
   "restaurant.textHint": "Producent, region, årgång — allt du kan kopiera hjälper.",
   "restaurant.snapCta": "Ta en bild på menyn",
   "restaurant.needText": "Klistra in några viner först",
@@ -677,7 +716,8 @@ const sv: Record<keyof typeof en, string> = {
   "restaurant.balanced": "Balanserat",
   "restaurant.stretch": "Utmaning",
   "restaurant.emptyTitle": "Redo när du är",
-  "restaurant.emptyDesc": "Klistra in vinlistan eller fota menyn — vi rankar bästa matchningarna för din smak.",
+  "restaurant.emptyDesc":
+    "Klistra in vinlistan eller fota menyn — vi rankar bästa matchningarna för din smak.",
   "home.cta.restaurant": "Restaurangläge",
 
   "onboard.skip": "Hoppa över",
@@ -685,11 +725,14 @@ const sv: Record<keyof typeof en, string> = {
   "onboard.back": "Tillbaka",
   "onboard.finish": "Kom igång",
   "onboard.step1.title": "Välkommen till WineSnap",
-  "onboard.step1.desc": "Fota en vinetikett och få producent, region, smakprofil och matparningar på sekunder.",
+  "onboard.step1.desc":
+    "Fota en vinetikett och få producent, region, smakprofil och matparningar på sekunder.",
   "onboard.step2.title": "Bygg din källare",
-  "onboard.step2.desc": "Varje skanning sparas i din källare. Betygsätt viner och lägg till noter för att minnas vad du älskade.",
+  "onboard.step2.desc":
+    "Varje skanning sparas i din källare. Betygsätt viner och lägg till noter för att minnas vad du älskade.",
   "onboard.step3.title": "Personliga rekommendationer",
-  "onboard.step3.desc": "Din smakprofil driver För dig-tips och restaurangmenymatchningar — anpassade efter dig.",
+  "onboard.step3.desc":
+    "Din smakprofil driver För dig-tips och restaurangmenymatchningar — anpassade efter dig.",
 
   "wishlist.title": "Önskelista",
   "wishlist.subtitle": "Viner du vill prova — sätt målpris och få avisering.",
@@ -755,7 +798,6 @@ const sv: Record<keyof typeof en, string> = {
   "profile.friendsDesc": "Följ andra vinälskare och se deras flöde.",
 };
 
-
 const dict = { en, sv } as const;
 
 export type TKey = keyof typeof en;
@@ -768,20 +810,30 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
 
   useEffect(() => {
-    const stored = (typeof window !== "undefined" ? localStorage.getItem("lang") : null) as Lang | null;
+    const stored = (
+      typeof window !== "undefined" ? localStorage.getItem("lang") : null
+    ) as Lang | null;
     if (stored === "en" || stored === "sv") {
       setLangState(stored);
-    } else if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("sv")) {
+    } else if (
+      typeof navigator !== "undefined" &&
+      navigator.language?.toLowerCase().startsWith("sv")
+    ) {
       setLangState("sv");
     }
   }, []);
 
   const setLang = (l: Lang) => {
     setLangState(l);
-    try { localStorage.setItem("lang", l); } catch {}
+    try {
+      localStorage.setItem("lang", l);
+    } catch {
+      // storage unavailable (private mode) — language stays for this session only
+    }
   };
 
-  const t = (k: TKey) => (dict[lang] as Record<string, string>)[k] ?? (dict.en as Record<string, string>)[k] ?? k;
+  const t = (k: TKey) =>
+    (dict[lang] as Record<string, string>)[k] ?? (dict.en as Record<string, string>)[k] ?? k;
 
   return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>;
 }
@@ -789,7 +841,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 export function useI18n() {
   const ctx = useContext(I18nContext);
   if (!ctx) {
-    return { lang: "en" as Lang, setLang: () => {}, t: ((k: TKey) => (dict.en as Record<string, string>)[k] ?? k) };
+    return {
+      lang: "en" as Lang,
+      setLang: () => {},
+      t: (k: TKey) => (dict.en as Record<string, string>)[k] ?? k,
+    };
   }
   return ctx;
 }

@@ -31,7 +31,9 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
     return false;
   }
   const vintage =
-    typeof input.vintage === "string" ? (Number.parseInt(input.vintage, 10) || null) : input.vintage ?? null;
+    typeof input.vintage === "string"
+      ? Number.parseInt(input.vintage, 10) || null
+      : (input.vintage ?? null);
 
   const row = {
     user_id: user.id,
@@ -96,12 +98,16 @@ async function matchAndAttachSystembolaget(
   },
 ): Promise<void> {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return;
     const res = await fetch("/api/public/hooks/match-systembolaget", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(input),
     });
     if (!res.ok) return;
+
     const data = (await res.json()) as {
       match: {
         systembolaget_id: string;
@@ -121,7 +127,10 @@ async function matchAndAttachSystembolaget(
         price_source: "systembolaget",
       } as never)
       .eq("id", wishlistId);
-    logEvent("wishlist_systembolaget_matched", { wishlist_id: wishlistId, sb_id: data.match.systembolaget_id });
+    logEvent("wishlist_systembolaget_matched", {
+      wishlist_id: wishlistId,
+      sb_id: data.match.systembolaget_id,
+    });
   } catch (e) {
     console.error("[wishlist] auto-match failed", e);
   }

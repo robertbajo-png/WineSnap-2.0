@@ -1,4 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 
@@ -33,15 +34,32 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#5a1a23" },
       { title: "Winesnap — Skanna vinetiketter" },
-      { name: "description", content: "Fota en vinetikett, få producent, druva, smakprofil och matparning direkt." },
+      {
+        name: "description",
+        content: "Fota en vinetikett, få producent, druva, smakprofil och matparning direkt.",
+      },
       { property: "og:title", content: "Winesnap — Skanna vinetiketter" },
-      { property: "og:description", content: "Fota en vinetikett, få producent, druva, smakprofil och matparning direkt." },
+      {
+        property: "og:description",
+        content: "Fota en vinetikett, få producent, druva, smakprofil och matparning direkt.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Winesnap — Skanna vinetiketter" },
-      { name: "twitter:description", content: "Fota en vinetikett, få producent, druva, smakprofil och matparning direkt." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png" },
+      {
+        name: "twitter:description",
+        content: "Fota en vinetikett, få producent, druva, smakprofil och matparning direkt.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -77,6 +95,32 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    if (import.meta.env.DEV) return;
+    const register = () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          // Pick up new builds without a manual hard refresh.
+          reg.addEventListener("updatefound", () => {
+            const next = reg.installing;
+            if (!next) return;
+            next.addEventListener("statechange", () => {
+              if (next.state === "installed" && navigator.serviceWorker.controller) {
+                next.postMessage("SKIP_WAITING");
+              }
+            });
+          });
+        })
+        .catch(() => {
+          /* service worker is a progressive enhancement */
+        });
+    };
+    window.addEventListener("load", register);
+    return () => window.removeEventListener("load", register);
+  }, []);
+
   return (
     <I18nProvider>
       <Outlet />

@@ -79,9 +79,20 @@ Notes: ${[...(wine.primary_notes ?? []), ...(wine.secondary_notes ?? []), ...(wi
     if (!resp.ok) {
       const t = await resp.text();
       console.error("AI error", resp.status, t);
-      if (resp.status === 429) return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (resp.status === 402) return new Response(JSON.stringify({ error: "Out of credits. Add funds in Workspace settings." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (resp.status === 429)
+        return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      if (resp.status === 402)
+        return new Response(
+          JSON.stringify({ error: "Out of credits. Add funds in Workspace settings." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await resp.json();
@@ -93,9 +104,12 @@ Notes: ${[...(wine.primary_notes ?? []), ...(wine.secondary_notes ?? []), ...(wi
     });
   } catch (e) {
     console.error("wine-suggestions error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

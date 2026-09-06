@@ -21,11 +21,16 @@ export const Route = createFileRoute("/cellar")({
 });
 
 const FILTERS = ["All", "Red", "White", "Rosé", "Sparkling"] as const;
-type Filter = typeof FILTERS[number];
+type Filter = (typeof FILTERS)[number];
 const SORTS = ["newest", "oldest", "rating", "vintage", "name"] as const;
-type Sort = typeof SORTS[number];
+type Sort = (typeof SORTS)[number];
 
-const TYPE_MAP: Record<string, Filter> = { red: "Red", white: "White", rose: "Rosé", sparkling: "Sparkling" };
+const TYPE_MAP: Record<string, Filter> = {
+  red: "Red",
+  white: "White",
+  rose: "Rosé",
+  sparkling: "Sparkling",
+};
 
 type WineRow = {
   id: string;
@@ -37,7 +42,10 @@ type WineRow = {
   image_url: string | null;
   wine_type: string | null;
   created_at: string;
-  fruit: number | null; tannin: number | null; acidity: number | null; body: number | null;
+  fruit: number | null;
+  tannin: number | null;
+  acidity: number | null;
+  body: number | null;
 };
 
 function CellarPage() {
@@ -50,10 +58,15 @@ function CellarPage() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     supabase
       .from("wines")
-      .select("id,producer,wine_name,vintage,region,country,image_url,wine_type,created_at,fruit,tannin,acidity,body")
+      .select(
+        "id,producer,wine_name,vintage,region,country,image_url,wine_type,created_at,fruit,tannin,acidity,body",
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -74,11 +87,16 @@ function CellarPage() {
     const sorted = [...list];
     sorted.sort((a, b) => {
       switch (sort) {
-        case "oldest": return +new Date(a.created_at) - +new Date(b.created_at);
-        case "rating": return computeRating(b) - computeRating(a);
-        case "vintage": return (b.vintage ?? 0) - (a.vintage ?? 0);
-        case "name": return (a.wine_name ?? a.producer ?? "").localeCompare(b.wine_name ?? b.producer ?? "");
-        default: return +new Date(b.created_at) - +new Date(a.created_at);
+        case "oldest":
+          return +new Date(a.created_at) - +new Date(b.created_at);
+        case "rating":
+          return computeRating(b) - computeRating(a);
+        case "vintage":
+          return (b.vintage ?? 0) - (a.vintage ?? 0);
+        case "name":
+          return (a.wine_name ?? a.producer ?? "").localeCompare(b.wine_name ?? b.producer ?? "");
+        default:
+          return +new Date(b.created_at) - +new Date(a.created_at);
       }
     });
     return sorted;
@@ -96,11 +114,18 @@ function CellarPage() {
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <Link to="/cellar/overview" aria-label={t("cellar.overview")} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+          <Link
+            to="/cellar/overview"
+            aria-label={t("cellar.overview")}
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+          >
             <BarChart3 className="h-5 w-5" strokeWidth={1.6} />
           </Link>
           <h1 className="font-display text-xl">{t("cellar.title")}</h1>
-          <Link to="/scan" className="flex h-9 items-center gap-1 rounded-full bg-gradient-burgundy px-3 text-xs font-medium text-cream">
+          <Link
+            to="/scan"
+            className="flex h-9 items-center gap-1 rounded-full bg-gradient-burgundy px-3 text-xs font-medium text-cream"
+          >
             <Plus className="h-3.5 w-3.5" /> {t("cellar.add")}
           </Link>
         </header>
@@ -124,7 +149,9 @@ function CellarPage() {
               onClick={() => setFilter(f)}
               className={cn(
                 "h-8 shrink-0 rounded-full border px-3.5 text-xs transition-colors",
-                filter === f ? "border-burgundy bg-burgundy text-cream" : "border-white/10 bg-card/40 text-foreground/80",
+                filter === f
+                  ? "border-burgundy bg-burgundy text-cream"
+                  : "border-white/10 bg-card/40 text-foreground/80",
               )}
             >
               {filterLabel(f)}
@@ -144,7 +171,9 @@ function CellarPage() {
             aria-label={t("cellar.sort")}
           >
             {SORTS.map((s) => (
-              <option key={s} value={s}>{t(`cellar.sort.${s}` as const)}</option>
+              <option key={s} value={s}>
+                {t(`cellar.sort.${s}` as const)}
+              </option>
             ))}
           </select>
         </div>
@@ -152,9 +181,15 @@ function CellarPage() {
         <ul className="mt-3 space-y-2.5 pb-4">
           {loading ? (
             <>
-              <li><CellarRowSkeleton /></li>
-              <li><CellarRowSkeleton /></li>
-              <li><CellarRowSkeleton /></li>
+              <li>
+                <CellarRowSkeleton />
+              </li>
+              <li>
+                <CellarRowSkeleton />
+              </li>
+              <li>
+                <CellarRowSkeleton />
+              </li>
             </>
           ) : filtered.length === 0 ? (
             <li>
@@ -165,7 +200,9 @@ function CellarPage() {
                   description={t("cellar.emptyDesc")}
                   action={
                     <Link to="/scan">
-                      <Button className="bg-gradient-burgundy text-cream"><Camera className="h-4 w-4" /> {t("cellar.emptyCta")}</Button>
+                      <Button className="bg-gradient-burgundy text-cream">
+                        <Camera className="h-4 w-4" /> {t("cellar.emptyCta")}
+                      </Button>
                     </Link>
                   }
                 />
@@ -196,9 +233,15 @@ function CellarPage() {
                       <p className="truncate font-display text-base leading-tight text-cream">
                         {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
                       </p>
-                      <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
+                      <p className="truncate text-xs text-gold">
+                        {[w.region, w.country].filter(Boolean).join(", ")}
+                      </p>
                       <div className="mt-1 flex items-center gap-2 text-[11px]">
-                        {w.vintage && <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] tracking-wider text-muted-foreground">{w.vintage}</span>}
+                        {w.vintage && (
+                          <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] tracking-wider text-muted-foreground">
+                            {w.vintage}
+                          </span>
+                        )}
                         <span className="flex items-center gap-1">
                           <Star className="h-3 w-3 fill-gold text-gold" />
                           <span>{rating.toFixed(1)}</span>
@@ -217,7 +260,12 @@ function CellarPage() {
   );
 }
 
-function computeRating(w: { fruit: number | null; tannin: number | null; acidity: number | null; body: number | null }): number {
+function computeRating(w: {
+  fruit: number | null;
+  tannin: number | null;
+  acidity: number | null;
+  body: number | null;
+}): number {
   const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
   if (vals.length === 0) return 4.0;
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;

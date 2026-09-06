@@ -58,9 +58,7 @@ function HomePage() {
 
           {/* Hero copy */}
           <div className="absolute inset-x-0 bottom-6 px-6 text-center">
-            <h2 className="font-display text-[34px] leading-tight text-cream">
-              {t("home.title")}
-            </h2>
+            <h2 className="font-display text-[34px] leading-tight text-cream">{t("home.title")}</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/75">
               {t("home.subtitle")}
             </p>
@@ -107,10 +105,7 @@ function HomePage() {
             {t("home.cta.restaurant")}
           </Link>
 
-          <Link
-            to="/cellar"
-            className="mt-3 mb-4 block text-center font-display text-sm text-gold"
-          >
+          <Link to="/cellar" className="mt-3 mb-4 block text-center font-display text-sm text-gold">
             {t("home.cta.later")}
           </Link>
         </div>

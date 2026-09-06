@@ -60,7 +60,9 @@ function LoginPage() {
         </Link>
       </header>
       <Card className="p-6 shadow-elegant">
-        <h1 className="font-display text-2xl">{mode === "signin" ? t("login.welcome") : t("login.createAccount")}</h1>
+        <h1 className="font-display text-2xl">
+          {mode === "signin" ? t("login.welcome") : t("login.createAccount")}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {mode === "signin" ? t("login.signInSub") : t("login.createSub")}
         </p>
@@ -68,12 +70,23 @@ function LoginPage() {
           {mode === "signup" && (
             <div className="space-y-1.5">
               <Label htmlFor="name">{t("login.name")}</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("login.namePh")} />
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("login.namePh")}
+              />
             </div>
           )}
           <div className="space-y-1.5">
             <Label htmlFor="email">{t("login.email")}</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">{t("login.password")}</Label>
@@ -86,8 +99,16 @@ function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" disabled={busy} className="h-11 w-full bg-gradient-gold text-background">
-            {busy ? t("login.wait") : mode === "signin" ? t("login.signIn") : t("login.createAccount")}
+          <Button
+            type="submit"
+            disabled={busy}
+            className="h-11 w-full bg-gradient-gold text-background"
+          >
+            {busy
+              ? t("login.wait")
+              : mode === "signin"
+                ? t("login.signIn")
+                : t("login.createAccount")}
           </Button>
         </form>
         <button

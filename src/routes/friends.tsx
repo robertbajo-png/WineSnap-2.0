@@ -22,7 +22,10 @@ export const Route = createFileRoute("/friends")({
       { title: "Friends — WineSnap" },
       { name: "description", content: "Follow other wine lovers and see what they're drinking." },
       { property: "og:title", content: "Friends — WineSnap" },
-      { property: "og:description", content: "Follow other wine lovers and see what they're drinking." },
+      {
+        property: "og:description",
+        content: "Follow other wine lovers and see what they're drinking.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -119,9 +122,13 @@ function FriendsPage() {
             {loadingSearch ? (
               <Skeleton className="h-14 w-full" />
             ) : q.trim() && results.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">{t("friends.search.none")}</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {t("friends.search.none")}
+              </p>
             ) : !q.trim() ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">{t("friends.search.hint")}</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {t("friends.search.hint")}
+              </p>
             ) : (
               results.map((p) => <UserRow key={p.id} profile={p} />)
             )}
@@ -132,7 +139,15 @@ function FriendsPage() {
   );
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
@@ -150,20 +165,28 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
     month: "short",
     day: "numeric",
   });
-  const authorName =
-    item.author?.display_name || item.author?.username || "Someone";
+  const authorName = item.author?.display_name || item.author?.username || "Someone";
   const to = item.share_id ? `/w/${item.share_id}` : null;
   const content = (
     <div className="flex gap-3 rounded-xl border border-white/10 bg-card/40 p-3">
       <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-background">
         {item.image_url ? (
-          <img src={item.image_url} alt={item.name ?? ""} className="h-full w-full object-cover" loading="lazy" />
+          <img
+            src={item.image_url}
+            alt={item.wine_name ?? ""}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
         ) : null}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
           {item.author?.username ? (
-            <Link to="/u/$username" params={{ username: item.author.username }} className="text-gold hover:underline">
+            <Link
+              to="/u/$username"
+              params={{ username: item.author.username }}
+              className="text-gold hover:underline"
+            >
               @{item.author.username}
             </Link>
           ) : (
@@ -172,9 +195,11 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
           <span className="mx-1.5 text-white/20">•</span>
           {when}
         </p>
-        <p className="mt-0.5 truncate font-display text-lg text-cream">{item.producer ?? item.name ?? "—"}</p>
+        <p className="mt-0.5 truncate font-display text-lg text-cream">
+          {item.producer ?? item.wine_name ?? "—"}
+        </p>
         <p className="truncate text-xs text-muted-foreground">
-          {[item.name, item.vintage, item.region].filter(Boolean).join(" • ")}
+          {[item.wine_name, item.vintage, item.region].filter(Boolean).join(" • ")}
         </p>
         {item.user_rating != null && (
           <p className="mt-1 inline-flex items-center gap-1 text-xs text-gold">
