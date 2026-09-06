@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       (cellar ?? [])
         .slice(0, 20)
         .map(
-          (w: any) =>
+          (w: Record<string, unknown>) =>
             `- ${w.producer ?? "?"} ${w.wine_name ?? ""} ${w.vintage ?? ""} (${w.region ?? "?"}, ${w.country ?? "?"})${w.user_rating ? ` ★${w.user_rating}` : ""}`,
         )
         .join("\n") || "(empty cellar)";
