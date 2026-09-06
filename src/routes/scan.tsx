@@ -100,8 +100,8 @@ function ScanPage() {
         serving_temp: w.serving_temp,
         glass_type: w.glass_type,
         decant: w.decant,
-        ai_raw: w as never,
-      })
+        ai_raw: w,
+      } as never)
       .select("id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type")
       .single();
     if (insErr) throw insErr;
