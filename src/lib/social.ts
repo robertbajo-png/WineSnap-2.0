@@ -128,13 +128,28 @@ export async function getFriendsFeed(limit = 30): Promise<FeedItem[]> {
   return wines.map((w) => ({ ...w, author: byId.get(w.user_id) ?? null }));
 }
 
-export async function getPublicWinesByUser(userId: string, limit = 60) {
+export type PublicWine = {
+  id: string;
+  producer: string | null;
+  wine_name: string | null;
+  vintage: number | null;
+  region: string | null;
+  wine_type: string | null;
+  user_rating: number | null;
+  image_url: string | null;
+  share_id: string | null;
+  created_at: string;
+};
+
+export async function getPublicWinesByUser(userId: string, limit = 60): Promise<PublicWine[]> {
   const { data } = await supabase
     .from("wines")
-    .select("id,producer,wine_name,vintage,region,wine_type,user_rating,image_url,share_id,created_at")
+    .select(
+      "id,producer,wine_name,vintage,region,wine_type,user_rating,image_url,share_id,created_at",
+    )
     .eq("user_id", userId)
     .eq("is_public", true)
     .order("created_at", { ascending: false })
     .limit(limit);
-  return data ?? [];
+  return (data ?? []) as PublicWine[];
 }

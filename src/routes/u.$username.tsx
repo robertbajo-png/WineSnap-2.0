@@ -13,6 +13,7 @@ import {
   follow,
   unfollow,
   type PublicProfile,
+  type PublicWine,
 } from "@/lib/social";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
