@@ -271,7 +271,7 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-3.7-flash",
       messages: [
         {
           role: "system",
