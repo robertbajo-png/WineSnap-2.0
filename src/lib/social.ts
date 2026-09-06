@@ -90,6 +90,15 @@ export type FeedItem = {
   } | null;
 };
 
+type FeedAuthor = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+type FeedWine = Omit<FeedItem, "author">;
+
 export async function getFriendsFeed(limit = 30): Promise<FeedItem[]> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
+import type { TKey } from "@/i18n";
 
 export const Route = createFileRoute("/wine/$id/edit")({
   head: () => ({ meta: [{ title: "Edit wine — WineSnap" }] }),

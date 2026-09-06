@@ -28,6 +28,25 @@ export const Route = createFileRoute("/me")({
   component: MePage,
 });
 
+type ProfileRow = {
+  display_name?: string;
+  username?: string | null;
+  bio?: string | null;
+  is_public?: boolean;
+  preferred_types?: string[];
+  preferred_regions?: string[];
+  body?: number | null;
+  sweetness?: number | null;
+  oak?: number | null;
+  tannin?: number | null;
+  acidity?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  personalized_recs?: boolean;
+  new_arrivals_alerts?: boolean;
+  hide_disliked?: boolean;
+};
+
 function MePage() {
   const { user } = useAuth();
   const { t, lang, setLang } = useI18n();

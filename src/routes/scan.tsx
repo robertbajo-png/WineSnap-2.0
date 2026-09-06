@@ -17,6 +17,30 @@ export const Route = createFileRoute("/scan")({
 
 type Stage = "idle" | "analyzing" | "match";
 
+type AnalyzedWine = {
+  producer?: string | null;
+  wine_name?: string | null;
+  vintage?: number | null;
+  grape_varieties?: string[] | null;
+  region?: string | null;
+  country?: string | null;
+  wine_type?: string | null;
+  description?: string | null;
+  fruit?: number | null;
+  tannin?: number | null;
+  acidity?: number | null;
+  oak?: number | null;
+  sweetness?: number | null;
+  body?: number | null;
+  primary_notes?: string[] | null;
+  secondary_notes?: string[] | null;
+  tertiary_notes?: string[] | null;
+  food_pairings?: unknown;
+  serving_temp?: string | null;
+  glass_type?: string | null;
+  decant?: boolean | null;
+};
+
 type ScannedWine = {
   id: string;
   image_url: string | null;

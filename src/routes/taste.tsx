@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
+import type { TKey } from "@/i18n";
 
 export const Route = createFileRoute("/taste")({
   head: () => ({

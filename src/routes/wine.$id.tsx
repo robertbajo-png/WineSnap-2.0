@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT, useI18n } from "@/i18n";
+import type { TKey } from "@/i18n";
 import { computeDrinkingWindow } from "@/lib/drinkingWindow";
 import { PhotoGallery } from "@/components/PhotoGallery";
 
