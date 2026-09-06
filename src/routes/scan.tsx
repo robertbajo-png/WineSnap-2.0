@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { X, ImageIcon, Loader2, Wine, Check, Type, Camera, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
-import { LabelCropper } from "@/components/LabelCropper";
+const LabelCropper = lazy(() =>
+  import("@/components/LabelCropper").then((m) => ({ default: m.LabelCropper })),
+);
 
 export const Route = createFileRoute("/scan")({
   head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
@@ -202,6 +204,7 @@ function ScanPage() {
 
   if (pendingFile) {
     return (
+      <Suspense fallback={null}>
       <LabelCropper
         file={pendingFile}
         busy={stage === "analyzing"}
