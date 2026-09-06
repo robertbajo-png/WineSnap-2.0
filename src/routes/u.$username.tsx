@@ -153,7 +153,7 @@ function UserProfilePage() {
                           {w.image_url ? (
                             <img
                               src={w.image_url}
-                              alt={w.name ?? ""}
+                              alt={w.wine_name ?? ""}
                               className="h-full w-full object-cover"
                               loading="lazy"
                             />
@@ -163,7 +163,7 @@ function UserProfilePage() {
                           <p className="truncate text-[11px] text-muted-foreground">
                             {w.producer ?? ""}
                           </p>
-                          <p className="truncate text-sm text-cream">{w.name ?? "—"}</p>
+                          <p className="truncate text-sm text-cream">{w.wine_name ?? "—"}</p>
                           {w.user_rating != null && (
                             <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-gold">
                               <Star className="h-3 w-3 fill-gold" /> {w.user_rating.toFixed(1)}

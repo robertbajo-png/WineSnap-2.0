@@ -173,7 +173,7 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
         {item.image_url ? (
           <img
             src={item.image_url}
-            alt={item.name ?? ""}
+            alt={item.wine_name ?? ""}
             className="h-full w-full object-cover"
             loading="lazy"
           />
@@ -196,10 +196,10 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
           {when}
         </p>
         <p className="mt-0.5 truncate font-display text-lg text-cream">
-          {item.producer ?? item.name ?? "—"}
+          {item.producer ?? item.wine_name ?? "—"}
         </p>
         <p className="truncate text-xs text-muted-foreground">
-          {[item.name, item.vintage, item.region].filter(Boolean).join(" • ")}
+          {[item.wine_name, item.vintage, item.region].filter(Boolean).join(" • ")}
         </p>
         {item.user_rating != null && (
           <p className="mt-1 inline-flex items-center gap-1 text-xs text-gold">

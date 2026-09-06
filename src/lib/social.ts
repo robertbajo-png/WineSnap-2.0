@@ -74,7 +74,7 @@ export async function getFollowCounts(
 export type FeedItem = {
   id: string;
   producer: string | null;
-  name: string | null;
+  wine_name: string | null;
   vintage: number | null;
   region: string | null;
   wine_type: string | null;
