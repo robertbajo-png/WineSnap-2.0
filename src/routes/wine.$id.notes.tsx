@@ -88,7 +88,7 @@ function NotesPage() {
       tasted_at: tastedAt,
     };
     const [{ error: noteErr }, { error: wineErr }] = await Promise.all([
-      supabase.from("tasting_notes").insert(noteRow as any),
+      supabase.from("tasting_notes").insert(noteRow as never),
       supabase
         .from("wines")
         .update({

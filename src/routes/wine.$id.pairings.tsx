@@ -146,8 +146,8 @@ function PairingsPage() {
         <ul className="mt-4 space-y-3 pb-3">
           {pairings.map((p, i) => {
             const fb = FALLBACK[i] ?? FALLBACK[0];
-            const match = ("match" in p ? (p as any).match : null) ?? fb.match;
-            const emoji = ("emoji" in p ? (p as any).emoji : null) ?? fb.emoji;
+            const match = ("match" in p ? (p as { match?: number }).match : null) ?? fb.match;
+            const emoji = ("emoji" in p ? (p as { emoji?: string }).emoji : null) ?? fb.emoji;
             return (
               <li key={i}>
                 <div className="flex gap-3 rounded-xl border border-white/8 bg-card/50 p-3">

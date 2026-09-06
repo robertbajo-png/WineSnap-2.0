@@ -48,7 +48,7 @@ function ScanPage() {
     }
   }, [user, loading, navigate, t]);
 
-  const persistWine = async (w: any, imageUrl: string | null) => {
+  const persistWine = async (w: AnalyzedWine, imageUrl: string | null) => {
     if (!user) throw new Error("Not authenticated");
     const { data: inserted, error: insErr } = await supabase
       .from("wines")

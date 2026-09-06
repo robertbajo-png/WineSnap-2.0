@@ -39,7 +39,7 @@ function UserProfilePage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null | undefined>(undefined);
-  const [wines, setWines] = useState<any[]>([]);
+  const [wines, setWines] = useState<PublicWine[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [following, setFollowing] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);

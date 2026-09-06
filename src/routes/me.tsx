@@ -62,9 +62,9 @@ function MePage() {
       .then(({ data }) => {
         const ws = data ?? [];
         setBottles(ws.length);
-        setTasted(ws.filter((w: any) => w.user_rating != null).length);
+        setTasted(ws.filter((w) => w.user_rating != null).length);
         const ratings = ws
-          .map((w: any) => {
+          .map((w) => {
             if (w.user_rating != null) return w.user_rating;
             const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v) => v != null);
             if (!vals.length) return null;
@@ -81,7 +81,7 @@ function MePage() {
       )
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => setProfile(data as any));
+      .then(({ data }) => setProfile(data as ProfileRow));
     supabase
       .from("taste_profile")
       .select("favorite_grapes")
@@ -262,7 +262,7 @@ function MePage() {
               title={t("profile.publicProfile")}
               desc={t("profile.publicProfileDesc")}
               value={profile?.is_public ?? false}
-              onChange={(v) => updatePref(user?.id, { is_public: v } as any, setProfile)}
+              onChange={(v) => updatePref(user?.id, { is_public: v }, setProfile)}
             />
             <TextRow
               label={t("profile.username")}
@@ -270,7 +270,7 @@ function MePage() {
               value={profile?.username ?? ""}
               onSave={async (v) => {
                 const clean = v.trim().replace(/^@/, "").toLowerCase();
-                await updatePref(user?.id, { username: clean || null } as any, setProfile);
+                await updatePref(user?.id, { username: clean || null }, setProfile);
               }}
             />
             <TextRow
@@ -278,7 +278,7 @@ function MePage() {
               placeholder={t("profile.bioPh")}
               value={profile?.bio ?? ""}
               onSave={async (v) => {
-                await updatePref(user?.id, { bio: v.trim() || null } as any, setProfile);
+                await updatePref(user?.id, { bio: v.trim() || null }, setProfile);
               }}
               multiline
             />
@@ -506,21 +506,21 @@ function priceRangeLabel(min?: number | null, max?: number | null, notSet = "Not
 
 async function updatePref(
   userId: string | undefined,
-  patch: Record<string, boolean | number | null>,
-  setProfile: React.Dispatch<React.SetStateAction<any>>,
+  patch: Record<string, boolean | number | string | null>,
+  setProfile: React.Dispatch<React.SetStateAction<ProfileRow | null>>,
 ) {
   if (!userId) return;
-  setProfile((p: any) => ({ ...(p ?? {}), ...patch }));
+  setProfile((p) => ({ ...((p ?? {}) as ProfileRow), ...patch }) as ProfileRow);
   await supabase
     .from("profiles")
-    .update(patch as any)
+    .update(patch as never)
     .eq("id", userId);
 }
 
 async function editPriceRange(
   userId: string | undefined,
-  profile: any,
-  setProfile: React.Dispatch<React.SetStateAction<any>>,
+  profile: ProfileRow | null,
+  setProfile: React.Dispatch<React.SetStateAction<ProfileRow | null>>,
   lang: Lang,
 ) {
   if (!userId) return;

@@ -151,7 +151,7 @@ function TastePage() {
     navigate({ to: "/me" });
   };
 
-  const typeLabel = (ty: string) => t(`type.${ty.toLowerCase()}` as any) || ty;
+  const typeLabel = (ty: string) => t(`type.${ty.toLowerCase()}` as TKey) || ty;
   const showMoreLabel = (v: boolean) => (v ? t("common.showLess") : t("common.showMore"));
 
   return (

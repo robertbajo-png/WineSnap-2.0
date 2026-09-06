@@ -97,32 +97,32 @@ export async function getFriendsFeed(limit = 30): Promise<FeedItem[]> {
     .from("follows")
     .select("following_id")
     .eq("follower_id", auth.user.id);
-  const ids = (follows ?? []).map((f: any) => f.following_id as string);
+  const ids = (follows ?? []).map((f) => f.following_id as string);
   if (!ids.length) return [];
   const { data } = await supabase
     .from("wines")
     .select(
-      "id,producer,name,vintage,region,wine_type,user_rating,image_url,created_at,share_id,user_id",
+      "id,producer,wine_name,vintage,region,wine_type,user_rating,image_url,created_at,share_id,user_id",
     )
     .in("user_id", ids)
     .eq("is_public", true)
     .order("created_at", { ascending: false })
     .limit(limit);
-  const wines = (data ?? []) as any[];
+  const wines = (data ?? []) as FeedWine[];
   if (!wines.length) return [];
   const authorIds = Array.from(new Set(wines.map((w) => w.user_id)));
   const { data: profs } = await supabase
     .from("profiles")
     .select("id,username,display_name,avatar_url")
     .in("id", authorIds);
-  const byId = new Map<string, any>((profs ?? []).map((p: any) => [p.id, p]));
+  const byId = new Map<string, FeedAuthor>((profs ?? []).map((p) => [p.id, p as FeedAuthor]));
   return wines.map((w) => ({ ...w, author: byId.get(w.user_id) ?? null }));
 }
 
 export async function getPublicWinesByUser(userId: string, limit = 60) {
   const { data } = await supabase
     .from("wines")
-    .select("id,producer,name,vintage,region,wine_type,user_rating,image_url,share_id,created_at")
+    .select("id,producer,wine_name,vintage,region,wine_type,user_rating,image_url,share_id,created_at")
     .eq("user_id", userId)
     .eq("is_public", true)
     .order("created_at", { ascending: false })

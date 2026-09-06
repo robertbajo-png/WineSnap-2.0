@@ -107,10 +107,11 @@ function WineDetailPage() {
     try {
       const { data, error } = await supabase.functions.invoke("wine-suggestions", { body: w });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      setSuggestions((data as any)?.suggestions ?? []);
-    } catch (e: any) {
-      setSuggestError(e?.message ?? "Failed to load suggestions");
+      const payload = data as { error?: string; suggestions?: Suggestion[] } | null;
+      if (payload?.error) throw new Error(payload.error);
+      setSuggestions(payload?.suggestions ?? []);
+    } catch (e) {
+      setSuggestError(e instanceof Error ? e.message : "Failed to load suggestions");
     } finally {
       setSuggestLoading(false);
     }
@@ -311,7 +312,7 @@ function WineDetailPage() {
                 tab === k ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t(`wine.tab.${k}` as any)}
+              {t(`wine.tab.${k}` as TKey)}
               {tab === k && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
             </button>
           ))}
@@ -512,7 +513,7 @@ function WineDetailPage() {
                     </div>
                     <span className="flex items-center gap-1.5 text-[11px] font-medium text-cream">
                       <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
-                      {t(statusKey as any)}
+                      {t(statusKey as TKey)}
                     </span>
                   </div>
                   <div className="relative mt-3 h-1.5 rounded-full bg-white/8">

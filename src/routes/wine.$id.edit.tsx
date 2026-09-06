@@ -176,7 +176,7 @@ function EditPage() {
               >
                 {TYPES.map((tp) => (
                   <option key={tp} value={tp}>
-                    {t(`type.${tp === "rose" ? "rose" : tp}` as any) ?? tp}
+                    {t(`type.${tp === "rose" ? "rose" : tp}` as TKey) ?? tp}
                   </option>
                 ))}
               </select>
