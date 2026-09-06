@@ -205,24 +205,23 @@ function ScanPage() {
   if (pendingFile) {
     return (
       <Suspense fallback={null}>
-      <LabelCropper
-        file={pendingFile}
-        busy={stage === "analyzing"}
-        onCancel={() => {
-          setPendingFile(null);
-          setStage("idle");
-        }}
-        onConfirm={async (blob) => {
-          const file = pendingFile;
-          setPendingFile(null);
-          await handleFile(blob);
-          void file;
-        }}
-      />
+        <LabelCropper
+          file={pendingFile}
+          busy={stage === "analyzing"}
+          onCancel={() => {
+            setPendingFile(null);
+            setStage("idle");
+          }}
+          onConfirm={async (blob) => {
+            const file = pendingFile;
+            setPendingFile(null);
+            await handleFile(blob);
+            void file;
+          }}
+        />
       </Suspense>
     );
   }
-
 
   return (
     <div

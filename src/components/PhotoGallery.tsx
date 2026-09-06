@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Trash2, X, Loader2, Wine } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
-import { LabelCropper } from "./LabelCropper";
+const LabelCropper = lazy(() =>
+  import("./LabelCropper").then((m) => ({ default: m.LabelCropper })),
+);
 
 type Photo = {
   id: string;
@@ -146,12 +148,14 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
       />
 
       {pending && (
-        <LabelCropper
-          file={pending}
-          busy={uploading}
-          onCancel={() => setPending(null)}
-          onConfirm={uploadCropped}
-        />
+        <Suspense fallback={null}>
+          <LabelCropper
+            file={pending}
+            busy={uploading}
+            onCancel={() => setPending(null)}
+            onConfirm={uploadCropped}
+          />
+        </Suspense>
       )}
 
       {lightbox && (
