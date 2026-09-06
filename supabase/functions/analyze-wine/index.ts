@@ -21,23 +21,42 @@ const wineTool = {
         producer: { type: "string", description: "Producer / winery" },
         wine_name: { type: "string", description: "Wine name (cuvée)" },
         vintage: { type: ["integer", "null"], description: "Vintage year or null" },
-        grape_varieties: { type: "array", items: { type: "string" }, description: "Grape varieties" },
+        grape_varieties: {
+          type: "array",
+          items: { type: "string" },
+          description: "Grape varieties",
+        },
         region: { type: "string", description: "Region (e.g. Rioja, Burgundy)" },
         country: { type: "string", description: "Country" },
         wine_type: {
           type: "string",
           enum: ["red", "white", "rose", "sparkling", "dessert", "fortified", "orange", "unknown"],
         },
-        description: { type: "string", description: "Sommelier-style description, 2-3 sentences in English" },
+        description: {
+          type: "string",
+          description: "Sommelier-style description, 2-3 sentences in English",
+        },
         fruit: { type: "number", description: "Fruit 0-10" },
         tannin: { type: "number", description: "Tannin 0-10 (0 for white/sparkling)" },
         acidity: { type: "number", description: "Acidity 0-10" },
         oak: { type: "number", description: "Oak 0-10" },
         sweetness: { type: "number", description: "Sweetness 0-10" },
         body: { type: "number", description: "Body 0-10" },
-        primary_notes: { type: "array", items: { type: "string" }, description: "Primary aroma notes (fruit, flowers)" },
-        secondary_notes: { type: "array", items: { type: "string" }, description: "Secondary notes (yeast, malolactic)" },
-        tertiary_notes: { type: "array", items: { type: "string" }, description: "Tertiary notes (aging, oak, leather)" },
+        primary_notes: {
+          type: "array",
+          items: { type: "string" },
+          description: "Primary aroma notes (fruit, flowers)",
+        },
+        secondary_notes: {
+          type: "array",
+          items: { type: "string" },
+          description: "Secondary notes (yeast, malolactic)",
+        },
+        tertiary_notes: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tertiary notes (aging, oak, leather)",
+        },
         food_pairings: {
           type: "array",
           items: {
@@ -102,12 +121,18 @@ Deno.serve(async (req: Request) => {
     let userContent: unknown;
     if (imageBase64 || imageUrl) {
       const imageContent = imageBase64
-        ? { type: "image_url", image_url: { url: `data:${mimeType ?? "image/jpeg"};base64,${imageBase64}` } }
+        ? {
+            type: "image_url",
+            image_url: { url: `data:${mimeType ?? "image/jpeg"};base64,${imageBase64}` },
+          }
         : { type: "image_url", image_url: { url: imageUrl } };
       userContent = [
-        { type: "text", text: text
-          ? `Identify this wine from the label and return structured data. Additional context from the user: ${text}`
-          : "Identify this wine from the label and return structured data." },
+        {
+          type: "text",
+          text: text
+            ? `Identify this wine from the label and return structured data. Additional context from the user: ${text}`
+            : "Identify this wine from the label and return structured data.",
+        },
         imageContent,
       ];
     } else {
@@ -135,16 +160,22 @@ Deno.serve(async (req: Request) => {
       const t = await aiRes.text();
       console.error("AI error:", aiRes.status, t);
       if (aiRes.status === 429) {
-        return new Response(JSON.stringify({ error: "Too many requests, please try again shortly." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: "Too many requests, please try again shortly." }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
       if (aiRes.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Add credits in workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted. Add credits in workspace." }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
       throw new Error(`AI gateway: ${aiRes.status}`);
     }
@@ -159,9 +190,12 @@ Deno.serve(async (req: Request) => {
     });
   } catch (e) {
     console.error("analyze-wine error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

@@ -29,9 +29,16 @@ export function LabelCropper({ file, onCancel, onConfirm, busy }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black text-cream" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <div
+      className="fixed inset-0 z-[60] flex flex-col bg-black text-cream"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <header className="flex items-center justify-between px-4 pt-3">
-        <button onClick={onCancel} aria-label="Cancel" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20">
+        <button
+          onClick={onCancel}
+          aria-label="Cancel"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
+        >
           <X className="h-4 w-4" />
         </button>
         <p className="text-sm text-cream/80">{t("crop.adjust")}</p>
@@ -81,11 +88,28 @@ export function LabelCropper({ file, onCancel, onConfirm, busy }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-4">
-        <Button variant="outline" onClick={onCancel} disabled={busy} className="h-12 border-white/15 bg-transparent">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          disabled={busy}
+          className="h-12 border-white/15 bg-transparent"
+        >
           {t("crop.retake")}
         </Button>
-        <Button onClick={handleConfirm} disabled={busy || !pixels} className="h-12 bg-gradient-burgundy text-cream">
-          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("scan.analyzing")}</> : <><Check className="h-4 w-4" /> {t("crop.use")}</>}
+        <Button
+          onClick={handleConfirm}
+          disabled={busy || !pixels}
+          className="h-12 bg-gradient-burgundy text-cream"
+        >
+          {busy ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("scan.analyzing")}
+            </>
+          ) : (
+            <>
+              <Check className="h-4 w-4" /> {t("crop.use")}
+            </>
+          )}
         </Button>
       </div>
     </div>

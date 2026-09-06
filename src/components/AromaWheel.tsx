@@ -39,15 +39,17 @@ const FAMILIES: Family[] = [
   {
     name: "Oak",
     color: "oklch(0.5 0.12 80)",
-    subs: [
-      { name: "Oak", weight: 1, leaves: ["Cedar", "Vanilla", "Coconut", "Toanut"] },
-    ],
+    subs: [{ name: "Oak", weight: 1, leaves: ["Cedar", "Vanilla", "Coconut", "Toanut"] }],
   },
   {
     name: "Earth",
     color: "oklch(0.38 0.07 130)",
     subs: [
-      { name: "Vegetal", weight: 1, leaves: ["Forest floor", "Truffle", "Mushroom", "Tobacco leaf"] },
+      {
+        name: "Vegetal",
+        weight: 1,
+        leaves: ["Forest floor", "Truffle", "Mushroom", "Tobacco leaf"],
+      },
     ],
   },
   {
@@ -181,10 +183,18 @@ export function AromaWheel({
               const a0 = flip ? subEnd - 1 : subAngle + 1;
               const a1 = flip ? subAngle + 1 : subEnd - 1;
               const id = `sub-tp-${fi}-${si}`;
-              textPaths.push(<path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />);
+              textPaths.push(
+                <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+              );
               famElems.push(
-                <text key={`t-${id}`} fontSize={size * 0.024} className="fill-cream/85 font-display pointer-events-none">
-                  <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">{sub.name}</textPath>
+                <text
+                  key={`t-${id}`}
+                  fontSize={size * 0.024}
+                  className="fill-cream/85 font-display pointer-events-none"
+                >
+                  <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                    {sub.name}
+                  </textPath>
                 </text>,
               );
             }
@@ -211,10 +221,18 @@ export function AromaWheel({
                 const a0 = flip ? lEnd - 0.5 : lStart + 0.5;
                 const a1 = flip ? lStart + 0.5 : lEnd - 0.5;
                 const id = `leaf-tp-${fi}-${si}-${li}`;
-                textPaths.push(<path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />);
+                textPaths.push(
+                  <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+                );
                 famElems.push(
-                  <text key={`t-${id}`} fontSize={size * 0.021} className="fill-cream/75 font-display pointer-events-none">
-                    <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">{leaf}</textPath>
+                  <text
+                    key={`t-${id}`}
+                    fontSize={size * 0.021}
+                    className="fill-cream/75 font-display pointer-events-none"
+                  >
+                    <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                      {leaf}
+                    </textPath>
                   </text>,
                 );
               }
@@ -257,7 +275,14 @@ export function AromaWheel({
           groups.push(
             <g
               key={`g-${fi}`}
-              onClick={interactive ? (e) => { e.stopPropagation(); onSelectFamily?.(isSelected ? null : fam.name); } : undefined}
+              onClick={
+                interactive
+                  ? (e) => {
+                      e.stopPropagation();
+                      onSelectFamily?.(isSelected ? null : fam.name);
+                    }
+                  : undefined
+              }
               style={{
                 cursor: interactive ? "pointer" : undefined,
                 opacity: dim ? 0.35 : 1,
@@ -304,7 +329,14 @@ export function AromaWheel({
 
       {/* core disc — click to show this wine's aromas */}
       <g
-        onClick={onSelectCenter ? (e) => { e.stopPropagation(); onSelectCenter(); } : undefined}
+        onClick={
+          onSelectCenter
+            ? (e) => {
+                e.stopPropagation();
+                onSelectCenter();
+              }
+            : undefined
+        }
         style={{ cursor: onSelectCenter ? "pointer" : undefined }}
       >
         <circle

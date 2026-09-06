@@ -43,7 +43,9 @@ function SearchPage() {
   useEffect(() => {
     supabase
       .from("wines")
-      .select("id,producer,wine_name,vintage,region,country,image_url,grape_varieties,fruit,tannin,acidity,body")
+      .select(
+        "id,producer,wine_name,vintage,region,country,image_url,grape_varieties,fruit,tannin,acidity,body",
+      )
       .order("created_at", { ascending: false })
       .limit(50)
       .then(({ data }) => {
@@ -81,7 +83,10 @@ function SearchPage() {
               className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
             />
             {q && (
-              <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setQ("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -90,15 +95,23 @@ function SearchPage() {
 
         <div className="mt-5 flex items-baseline justify-between">
           <h2 className="font-display text-xl">{t("search.discover")}</h2>
-          <span className="text-xs text-muted-foreground">{filtered.length} {t("search.results")}</span>
+          <span className="text-xs text-muted-foreground">
+            {filtered.length} {t("search.results")}
+          </span>
         </div>
 
         <ul className="mt-3 space-y-3 pb-4">
           {loading ? (
             <>
-              <li><CellarRowSkeleton /></li>
-              <li><CellarRowSkeleton /></li>
-              <li><CellarRowSkeleton /></li>
+              <li>
+                <CellarRowSkeleton />
+              </li>
+              <li>
+                <CellarRowSkeleton />
+              </li>
+              <li>
+                <CellarRowSkeleton />
+              </li>
             </>
           ) : filtered.length === 0 ? (
             <li>
@@ -108,7 +121,9 @@ function SearchPage() {
                 action={
                   wines.length === 0 ? (
                     <Link to="/scan">
-                      <Button className="bg-gradient-burgundy text-cream"><Camera className="h-4 w-4" /> {t("nav.scan")}</Button>
+                      <Button className="bg-gradient-burgundy text-cream">
+                        <Camera className="h-4 w-4" /> {t("nav.scan")}
+                      </Button>
                     </Link>
                   ) : undefined
                 }
@@ -143,8 +158,12 @@ function ResultCard({ w }: { w: WineRow }) {
           <p className="truncate font-display text-base leading-tight text-cream">
             {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
           </p>
-          <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
-          <p className="truncate text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
+          <p className="truncate text-xs text-gold">
+            {[w.region, w.country].filter(Boolean).join(", ")}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {w.grape_varieties?.join(", ") || "—"}
+          </p>
           <div className="mt-1 flex items-center gap-1.5 text-xs">
             <Star className="h-3 w-3 fill-gold text-gold" />
             <span className="font-medium">{rating.toFixed(1)}</span>
@@ -155,7 +174,12 @@ function ResultCard({ w }: { w: WineRow }) {
   );
 }
 
-function computeRating(w: { fruit: number | null; tannin: number | null; acidity: number | null; body: number | null }): number {
+function computeRating(w: {
+  fruit: number | null;
+  tannin: number | null;
+  acidity: number | null;
+  body: number | null;
+}): number {
   const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
   if (vals.length === 0) return 4.0;
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;

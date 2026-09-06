@@ -31,7 +31,9 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
     return false;
   }
   const vintage =
-    typeof input.vintage === "string" ? (Number.parseInt(input.vintage, 10) || null) : input.vintage ?? null;
+    typeof input.vintage === "string"
+      ? Number.parseInt(input.vintage, 10) || null
+      : (input.vintage ?? null);
 
   const row = {
     user_id: user.id,
@@ -121,7 +123,10 @@ async function matchAndAttachSystembolaget(
         price_source: "systembolaget",
       } as never)
       .eq("id", wishlistId);
-    logEvent("wishlist_systembolaget_matched", { wishlist_id: wishlistId, sb_id: data.match.systembolaget_id });
+    logEvent("wishlist_systembolaget_matched", {
+      wishlist_id: wishlistId,
+      sb_id: data.match.systembolaget_id,
+    });
   } catch (e) {
     console.error("[wishlist] auto-match failed", e);
   }

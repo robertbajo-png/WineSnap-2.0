@@ -11,7 +11,10 @@ export const Route = createFileRoute("/cellar/overview")({
   head: () => ({
     meta: [
       { title: "Cellar Overview — WineSnap" },
-      { name: "description", content: "Value, consumption, regions and varietals across your cellar." },
+      {
+        name: "description",
+        content: "Value, consumption, regions and varietals across your cellar.",
+      },
     ],
   }),
   component: CellarOverviewPage,
@@ -73,15 +76,26 @@ function CellarOverviewPage() {
   const countries = new Set(wines.map((w) => w.country).filter(Boolean)).size;
 
   const priced = active.filter((w) => w.purchase_price != null);
-  const totalValue = priced.reduce((s, w) => s + Number(w.purchase_price ?? 0) * (w.quantity ?? 1), 0);
-  const avgBottle = priced.length ? totalValue / priced.reduce((s, w) => s + (w.quantity ?? 1), 0) : 0;
+  const totalValue = priced.reduce(
+    (s, w) => s + Number(w.purchase_price ?? 0) * (w.quantity ?? 1),
+    0,
+  );
+  const avgBottle = priced.length
+    ? totalValue / priced.reduce((s, w) => s + (w.quantity ?? 1), 0)
+    : 0;
   const currency =
     priced.find((w) => w.purchase_currency)?.purchase_currency?.toUpperCase() ?? "SEK";
 
   const now = new Date().getFullYear();
-  const pastPeak = active.filter((w) => w.vintage && w.vintage < now - 6).reduce((s, w) => s + (w.quantity ?? 1), 0);
-  const greatNow = active.filter((w) => w.vintage && w.vintage >= now - 6 && w.vintage <= now - 1).reduce((s, w) => s + (w.quantity ?? 1), 0);
-  const cellarWorthy = active.filter((w) => w.vintage && w.vintage >= now).reduce((s, w) => s + (w.quantity ?? 1), 0);
+  const pastPeak = active
+    .filter((w) => w.vintage && w.vintage < now - 6)
+    .reduce((s, w) => s + (w.quantity ?? 1), 0);
+  const greatNow = active
+    .filter((w) => w.vintage && w.vintage >= now - 6 && w.vintage <= now - 1)
+    .reduce((s, w) => s + (w.quantity ?? 1), 0);
+  const cellarWorthy = active
+    .filter((w) => w.vintage && w.vintage >= now)
+    .reduce((s, w) => s + (w.quantity ?? 1), 0);
 
   const regionStats = useMemo(() => {
     const m = new Map<string, number>();
@@ -169,7 +183,9 @@ function CellarOverviewPage() {
     const keys = [...byMonth.keys()].sort();
     // Show last 8 months, cumulative
     const tail = keys.slice(-8);
-    let acc = keys.slice(0, keys.length - tail.length).reduce((s, k) => s + (byMonth.get(k) ?? 0), 0);
+    let acc = keys
+      .slice(0, keys.length - tail.length)
+      .reduce((s, k) => s + (byMonth.get(k) ?? 0), 0);
     return tail.map((k) => {
       acc += byMonth.get(k) ?? 0;
       const [, mm] = k.split("-");
@@ -181,7 +197,10 @@ function CellarOverviewPage() {
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <button onClick={() => window.history.back()} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+          <button
+            onClick={() => window.history.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+          >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="font-display text-xl text-gold">{t("overview.title")}</h1>
@@ -199,7 +218,9 @@ function CellarOverviewPage() {
             <BigStat
               value={priced.length ? formatMoney(totalValue, currency) : "—"}
               label={t("overview.totalValue")}
-              sub={priced.length ? `${priced.length} ${t("overview.priced")}` : t("overview.addPrices")}
+              sub={
+                priced.length ? `${priced.length} ${t("overview.priced")}` : t("overview.addPrices")
+              }
             />
             <BigStat
               value={priced.length ? formatMoney(avgBottle, currency) : "—"}
@@ -221,7 +242,10 @@ function CellarOverviewPage() {
               {typeStats.map((s) => (
                 <div
                   key={s.type}
-                  style={{ width: `${s.pct}%`, background: TYPE_COLORS[s.type] ?? "oklch(0.4 0.02 60)" }}
+                  style={{
+                    width: `${s.pct}%`,
+                    background: TYPE_COLORS[s.type] ?? "oklch(0.4 0.02 60)",
+                  }}
                   title={`${s.type} ${s.pct}%`}
                 />
               ))}
@@ -229,7 +253,10 @@ function CellarOverviewPage() {
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
               {typeStats.map((s) => (
                 <span key={s.type} className="inline-flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[s.type] ?? "oklch(0.4 0.02 60)" }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: TYPE_COLORS[s.type] ?? "oklch(0.4 0.02 60)" }}
+                  />
                   <span className="capitalize text-foreground/85">{s.type}</span>
                   <span>{s.count}</span>
                 </span>
@@ -246,7 +273,10 @@ function CellarOverviewPage() {
               <div className="flex-1 space-y-2 text-xs">
                 {regionStats.map((r, i) => (
                   <div key={r.label} className="flex items-center gap-2">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: PALETTE[i % PALETTE.length] }}
+                    />
                     <span className="flex-1 truncate text-foreground/85">{r.label}</span>
                     <span className="text-muted-foreground">{r.pct}%</span>
                     <span className="w-10 text-right font-display text-cream">{r.count}</span>
@@ -281,9 +311,25 @@ function CellarOverviewPage() {
           <section className="mt-7">
             <h2 className="font-display text-base text-cream">{t("overview.window")}</h2>
             <div className="mt-3 grid grid-cols-3 gap-3">
-              <WindowCard value={pastPeak} title={t("overview.pastPeak")} sub={`< ${now - 6}`} barColor="oklch(0.55 0.2 25)" />
-              <WindowCard value={greatNow} title={t("overview.greatNow")} sub={`${now - 6} – ${now}`} barColor="oklch(0.7 0.18 145)" highlight />
-              <WindowCard value={cellarWorthy} title={t("overview.cellarWorthy")} sub={`${now + 1}+`} barColor="oklch(0.78 0.13 75)" />
+              <WindowCard
+                value={pastPeak}
+                title={t("overview.pastPeak")}
+                sub={`< ${now - 6}`}
+                barColor="oklch(0.55 0.2 25)"
+              />
+              <WindowCard
+                value={greatNow}
+                title={t("overview.greatNow")}
+                sub={`${now - 6} – ${now}`}
+                barColor="oklch(0.7 0.18 145)"
+                highlight
+              />
+              <WindowCard
+                value={cellarWorthy}
+                title={t("overview.cellarWorthy")}
+                sub={`${now + 1}+`}
+                barColor="oklch(0.78 0.13 75)"
+              />
             </div>
           </section>
         )}
@@ -377,9 +423,23 @@ function BigStat({ value, label, sub }: { value: string; label: string; sub?: st
   );
 }
 
-function WindowCard({ value, title, sub, barColor, highlight }: { value: number; title: string; sub: string; barColor: string; highlight?: boolean }) {
+function WindowCard({
+  value,
+  title,
+  sub,
+  barColor,
+  highlight,
+}: {
+  value: number;
+  title: string;
+  sub: string;
+  barColor: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className={`rounded-xl border ${highlight ? "border-success/30 bg-success/5" : "border-white/10 bg-card/40"} p-3 text-center`}>
+    <div
+      className={`rounded-xl border ${highlight ? "border-success/30 bg-success/5" : "border-white/10 bg-card/40"} p-3 text-center`}
+    >
       <p className="font-display text-2xl text-cream">{value}</p>
       <p className="mt-0.5 text-[11px] text-foreground/80">{title}</p>
       <p className="text-[10px] text-muted-foreground">{sub}</p>
@@ -388,8 +448,17 @@ function WindowCard({ value, title, sub, barColor, highlight }: { value: number;
   );
 }
 
-function DonutChart({ segments, colors, size }: { segments: number[]; colors: string[]; size: number }) {
-  const cx = size / 2, cy = size / 2;
+function DonutChart({
+  segments,
+  colors,
+  size,
+}: {
+  segments: number[];
+  colors: string[];
+  size: number;
+}) {
+  const cx = size / 2,
+    cy = size / 2;
   const r = size / 2 - 4;
   const inner = r * 0.62;
   let acc = 0;
@@ -401,10 +470,14 @@ function DonutChart({ segments, colors, size }: { segments: number[]; colors: st
         acc += v;
         const a1 = (acc / total) * Math.PI * 2 - Math.PI / 2;
         const large = a1 - a0 > Math.PI ? 1 : 0;
-        const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
-        const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-        const xi1 = cx + inner * Math.cos(a1), yi1 = cy + inner * Math.sin(a1);
-        const xi0 = cx + inner * Math.cos(a0), yi0 = cy + inner * Math.sin(a0);
+        const x0 = cx + r * Math.cos(a0),
+          y0 = cy + r * Math.sin(a0);
+        const x1 = cx + r * Math.cos(a1),
+          y1 = cy + r * Math.sin(a1);
+        const xi1 = cx + inner * Math.cos(a1),
+          yi1 = cy + inner * Math.sin(a1);
+        const xi0 = cx + inner * Math.cos(a0),
+          yi0 = cy + inner * Math.sin(a0);
         return (
           <path
             key={i}
@@ -425,7 +498,11 @@ function Histogram({ data }: { data: { year: number; count: number }[] }) {
     <div className="mt-3">
       <div className="flex h-24 items-end gap-1">
         {data.map((d) => (
-          <div key={d.year} className="flex flex-1 flex-col items-center gap-1" title={`${d.year}: ${d.count}`}>
+          <div
+            key={d.year}
+            className="flex flex-1 flex-col items-center gap-1"
+            title={`${d.year}: ${d.count}`}
+          >
             <div
               className="w-full rounded-t bg-gradient-to-t from-burgundy/80 to-gold/60"
               style={{ height: `${(d.count / max) * 100}%`, minHeight: d.count ? 2 : 0 }}
@@ -443,11 +520,17 @@ function Histogram({ data }: { data: { year: number; count: number }[] }) {
 }
 
 function Sparkline({ data }: { data: { label: string; total: number }[] }) {
-  const w = 300, h = 70, pad = 6;
+  const w = 300,
+    h = 70,
+    pad = 6;
   const max = Math.max(...data.map((d) => d.total), 1);
   const step = (w - pad * 2) / Math.max(1, data.length - 1);
-  const pts = data.map((d, i) => [pad + i * step, h - pad - (d.total / max) * (h - pad * 2)] as const);
-  const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const pts = data.map(
+    (d, i) => [pad + i * step, h - pad - (d.total / max) * (h - pad * 2)] as const,
+  );
+  const path = pts
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
+    .join(" ");
   const area = `${path} L${pts[pts.length - 1][0].toFixed(1)},${h - pad} L${pts[0][0].toFixed(1)},${h - pad} Z`;
   return (
     <div className="mt-3">
@@ -459,13 +542,22 @@ function Sparkline({ data }: { data: { label: string; total: number }[] }) {
           </linearGradient>
         </defs>
         <path d={area} fill="url(#sparkFill)" />
-        <path d={path} fill="none" stroke="oklch(0.72 0.13 75)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d={path}
+          fill="none"
+          stroke="oklch(0.72 0.13 75)"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
         {pts.map(([x, y], i) => (
           <circle key={i} cx={x} cy={y} r={1.8} fill="oklch(0.85 0.1 80)" />
         ))}
       </svg>
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        {data.map((d) => <span key={d.label}>{d.label}</span>)}
+        {data.map((d) => (
+          <span key={d.label}>{d.label}</span>
+        ))}
       </div>
     </div>
   );

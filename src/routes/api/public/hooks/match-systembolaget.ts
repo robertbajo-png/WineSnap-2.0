@@ -35,13 +35,21 @@ export const Route = createFileRoute("/api/public/hooks/match-systembolaget")({
         try {
           const candidates = await searchCandidates(body);
           if (!candidates.length) {
-            return Response.json({ match: null, confidence: 0, reason: "No candidates found in Systembolaget catalog." });
+            return Response.json({
+              match: null,
+              confidence: 0,
+              reason: "No candidates found in Systembolaget catalog.",
+            });
           }
 
           const pick = await pickBestMatch(LOVABLE_API_KEY, body, candidates);
 
           if (!pick || pick.index == null || pick.index < 0 || pick.index >= candidates.length) {
-            return Response.json({ match: null, confidence: pick?.confidence ?? 0, reason: pick?.reason ?? "No confident match." });
+            return Response.json({
+              match: null,
+              confidence: pick?.confidence ?? 0,
+              reason: pick?.reason ?? "No confident match.",
+            });
           }
 
           const chosen = candidates[pick.index];
@@ -149,7 +157,11 @@ function toCandidate(p: Record<string, unknown>): Candidate | null {
   const producer = ((p.producerName as string | undefined) ?? null) || null;
   const vintage = ((p.vintage as string | number | undefined) ?? null)?.toString() ?? null;
   const country = ((p.country as string | undefined) ?? null) || null;
-  const category = ((p.categoryLevel2 as string | undefined) ?? (p.categoryLevel1 as string | undefined) ?? null) || null;
+  const category =
+    ((p.categoryLevel2 as string | undefined) ??
+      (p.categoryLevel1 as string | undefined) ??
+      null) ||
+    null;
   const volume = ((p.volumeText as string | undefined) ?? null) || null;
 
   return {
@@ -194,11 +206,15 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
     type: "function",
     function: {
       name: "select_match",
-      description: "Select the best matching Systembolaget candidate or null if none match confidently.",
+      description:
+        "Select the best matching Systembolaget candidate or null if none match confidently.",
       parameters: {
         type: "object",
         properties: {
-          index: { type: ["integer", "null"], description: "0-based candidate index, or null if no confident match" },
+          index: {
+            type: ["integer", "null"],
+            description: "0-based candidate index, or null if no confident match",
+          },
           confidence: { type: "number", description: "0-100 confidence in the selection" },
           reason: { type: "string", description: "Short justification" },
         },

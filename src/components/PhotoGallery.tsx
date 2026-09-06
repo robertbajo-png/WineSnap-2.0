@@ -38,16 +38,22 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
     setPhotos((data as Photo[]) ?? []);
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [wineId]);
+  useEffect(() => {
+    void load(); /* eslint-disable-next-line */
+  }, [wineId]);
 
-  const onFile = (f: File | null) => { if (f) setPending(f); };
+  const onFile = (f: File | null) => {
+    if (f) setPending(f);
+  };
 
   const uploadCropped = async (blob: Blob) => {
     if (!user) return;
     setUploading(true);
     try {
       const path = `${user.id}/${wineId}/${crypto.randomUUID()}.jpg`;
-      const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, blob, { contentType: "image/jpeg" });
+      const { error: upErr } = await supabase.storage
+        .from("wine-labels")
+        .upload(path, blob, { contentType: "image/jpeg" });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
       const nextOrder = (photos?.[photos.length - 1]?.sort_order ?? 0) + 1;
@@ -89,7 +95,10 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
     <>
       <div className="grid grid-cols-3 gap-2">
         {combined.map((c) => (
-          <div key={c.id} className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-white/8 bg-white/5">
+          <div
+            key={c.id}
+            className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-white/8 bg-white/5"
+          >
             <button type="button" onClick={() => setLightbox(c.url)} className="absolute inset-0">
               <img src={c.url} alt="" className="h-full w-full object-cover" loading="lazy" />
             </button>
@@ -130,7 +139,10 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
+        onChange={(e) => {
+          onFile(e.target.files?.[0] ?? null);
+          e.target.value = "";
+        }}
       />
 
       {pending && (
@@ -147,7 +159,9 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
           role="button"
           tabIndex={0}
           onClick={() => setLightbox(null)}
-          onKeyDown={(e) => { if (e.key === "Escape") setLightbox(null); }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setLightbox(null);
+          }}
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
         >
           <button

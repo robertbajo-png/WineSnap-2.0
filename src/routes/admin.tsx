@@ -37,14 +37,20 @@ function AdminPage() {
   }, [allowed]);
 
   if (loading || allowed === null) {
-    return <AppShell><p className="mt-20 text-center text-muted-foreground">Laddar…</p></AppShell>;
+    return (
+      <AppShell>
+        <p className="mt-20 text-center text-muted-foreground">Laddar…</p>
+      </AppShell>
+    );
   }
   if (!allowed) {
     return (
       <AppShell>
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">Du har inte adminbehörighet.</p>
-          <Link to="/me"><Button className="mt-4">Tillbaka</Button></Link>
+          <Link to="/me">
+            <Button className="mt-4">Tillbaka</Button>
+          </Link>
         </div>
       </AppShell>
     );
@@ -52,7 +58,10 @@ function AdminPage() {
 
   return (
     <AppShell>
-      <Link to="/me" className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/me"
+        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" /> Tillbaka
       </Link>
       <h1 className="font-display text-3xl">Admin</h1>
@@ -63,7 +72,8 @@ function AdminPage() {
       </Card>
 
       <p className="mt-6 text-sm text-muted-foreground">
-        Roller hanteras direkt i databasen via tabellen <code className="rounded bg-muted px-1 py-0.5">user_roles</code>.
+        Roller hanteras direkt i databasen via tabellen{" "}
+        <code className="rounded bg-muted px-1 py-0.5">user_roles</code>.
       </p>
     </AppShell>
   );

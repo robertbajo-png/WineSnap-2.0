@@ -34,7 +34,10 @@ const tool = {
               vintage: { type: "string" },
               region: { type: "string" },
               country: { type: "string" },
-              wine_type: { type: "string", description: "red | white | rose | sparkling | dessert | fortified" },
+              wine_type: {
+                type: "string",
+                description: "red | white | rose | sparkling | dessert | fortified",
+              },
               grape_varieties: { type: "array", items: { type: "string" } },
               price: { type: "string", description: "Price as shown on menu, if visible" },
               match_score: { type: "number", description: "0-100 how well it fits the palate" },
@@ -60,17 +63,32 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
     if (!text && !image) {
-      return new Response(JSON.stringify({ error: "Provide a wine list (text) or a menu photo." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Provide a wine list (text) or a menu photo." }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
-    const favGrapes = Object.entries((taste?.favorite_grapes ?? {}) as Record<string, number>)
-      .sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} (${v})`).join(", ") || "—";
-    const favRegions = Object.entries((taste?.favorite_regions ?? {}) as Record<string, number>)
-      .sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} (${v})`).join(", ") || "—";
-    const favTypes = Object.entries((taste?.favorite_types ?? {}) as Record<string, number>)
-      .sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} (${v})`).join(", ") || "—";
+    const favGrapes =
+      Object.entries((taste?.favorite_grapes ?? {}) as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([k, v]) => `${k} (${v})`)
+        .join(", ") || "—";
+    const favRegions =
+      Object.entries((taste?.favorite_regions ?? {}) as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([k, v]) => `${k} (${v})`)
+        .join(", ") || "—";
+    const favTypes =
+      Object.entries((taste?.favorite_types ?? {}) as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `${k} (${v})`)
+        .join(", ") || "—";
 
     const profileBlock = `User's taste profile:
 - Preferred wine types: ${(profile?.preferred_types ?? []).join(", ") || "—"}
@@ -108,9 +126,20 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
     if (!resp.ok) {
       const t = await resp.text();
       console.error("AI error", resp.status, t);
-      if (resp.status === 429) return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (resp.status === 402) return new Response(JSON.stringify({ error: "Out of credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (resp.status === 429)
+        return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      if (resp.status === 402)
+        return new Response(JSON.stringify({ error: "Out of credits." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await resp.json();
@@ -122,9 +151,12 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
     });
   } catch (e) {
     console.error("restaurant-match error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

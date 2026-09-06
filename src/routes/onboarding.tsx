@@ -32,7 +32,10 @@ function OnboardingPage() {
 
   const finish = async (destination: "/scan" | "/taste") => {
     if (user) {
-      await supabase.from("profiles").update({ onboarded_at: new Date().toISOString() }).eq("id", user.id);
+      await supabase
+        .from("profiles")
+        .update({ onboarded_at: new Date().toISOString() })
+        .eq("id", user.id);
       logEvent("onboarding_finished", { destination });
     }
     navigate({ to: destination });
@@ -62,7 +65,9 @@ function OnboardingPage() {
           <Icon className="h-10 w-10 text-gold" strokeWidth={1.4} />
         </div>
         <h1 className="font-display text-3xl leading-tight text-cream">{current.title}</h1>
-        <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">{current.desc}</p>
+        <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          {current.desc}
+        </p>
       </div>
 
       <div className="mb-6 flex justify-center gap-2">

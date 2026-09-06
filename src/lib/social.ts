@@ -58,9 +58,14 @@ export async function isFollowing(targetUserId: string): Promise<boolean> {
   return !!data;
 }
 
-export async function getFollowCounts(userId: string): Promise<{ followers: number; following: number }> {
+export async function getFollowCounts(
+  userId: string,
+): Promise<{ followers: number; following: number }> {
   const [{ count: followers }, { count: following }] = await Promise.all([
-    supabase.from("follows").select("id", { count: "exact", head: true }).eq("following_id", userId),
+    supabase
+      .from("follows")
+      .select("id", { count: "exact", head: true })
+      .eq("following_id", userId),
     supabase.from("follows").select("id", { count: "exact", head: true }).eq("follower_id", userId),
   ]);
   return { followers: followers ?? 0, following: following ?? 0 };
@@ -78,7 +83,11 @@ export type FeedItem = {
   created_at: string;
   share_id: string | null;
   user_id: string;
-  author: { username: string | null; display_name: string | null; avatar_url: string | null } | null;
+  author: {
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
 };
 
 export async function getFriendsFeed(limit = 30): Promise<FeedItem[]> {
@@ -92,7 +101,9 @@ export async function getFriendsFeed(limit = 30): Promise<FeedItem[]> {
   if (!ids.length) return [];
   const { data } = await supabase
     .from("wines")
-    .select("id,producer,name,vintage,region,wine_type,user_rating,image_url,created_at,share_id,user_id")
+    .select(
+      "id,producer,name,vintage,region,wine_type,user_rating,image_url,created_at,share_id,user_id",
+    )
     .in("user_id", ids)
     .eq("is_public", true)
     .order("created_at", { ascending: false })

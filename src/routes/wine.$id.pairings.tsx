@@ -21,37 +21,83 @@ type WineRow = {
   country: string | null;
   food_pairings: Pair[] | null;
   serving_temp: string | null;
-  fruit: number | null; tannin: number | null; acidity: number | null; body: number | null;
+  fruit: number | null;
+  tannin: number | null;
+  acidity: number | null;
+  body: number | null;
 };
 
 const FALLBACK: { dish: string; reason: string; emoji: string; match: number }[] = [
-  { dish: "Steak", reason: "Rich, savory flavors highlight the wine's structure and dark fruit.", emoji: "🥩", match: 92 },
-  { dish: "Mushroom risotto", reason: "Earthy mushrooms complement the wine's depth and elegance.", emoji: "🍚", match: 89 },
-  { dish: "Aged cheddar", reason: "Sharp cheese brings out the wine's complexity and smooth tannins.", emoji: "🧀", match: 85 },
-  { dish: "Herb-roasted lamb", reason: "Herbs and lamb enhance the wine's aromas and balanced finish.", emoji: "🍖", match: 84 },
+  {
+    dish: "Steak",
+    reason: "Rich, savory flavors highlight the wine's structure and dark fruit.",
+    emoji: "🥩",
+    match: 92,
+  },
+  {
+    dish: "Mushroom risotto",
+    reason: "Earthy mushrooms complement the wine's depth and elegance.",
+    emoji: "🍚",
+    match: 89,
+  },
+  {
+    dish: "Aged cheddar",
+    reason: "Sharp cheese brings out the wine's complexity and smooth tannins.",
+    emoji: "🧀",
+    match: 85,
+  },
+  {
+    dish: "Herb-roasted lamb",
+    reason: "Herbs and lamb enhance the wine's aromas and balanced finish.",
+    emoji: "🍖",
+    match: 84,
+  },
 ];
 
 function PairingsPage() {
   const { id } = Route.useParams();
   const t = useT();
   const [w, setW] = useState<WineRow | null>(null);
-  const CATEGORIES = [t("pairings.best"), t("pairings.meat"), t("pairings.pasta"), t("pairings.cheese")];
+  const CATEGORIES = [
+    t("pairings.best"),
+    t("pairings.meat"),
+    t("pairings.pasta"),
+    t("pairings.cheese"),
+  ];
   const [cat, setCat] = useState<string>(CATEGORIES[0]);
 
   useEffect(() => {
-    supabase.from("wines").select("id,image_url,wine_name,vintage,region,country,food_pairings,serving_temp,fruit,tannin,acidity,body").eq("id", id).maybeSingle().then(({ data }) => setW(data as WineRow | null));
+    supabase
+      .from("wines")
+      .select(
+        "id,image_url,wine_name,vintage,region,country,food_pairings,serving_temp,fruit,tannin,acidity,body",
+      )
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data }) => setW(data as WineRow | null));
   }, [id]);
 
-  if (!w) return <AppShell><div className="mt-20 text-center text-muted-foreground">{t("common.loading")}</div></AppShell>;
+  if (!w)
+    return (
+      <AppShell>
+        <div className="mt-20 text-center text-muted-foreground">{t("common.loading")}</div>
+      </AppShell>
+    );
 
   const rating = computeRating(w);
-  const pairings = (w.food_pairings && w.food_pairings.length ? w.food_pairings : FALLBACK).slice(0, 6);
+  const pairings = (w.food_pairings && w.food_pairings.length ? w.food_pairings : FALLBACK).slice(
+    0,
+    6,
+  );
 
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <button onClick={() => window.history.back()} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+          <button
+            onClick={() => window.history.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+          >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="font-display text-xl text-gold">{t("pairings.title")}</h1>
@@ -60,11 +106,19 @@ function PairingsPage() {
 
         <section className="mt-4 flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3">
           <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
-            {w.image_url ? <img src={w.image_url} alt="" className="h-full w-full object-cover" /> : <Wine className="h-5 w-5 text-gold/60" />}
+            {w.image_url ? (
+              <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Wine className="h-5 w-5 text-gold/60" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-base text-cream">{w.wine_name ?? "Unknown"} {w.vintage ?? ""}</p>
-            <p className="truncate text-xs text-gold">{[w.region, w.country].filter(Boolean).join(", ")}</p>
+            <p className="truncate font-display text-base text-cream">
+              {w.wine_name ?? "Unknown"} {w.vintage ?? ""}
+            </p>
+            <p className="truncate text-xs text-gold">
+              {[w.region, w.country].filter(Boolean).join(", ")}
+            </p>
             <div className="mt-1 flex items-center gap-1 text-xs">
               <Star className="h-3 w-3 fill-gold text-gold" />
               <span>{rating.toFixed(1)}</span>
@@ -79,7 +133,9 @@ function PairingsPage() {
               onClick={() => setCat(c)}
               className={cn(
                 "h-8 shrink-0 rounded-full border px-3.5 text-xs transition-colors",
-                cat === c ? "border-burgundy bg-burgundy text-cream" : "border-white/10 bg-card/40 text-foreground/80",
+                cat === c
+                  ? "border-burgundy bg-burgundy text-cream"
+                  : "border-white/10 bg-card/40 text-foreground/80",
               )}
             >
               {c}
@@ -104,7 +160,9 @@ function PairingsPage() {
                   </div>
                   <div className="flex shrink-0 flex-col items-center justify-center">
                     <span className="font-display text-base leading-none text-cream">{match}</span>
-                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("pairings.match")}</span>
+                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                      {t("pairings.match")}
+                    </span>
                   </div>
                 </div>
               </li>
@@ -116,7 +174,9 @@ function PairingsPage() {
           <Thermometer className="h-5 w-5 shrink-0 text-gold" />
           <div className="min-w-0 flex-1 text-xs">
             <p className="font-medium text-gold">{t("pairings.servingTip")}</p>
-            <p className="mt-0.5 text-foreground/80">{w.serving_temp ?? t("pairings.servingDefault")}</p>
+            <p className="mt-0.5 text-foreground/80">
+              {w.serving_temp ?? t("pairings.servingDefault")}
+            </p>
           </div>
         </div>
       </div>
@@ -124,7 +184,12 @@ function PairingsPage() {
   );
 }
 
-function computeRating(w: { fruit: number | null; tannin: number | null; acidity: number | null; body: number | null }): number {
+function computeRating(w: {
+  fruit: number | null;
+  tannin: number | null;
+  acidity: number | null;
+  body: number | null;
+}): number {
   const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
   if (vals.length === 0) return 4.0;
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;

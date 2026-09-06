@@ -10,12 +10,12 @@ export type DrinkingWindow = {
 };
 
 const AGING: Record<string, { start: number; peak: number; end: number }> = {
-  red:        { start: 2, peak: 6,  end: 15 },
-  white:      { start: 1, peak: 3,  end: 7  },
-  rose:       { start: 0, peak: 1,  end: 3  },
-  sparkling:  { start: 0, peak: 2,  end: 6  },
-  dessert:    { start: 3, peak: 10, end: 25 },
-  fortified:  { start: 5, peak: 15, end: 40 },
+  red: { start: 2, peak: 6, end: 15 },
+  white: { start: 1, peak: 3, end: 7 },
+  rose: { start: 0, peak: 1, end: 3 },
+  sparkling: { start: 0, peak: 2, end: 6 },
+  dessert: { start: 3, peak: 10, end: 25 },
+  fortified: { start: 5, peak: 15, end: 40 },
 };
 
 export function computeDrinkingWindow(

@@ -18,7 +18,9 @@ export function EmptyState({
         <Icon className="h-5 w-5 text-gold/80" strokeWidth={1.6} />
       </div>
       <p className="mt-4 font-display text-base text-cream">{title}</p>
-      {description && <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{description}</p>}
+      {description && (
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
+      )}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   );

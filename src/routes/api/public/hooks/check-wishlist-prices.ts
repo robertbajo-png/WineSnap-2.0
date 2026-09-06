@@ -53,7 +53,10 @@ export const Route = createFileRoute("/api/public/hooks/check-wishlist-prices")(
               triggered += 1;
             }
 
-            await supabaseAdmin.from("wishlist").update(patch as never).eq("id", row.id);
+            await supabaseAdmin
+              .from("wishlist")
+              .update(patch as never)
+              .eq("id", row.id);
           } catch (e) {
             console.error("[wishlist-prices] row failed", row.id, e);
           }
@@ -67,7 +70,10 @@ export const Route = createFileRoute("/api/public/hooks/check-wishlist-prices")(
 
 type PriceHit = { price: number; productNumber?: string; url?: string };
 
-async function fetchPrice(args: { query: string; systembolagetId?: string | null }): Promise<PriceHit | null> {
+async function fetchPrice(args: {
+  query: string;
+  systembolagetId?: string | null;
+}): Promise<PriceHit | null> {
   const base = "https://api.bolaget.io/v1";
   const url = args.systembolagetId
     ? `${base}/products/${encodeURIComponent(args.systembolagetId)}`
