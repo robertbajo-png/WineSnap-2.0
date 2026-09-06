@@ -19,7 +19,7 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
       <div className="border-t border-white/8 bg-background/95 backdrop-blur-xl">
-        <ul className="mx-auto grid max-w-md grid-cols-5 items-end px-4 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2">
+        <ul className="mx-auto grid max-w-md grid-cols-5 items-end px-4 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 md:max-w-2xl">
           {left.map((it) => (
             <NavItem key={it.to} {...it} active={pathname === it.to} />
           ))}

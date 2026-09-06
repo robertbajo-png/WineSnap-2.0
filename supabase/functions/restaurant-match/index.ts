@@ -2,10 +2,81 @@
 // Given a list of wines from a restaurant menu (text or from a photo) and the
 // user's taste profile, rank the best matches with sommelier reasoning.
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { z } from "npm:zod@3.25.76";
+import {
+  corsHeaders as getCorsHeaders,
+  enforceRateLimit,
+  errorResponse,
+  readJson,
+} from "../_shared/http.ts";
+
+const score = z.number().min(0).max(10).nullable().optional();
+const ProfileSchema = z
+  .object({
+    preferred_types: z.array(z.string().max(50)).max(20).nullable().optional(),
+    preferred_regions: z.array(z.string().max(100)).max(30).nullable().optional(),
+    preferred_grapes: z.array(z.string().max(100)).max(30).nullable().optional(),
+    body: score,
+    sweetness: score,
+    oak: score,
+    tannin: score,
+    acidity: score,
+    price_min: z.number().min(0).max(1_000_000).nullable().optional(),
+    price_max: z.number().min(0).max(1_000_000).nullable().optional(),
+  })
+  .strict()
+  .nullable()
+  .optional();
+const countMap = z.record(z.string().max(100), z.number().min(0).max(100_000));
+const TasteSchema = z
+  .object({
+    favorite_grapes: countMap.nullable().optional(),
+    favorite_regions: countMap.nullable().optional(),
+    favorite_types: countMap.nullable().optional(),
+    total_wines: z.number().int().min(0).max(100_000).nullable().optional(),
+  })
+  .passthrough()
+  .nullable()
+  .optional();
+const RestaurantRequestSchema = z
+  .object({
+    text: z.string().trim().max(30_000).optional(),
+    image: z
+      .string()
+      .max(14_000_000)
+      .refine(
+        (value) => /^data:image\/(?:jpeg|png|webp);base64,/i.test(value),
+        "Unsupported image data",
+      )
+      .optional(),
+    profile: ProfileSchema,
+    taste: TasteSchema,
+  })
+  .strict()
+  .refine((value) => Boolean(value.text || value.image), "A menu image or text is required");
+const RestaurantResultSchema = z
+  .object({
+    picks: z
+      .array(
+        z
+          .object({
+            producer: z.string().max(300).optional(),
+            wine_name: z.string().max(300),
+            vintage: z.string().max(40).optional(),
+            region: z.string().max(200).optional(),
+            country: z.string().max(100).optional(),
+            wine_type: z.string().max(50).optional(),
+            grape_varieties: z.array(z.string().max(100)).max(20).optional(),
+            price: z.string().max(100).optional(),
+            match_score: z.number().min(0).max(100),
+            reason: z.string().max(1_000),
+            confidence: z.enum(["safe", "balanced", "stretch"]).optional(),
+          })
+          .strict(),
+      )
+      .max(10),
+  })
+  .strict();
 
 const SYSTEM_PROMPT = `You are a personal sommelier at the table.
 The user is at a restaurant and wants help picking a wine from the menu.
@@ -34,7 +105,10 @@ const tool = {
               vintage: { type: "string" },
               region: { type: "string" },
               country: { type: "string" },
-              wine_type: { type: "string", description: "red | white | rose | sparkling | dessert | fortified" },
+              wine_type: {
+                type: "string",
+                description: "red | white | rose | sparkling | dessert | fortified",
+              },
               grape_varieties: { type: "array", items: { type: "string" } },
               price: { type: "string", description: "Price as shown on menu, if visible" },
               match_score: { type: "number", description: "0-100 how well it fits the palate" },
@@ -53,24 +127,34 @@ const tool = {
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { text, image, profile, taste } = await req.json();
+    await enforceRateLimit(req, "restaurant-match");
+    const { text, image, profile, taste } = RestaurantRequestSchema.parse(
+      await readJson(req, 14_500_000),
+    );
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
-    if (!text && !image) {
-      return new Response(JSON.stringify({ error: "Provide a wine list (text) or a menu photo." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
-    const favGrapes = Object.entries((taste?.favorite_grapes ?? {}) as Record<string, number>)
-      .sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} (${v})`).join(", ") || "—";
-    const favRegions = Object.entries((taste?.favorite_regions ?? {}) as Record<string, number>)
-      .sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} (${v})`).join(", ") || "—";
-    const favTypes = Object.entries((taste?.favorite_types ?? {}) as Record<string, number>)
-      .sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} (${v})`).join(", ") || "—";
+    const favGrapes =
+      Object.entries((taste?.favorite_grapes ?? {}) as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([k, v]) => `${k} (${v})`)
+        .join(", ") || "—";
+    const favRegions =
+      Object.entries((taste?.favorite_regions ?? {}) as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([k, v]) => `${k} (${v})`)
+        .join(", ") || "—";
+    const favTypes =
+      Object.entries((taste?.favorite_types ?? {}) as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `${k} (${v})`)
+        .join(", ") || "—";
 
     const profileBlock = `User's taste profile:
 - Preferred wine types: ${(profile?.preferred_types ?? []).join(", ") || "—"}
@@ -84,7 +168,7 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
 - Favorite regions: ${favRegions}
 - Favorite types: ${favTypes}`;
 
-    const userContent: any[] = [
+    const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
       { type: "text", text: `${profileBlock}\n\nRestaurant wine list:\n${text || "(see image)"}` },
     ];
     if (image) {
@@ -106,25 +190,31 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
     });
 
     if (!resp.ok) {
-      const t = await resp.text();
-      console.error("AI error", resp.status, t);
-      if (resp.status === 429) return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (resp.status === 402) return new Response(JSON.stringify({ error: "Out of credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.error("AI gateway error", resp.status);
+      if (resp.status === 429)
+        return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      if (resp.status === 402)
+        return new Response(JSON.stringify({ error: "Out of credits." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await resp.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    const parsed = args ? JSON.parse(args) : { picks: [] };
+    const parsed = RestaurantResultSchema.parse(args ? JSON.parse(args) : { picks: [] });
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("restaurant-match error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse(req, e);
   }
 });

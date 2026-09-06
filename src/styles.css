@@ -125,7 +125,8 @@
   --shadow-soft: 0 2px 8px -2px oklch(0 0 0 / 0.4), 0 8px 24px -8px oklch(0 0 0 / 0.5);
   --shadow-elegant: 0 12px 40px -12px oklch(0 0 0 / 0.7);
   --shadow-glow: 0 0 32px oklch(0.78 0.13 75 / 0.35);
-  --shadow-gold-ring: 0 0 0 1px oklch(0.78 0.13 75 / 0.3), 0 8px 24px -8px oklch(0.78 0.13 75 / 0.25);
+  --shadow-gold-ring:
+    0 0 0 1px oklch(0.78 0.13 75 / 0.3), 0 8px 24px -8px oklch(0.78 0.13 75 / 0.25);
 }
 
 @layer base {
@@ -145,35 +146,75 @@
     color: var(--color-foreground);
   }
 
-  h1, h2, h3, h4, .font-display {
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
 }
 
 @layer utilities {
-  .bg-gradient-gold { background-image: var(--gradient-gold); }
-  .bg-gradient-burgundy { background-image: var(--gradient-burgundy); }
-  .bg-gradient-veil { background-image: var(--gradient-veil); }
-  .bg-gradient-dim { background-image: var(--gradient-dim); }
+  .bg-gradient-gold {
+    background-image: var(--gradient-gold);
+  }
+  .bg-gradient-burgundy {
+    background-image: var(--gradient-burgundy);
+  }
+  .bg-gradient-veil {
+    background-image: var(--gradient-veil);
+  }
+  .bg-gradient-dim {
+    background-image: var(--gradient-dim);
+  }
 
-  .shadow-soft { box-shadow: var(--shadow-soft); }
-  .shadow-elegant { box-shadow: var(--shadow-elegant); }
-  .shadow-glow { box-shadow: var(--shadow-glow); }
-  .shadow-gold-ring { box-shadow: var(--shadow-gold-ring); }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .shadow-gold-ring {
+    box-shadow: var(--shadow-gold-ring);
+  }
 
-  .text-gold { color: var(--color-gold); }
-  .text-copper { color: var(--color-copper); }
-  .text-burgundy { color: var(--color-burgundy); }
-  .text-cream { color: var(--color-cream); }
-  .text-success { color: var(--color-success); }
+  .text-gold {
+    color: var(--color-gold);
+  }
+  .text-copper {
+    color: var(--color-copper);
+  }
+  .text-burgundy {
+    color: var(--color-burgundy);
+  }
+  .text-cream {
+    color: var(--color-cream);
+  }
+  .text-success {
+    color: var(--color-success);
+  }
 
-  .bg-gold { background-color: var(--color-gold); }
-  .bg-copper { background-color: var(--color-copper); }
-  .bg-burgundy { background-color: var(--color-burgundy); }
+  .bg-gold {
+    background-color: var(--color-gold);
+  }
+  .bg-copper {
+    background-color: var(--color-copper);
+  }
+  .bg-burgundy {
+    background-color: var(--color-burgundy);
+  }
 
-  .border-gold { border-color: var(--color-gold); }
-  .border-copper { border-color: var(--color-copper); }
+  .border-gold {
+    border-color: var(--color-gold);
+  }
+  .border-copper {
+    border-color: var(--color-copper);
+  }
 
   .glass-dark {
     background-color: oklch(0.13 0.008 30 / 0.7);

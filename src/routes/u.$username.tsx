@@ -13,9 +13,12 @@ import {
   follow,
   unfollow,
   type PublicProfile,
+  type PublicWineSummary,
 } from "@/lib/social";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
+import { WineImage } from "@/components/WineImage";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/u/$username")({
   head: ({ params }) => ({
@@ -23,7 +26,10 @@ export const Route = createFileRoute("/u/$username")({
       { title: `@${params.username} — WineSnap` },
       { name: "description", content: `Public wine profile of @${params.username} on WineSnap.` },
       { property: "og:title", content: `@${params.username} — WineSnap` },
-      { property: "og:description", content: `Public wine profile of @${params.username} on WineSnap.` },
+      {
+        property: "og:description",
+        content: `Public wine profile of @${params.username} on WineSnap.`,
+      },
       { property: "og:type", content: "profile" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -36,47 +42,61 @@ function UserProfilePage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null | undefined>(undefined);
-  const [wines, setWines] = useState<any[]>([]);
+  const [wines, setWines] = useState<PublicWineSummary[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
   const [following, setFollowing] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      const p = await getProfileByUsername(username);
-      if (!alive) return;
-      setProfile(p);
-      if (!p) return;
-      const [w, c] = await Promise.all([getPublicWinesByUser(p.id), getFollowCounts(p.id)]);
-      if (!alive) return;
-      setWines(w);
-      setCounts(c);
-      if (user && user.id !== p.id) setFollowing(await isFollowing(p.id));
+    void (async () => {
+      try {
+        const p = await getProfileByUsername(username);
+        if (!alive) return;
+        setProfile(p);
+        if (!p) return;
+        const [w, c] = await Promise.all([getPublicWinesByUser(p.id), getFollowCounts(p.id)]);
+        if (!alive) return;
+        setWines(w);
+        setCounts(c);
+        if (user && user.id !== p.id) setFollowing(await isFollowing(p.id));
+      } catch (error) {
+        if (!alive) return;
+        toast.error(error instanceof Error ? error.message : t("common.error"));
+        setProfile(null);
+      }
     })();
     return () => {
       alive = false;
     };
-  }, [username, user]);
+  }, [username, user, t]);
 
   const toggle = async () => {
     if (!profile || following === null || busy) return;
     setBusy(true);
-    if (following) {
-      await unfollow(profile.id);
-      setFollowing(false);
-      setCounts((c) => ({ ...c, followers: Math.max(0, c.followers - 1) }));
-    } else {
-      await follow(profile.id);
-      setFollowing(true);
-      setCounts((c) => ({ ...c, followers: c.followers + 1 }));
+    try {
+      if (following) {
+        await unfollow(profile.id);
+        setFollowing(false);
+        setCounts((c) => ({ ...c, followers: Math.max(0, c.followers - 1) }));
+      } else {
+        await follow(profile.id);
+        setFollowing(true);
+        setCounts((c) => ({ ...c, followers: c.followers + 1 }));
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.error"));
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   return (
     <AppShell>
-      <Link to="/friends" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/friends"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" /> {t("common.back")}
       </Link>
 
@@ -91,18 +111,28 @@ function UserProfilePage() {
               {(profile.display_name ?? profile.username ?? "?")[0]?.toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-2xl text-cream">{profile.display_name ?? profile.username}</p>
-              {profile.username && <p className="text-xs text-muted-foreground">@{profile.username}</p>}
+              <p className="font-display text-2xl text-cream">
+                {profile.display_name ?? profile.username}
+              </p>
+              {profile.username && (
+                <p className="text-xs text-muted-foreground">@{profile.username}</p>
+              )}
             </div>
             {user && user.id !== profile.id && following !== null && (
               <button
                 onClick={toggle}
                 disabled={busy}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs transition-colors ${
-                  following ? "border border-white/15 text-muted-foreground hover:bg-white/5" : "bg-burgundy text-cream"
+                  following
+                    ? "border border-white/15 text-muted-foreground hover:bg-white/5"
+                    : "bg-burgundy text-cream"
                 }`}
               >
-                {following ? <UserCheck className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                {following ? (
+                  <UserCheck className="h-3.5 w-3.5" />
+                ) : (
+                  <UserPlus className="h-3.5 w-3.5" />
+                )}
                 {following ? t("friends.following") : t("friends.follow")}
               </button>
             )}
@@ -119,7 +149,9 @@ function UserProfilePage() {
           <section className="mt-7">
             <h2 className="font-display text-lg text-gold">{t("friends.publicWines")}</h2>
             {wines.length === 0 ? (
-              <p className="mt-3 py-8 text-center text-sm text-muted-foreground">{t("friends.noPublicWines")}</p>
+              <p className="mt-3 py-8 text-center text-sm text-muted-foreground">
+                {t("friends.noPublicWines")}
+              </p>
             ) : (
               <ul className="mt-3 grid grid-cols-2 gap-3 pb-6">
                 {wines.map((w) => (
@@ -132,12 +164,19 @@ function UserProfilePage() {
                       >
                         <div className="aspect-[3/4] w-full overflow-hidden bg-background">
                           {w.image_url ? (
-                            <img src={w.image_url} alt={w.name ?? ""} className="h-full w-full object-cover" loading="lazy" />
+                            <WineImage
+                              src={w.image_url}
+                              alt={w.wine_name ?? ""}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
                           ) : null}
                         </div>
                         <div className="p-2.5">
-                          <p className="truncate text-[11px] text-muted-foreground">{w.producer ?? ""}</p>
-                          <p className="truncate text-sm text-cream">{w.name ?? "—"}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {w.producer ?? ""}
+                          </p>
+                          <p className="truncate text-sm text-cream">{w.wine_name ?? "—"}</p>
                           {w.user_rating != null && (
                             <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-gold">
                               <Star className="h-3 w-3 fill-gold" /> {w.user_rating.toFixed(1)}

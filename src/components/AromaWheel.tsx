@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useId, type KeyboardEvent } from "react";
+import { useT } from "@/i18n";
 
 /**
  * Aroma Wheel — 6 family sectors with sub-category and leaf rings.
@@ -39,15 +41,17 @@ const FAMILIES: Family[] = [
   {
     name: "Oak",
     color: "oklch(0.5 0.12 80)",
-    subs: [
-      { name: "Oak", weight: 1, leaves: ["Cedar", "Vanilla", "Coconut", "Toanut"] },
-    ],
+    subs: [{ name: "Oak", weight: 1, leaves: ["Cedar", "Vanilla", "Coconut", "Toast"] }],
   },
   {
     name: "Earth",
     color: "oklch(0.38 0.07 130)",
     subs: [
-      { name: "Vegetal", weight: 1, leaves: ["Forest floor", "Truffle", "Mushroom", "Tobacco leaf"] },
+      {
+        name: "Vegetal",
+        weight: 1,
+        leaves: ["Forest floor", "Truffle", "Mushroom", "Tobacco leaf"],
+      },
     ],
   },
   {
@@ -111,6 +115,8 @@ export function AromaWheel({
   onSelectCenter?: () => void;
   centerActive?: boolean;
 }) {
+  const t = useT();
+  const idPrefix = `aroma-${useId().replace(/:/g, "")}`;
   const cx = size / 2;
   const cy = size / 2;
   const pad = Math.max(2, size * 0.018);
@@ -124,21 +130,51 @@ export function AromaWheel({
   const goldRim = "oklch(0.78 0.13 75 / 0.55)";
   const interactive = !!onSelectFamily;
 
+  const familyLabel = (name: string) => {
+    const keys = {
+      Fruit: "aroma.family.fruit",
+      Floral: "aroma.family.floral",
+      Spice: "aroma.family.spice",
+      Oak: "aroma.family.oak",
+      Earth: "aroma.family.earth",
+      Mineral: "aroma.family.mineral",
+    } as const;
+    return name in keys ? t(keys[name as keyof typeof keys]) : name;
+  };
+
+  const handleKey = (event: KeyboardEvent<SVGGElement>, action: () => void) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      action();
+    }
+  };
+
+  const coreGradientId = `${idPrefix}-core`;
+  const glowGradientId = `${idPrefix}-glow`;
+
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={className}
+      role="img"
+      aria-label={t("aroma.wheel")}
+    >
+      <title>{t("aroma.wheel")}</title>
       <defs>
-        <radialGradient id="aw-core" cx="50%" cy="50%" r="50%">
+        <radialGradient id={coreGradientId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="oklch(0.22 0.02 30)" />
           <stop offset="100%" stopColor="oklch(0.12 0.008 30)" />
         </radialGradient>
-        <radialGradient id="aw-glow" cx="50%" cy="50%" r="50%">
+        <radialGradient id={glowGradientId} cx="50%" cy="50%" r="50%">
           <stop offset="60%" stopColor="oklch(0.78 0.13 75 / 0)" />
           <stop offset="100%" stopColor="oklch(0.78 0.13 75 / 0.18)" />
         </radialGradient>
       </defs>
 
       {/* outer glow halo */}
-      <circle cx={cx} cy={cy} r={rOuter} fill="url(#aw-glow)" />
+      <circle cx={cx} cy={cy} r={rOuter} fill={`url(#${glowGradientId})`} />
 
       {(() => {
         const groups: React.ReactNode[] = [];
@@ -180,11 +216,19 @@ export function AromaWheel({
               const flip = mid > 90 && mid < 270;
               const a0 = flip ? subEnd - 1 : subAngle + 1;
               const a1 = flip ? subAngle + 1 : subEnd - 1;
-              const id = `sub-tp-${fi}-${si}`;
-              textPaths.push(<path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />);
+              const id = `${idPrefix}-sub-tp-${fi}-${si}`;
+              textPaths.push(
+                <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+              );
               famElems.push(
-                <text key={`t-${id}`} fontSize={size * 0.024} className="fill-cream/85 font-display pointer-events-none">
-                  <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">{sub.name}</textPath>
+                <text
+                  key={`t-${id}`}
+                  fontSize={size * 0.024}
+                  className="fill-cream/85 font-display pointer-events-none"
+                >
+                  <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                    {sub.name}
+                  </textPath>
                 </text>,
               );
             }
@@ -210,11 +254,19 @@ export function AromaWheel({
                 const flip = mid > 90 && mid < 270;
                 const a0 = flip ? lEnd - 0.5 : lStart + 0.5;
                 const a1 = flip ? lStart + 0.5 : lEnd - 0.5;
-                const id = `leaf-tp-${fi}-${si}-${li}`;
-                textPaths.push(<path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />);
+                const id = `${idPrefix}-leaf-tp-${fi}-${si}-${li}`;
+                textPaths.push(
+                  <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+                );
                 famElems.push(
-                  <text key={`t-${id}`} fontSize={size * 0.021} className="fill-cream/75 font-display pointer-events-none">
-                    <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">{leaf}</textPath>
+                  <text
+                    key={`t-${id}`}
+                    fontSize={size * 0.021}
+                    className="fill-cream/75 font-display pointer-events-none"
+                  >
+                    <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                      {leaf}
+                    </textPath>
                   </text>,
                 );
               }
@@ -236,7 +288,7 @@ export function AromaWheel({
                 fontSize={size * 0.034}
                 className="fill-cream font-display pointer-events-none"
               >
-                {fam.name}
+                {familyLabel(fam.name)}
               </text>,
             );
           }
@@ -257,11 +309,28 @@ export function AromaWheel({
           groups.push(
             <g
               key={`g-${fi}`}
-              onClick={interactive ? (e) => { e.stopPropagation(); onSelectFamily?.(isSelected ? null : fam.name); } : undefined}
+              onClick={
+                interactive
+                  ? (e) => {
+                      e.stopPropagation();
+                      onSelectFamily?.(isSelected ? null : fam.name);
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                interactive
+                  ? (event) =>
+                      handleKey(event, () => onSelectFamily?.(isSelected ? null : fam.name))
+                  : undefined
+              }
+              role={interactive ? "button" : undefined}
+              tabIndex={interactive ? 0 : undefined}
+              aria-label={interactive ? familyLabel(fam.name) : undefined}
+              aria-pressed={interactive ? isSelected : undefined}
+              className="transition-opacity duration-200 outline-none motion-reduce:transition-none focus-visible:opacity-80"
               style={{
                 cursor: interactive ? "pointer" : undefined,
                 opacity: dim ? 0.35 : 1,
-                transition: "opacity 200ms ease",
               }}
             >
               {famElems}
@@ -304,14 +373,27 @@ export function AromaWheel({
 
       {/* core disc — click to show this wine's aromas */}
       <g
-        onClick={onSelectCenter ? (e) => { e.stopPropagation(); onSelectCenter(); } : undefined}
+        onClick={
+          onSelectCenter
+            ? (e) => {
+                e.stopPropagation();
+                onSelectCenter();
+              }
+            : undefined
+        }
+        onKeyDown={onSelectCenter ? (event) => handleKey(event, onSelectCenter) : undefined}
+        role={onSelectCenter ? "button" : undefined}
+        tabIndex={onSelectCenter ? 0 : undefined}
+        aria-label={onSelectCenter ? t("aroma.center") : undefined}
+        aria-pressed={onSelectCenter ? !!centerActive : undefined}
+        className="outline-none focus-visible:opacity-80"
         style={{ cursor: onSelectCenter ? "pointer" : undefined }}
       >
         <circle
           cx={cx}
           cy={cy}
           r={rCore}
-          fill="url(#aw-core)"
+          fill={`url(#${coreGradientId})`}
           stroke={centerActive ? "oklch(0.85 0.16 75)" : goldRim}
           strokeWidth={centerActive ? 1.8 : 1}
         />
@@ -332,7 +414,7 @@ export function AromaWheel({
           textAnchor="middle"
           fontSize={size * 0.11}
           className="fill-gold font-display pointer-events-none"
-          style={{ fontWeight: 400, letterSpacing: "0.02em" }}
+          style={{ fontWeight: 400, letterSpacing: 0 }}
         >
           W
         </text>

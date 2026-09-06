@@ -1,10 +1,42 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Wine, GlassWater, Star, ChevronRight, Grape, MapPin, BookmarkIcon, LogOut, Languages, Bookmark, Users } from "lucide-react";
+import {
+  Wine,
+  GlassWater,
+  Star,
+  ChevronRight,
+  Grape,
+  MapPin,
+  BookmarkIcon,
+  LogOut,
+  Languages,
+  Bookmark,
+  Users,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, type Lang } from "@/i18n";
+import { toast } from "sonner";
+
+type Profile = {
+  display_name?: string | null;
+  username?: string | null;
+  bio?: string | null;
+  is_public?: boolean;
+  preferred_types?: string[] | null;
+  preferred_regions?: string[] | null;
+  body?: number | null;
+  sweetness?: number | null;
+  oak?: number | null;
+  tannin?: number | null;
+  acidity?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  personalized_recs?: boolean;
+  new_arrivals_alerts?: boolean;
+  hide_disliked?: boolean;
+};
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -22,35 +54,33 @@ function MePage() {
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
-  const [profile, setProfile] = useState<{ display_name?: string; username?: string | null; bio?: string | null; is_public?: boolean; preferred_types?: string[]; preferred_regions?: string[]; body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null; price_min?: number | null; price_max?: number | null; personalized_recs?: boolean; new_arrivals_alerts?: boolean; hide_disliked?: boolean } | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("wines")
-      .select("id,user_rating,fruit,tannin,acidity,body")
-      .then(({ data }) => {
+      .select("id,user_rating,quantity")
+      .eq("user_id", user.id)
+      .then(({ data, error }) => {
+        if (error) return;
         const ws = data ?? [];
-        setBottles(ws.length);
-        setTasted(ws.filter((w: any) => w.user_rating != null).length);
+        setBottles(ws.reduce((total, wine) => total + Math.max(0, wine.quantity ?? 0), 0));
         const ratings = ws
-          .map((w: any) => {
-            if (w.user_rating != null) return w.user_rating;
-            const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v) => v != null);
-            if (!vals.length) return null;
-            const m = vals.reduce((a, b) => a + b, 0) / vals.length;
-            return 3.5 + (m / 10) * 1.5;
-          })
-          .filter((r): r is number => r != null);
+          .map((wine) => wine.user_rating)
+          .filter((rating): rating is number => rating != null);
+        setTasted(ratings.length);
         setAvg(ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0);
       });
     supabase
       .from("profiles")
-      .select("display_name,username,bio,is_public,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked")
+      .select(
+        "display_name,username,bio,is_public,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked",
+      )
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => setProfile(data as any));
+      .then(({ data }) => setProfile(data));
     supabase
       .from("taste_profile")
       .select("favorite_grapes")
@@ -58,12 +88,19 @@ function MePage() {
       .maybeSingle()
       .then(({ data }) => {
         const fg = (data?.favorite_grapes ?? {}) as Record<string, number>;
-        const sorted = Object.entries(fg).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+        const sorted = Object.entries(fg)
+          .sort((a, b) => b[1] - a[1])
+          .map(([g]) => g);
         setTopGrapes(sorted);
       });
   }, [user]);
 
-  const memberSince = user ? new Date(user.created_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US", { month: "long", year: "numeric" }) : "—";
+  const memberSince = user
+    ? new Date(user.created_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US", {
+        month: "long",
+        year: "numeric",
+      })
+    : "—";
 
   return (
     <AppShell>
@@ -82,31 +119,94 @@ function MePage() {
             </div>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-display text-2xl text-cream">{profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}</p>
+            <p className="font-display text-2xl text-cream">
+              {profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}
+            </p>
             <p className="text-xs text-gold">{t(explorerTierKey(bottles))}</p>
-            <p className="text-[11px] text-muted-foreground">{t("profile.memberSince")} {memberSince}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("profile.memberSince")} {memberSince}
+            </p>
           </div>
         </section>
 
         {/* Stats */}
         <section className="mt-5 grid grid-cols-3 gap-2">
-          <StatBox icon={<Wine className="h-4 w-4 text-gold" />} value={String(bottles)} label={t("profile.bottles")} />
-          <StatBox icon={<GlassWater className="h-4 w-4 text-gold" />} value={String(tasted)} label={t("profile.tasted")} />
-          <StatBox icon={<Star className="h-4 w-4 fill-gold text-gold" />} value={avg ? avg.toFixed(1) : "—"} label={t("profile.avgRating")} />
+          <StatBox
+            icon={<Wine className="h-4 w-4 text-gold" />}
+            value={String(bottles)}
+            label={t("profile.bottles")}
+          />
+          <StatBox
+            icon={<GlassWater className="h-4 w-4 text-gold" />}
+            value={String(tasted)}
+            label={t("profile.tasted")}
+          />
+          <StatBox
+            icon={<Star className="h-4 w-4 fill-gold text-gold" />}
+            value={avg ? avg.toFixed(1) : "—"}
+            label={t("profile.avgRating")}
+          />
         </section>
 
         {/* Favorites */}
         <section className="mt-7">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-lg text-gold">{t("profile.favorites")}</h2>
-            <Link to="/taste" className="text-xs text-burgundy">{t("profile.edit")}</Link>
+            <Link to="/taste" className="text-xs text-burgundy">
+              {t("profile.edit")}
+            </Link>
           </div>
           <div className="mt-3 space-y-2.5">
-            <FavRow to="/taste" hash="types" icon={<Wine className="h-4 w-4 text-gold" />} label={t("profile.wineTypes")} value={profile?.preferred_types?.length ? profile.preferred_types.join(", ") : t("profile.notSet")} />
-            <FavRow to="/taste" hash="profile" icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label={t("profile.tasteProfile")} value={tasteProfileSummary(profile) ?? t("profile.notSet")} />
-            <FavRow to="/taste" hash="regions" icon={<MapPin className="h-4 w-4 text-gold" />} label={t("profile.regions")} value={profile?.preferred_regions?.length ? profile.preferred_regions.slice(0, 3).join(", ") + (profile.preferred_regions.length > 3 ? ` +${profile.preferred_regions.length - 3}` : "") : t("profile.notSet")} />
-            <FavRow to="/taste" hash="grapes" icon={<Grape className="h-4 w-4 text-gold" />} label={t("profile.grapes")} value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
-            <FavRow to="/wishlist" icon={<Bookmark className="h-4 w-4 text-gold" />} label={t("profile.wishlist")} value={t("common.more")} />
+            <FavRow
+              to="/taste"
+              hash="types"
+              icon={<Wine className="h-4 w-4 text-gold" />}
+              label={t("profile.wineTypes")}
+              value={
+                profile?.preferred_types?.length
+                  ? profile.preferred_types.join(", ")
+                  : t("profile.notSet")
+              }
+            />
+            <FavRow
+              to="/taste"
+              hash="profile"
+              icon={<BookmarkIcon className="h-4 w-4 text-gold" />}
+              label={t("profile.tasteProfile")}
+              value={tasteProfileSummary(profile) ?? t("profile.notSet")}
+            />
+            <FavRow
+              to="/taste"
+              hash="regions"
+              icon={<MapPin className="h-4 w-4 text-gold" />}
+              label={t("profile.regions")}
+              value={
+                profile?.preferred_regions?.length
+                  ? profile.preferred_regions.slice(0, 3).join(", ") +
+                    (profile.preferred_regions.length > 3
+                      ? ` +${profile.preferred_regions.length - 3}`
+                      : "")
+                  : t("profile.notSet")
+              }
+            />
+            <FavRow
+              to="/taste"
+              hash="grapes"
+              icon={<Grape className="h-4 w-4 text-gold" />}
+              label={t("profile.grapes")}
+              value={
+                topGrapes.length
+                  ? topGrapes.slice(0, 2).join(", ") +
+                    (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "")
+                  : "—"
+              }
+            />
+            <FavRow
+              to="/wishlist"
+              icon={<Bookmark className="h-4 w-4 text-gold" />}
+              label={t("profile.wishlist")}
+              value={t("common.more")}
+            />
           </div>
         </section>
 
@@ -115,10 +215,24 @@ function MePage() {
           <h2 className="font-display text-lg text-gold">{t("profile.recommended")}</h2>
           <p className="mt-1 text-xs text-muted-foreground">{t("profile.recommendedDesc")}</p>
           <div className="mt-3 space-y-2.5 pb-4">
-            <ToggleRow title={t("profile.personalized")} desc={t("profile.personalizedDesc")} value={profile?.personalized_recs ?? true} onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)} />
-            <ToggleRow title={t("profile.newArrivals")} desc={t("profile.newArrivalsDesc")} value={profile?.new_arrivals_alerts ?? true} onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)} />
-            <FavRow icon={null} label={t("profile.priceRange")} value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))} onClick={() => editPriceRange(user?.id, profile, setProfile, lang)} />
-            <ToggleRow title={t("profile.hideDisliked")} desc={t("profile.hideDislikedDesc")} value={profile?.hide_disliked ?? true} onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)} />
+            <ToggleRow
+              title={t("profile.personalized")}
+              desc={t("profile.personalizedDesc")}
+              value={profile?.personalized_recs ?? true}
+              onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)}
+            />
+            <FavRow
+              icon={null}
+              label={t("profile.priceRange")}
+              value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))}
+              onClick={() => editPriceRange(user?.id, profile, setProfile, lang)}
+            />
+            <ToggleRow
+              title={t("profile.hideDisliked")}
+              desc={t("profile.hideDislikedDesc")}
+              value={profile?.hide_disliked ?? true}
+              onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)}
+            />
           </div>
         </section>
 
@@ -126,7 +240,10 @@ function MePage() {
         <section className="mt-7">
           <h2 className="font-display text-lg text-gold">{t("profile.social")}</h2>
           <div className="mt-3 space-y-2.5">
-            <Link to="/friends" className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70">
+            <Link
+              to="/friends"
+              className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
+            >
               <Users className="h-4 w-4 text-gold" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-foreground/90">{t("profile.friends")}</p>
@@ -138,7 +255,7 @@ function MePage() {
               title={t("profile.publicProfile")}
               desc={t("profile.publicProfileDesc")}
               value={profile?.is_public ?? false}
-              onChange={(v) => updatePref(user?.id, { is_public: v } as any, setProfile)}
+              onChange={(v) => updatePref(user?.id, { is_public: v }, setProfile)}
             />
             <TextRow
               label={t("profile.username")}
@@ -146,7 +263,11 @@ function MePage() {
               value={profile?.username ?? ""}
               onSave={async (v) => {
                 const clean = v.trim().replace(/^@/, "").toLowerCase();
-                await updatePref(user?.id, { username: clean || null } as any, setProfile);
+                if (clean && !/^[a-z0-9][a-z0-9._-]{2,29}$/.test(clean)) {
+                  toast.error(t("profile.usernameInvalid"));
+                  return;
+                }
+                await updatePref(user?.id, { username: clean || null }, setProfile);
               }}
             />
             <TextRow
@@ -154,7 +275,7 @@ function MePage() {
               placeholder={t("profile.bioPh")}
               value={profile?.bio ?? ""}
               onSave={async (v) => {
-                await updatePref(user?.id, { bio: v.trim() || null } as any, setProfile);
+                await updatePref(user?.id, { bio: v.trim().slice(0, 300) || null }, setProfile);
               }}
               multiline
             />
@@ -192,11 +313,20 @@ function MePage() {
   );
 }
 
-function tasteProfileSummary(p: { body?: number | null; sweetness?: number | null; oak?: number | null; tannin?: number | null; acidity?: number | null } | null): string | null {
+function tasteProfileSummary(
+  p: {
+    body?: number | null;
+    sweetness?: number | null;
+    oak?: number | null;
+    tannin?: number | null;
+    acidity?: number | null;
+  } | null,
+): string | null {
   if (!p) return null;
   const parts: string[] = [];
   if (p.body != null) parts.push(p.body >= 7 ? "Bold" : p.body <= 4 ? "Light" : "Medium");
-  if (p.sweetness != null) parts.push(p.sweetness <= 3 ? "Dry" : p.sweetness >= 7 ? "Sweet" : "Off-dry");
+  if (p.sweetness != null)
+    parts.push(p.sweetness <= 3 ? "Dry" : p.sweetness >= 7 ? "Sweet" : "Off-dry");
   if (p.oak != null && p.oak >= 6) parts.push("Oaked");
   if (p.tannin != null && p.tannin >= 7) parts.push("Tannic");
   if (p.acidity != null && p.acidity >= 7) parts.push("Crisp");
@@ -213,8 +343,23 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
   );
 }
 
-function FavRow({ icon, label, value, to, hash, onClick }: { icon: React.ReactNode; label: string; value: string; to?: string; hash?: string; onClick?: () => void }) {
-  const className = "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
+function FavRow({
+  icon,
+  label,
+  value,
+  to,
+  hash,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  to?: string;
+  hash?: string;
+  onClick?: () => void;
+}) {
+  const className =
+    "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
   const inner = (
     <>
       {icon && <span className="shrink-0">{icon}</span>}
@@ -223,11 +368,30 @@ function FavRow({ icon, label, value, to, hash, onClick }: { icon: React.ReactNo
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </>
   );
-  if (to) return <Link to={to} hash={hash} className={className}>{inner}</Link>;
-  return <button onClick={onClick} className={className}>{inner}</button>;
+  if (to)
+    return (
+      <Link to={to} hash={hash} className={className}>
+        {inner}
+      </Link>
+    );
+  return (
+    <button onClick={onClick} className={className}>
+      {inner}
+    </button>
+  );
 }
 
-function ToggleRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({
+  title,
+  desc,
+  value,
+  onChange,
+}: {
+  title: string;
+  desc: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
       <div className="min-w-0 flex-1">
@@ -238,7 +402,9 @@ function ToggleRow({ title, desc, value, onChange }: { title: string; desc: stri
         onClick={() => onChange(!value)}
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${value ? "bg-success" : "bg-white/15"}`}
       >
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`} />
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`}
+        />
       </button>
     </div>
   );
@@ -270,7 +436,7 @@ function TextRow({
       >
         <span className="text-sm text-foreground/90">{label}</span>
         <span className="ml-auto max-w-[55%] truncate text-right text-xs text-muted-foreground">
-          {value ? value : placeholder ?? "—"}
+          {value ? value : (placeholder ?? "—")}
         </span>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
@@ -319,7 +485,9 @@ function TextRow({
   );
 }
 
-function explorerTierKey(bottles: number): "tier.connoisseur" | "tier.enthusiast" | "tier.explorer" | "tier.novice" {
+function explorerTierKey(
+  bottles: number,
+): "tier.connoisseur" | "tier.enthusiast" | "tier.explorer" | "tier.novice" {
   if (bottles >= 100) return "tier.connoisseur";
   if (bottles >= 25) return "tier.enthusiast";
   if (bottles >= 5) return "tier.explorer";
@@ -335,29 +503,55 @@ function priceRangeLabel(min?: number | null, max?: number | null, notSet = "Not
 
 async function updatePref(
   userId: string | undefined,
-  patch: Record<string, boolean | number | null>,
-  setProfile: React.Dispatch<React.SetStateAction<any>>,
+  patch: Partial<Profile>,
+  setProfile: React.Dispatch<React.SetStateAction<Profile | null>>,
 ) {
   if (!userId) return;
-  setProfile((p: any) => ({ ...(p ?? {}), ...patch }));
-  await supabase.from("profiles").update(patch as any).eq("id", userId);
+  let previous: Profile | null = null;
+  setProfile((profile) => {
+    previous = profile;
+    return { ...(profile ?? {}), ...patch };
+  });
+  const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+  if (error) {
+    setProfile(previous);
+    toast.error(error.message);
+  }
 }
 
 async function editPriceRange(
   userId: string | undefined,
-  profile: any,
-  setProfile: React.Dispatch<React.SetStateAction<any>>,
+  profile: Profile | null,
+  setProfile: React.Dispatch<React.SetStateAction<Profile | null>>,
   lang: Lang,
 ) {
   if (!userId) return;
-  const promptMin = lang === "sv" ? "Min-pris ($), lämna tomt för att rensa" : "Min price ($), leave empty to clear";
-  const promptMax = lang === "sv" ? "Max-pris ($), lämna tomt för att rensa" : "Max price ($), leave empty to clear";
-  const minStr = window.prompt(promptMin, profile?.price_min != null ? String(profile.price_min) : "");
+  const promptMin =
+    lang === "sv"
+      ? "Min-pris ($), lämna tomt för att rensa"
+      : "Min price ($), leave empty to clear";
+  const promptMax =
+    lang === "sv"
+      ? "Max-pris ($), lämna tomt för att rensa"
+      : "Max price ($), leave empty to clear";
+  const minStr = window.prompt(
+    promptMin,
+    profile?.price_min != null ? String(profile.price_min) : "",
+  );
   if (minStr === null) return;
-  const maxStr = window.prompt(promptMax, profile?.price_max != null ? String(profile.price_max) : "");
+  const maxStr = window.prompt(
+    promptMax,
+    profile?.price_max != null ? String(profile.price_max) : "",
+  );
   if (maxStr === null) return;
   const min = minStr.trim() === "" ? null : Number(minStr);
   const max = maxStr.trim() === "" ? null : Number(maxStr);
-  await updatePref(userId, { price_min: Number.isFinite(min as number) ? (min as number) : null, price_max: Number.isFinite(max as number) ? (max as number) : null }, setProfile);
+  await updatePref(
+    userId,
+    {
+      price_min: Number.isFinite(min as number) ? (min as number) : null,
+      price_max: Number.isFinite(max as number) ? (max as number) : null,
+    },
+    setProfile,
+  );
 }
-

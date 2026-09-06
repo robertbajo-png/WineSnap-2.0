@@ -51,7 +51,7 @@ const REGION_COORDS: Record<string, [number, number]> = {
   bourgogne: [4.8, 47],
   champagne: [4, 49],
   rhone: [4.8, 44],
-  "rhône": [4.8, 44],
+  rhône: [4.8, 44],
   loire: [0.5, 47.5],
   alsace: [7.5, 48.3],
   provence: [6, 43.5],
@@ -153,13 +153,25 @@ export function WorldMap({ points }: { points: MapPoint[] }) {
             <stop offset="100%" stopColor="oklch(0.75 0.15 40)" stopOpacity="0" />
           </radialGradient>
         </defs>
-        <path d={WORLD_PATH} fill="oklch(0.22 0.02 40)" stroke="oklch(0.35 0.03 60)" strokeWidth="0.8" />
+        <path
+          d={WORLD_PATH}
+          fill="oklch(0.22 0.02 40)"
+          stroke="oklch(0.35 0.03 60)"
+          strokeWidth="0.8"
+        />
         {dots.map((d, i) => {
           const r = 3 + (d.count / maxCount) * 8;
           return (
             <g key={i}>
               <circle cx={d.x} cy={d.y} r={r * 2.2} fill="url(#dotGlow)" />
-              <circle cx={d.x} cy={d.y} r={r} fill="oklch(0.72 0.13 75)" stroke="oklch(0.95 0.06 80)" strokeWidth="0.6">
+              <circle
+                cx={d.x}
+                cy={d.y}
+                r={r}
+                fill="oklch(0.72 0.13 75)"
+                stroke="oklch(0.95 0.06 80)"
+                strokeWidth="0.6"
+              >
                 <title>{`${d.label} — ${d.count}`}</title>
               </circle>
             </g>

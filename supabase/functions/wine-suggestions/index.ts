@@ -1,10 +1,55 @@
 // Edge function: wine-suggestions
 // Returns AI-generated similar wine recommendations based on a wine's profile.
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { z } from "npm:zod@3.25.76";
+import {
+  corsHeaders as getCorsHeaders,
+  enforceRateLimit,
+  errorResponse,
+  readJson,
+} from "../_shared/http.ts";
+
+const profileValue = z.number().min(0).max(10).nullable().optional();
+const WineRequestSchema = z
+  .object({
+    producer: z.string().max(300).nullable().optional(),
+    wine_name: z.string().max(300).nullable().optional(),
+    vintage: z.number().int().nullable().optional(),
+    region: z.string().max(200).nullable().optional(),
+    country: z.string().max(100).nullable().optional(),
+    wine_type: z.string().max(50).nullable().optional(),
+    grape_varieties: z.array(z.string().max(100)).max(20).nullable().optional(),
+    body: profileValue,
+    tannin: profileValue,
+    acidity: profileValue,
+    oak: profileValue,
+    sweetness: profileValue,
+    fruit: profileValue,
+    primary_notes: z.array(z.string().max(100)).max(20).nullable().optional(),
+    secondary_notes: z.array(z.string().max(100)).max(20).nullable().optional(),
+    tertiary_notes: z.array(z.string().max(100)).max(20).nullable().optional(),
+  })
+  .strict();
+const SuggestionResultSchema = z
+  .object({
+    suggestions: z
+      .array(
+        z
+          .object({
+            producer: z.string().max(300),
+            wine_name: z.string().max(300),
+            region: z.string().max(200),
+            country: z.string().max(100),
+            grape_varieties: z.array(z.string().max(100)).max(20).optional(),
+            price_range: z.string().max(100).optional(),
+            match_score: z.number().min(0).max(100),
+            reason: z.string().max(1_000),
+          })
+          .strict(),
+      )
+      .max(5),
+  })
+  .strict();
 
 const SYSTEM_PROMPT = `You are an expert sommelier. Given a wine's profile, suggest 5 similar wines a drinker would likely enjoy.
 Mix well-known and lesser-known picks across regions. Always respond in English. ALWAYS use the suggest_wines tool.`;
@@ -43,10 +88,12 @@ const tool = {
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const wine = await req.json();
+    await enforceRateLimit(req, "wine-suggestions");
+    const wine = WineRequestSchema.parse(await readJson(req, 50_000));
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
@@ -77,25 +124,31 @@ Notes: ${[...(wine.primary_notes ?? []), ...(wine.secondary_notes ?? []), ...(wi
     });
 
     if (!resp.ok) {
-      const t = await resp.text();
-      console.error("AI error", resp.status, t);
-      if (resp.status === 429) return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (resp.status === 402) return new Response(JSON.stringify({ error: "Out of credits. Add funds in Workspace settings." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.error("AI gateway error", resp.status);
+      if (resp.status === 429)
+        return new Response(JSON.stringify({ error: "Rate limit, try again soon." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      if (resp.status === 402)
+        return new Response(
+          JSON.stringify({ error: "Out of credits. Add funds in Workspace settings." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await resp.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    const parsed = args ? JSON.parse(args) : { suggestions: [] };
+    const parsed = SuggestionResultSchema.parse(args ? JSON.parse(args) : { suggestions: [] });
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("wine-suggestions error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse(req, e);
   }
 });

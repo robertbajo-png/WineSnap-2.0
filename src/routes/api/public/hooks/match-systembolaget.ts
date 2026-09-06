@@ -1,4 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { readBoundedJson, requireRequestUser, routeError } from "@/lib/server/requestAuth";
+
+const MatchInputSchema = z
+  .object({
+    producer: z.string().trim().max(300).nullable().optional(),
+    wine_name: z.string().trim().min(1).max(300),
+    vintage: z
+      .union([z.number().int().min(1700).max(2200), z.string().trim().max(20)])
+      .nullable()
+      .optional(),
+    region: z.string().trim().max(200).nullable().optional(),
+    country: z.string().trim().max(100).nullable().optional(),
+    wine_type: z.string().trim().max(50).nullable().optional(),
+  })
+  .strict();
 
 /**
  * POST /api/public/hooks/match-systembolaget
@@ -15,33 +31,32 @@ export const Route = createFileRoute("/api/public/hooks/match-systembolaget")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-        if (!LOVABLE_API_KEY) {
-          return Response.json({ error: "LOVABLE_API_KEY missing" }, { status: 500 });
-        }
-
-        let body: MatchInput;
         try {
-          body = (await request.json()) as MatchInput;
-        } catch {
-          return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-        }
-
-        const wine_name = (body.wine_name ?? "").trim();
-        if (!wine_name) {
-          return Response.json({ error: "wine_name is required" }, { status: 400 });
-        }
-
-        try {
+          await requireRequestUser(request, "systembolaget-match");
+          const parsed = MatchInputSchema.safeParse(await readBoundedJson(request, 20_000));
+          if (!parsed.success) {
+            return Response.json({ error: "Invalid wine data" }, { status: 400 });
+          }
+          const body = parsed.data;
+          const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+          if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
           const candidates = await searchCandidates(body);
           if (!candidates.length) {
-            return Response.json({ match: null, confidence: 0, reason: "No candidates found in Systembolaget catalog." });
+            return Response.json({
+              match: null,
+              confidence: 0,
+              reason: "No candidates found in Systembolaget catalog.",
+            });
           }
 
           const pick = await pickBestMatch(LOVABLE_API_KEY, body, candidates);
 
           if (!pick || pick.index == null || pick.index < 0 || pick.index >= candidates.length) {
-            return Response.json({ match: null, confidence: pick?.confidence ?? 0, reason: pick?.reason ?? "No confident match." });
+            return Response.json({
+              match: null,
+              confidence: pick?.confidence ?? 0,
+              reason: pick?.reason ?? "No confident match.",
+            });
           }
 
           const chosen = candidates[pick.index];
@@ -57,26 +72,15 @@ export const Route = createFileRoute("/api/public/hooks/match-systembolaget")({
             confidence: pick.confidence,
             reason: pick.reason,
           });
-        } catch (e) {
-          console.error("[match-systembolaget]", e);
-          return Response.json(
-            { error: e instanceof Error ? e.message : "Unknown error" },
-            { status: 500 },
-          );
+        } catch (error) {
+          return routeError(error);
         }
       },
     },
   },
 });
 
-type MatchInput = {
-  producer?: string | null;
-  wine_name?: string | null;
-  vintage?: number | string | null;
-  region?: string | null;
-  country?: string | null;
-  wine_type?: string | null;
-};
+type MatchInput = z.infer<typeof MatchInputSchema>;
 
 type Candidate = {
   productNumber: string;
@@ -109,7 +113,10 @@ async function searchCandidates(input: MatchInput): Promise<Candidate[]> {
     if (seen.size >= 20) break;
     try {
       const url = `${base}/products?query=${encodeURIComponent(q)}&limit=8`;
-      const res = await fetch(url, { headers: { accept: "application/json" } });
+      const res = await fetch(url, {
+        headers: { accept: "application/json" },
+        signal: AbortSignal.timeout(8_000),
+      });
       if (!res.ok) continue;
       const json = (await res.json()) as unknown;
       const list = Array.isArray(json) ? json : [];
@@ -118,8 +125,8 @@ async function searchCandidates(input: MatchInput): Promise<Candidate[]> {
         if (!c) continue;
         if (!seen.has(c.productNumber)) seen.set(c.productNumber, c);
       }
-    } catch (e) {
-      console.error("[match-systembolaget] search failed", q, e);
+    } catch (error) {
+      console.error("[match-systembolaget] external search failed", error);
     }
   }
 
@@ -149,7 +156,11 @@ function toCandidate(p: Record<string, unknown>): Candidate | null {
   const producer = ((p.producerName as string | undefined) ?? null) || null;
   const vintage = ((p.vintage as string | number | undefined) ?? null)?.toString() ?? null;
   const country = ((p.country as string | undefined) ?? null) || null;
-  const category = ((p.categoryLevel2 as string | undefined) ?? (p.categoryLevel1 as string | undefined) ?? null) || null;
+  const category =
+    ((p.categoryLevel2 as string | undefined) ??
+      (p.categoryLevel1 as string | undefined) ??
+      null) ||
+    null;
   const volume = ((p.volumeText as string | undefined) ?? null) || null;
 
   return {
@@ -194,11 +205,15 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
     type: "function",
     function: {
       name: "select_match",
-      description: "Select the best matching Systembolaget candidate or null if none match confidently.",
+      description:
+        "Select the best matching Systembolaget candidate or null if none match confidently.",
       parameters: {
         type: "object",
         properties: {
-          index: { type: ["integer", "null"], description: "0-based candidate index, or null if no confident match" },
+          index: {
+            type: ["integer", "null"],
+            description: "0-based candidate index, or null if no confident match",
+          },
           confidence: { type: "number", description: "0-100 confidence in the selection" },
           reason: { type: "string", description: "Short justification" },
         },
@@ -224,11 +239,11 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
       tools: [tool],
       tool_choice: { type: "function", function: { name: "select_match" } },
     }),
+    signal: AbortSignal.timeout(20_000),
   });
 
   if (!resp.ok) {
-    const t = await resp.text();
-    console.error("[match-systembolaget] AI error", resp.status, t);
+    console.error("[match-systembolaget] AI gateway error", resp.status);
     return null;
   }
 
@@ -243,7 +258,7 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
     const idx = parsed.index == null ? null : Number(parsed.index);
     const confidence = Math.max(0, Math.min(100, Number(parsed.confidence) || 0));
     // Require reasonable confidence to accept a match
-    if (idx == null || !Number.isFinite(idx) || confidence < 55) {
+    if (idx == null || !Number.isFinite(idx) || confidence < 75) {
       return { index: null, confidence, reason: parsed.reason || "Low confidence." };
     }
     return { index: idx, confidence, reason: parsed.reason || "" };

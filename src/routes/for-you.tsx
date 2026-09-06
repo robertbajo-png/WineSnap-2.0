@@ -13,7 +13,10 @@ export const Route = createFileRoute("/for-you")({
   head: () => ({
     meta: [
       { title: "Suggestions — WineSnap" },
-      { name: "description", content: "AI-generated wine suggestions based on your taste and cellar." },
+      {
+        name: "description",
+        content: "AI-generated wine suggestions based on your taste and cellar.",
+      },
     ],
   }),
   component: ForYouPage,
@@ -32,7 +35,8 @@ type Suggestion = {
   reason: string;
 };
 
-const CACHE_KEY = "winesnap:suggestions:v1";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1_000;
+const cacheKey = (userId: string) => `winesnap:suggestions:v2:${userId}`;
 
 function ForYouPage() {
   const { user, loading } = useAuth();
@@ -43,15 +47,27 @@ function ForYouPage() {
   const [generatedAt, setGeneratedAt] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!user) {
+      setSuggestions([]);
+      setGeneratedAt(null);
+      return;
+    }
     try {
-      const raw = localStorage.getItem(CACHE_KEY);
+      const raw = localStorage.getItem(cacheKey(user.id));
       if (raw) {
         const parsed = JSON.parse(raw);
-        setSuggestions(parsed.suggestions ?? []);
-        setGeneratedAt(parsed.generatedAt ?? null);
+        const timestamp = Number(parsed.generatedAt ?? 0);
+        if (Date.now() - timestamp <= CACHE_TTL_MS) {
+          setSuggestions(parsed.suggestions ?? []);
+          setGeneratedAt(timestamp);
+        } else {
+          localStorage.removeItem(cacheKey(user.id));
+        }
       }
-    } catch { /* noop */ }
-  }, []);
+    } catch {
+      /* noop */
+    }
+  }, [user]);
 
   const generate = async () => {
     if (!user) return;
@@ -59,9 +75,20 @@ function ForYouPage() {
     setError(null);
     try {
       const [{ data: profile }, { data: taste }, { data: cellar }] = await Promise.all([
-        supabase.from("profiles").select("preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max").eq("id", user.id).maybeSingle(),
+        supabase
+          .from("profiles")
+          .select(
+            "preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,hide_disliked",
+          )
+          .eq("id", user.id)
+          .maybeSingle(),
         supabase.from("taste_profile").select("*").eq("user_id", user.id).maybeSingle(),
-        supabase.from("wines").select("producer,wine_name,vintage,region,country,user_rating").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
+        supabase
+          .from("wines")
+          .select("producer,wine_name,vintage,region,country,user_rating")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(30),
       ]);
 
       const { data, error: fnError } = await supabase.functions.invoke("taste-suggestions", {
@@ -74,7 +101,10 @@ function ForYouPage() {
       setSuggestions(list);
       const ts = Date.now();
       setGeneratedAt(ts);
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ suggestions: list, generatedAt: ts }));
+      localStorage.setItem(
+        cacheKey(user.id),
+        JSON.stringify({ suggestions: list, generatedAt: ts }),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -87,7 +117,9 @@ function ForYouPage() {
       <AppShell>
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">{t("foryou.signIn")}</p>
-          <Link to="/login"><Button className="mt-4 bg-gradient-burgundy text-cream">{t("login.signIn")}</Button></Link>
+          <Link to="/login">
+            <Button className="mt-4 bg-gradient-burgundy text-cream">{t("login.signIn")}</Button>
+          </Link>
         </div>
       </AppShell>
     );
@@ -113,7 +145,11 @@ function ForYouPage() {
             disabled={busy}
             className="mt-1 flex h-9 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-xs text-gold disabled:opacity-50"
           >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
             {suggestions.length ? t("foryou.refresh") : t("foryou.generate")}
           </button>
         </div>
@@ -121,7 +157,9 @@ function ForYouPage() {
         {error && (
           <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
             {error}
-            <Button variant="ghost" size="sm" onClick={generate} className="ml-2 h-6 text-xs">{t("common.retry")}</Button>
+            <Button variant="ghost" size="sm" onClick={generate} className="ml-2 h-6 text-xs">
+              {t("common.retry")}
+            </Button>
           </div>
         )}
 
@@ -160,18 +198,29 @@ function ForYouPage() {
                   </span>
                 </div>
                 {s.grape_varieties?.length ? (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">{s.grape_varieties.join(", ")}{s.price_range ? ` • ${s.price_range}` : ""}</p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    {s.grape_varieties.join(", ")}
+                    {s.price_range ? ` • ${s.price_range}` : ""}
+                  </p>
                 ) : s.price_range ? (
                   <p className="mt-1.5 text-[11px] text-muted-foreground">{s.price_range}</p>
                 ) : null}
                 <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
                 <div className="mt-2 flex justify-end">
                   <button
-                    onClick={() => addToWishlist({
-                      producer: s.producer, wine_name: s.wine_name, vintage: s.vintage,
-                      region: s.region, country: s.country, wine_type: s.wine_type,
-                      grape_varieties: s.grape_varieties, source: "ai", ai_data: s as never,
-                    })}
+                    onClick={() =>
+                      addToWishlist({
+                        producer: s.producer,
+                        wine_name: s.wine_name,
+                        vintage: s.vintage,
+                        region: s.region,
+                        country: s.country,
+                        wine_type: s.wine_type,
+                        grape_varieties: s.grape_varieties,
+                        source: "ai",
+                        ai_data: s as never,
+                      })
+                    }
                     className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-[11px] text-gold hover:bg-background/70"
                   >
                     <Bookmark className="h-3 w-3" /> {t("wishlist.saveBtn")}

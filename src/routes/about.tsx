@@ -18,7 +18,10 @@ function AboutPage() {
   const t = useT();
   return (
     <AppShell>
-      <Link to="/me" className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/me"
+        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" /> {t("about.back")}
       </Link>
       <Logo size="lg" />

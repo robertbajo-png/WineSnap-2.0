@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
 import { LabelCropper } from "@/components/LabelCropper";
+import { WineImage } from "@/components/WineImage";
 
 export const Route = createFileRoute("/scan")({
   head: () => ({ meta: [{ title: "Scan — WineSnap" }] }),
@@ -17,8 +18,17 @@ export const Route = createFileRoute("/scan")({
 
 type Stage = "idle" | "analyzing" | "match";
 
-type ScannedWine = {
-  id: string;
+type WineType =
+  | "red"
+  | "white"
+  | "rose"
+  | "sparkling"
+  | "dessert"
+  | "fortified"
+  | "orange"
+  | "unknown";
+
+type WineAnalysis = {
   image_url: string | null;
   producer: string | null;
   wine_name: string | null;
@@ -26,8 +36,40 @@ type ScannedWine = {
   grape_varieties: string[] | null;
   region: string | null;
   country: string | null;
-  wine_type: string | null;
+  wine_type: WineType | null;
+  description: string;
+  fruit: number;
+  tannin: number;
+  acidity: number;
+  oak: number;
+  sweetness: number;
+  body: number;
+  primary_notes: string[];
+  secondary_notes: string[];
+  tertiary_notes: string[];
+  food_pairings: Array<{ dish: string; reason: string }>;
+  serving_temp: string;
+  glass_type: string;
+  decant: boolean;
+  confidence: "high" | "medium" | "low";
+  identification_basis: "label" | "description" | "inference";
+  inferred_fields: string[];
 };
+
+type ScannedWine = Pick<
+  WineAnalysis,
+  | "image_url"
+  | "producer"
+  | "wine_name"
+  | "vintage"
+  | "grape_varieties"
+  | "region"
+  | "country"
+  | "wine_type"
+> & { id: string };
+
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 function ScanPage() {
   const { user, loading } = useAuth();
@@ -36,10 +78,24 @@ function ScanPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
-  const [scanned, setScanned] = useState<ScannedWine | null>(null);
+  const [draft, setDraft] = useState<WineAnalysis | null>(null);
+  const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<"camera" | "text">("camera");
   const [text, setText] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const pendingUploadRef = useRef<string | null>(null);
+
+  const queueFile = (file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      toast.error(t("common.imageType"));
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error(t("common.imageTooLarge"));
+      return;
+    }
+    setPendingFile(file);
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -48,7 +104,16 @@ function ScanPage() {
     }
   }, [user, loading, navigate, t]);
 
-  const persistWine = async (w: any, imageUrl: string | null) => {
+  useEffect(
+    () => () => {
+      if (pendingUploadRef.current) {
+        void supabase.storage.from("wine-labels").remove([pendingUploadRef.current]);
+      }
+    },
+    [],
+  );
+
+  const persistWine = async (w: WineAnalysis, imageUrl: string | null) => {
     if (!user) throw new Error("Not authenticated");
     const { data: inserted, error: insErr } = await supabase
       .from("wines")
@@ -93,12 +158,14 @@ function ScanPage() {
     }
     setStage("analyzing");
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-wine", { body: { text: q } });
+      const { data, error } = await supabase.functions.invoke("analyze-wine", {
+        body: { text: q },
+      });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const inserted = await persistWine(data.wine, null);
-      logEvent("wine_scanned", { mode: "text", wine_id: inserted.id, wine_type: inserted.wine_type });
-      setScanned(inserted);
+      const result = data as { error?: string; wine?: WineAnalysis } | null;
+      if (result?.error) throw new Error(result.error);
+      if (!result?.wine) throw new Error("Wine analysis was incomplete");
+      setDraft({ ...result.wine, image_url: null });
       setStage("match");
     } catch (e) {
       console.error(e);
@@ -110,13 +177,15 @@ function ScanPage() {
   const handleFile = async (file: File | Blob) => {
     if (!user) return;
     setStage("analyzing");
+    let uploadedPath: string | null = null;
     try {
       const path = `${user.id}/${crypto.randomUUID()}.jpg`;
       const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, file, {
         contentType: "image/jpeg",
       });
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
+      uploadedPath = path;
+      pendingUploadRef.current = path;
 
       const base64 = await new Promise<string>((res, rej) => {
         const r = new FileReader();
@@ -132,30 +201,69 @@ function ScanPage() {
         body: { imageBase64: base64, mimeType: "image/jpeg" },
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const inserted = await persistWine(data.wine, pub.publicUrl);
-      // Also register the label in wine_photos
-      await supabase.from("wine_photos").insert({
-        wine_id: inserted.id,
-        user_id: user.id,
-        url: pub.publicUrl,
-        storage_path: path,
-        kind: "label",
-        sort_order: 0,
-      });
-      logEvent("wine_scanned", { mode: "camera", wine_id: inserted.id, wine_type: inserted.wine_type });
-      setScanned(inserted);
+      const result = data as { error?: string; wine?: WineAnalysis } | null;
+      if (result?.error) throw new Error(result.error);
+      if (!result?.wine) throw new Error("Wine analysis was incomplete");
+      setDraft({ ...result.wine, image_url: path });
+      uploadedPath = null;
       setStage("match");
     } catch (e) {
+      if (uploadedPath) {
+        await supabase.storage.from("wine-labels").remove([uploadedPath]);
+        pendingUploadRef.current = null;
+      }
       console.error(e);
       toast.error(e instanceof Error ? e.message : t("common.error"));
       setStage("idle");
     }
   };
 
-  if (stage === "match" && scanned) {
-    return <MatchFound wine={scanned} onBack={() => { setStage("idle"); setText(""); }} />;
+  const discardDraft = async () => {
+    if (pendingUploadRef.current) {
+      await supabase.storage.from("wine-labels").remove([pendingUploadRef.current]);
+      pendingUploadRef.current = null;
+    }
+    setDraft(null);
+    setStage("idle");
+    setText("");
+  };
+
+  const saveDraft = async () => {
+    if (!draft || !user || saving) return;
+    setSaving(true);
+    let inserted: ScannedWine | null = null;
+    try {
+      inserted = await persistWine(draft, draft.image_url);
+      const storagePath = pendingUploadRef.current;
+      if (storagePath) {
+        const { error: photoError } = await supabase.from("wine_photos").insert({
+          wine_id: inserted.id,
+          user_id: user.id,
+          url: storagePath,
+          storage_path: storagePath,
+          kind: "label",
+          sort_order: 0,
+        });
+        if (photoError) throw photoError;
+      }
+      pendingUploadRef.current = null;
+      logEvent("wine_scanned", {
+        mode: draft.image_url ? "camera" : "text",
+        wine_id: inserted.id,
+        wine_type: inserted.wine_type,
+        confidence: draft.confidence,
+      });
+      navigate({ to: "/wine/$id", params: { id: inserted.id } });
+    } catch (error) {
+      if (inserted) await supabase.from("wines").delete().eq("id", inserted.id);
+      toast.error(error instanceof Error ? error.message : t("common.error"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (stage === "match" && draft) {
+    return <MatchFound wine={draft} saving={saving} onBack={discardDraft} onSave={saveDraft} />;
   }
 
   if (pendingFile) {
@@ -163,7 +271,10 @@ function ScanPage() {
       <LabelCropper
         file={pendingFile}
         busy={stage === "analyzing"}
-        onCancel={() => { setPendingFile(null); setStage("idle"); }}
+        onCancel={() => {
+          setPendingFile(null);
+          setStage("idle");
+        }}
         onConfirm={async (blob) => {
           const file = pendingFile;
           setPendingFile(null);
@@ -201,7 +312,9 @@ function ScanPage() {
             onClick={() => setMode("camera")}
             disabled={stage === "analyzing"}
             className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
-              mode === "camera" ? "bg-gradient-burgundy text-cream shadow-soft" : "text-cream/70 hover:text-cream"
+              mode === "camera"
+                ? "bg-gradient-burgundy text-cream shadow-soft"
+                : "text-cream/70 hover:text-cream"
             }`}
           >
             <Camera className="h-4 w-4" /> {t("scan.scan")}
@@ -210,7 +323,9 @@ function ScanPage() {
             onClick={() => setMode("text")}
             disabled={stage === "analyzing"}
             className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
-              mode === "text" ? "bg-gradient-burgundy text-cream shadow-soft" : "text-cream/70 hover:text-cream"
+              mode === "text"
+                ? "bg-gradient-burgundy text-cream shadow-soft"
+                : "text-cream/70 hover:text-cream"
             }`}
           >
             <Type className="h-4 w-4" /> {t("scan.type")}
@@ -237,7 +352,9 @@ function ScanPage() {
               )}
             </div>
             <ScanCorners />
-            <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">{t("scan.align")}</p>
+            <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">
+              {t("scan.align")}
+            </p>
           </div>
 
           {/* Controls */}
@@ -290,9 +407,13 @@ function ScanPage() {
             className="mt-6 h-14 bg-gradient-burgundy text-cream shadow-soft"
           >
             {stage === "analyzing" ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Analyzing…</>
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
+              </>
             ) : (
-              <><Sparkles className="h-4 w-4" /> Identify wine</>
+              <>
+                <Sparkles className="h-4 w-4" /> Identify wine
+              </>
             )}
           </Button>
         </div>
@@ -301,23 +422,23 @@ function ScanPage() {
       <input
         ref={cameraRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
         capture="environment"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) setPendingFile(f);
+          if (f) queueFile(f);
           e.target.value = "";
         }}
       />
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) setPendingFile(f);
+          if (f) queueFile(f);
           e.target.value = "";
         }}
       />
@@ -337,11 +458,23 @@ function ScanCorners() {
   );
 }
 
-function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void }) {
-  const navigate = useNavigate();
+function MatchFound({
+  wine,
+  saving,
+  onBack,
+  onSave,
+}: {
+  wine: WineAnalysis;
+  saving: boolean;
+  onBack: () => void;
+  onSave: () => void;
+}) {
   const t = useT();
   const flag = countryToFlag(wine.country);
-  const wineTypeLabel = (wine.wine_type ?? "Wine").charAt(0).toUpperCase() + (wine.wine_type ?? "wine").slice(1) + " Wine";
+  const wineTypeLabel =
+    (wine.wine_type ?? "Wine").charAt(0).toUpperCase() +
+    (wine.wine_type ?? "wine").slice(1) +
+    " Wine";
 
   return (
     <div
@@ -369,12 +502,16 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
         </div>
 
         <h1 className="mt-6 font-display text-3xl">{t("scan.matchFound")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("scan.matchDesc")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("scan.reviewDesc")}</p>
 
         <div className="mt-8 flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
           <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {wine.image_url ? (
-              <img src={wine.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage
+                src={wine.image_url}
+                alt={wine.wine_name ?? ""}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <Wine className="h-7 w-7 text-gold/60" />
             )}
@@ -390,22 +527,30 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
               {flag && <span className="mr-1">{flag}</span>}
               {wineTypeLabel}
             </p>
-            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
-              <Check className="h-3 w-3" /> {t("scan.savedToCellar")}
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
+              <Sparkles className="h-3 w-3" /> {t(`scan.confidence.${wine.confidence}` as never)}
             </div>
           </div>
         </div>
+        {wine.inferred_fields.length > 0 && (
+          <p className="mt-3 max-w-sm text-center text-xs leading-relaxed text-muted-foreground">
+            {t("scan.inferredFields")}: {wine.inferred_fields.join(", ")}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
-        <Button variant="outline" onClick={() => navigate({ to: "/wine/$id", params: { id: wine.id } })} className="h-12 border-white/15 bg-transparent">
-          {t("scan.viewDetails")}
-        </Button>
         <Button
-          onClick={() => navigate({ to: "/cellar" })}
-          className="h-12 bg-gradient-burgundy text-cream"
+          variant="outline"
+          onClick={onBack}
+          disabled={saving}
+          className="h-12 border-white/15 bg-transparent"
         >
-          <Wine className="h-4 w-4" /> {t("scan.saveToCellar")}
+          {t("common.back")}
+        </Button>
+        <Button onClick={onSave} disabled={saving} className="h-12 bg-gradient-burgundy text-cream">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wine className="h-4 w-4" />}{" "}
+          {t("scan.saveToCellar")}
         </Button>
       </div>
     </div>
@@ -415,21 +560,33 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
 function countryToFlag(country: string | null | undefined): string | null {
   if (!country) return null;
   const map: Record<string, string> = {
-    france: "🇫🇷", frankrike: "🇫🇷",
-    italy: "🇮🇹", italien: "🇮🇹",
-    spain: "🇪🇸", spanien: "🇪🇸",
+    france: "🇫🇷",
+    frankrike: "🇫🇷",
+    italy: "🇮🇹",
+    italien: "🇮🇹",
+    spain: "🇪🇸",
+    spanien: "🇪🇸",
     portugal: "🇵🇹",
-    germany: "🇩🇪", tyskland: "🇩🇪",
-    austria: "🇦🇹", österrike: "🇦🇹",
-    "usa": "🇺🇸", "united states": "🇺🇸",
+    germany: "🇩🇪",
+    tyskland: "🇩🇪",
+    austria: "🇦🇹",
+    österrike: "🇦🇹",
+    usa: "🇺🇸",
+    "united states": "🇺🇸",
     chile: "🇨🇱",
     argentina: "🇦🇷",
-    australia: "🇦🇺", australien: "🇦🇺",
-    "new zealand": "🇳🇿", nyazeeland: "🇳🇿",
-    "south africa": "🇿🇦", sydafrika: "🇿🇦",
-    sweden: "🇸🇪", sverige: "🇸🇪",
-    greece: "🇬🇷", grekland: "🇬🇷",
-    hungary: "🇭🇺", ungern: "🇭🇺",
+    australia: "🇦🇺",
+    australien: "🇦🇺",
+    "new zealand": "🇳🇿",
+    nyazeeland: "🇳🇿",
+    "south africa": "🇿🇦",
+    sydafrika: "🇿🇦",
+    sweden: "🇸🇪",
+    sverige: "🇸🇪",
+    greece: "🇬🇷",
+    grekland: "🇬🇷",
+    hungary: "🇭🇺",
+    ungern: "🇭🇺",
   };
   return map[country.trim().toLowerCase()] ?? null;
 }

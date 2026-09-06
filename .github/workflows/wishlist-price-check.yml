@@ -1,0 +1,25 @@
+name: Wishlist price check
+
+on:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger protected price check
+        env:
+          APP_URL: ${{ secrets.WINESNAP_APP_URL }}
+          CRON_SECRET: ${{ secrets.WISHLIST_CRON_SECRET }}
+        run: |
+          test -n "$APP_URL"
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "x-cron-secret: $CRON_SECRET" \
+            "$APP_URL/api/internal/cron/check-wishlist-prices"

@@ -10,11 +10,13 @@ import {
   getFriendsFeed,
   follow,
   unfollow,
-  isFollowing,
+  getFollowingIds,
   type PublicProfile,
   type FeedItem,
 } from "@/lib/social";
 import { useI18n } from "@/i18n";
+import { WineImage } from "@/components/WineImage";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/friends")({
   head: () => ({
@@ -22,7 +24,10 @@ export const Route = createFileRoute("/friends")({
       { title: "Friends — WineSnap" },
       { name: "description", content: "Follow other wine lovers and see what they're drinking." },
       { property: "og:title", content: "Friends — WineSnap" },
-      { property: "og:description", content: "Follow other wine lovers and see what they're drinking." },
+      {
+        property: "og:description",
+        content: "Follow other wine lovers and see what they're drinking.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -38,11 +43,17 @@ function FriendsPage() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PublicProfile[]>([]);
   const [loadingSearch, setLoadingSearch] = useState(false);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
-    getFriendsFeed().then(setFeed);
-  }, [user]);
+    getFriendsFeed()
+      .then(setFeed)
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : t("common.error"));
+        setFeed([]);
+      });
+  }, [user, t]);
 
   useEffect(() => {
     if (tab !== "discover") return;
@@ -53,15 +64,22 @@ function FriendsPage() {
     }
     setLoadingSearch(true);
     const h = setTimeout(async () => {
-      const r = await searchUsers(term);
-      setResults(r);
-      setLoadingSearch(false);
+      try {
+        const r = await searchUsers(term);
+        setResults(r);
+        setFollowingIds(await getFollowingIds(r.map((profile) => profile.id)));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : t("common.error"));
+        setResults([]);
+      } finally {
+        setLoadingSearch(false);
+      }
     }, 250);
     return () => clearTimeout(h);
-  }, [q, tab]);
+  }, [q, tab, t]);
 
   return (
-    <AppShell>
+    <AppShell width="content">
       <header className="mb-4">
         <h1 className="font-display text-3xl text-gold">{t("friends.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("friends.subtitle")}</p>
@@ -119,11 +137,17 @@ function FriendsPage() {
             {loadingSearch ? (
               <Skeleton className="h-14 w-full" />
             ) : q.trim() && results.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">{t("friends.search.none")}</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {t("friends.search.none")}
+              </p>
             ) : !q.trim() ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">{t("friends.search.hint")}</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {t("friends.search.hint")}
+              </p>
             ) : (
-              results.map((p) => <UserRow key={p.id} profile={p} />)
+              results.map((p) => (
+                <UserRow key={p.id} profile={p} initialFollowing={followingIds.has(p.id)} />
+              ))
             )}
           </div>
         </div>
@@ -132,7 +156,15 @@ function FriendsPage() {
   );
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
@@ -150,20 +182,28 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
     month: "short",
     day: "numeric",
   });
-  const authorName =
-    item.author?.display_name || item.author?.username || "Someone";
-  const to = item.share_id ? `/w/${item.share_id}` : null;
+  const authorName = item.author?.display_name || item.author?.username || "Someone";
+  const to = item.share_id ? `/w/${encodeURIComponent(item.share_id)}` : null;
   const content = (
     <div className="flex gap-3 rounded-xl border border-white/10 bg-card/40 p-3">
       <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-background">
         {item.image_url ? (
-          <img src={item.image_url} alt={item.name ?? ""} className="h-full w-full object-cover" loading="lazy" />
+          <WineImage
+            src={item.image_url}
+            alt={item.wine_name ?? ""}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
         ) : null}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
           {item.author?.username ? (
-            <Link to="/u/$username" params={{ username: item.author.username }} className="text-gold hover:underline">
+            <Link
+              to="/u/$username"
+              params={{ username: item.author.username }}
+              className="text-gold hover:underline"
+            >
               @{item.author.username}
             </Link>
           ) : (
@@ -172,9 +212,11 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
           <span className="mx-1.5 text-white/20">•</span>
           {when}
         </p>
-        <p className="mt-0.5 truncate font-display text-lg text-cream">{item.producer ?? item.name ?? "—"}</p>
+        <p className="mt-0.5 truncate font-display text-lg text-cream">
+          {item.producer ?? item.wine_name ?? "—"}
+        </p>
         <p className="truncate text-xs text-muted-foreground">
-          {[item.name, item.vintage, item.region].filter(Boolean).join(" • ")}
+          {[item.wine_name, item.vintage, item.region].filter(Boolean).join(" • ")}
         </p>
         {item.user_rating != null && (
           <p className="mt-1 inline-flex items-center gap-1 text-xs text-gold">
@@ -187,23 +229,35 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
   return to ? <Link to={to}>{content}</Link> : content;
 }
 
-function UserRow({ profile }: { profile: PublicProfile }) {
-  const [following, setFollowing] = useState<boolean | null>(null);
+function UserRow({
+  profile,
+  initialFollowing,
+}: {
+  profile: PublicProfile;
+  initialFollowing: boolean;
+}) {
+  const { t } = useI18n();
+  const [following, setFollowing] = useState(initialFollowing);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    isFollowing(profile.id).then(setFollowing);
-  }, [profile.id]);
+    setFollowing(initialFollowing);
+  }, [initialFollowing]);
   const toggle = async () => {
-    if (following === null || busy) return;
+    if (busy) return;
     setBusy(true);
-    if (following) {
-      await unfollow(profile.id);
-      setFollowing(false);
-    } else {
-      await follow(profile.id);
-      setFollowing(true);
+    try {
+      if (following) {
+        await unfollow(profile.id);
+        setFollowing(false);
+      } else {
+        await follow(profile.id);
+        setFollowing(true);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.error"));
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/40 p-3">
@@ -224,7 +278,7 @@ function UserRow({ profile }: { profile: PublicProfile }) {
       </Link>
       <button
         onClick={toggle}
-        disabled={busy || following === null}
+        disabled={busy}
         className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors ${
           following
             ? "border border-white/15 text-muted-foreground hover:bg-white/5"
@@ -232,7 +286,7 @@ function UserRow({ profile }: { profile: PublicProfile }) {
         }`}
       >
         {following ? <UserCheck className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
-        {following ? "Following" : "Follow"}
+        {following ? t("friends.following") : t("friends.follow")}
       </button>
     </div>
   );

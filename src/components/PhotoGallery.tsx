@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Trash2, X, Loader2, Wine } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { LabelCropper } from "./LabelCropper";
+import { WineImage } from "./WineImage";
 
 type Photo = {
   id: string;
@@ -28,41 +29,53 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const load = async () => {
-    const { data } = await supabase
+  const load = useCallback(async () => {
+    const { data, error } = await supabase
       .from("wine_photos")
       .select("id,url,storage_path,kind,sort_order")
       .eq("wine_id", wineId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
+    if (error) throw error;
     setPhotos((data as Photo[]) ?? []);
+  }, [wineId]);
+
+  useEffect(() => {
+    void load().catch((error) =>
+      toast.error(error instanceof Error ? error.message : t("common.error")),
+    );
+  }, [load, t]);
+
+  const onFile = (f: File | null) => {
+    if (f) setPending(f);
   };
-
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [wineId]);
-
-  const onFile = (f: File | null) => { if (f) setPending(f); };
 
   const uploadCropped = async (blob: Blob) => {
     if (!user) return;
     setUploading(true);
+    let uploadedPath: string | null = null;
     try {
       const path = `${user.id}/${wineId}/${crypto.randomUUID()}.jpg`;
-      const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, blob, { contentType: "image/jpeg" });
+      const { error: upErr } = await supabase.storage
+        .from("wine-labels")
+        .upload(path, blob, { contentType: "image/jpeg" });
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
+      uploadedPath = path;
       const nextOrder = (photos?.[photos.length - 1]?.sort_order ?? 0) + 1;
       const { error: insErr } = await supabase.from("wine_photos").insert({
         wine_id: wineId,
         user_id: user.id,
-        url: pub.publicUrl,
+        url: path,
         storage_path: path,
         kind: "bottle",
         sort_order: nextOrder,
       });
       if (insErr) throw insErr;
+      uploadedPath = null;
       toast.success(t("photos.add"));
       await load();
     } catch (e) {
+      if (uploadedPath) await supabase.storage.from("wine-labels").remove([uploadedPath]);
       toast.error(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setUploading(false);
@@ -72,10 +85,17 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
 
   const remove = async (p: Photo) => {
     if (!confirm(t("photos.deleteConfirm"))) return;
-    if (p.storage_path) {
-      await supabase.storage.from("wine-labels").remove([p.storage_path]);
+    const { error: deleteError } = await supabase.from("wine_photos").delete().eq("id", p.id);
+    if (deleteError) {
+      toast.error(deleteError.message);
+      return;
     }
-    await supabase.from("wine_photos").delete().eq("id", p.id);
+    if (p.storage_path) {
+      const { error: storageError } = await supabase.storage
+        .from("wine-labels")
+        .remove([p.storage_path]);
+      if (storageError) toast.error(storageError.message);
+    }
     await load();
   };
 
@@ -89,9 +109,12 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
     <>
       <div className="grid grid-cols-3 gap-2">
         {combined.map((c) => (
-          <div key={c.id} className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-white/8 bg-white/5">
+          <div
+            key={c.id}
+            className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-white/8 bg-white/5"
+          >
             <button type="button" onClick={() => setLightbox(c.url)} className="absolute inset-0">
-              <img src={c.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <WineImage src={c.url} alt="" className="h-full w-full object-cover" loading="lazy" />
             </button>
             <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-display uppercase tracking-wide text-cream/85">
               {t(`photos.kind.${c.kind}` as never) || c.kind}
@@ -130,7 +153,10 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
+        onChange={(e) => {
+          onFile(e.target.files?.[0] ?? null);
+          e.target.value = "";
+        }}
       />
 
       {pending && (
@@ -147,7 +173,9 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
           role="button"
           tabIndex={0}
           onClick={() => setLightbox(null)}
-          onKeyDown={(e) => { if (e.key === "Escape") setLightbox(null); }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setLightbox(null);
+          }}
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
         >
           <button
@@ -157,7 +185,11 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
           >
             <X className="h-5 w-5" />
           </button>
-          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-xl object-contain" />
+          <WineImage
+            src={lightbox}
+            alt=""
+            className="max-h-full max-w-full rounded-xl object-contain"
+          />
         </div>
       )}
     </>

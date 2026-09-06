@@ -1,6 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Wine, Trash2, Star, Sparkles, Loader2, Plus, Share2, Pencil, Clock, Bookmark } from "lucide-react";
+import {
+  ArrowLeft,
+  Wine,
+  Trash2,
+  Star,
+  Sparkles,
+  Loader2,
+  Plus,
+  Share2,
+  Pencil,
+  Clock,
+  Bookmark,
+} from "lucide-react";
 import { addToWishlist } from "@/lib/wishlist";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -11,9 +23,11 @@ import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useT, useI18n } from "@/i18n";
+import { useT, useI18n, type TKey } from "@/i18n";
 import { computeDrinkingWindow } from "@/lib/drinkingWindow";
 import { PhotoGallery } from "@/components/PhotoGallery";
+import { WineImage } from "@/components/WineImage";
+import { getWineLabelPath } from "@/lib/wineImages";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -50,7 +64,14 @@ type WineRow = {
 const TABS = ["Overview", "Aromas", "Tasting", "Food", "AI Picks"] as const;
 
 const TAB_KEYS = ["overview", "aromas", "tasting", "food", "ai"] as const;
-type Tab = typeof TAB_KEYS[number];
+type Tab = (typeof TAB_KEYS)[number];
+const TAB_TRANSLATION_KEYS = {
+  overview: "wine.tab.overview",
+  aromas: "wine.tab.aromas",
+  tasting: "wine.tab.tasting",
+  food: "wine.tab.food",
+  ai: "wine.tab.ai",
+} satisfies Record<Tab, TKey>;
 
 type Suggestion = {
   producer: string;
@@ -93,12 +114,32 @@ function WineDetailPage() {
     setSuggestLoading(true);
     setSuggestError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("wine-suggestions", { body: w });
+      const { data, error } = await supabase.functions.invoke("wine-suggestions", {
+        body: {
+          producer: w.producer,
+          wine_name: w.wine_name,
+          vintage: w.vintage,
+          region: w.region,
+          country: w.country,
+          wine_type: w.wine_type,
+          grape_varieties: w.grape_varieties,
+          body: w.body,
+          tannin: w.tannin,
+          acidity: w.acidity,
+          oak: w.oak,
+          sweetness: w.sweetness,
+          fruit: w.fruit,
+          primary_notes: w.primary_notes,
+          secondary_notes: w.secondary_notes,
+          tertiary_notes: w.tertiary_notes,
+        },
+      });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      setSuggestions((data as any)?.suggestions ?? []);
-    } catch (e: any) {
-      setSuggestError(e?.message ?? "Failed to load suggestions");
+      const result = data as { error?: string; suggestions?: Suggestion[] } | null;
+      if (result?.error) throw new Error(result.error);
+      setSuggestions(result?.suggestions ?? []);
+    } catch (error: unknown) {
+      setSuggestError(error instanceof Error ? error.message : "Failed to load suggestions");
     } finally {
       setSuggestLoading(false);
     }
@@ -110,11 +151,17 @@ function WineDetailPage() {
   }, [tab, w]);
 
   useEffect(() => {
-    supabase.from("wines").select("*").eq("id", id).maybeSingle().then(({ data }) => {
-      setW(data as WineRow | null);
-      setLoading(false);
-    });
-    supabase.from("tasting_notes")
+    supabase
+      .from("wines")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setW(data as WineRow | null);
+        setLoading(false);
+      });
+    supabase
+      .from("tasting_notes")
       .select("id,rating,notes,aromas,finish,location,tasted_at")
       .eq("wine_id", id)
       .order("tasted_at", { ascending: false })
@@ -124,31 +171,63 @@ function WineDetailPage() {
 
   const remove = async () => {
     if (!confirm(t("wine.deleteConfirm"))) return;
+    const { data: photos } = await supabase
+      .from("wine_photos")
+      .select("storage_path")
+      .eq("wine_id", id);
+    const paths = new Set(
+      (photos ?? [])
+        .map((photo) => photo.storage_path)
+        .filter((path): path is string => Boolean(path)),
+    );
+    const fallbackPath = getWineLabelPath(w?.image_url);
+    if (fallbackPath) paths.add(fallbackPath);
+
     const { error } = await supabase.from("wines").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    if (paths.size) {
+      const { error: storageError } = await supabase.storage.from("wine-labels").remove([...paths]);
+      if (storageError) toast.error(storageError.message);
+    }
     toast.success(t("wine.removed"));
     navigate({ to: "/cellar" });
   };
 
-  if (loading) return <AppShell><WineDetailSkeleton /></AppShell>;
-  if (!w) return (
-    <AppShell>
-      <div className="mt-20 text-center">
-        <p className="text-muted-foreground">{t("wine.notFound")}</p>
-        <Link to="/cellar"><Button className="mt-4">{t("wine.backToCellar")}</Button></Link>
-      </div>
-    </AppShell>
-  );
+  if (loading)
+    return (
+      <AppShell>
+        <WineDetailSkeleton />
+      </AppShell>
+    );
+  if (!w)
+    return (
+      <AppShell>
+        <div className="mt-20 text-center">
+          <p className="text-muted-foreground">{t("wine.notFound")}</p>
+          <Link to="/cellar">
+            <Button className="mt-4">{t("wine.backToCellar")}</Button>
+          </Link>
+        </div>
+      </AppShell>
+    );
 
   const rating = computeRating(w);
-  const aromas = [...(w.primary_notes ?? []), ...(w.secondary_notes ?? []), ...(w.tertiary_notes ?? [])].slice(0, 6);
+  const aromas = [
+    ...(w.primary_notes ?? []),
+    ...(w.secondary_notes ?? []),
+    ...(w.tertiary_notes ?? []),
+  ].slice(0, 6);
 
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         {/* Top bar */}
         <header className="flex items-center justify-between">
-          <button onClick={() => window.history.back()} aria-label="Back" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+          <button
+            onClick={() => window.history.back()}
+            aria-label="Back"
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+          >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-1">
@@ -175,11 +254,24 @@ function WineDetailPage() {
                   return;
                 }
                 const url = `${window.location.origin}/w/${encodeURIComponent(shareId)}`;
-                const shareData = { title: `${w.wine_name ?? ""} ${w.vintage ?? ""}`.trim(), text: t("wine.shareText"), url };
+                const shareData = {
+                  title: `${w.wine_name ?? ""} ${w.vintage ?? ""}`.trim(),
+                  text: t("wine.shareText"),
+                  url,
+                };
                 if (navigator.share) {
-                  try { await navigator.share(shareData); } catch { /* cancelled */ }
+                  try {
+                    await navigator.share(shareData);
+                  } catch {
+                    /* cancelled */
+                  }
                 } else {
-                  try { await navigator.clipboard.writeText(url); toast.success(t("wine.linkCopied")); } catch { /* noop */ }
+                  try {
+                    await navigator.clipboard.writeText(url);
+                    toast.success(t("wine.linkCopied"));
+                  } catch {
+                    /* noop */
+                  }
                 }
               }}
               aria-label={t("wine.share")}
@@ -188,21 +280,39 @@ function WineDetailPage() {
               <Share2 className="h-4 w-4" />
             </button>
             <button
-              onClick={() => addToWishlist({
-                id: w.id, producer: w.producer, wine_name: w.wine_name ?? "", vintage: w.vintage,
-                region: w.region, country: w.country, wine_type: w.wine_type,
-                grape_varieties: w.grape_varieties, image_url: w.image_url, description: w.description,
-                source: "cellar",
-              })}
+              onClick={() =>
+                addToWishlist({
+                  id: w.id,
+                  producer: w.producer,
+                  wine_name: w.wine_name ?? "",
+                  vintage: w.vintage,
+                  region: w.region,
+                  country: w.country,
+                  wine_type: w.wine_type,
+                  grape_varieties: w.grape_varieties,
+                  image_url: w.image_url,
+                  description: w.description,
+                  source: "cellar",
+                })
+              }
               aria-label={t("wishlist.saveBtn")}
               className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
             >
               <Bookmark className="h-4 w-4" />
             </button>
-            <Link to="/wine/$id/edit" params={{ id: w.id }} aria-label={t("wine.edit")} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+            <Link
+              to="/wine/$id/edit"
+              params={{ id: w.id }}
+              aria-label={t("wine.edit")}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            >
               <Pencil className="h-4 w-4" />
             </Link>
-            <Link to="/wine/$id/notes" params={{ id: w.id }} className="ml-1 text-xs text-burgundy hover:underline">
+            <Link
+              to="/wine/$id/notes"
+              params={{ id: w.id }}
+              className="ml-1 text-xs text-burgundy hover:underline"
+            >
               {t("wine.editNotes")}
             </Link>
           </div>
@@ -211,13 +321,24 @@ function WineDetailPage() {
         {/* Hero */}
         <section className="mt-4 flex gap-4">
           <div className="flex h-36 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-burgundy/40 to-background/60 shadow-elegant">
-            {w.image_url ? <img src={w.image_url} alt="" className="h-full w-full object-cover" /> : <Wine className="h-9 w-9 text-gold/60" />}
+            {w.image_url ? (
+              <WineImage
+                src={w.image_url}
+                alt={w.wine_name ?? ""}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Wine className="h-9 w-9 text-gold/60" />
+            )}
           </div>
           <div className="min-w-0 flex-1 pt-1">
             <h1 className="font-display text-[26px] leading-tight text-cream">
-              {w.wine_name ?? "Unknown"}{w.vintage ? ` ${w.vintage}` : ""}
+              {w.wine_name ?? "Unknown"}
+              {w.vintage ? ` ${w.vintage}` : ""}
             </h1>
-            <p className="mt-1 text-sm text-gold">{[w.region, w.country].filter(Boolean).join(", ") || w.producer}</p>
+            <p className="mt-1 text-sm text-gold">
+              {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
+            </p>
             <p className="text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <span className="flex items-center gap-1 text-xs">
@@ -239,7 +360,7 @@ function WineDetailPage() {
                 tab === k ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t(`wine.tab.${k}` as any)}
+              {t(TAB_TRANSLATION_KEYS[k])}
               {tab === k && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
             </button>
           ))}
@@ -256,9 +377,15 @@ function WineDetailPage() {
                   <AromaWheel
                     size={320}
                     selectedFamily={selectedFamily}
-                    onSelectFamily={(f) => { setSelectedFamily(f); setThisWineMode(false); }}
+                    onSelectFamily={(f) => {
+                      setSelectedFamily(f);
+                      setThisWineMode(false);
+                    }}
                     centerActive={thisWineMode}
-                    onSelectCenter={() => { setThisWineMode((v) => !v); setSelectedFamily(null); }}
+                    onSelectCenter={() => {
+                      setThisWineMode((v) => !v);
+                      setSelectedFamily(null);
+                    }}
                   />
                 </div>
               </div>
@@ -294,7 +421,9 @@ function WineDetailPage() {
 
               {/* Premium aroma cards */}
               {(() => {
-                const wineAromas = aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"];
+                const wineAromas = aromas.length
+                  ? aromas
+                  : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"];
                 const filtered = thisWineMode
                   ? wineAromas
                   : selectedFamily
@@ -314,43 +443,47 @@ function WineDetailPage() {
                         {t("wine.thisWineAromas")}
                       </p>
                     )}
-                  <div className="mt-5 grid grid-cols-2 gap-2.5">
-                    {filtered.slice(0, 6).map((a, i) => {
-                      const intensity = 4 - (i % 3);
-                      return (
-                        <button
-                          key={a + i}
-                          className="group relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-3 text-left transition-all hover:border-gold/30 hover:shadow-[0_8px_24px_-12px_rgba(212,175,55,0.3)]"
-                        >
-                          <div className="flex items-center gap-3">
-                            <AromaIcon name={a} size={52} />
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate font-display text-[13px] leading-tight text-cream">{a}</div>
-                              <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">{aromaFamilyLabel(a)}</div>
+                    <div className="mt-5 grid grid-cols-2 gap-2.5">
+                      {filtered.slice(0, 6).map((a, i) => {
+                        const intensity = 4 - (i % 3);
+                        return (
+                          <button
+                            key={a + i}
+                            className="group relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-3 text-left transition-all hover:border-gold/30 hover:shadow-[0_8px_24px_-12px_rgba(212,175,55,0.3)]"
+                          >
+                            <div className="flex items-center gap-3">
+                              <AromaIcon name={a} size={52} />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-display text-[13px] leading-tight text-cream">
+                                  {a}
+                                </div>
+                                <div className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">
+                                  {aromaFamilyLabel(a)}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="mt-3 flex items-center gap-2">
-                            <div className="flex flex-1 items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((d) => (
-                                <span
-                                  key={d}
-                                  className={cn(
-                                    "h-1 flex-1 rounded-full transition-colors",
-                                    d <= intensity + 1
-                                      ? "bg-gradient-to-r from-burgundy to-gold/80"
-                                      : "bg-white/8",
-                                  )}
-                                />
-                              ))}
+                            <div className="mt-3 flex items-center gap-2">
+                              <div className="flex flex-1 items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((d) => (
+                                  <span
+                                    key={d}
+                                    className={cn(
+                                      "h-1 flex-1 rounded-full transition-colors",
+                                      d <= intensity + 1
+                                        ? "bg-gradient-to-r from-burgundy to-gold/80"
+                                        : "bg-white/8",
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                              <span className="font-display text-[10px] uppercase tracking-wider text-gold/80">
+                                {intensityLabel(intensity)}
+                              </span>
                             </div>
-                            <span className="font-display text-[10px] uppercase tracking-wider text-gold/80">
-                              {intensityLabel(intensity)}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </>
                 );
               })()}
@@ -358,10 +491,30 @@ function WineDetailPage() {
 
             <Section title={t("wine.tastingProfile")}>
               <Card className="bg-card/50 p-4">
-                <SliderRow label={t("taste.body")} leftLabel={t("taste.light")} rightLabel={t("taste.bold")} value={pct(w.body)} />
-                <SliderRow label={t("wine.tannins")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.tannin)} />
-                <SliderRow label={t("taste.acidity")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.acidity)} />
-                <SliderRow label={t("wine.fruit")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.fruit)} />
+                <SliderRow
+                  label={t("taste.body")}
+                  leftLabel={t("taste.light")}
+                  rightLabel={t("taste.bold")}
+                  value={pct(w.body)}
+                />
+                <SliderRow
+                  label={t("wine.tannins")}
+                  leftLabel={t("taste.low")}
+                  rightLabel={t("taste.high")}
+                  value={pct(w.tannin)}
+                />
+                <SliderRow
+                  label={t("taste.acidity")}
+                  leftLabel={t("taste.low")}
+                  rightLabel={t("taste.high")}
+                  value={pct(w.acidity)}
+                />
+                <SliderRow
+                  label={t("wine.fruit")}
+                  leftLabel={t("taste.low")}
+                  rightLabel={t("taste.high")}
+                  value={pct(w.fruit)}
+                />
               </Card>
             </Section>
           </>
@@ -380,34 +533,61 @@ function WineDetailPage() {
             {(() => {
               const win = computeDrinkingWindow(w.vintage, w.wine_type);
               if (!win) return null;
-              const statusKey = win.status === "too-young" ? "wine.window.tooYoung" : win.status === "past-peak" ? "wine.window.pastPeak" : "wine.window.greatNow";
-              const dot = win.status === "great-now" ? "bg-success" : win.status === "too-young" ? "bg-gold" : "bg-destructive";
+              const statusKey: TKey =
+                win.status === "too-young"
+                  ? "wine.window.tooYoung"
+                  : win.status === "past-peak"
+                    ? "wine.window.pastPeak"
+                    : "wine.window.greatNow";
+              const dot =
+                win.status === "great-now"
+                  ? "bg-success"
+                  : win.status === "too-young"
+                    ? "bg-gold"
+                    : "bg-destructive";
               const now = new Date().getFullYear();
-              const pct = Math.max(0, Math.min(100, ((now - win.start) / Math.max(1, win.end - win.start)) * 100));
+              const pct = Math.max(
+                0,
+                Math.min(100, ((now - win.start) / Math.max(1, win.end - win.start)) * 100),
+              );
               return (
                 <Card className="bg-card/50 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gold" />
-                      <span className="text-xs uppercase tracking-wider text-muted-foreground">{t("wine.window")}</span>
+                      <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                        {t("wine.window")}
+                      </span>
                     </div>
                     <span className="flex items-center gap-1.5 text-[11px] font-medium text-cream">
                       <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
-                      {t(statusKey as any)}
+                      {t(statusKey)}
                     </span>
                   </div>
                   <div className="relative mt-3 h-1.5 rounded-full bg-white/8">
-                    <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-burgundy via-gold to-copper" style={{ width: `${pct}%` }} />
-                    <span className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold" style={{ left: `${pct}%` }} />
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-burgundy via-gold to-copper"
+                      style={{ width: `${pct}%` }}
+                    />
+                    <span
+                      className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold"
+                      style={{ left: `${pct}%` }}
+                    />
                   </div>
                   <p className="mt-2 text-[11px] text-muted-foreground">
-                    {t("wine.window.range").replace("{start}", String(win.start)).replace("{end}", String(win.end)).replace("{peak}", String(win.peak))}
+                    {t("wine.window.range")
+                      .replace("{start}", String(win.start))
+                      .replace("{end}", String(win.end))
+                      .replace("{peak}", String(win.peak))}
                   </p>
                 </Card>
               );
             })()}
             <KV label={t("wine.producer")} value={w.producer ?? "—"} />
-            <KV label={t("wine.region")} value={[w.region, w.country].filter(Boolean).join(", ") || "—"} />
+            <KV
+              label={t("wine.region")}
+              value={[w.region, w.country].filter(Boolean).join(", ") || "—"}
+            />
             <KV label={t("wine.grape")} value={w.grape_varieties?.join(", ") ?? "—"} />
             <KV label={t("wine.vintage")} value={w.vintage ? String(w.vintage) : "—"} />
             <KV label={t("wine.serving")} value={w.serving_temp ?? "—"} />
@@ -417,7 +597,11 @@ function WineDetailPage() {
               {notes.length === 0 ? (
                 <Card className="bg-card/50 p-4 text-center">
                   <p className="text-sm text-muted-foreground">{t("wine.notesEmpty")}</p>
-                  <Link to="/wine/$id/notes" params={{ id: w.id }} className="mt-3 inline-flex items-center gap-1 text-xs text-burgundy hover:underline">
+                  <Link
+                    to="/wine/$id/notes"
+                    params={{ id: w.id }}
+                    className="mt-3 inline-flex items-center gap-1 text-xs text-burgundy hover:underline"
+                  >
                     <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
                   </Link>
                 </Card>
@@ -430,22 +614,35 @@ function WineDetailPage() {
                           {n.rating != null && (
                             <>
                               <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-                              <span className="font-display text-sm text-cream">{n.rating.toFixed(1)}</span>
+                              <span className="font-display text-sm text-cream">
+                                {n.rating.toFixed(1)}
+                              </span>
                             </>
                           )}
                         </div>
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {new Date(n.tasted_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {new Date(n.tasted_at).toLocaleDateString(
+                            lang === "sv" ? "sv-SE" : "en-US",
+                            { month: "short", day: "numeric", year: "numeric" },
+                          )}
                           {n.location ? ` • ${n.location}` : ""}
                         </span>
                       </div>
-                      {n.notes && <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">{n.notes}</p>}
+                      {n.notes && (
+                        <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">
+                          {n.notes}
+                        </p>
+                      )}
                       {n.aromas && n.aromas.length > 0 && (
                         <p className="mt-1.5 text-[11px] text-gold">{n.aromas.join(" • ")}</p>
                       )}
                     </Card>
                   ))}
-                  <Link to="/wine/$id/notes" params={{ id: w.id }} className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-xs text-gold hover:bg-gold/5">
+                  <Link
+                    to="/wine/$id/notes"
+                    params={{ id: w.id }}
+                    className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-xs text-gold hover:bg-gold/5"
+                  >
                     <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
                   </Link>
                 </div>
@@ -457,12 +654,42 @@ function WineDetailPage() {
         {tab === "tasting" && (
           <div className="mt-5">
             <Card className="bg-card/50 p-4">
-              <SliderRow label={t("taste.body")} leftLabel={t("taste.light")} rightLabel={t("taste.bold")} value={pct(w.body)} />
-              <SliderRow label={t("wine.tannins")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.tannin)} />
-              <SliderRow label={t("taste.acidity")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.acidity)} />
-              <SliderRow label={t("wine.fruit")} leftLabel={t("taste.low")} rightLabel={t("taste.high")} value={pct(w.fruit)} />
-              <SliderRow label={t("taste.oak")} leftLabel={t("taste.noOak")} rightLabel={t("taste.oaked")} value={pct(w.oak)} />
-              <SliderRow label={t("taste.sweetness")} leftLabel={t("taste.dry")} rightLabel={t("taste.sweet")} value={pct(w.sweetness)} />
+              <SliderRow
+                label={t("taste.body")}
+                leftLabel={t("taste.light")}
+                rightLabel={t("taste.bold")}
+                value={pct(w.body)}
+              />
+              <SliderRow
+                label={t("wine.tannins")}
+                leftLabel={t("taste.low")}
+                rightLabel={t("taste.high")}
+                value={pct(w.tannin)}
+              />
+              <SliderRow
+                label={t("taste.acidity")}
+                leftLabel={t("taste.low")}
+                rightLabel={t("taste.high")}
+                value={pct(w.acidity)}
+              />
+              <SliderRow
+                label={t("wine.fruit")}
+                leftLabel={t("taste.low")}
+                rightLabel={t("taste.high")}
+                value={pct(w.fruit)}
+              />
+              <SliderRow
+                label={t("taste.oak")}
+                leftLabel={t("taste.noOak")}
+                rightLabel={t("taste.oaked")}
+                value={pct(w.oak)}
+              />
+              <SliderRow
+                label={t("taste.sweetness")}
+                leftLabel={t("taste.dry")}
+                rightLabel={t("taste.sweet")}
+                value={pct(w.sweetness)}
+              />
             </Card>
           </div>
         )}
@@ -476,7 +703,9 @@ function WineDetailPage() {
               </Card>
             ))}
             {(!w.food_pairings || w.food_pairings.length === 0) && (
-              <p className="py-6 text-center text-sm text-muted-foreground">{t("wine.noPairings")}</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {t("wine.noPairings")}
+              </p>
             )}
           </div>
         )}
@@ -492,42 +721,59 @@ function WineDetailPage() {
             {suggestError && !suggestLoading && (
               <Card className="bg-card/50 p-4 text-center text-sm text-destructive">
                 {suggestError}
-                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">{t("common.retry")}</Button>
+                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">
+                  {t("common.retry")}
+                </Button>
               </Card>
             )}
             {!suggestLoading && !suggestError && suggestions && suggestions.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">{t("wine.noSuggestions")}</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {t("wine.noSuggestions")}
+              </p>
             )}
-            {!suggestLoading && suggestions?.map((s, i) => (
-              <Card key={i} className="bg-card/50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display text-base text-cream truncate">{s.wine_name}</p>
-                    <p className="text-xs text-gold">{s.producer}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {[s.region, s.country].filter(Boolean).join(", ")}
-                      {s.grape_varieties?.length ? ` • ${s.grape_varieties.join(", ")}` : ""}
-                    </p>
+            {!suggestLoading &&
+              suggestions?.map((s, i) => (
+                <Card key={i} className="bg-card/50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display text-base text-cream truncate">{s.wine_name}</p>
+                      <p className="text-xs text-gold">{s.producer}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {[s.region, s.country].filter(Boolean).join(", ")}
+                        {s.grape_varieties?.length ? ` • ${s.grape_varieties.join(", ")}` : ""}
+                      </p>
+                    </div>
+                    <span className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success shrink-0">
+                      {Math.round(s.match_score)}%
+                    </span>
                   </div>
-                  <span className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success shrink-0">
-                    {Math.round(s.match_score)}%
-                  </span>
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
-                {s.price_range && (
-                  <p className="mt-1.5 font-display text-xs text-cream">{s.price_range}</p>
-                )}
-              </Card>
-            ))}
+                  <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
+                  {s.price_range && (
+                    <p className="mt-1.5 font-display text-xs text-cream">{s.price_range}</p>
+                  )}
+                </Card>
+              ))}
             {!suggestLoading && suggestions && suggestions.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => { setSuggestions(null); loadSuggestions(); }} className="w-full">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSuggestions(null);
+                  loadSuggestions();
+                }}
+                className="w-full"
+              >
                 <Sparkles className="h-4 w-4" /> {t("wine.regenerate")}
               </Button>
             )}
           </div>
         )}
 
-        <Button variant="ghost" onClick={remove} className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive">
+        <Button
+          variant="ghost"
+          onClick={remove}
+          className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
           <Trash2 className="h-4 w-4" /> {t("wine.delete")}
         </Button>
       </div>
@@ -553,14 +799,30 @@ function KV({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SliderRow({ label, leftLabel, rightLabel, value }: { label: string; leftLabel: string; rightLabel: string; value: number }) {
+function SliderRow({
+  label,
+  leftLabel,
+  rightLabel,
+  value,
+}: {
+  label: string;
+  leftLabel: string;
+  rightLabel: string;
+  value: number;
+}) {
   return (
     <div className="grid grid-cols-[64px_36px_1fr_36px] items-center gap-2 py-2">
       <span className="text-xs text-foreground/80">{label}</span>
       <span className="text-[10px] text-muted-foreground">{leftLabel}</span>
       <div className="relative h-1 rounded-full bg-white/10">
-        <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper" style={{ width: `${value}%` }} />
-        <span className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold shadow" style={{ left: `${value}%` }} />
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper"
+          style={{ width: `${value}%` }}
+        />
+        <span
+          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold shadow"
+          style={{ left: `${value}%` }}
+        />
       </div>
       <span className="text-right text-[10px] text-muted-foreground">{rightLabel}</span>
     </div>
@@ -572,7 +834,12 @@ function pct(v: number | null): number {
   return Math.max(0, Math.min(100, v * 10));
 }
 
-function computeRating(w: { fruit: number | null; tannin: number | null; acidity: number | null; body: number | null }): number {
+function computeRating(w: {
+  fruit: number | null;
+  tannin: number | null;
+  acidity: number | null;
+  body: number | null;
+}): number {
   const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
   if (vals.length === 0) return 4.0;
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -594,7 +861,12 @@ function aromaEmoji(name: string): string {
 
 function aromaFamily(name: string): string {
   const n = name.toLowerCase();
-  if (/cherry|berry|plum|currant|strawberry|raspberry|fruit|apple|pear|citrus|lemon|lime|grape/.test(n)) return "Fruit";
+  if (
+    /cherry|berry|plum|currant|strawberry|raspberry|fruit|apple|pear|citrus|lemon|lime|grape/.test(
+      n,
+    )
+  )
+    return "Fruit";
   if (/oak|wood|cedar|smoke/.test(n)) return "Oak";
   if (/vanilla|cream|butter|chocolate|cocoa|coffee/.test(n)) return "Sweet";
   if (/tobacco|leather|earth|mushroom/.test(n)) return "Earth";

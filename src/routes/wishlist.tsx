@@ -1,6 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Bookmark, Trash2, Wine, Plus, Bell, BellOff, Tag, TrendingDown, RefreshCw, Loader2 } from "lucide-react";
+import {
+  Bookmark,
+  Trash2,
+  Wine,
+  Plus,
+  Bell,
+  BellOff,
+  Tag,
+  TrendingDown,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
@@ -9,6 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import { toast } from "sonner";
+import { WineImage } from "@/components/WineImage";
+import { authFetch } from "@/lib/authFetch";
 
 export const Route = createFileRoute("/wishlist")({
   head: () => ({ meta: [{ title: "Wishlist — WineSnap" }] }),
@@ -49,23 +62,32 @@ function WishlistPage() {
     if (!user) return;
     supabase
       .from("wishlist")
-      .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at")
+      .select(
+        "id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at",
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setRows((data ?? []) as Row[]));
+      .then(({ data, error }) => {
+        if (error) toast.error(error.message);
+        setRows((data ?? []) as Row[]);
+      });
   }, [user]);
 
   const checkNow = async () => {
     setChecking(true);
     try {
-      const res = await fetch("/api/public/hooks/check-wishlist-prices", { method: "POST" });
+      const res = await authFetch("/api/public/hooks/check-wishlist-prices", { method: "POST" });
       const json = (await res.json().catch(() => ({}))) as { checked?: number; triggered?: number };
       if (!res.ok) throw new Error("check failed");
-      toast.success(`${t("wishlist.checkedToast")} ${json.checked ?? 0} · ${t("wishlist.alertsToast")} ${json.triggered ?? 0}`);
+      toast.success(
+        `${t("wishlist.checkedToast")} ${json.checked ?? 0} · ${t("wishlist.alertsToast")} ${json.triggered ?? 0}`,
+      );
       if (user) {
         const { data } = await supabase
           .from("wishlist")
-          .select("id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at")
+          .select(
+            "id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at",
+          )
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
         setRows((data ?? []) as Row[]);
@@ -80,19 +102,42 @@ function WishlistPage() {
   const markSeen = async (r: Row) => {
     if (!r.price_alert_triggered_at || r.price_alert_seen_at) return;
     const now = new Date().toISOString();
-    setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, price_alert_seen_at: now } : x)) ?? null);
-    await supabase.from("wishlist").update({ price_alert_seen_at: now }).eq("id", r.id);
+    const previous = rows;
+    setRows(
+      (rs) => rs?.map((x) => (x.id === r.id ? { ...x, price_alert_seen_at: now } : x)) ?? null,
+    );
+    const { error } = await supabase
+      .from("wishlist")
+      .update({ price_alert_seen_at: now })
+      .eq("id", r.id);
+    if (error) {
+      setRows(previous);
+      toast.error(error.message);
+    }
   };
 
   const remove = async (id: string) => {
+    const previous = rows;
     setRows((r) => r?.filter((x) => x.id !== id) ?? null);
-    await supabase.from("wishlist").delete().eq("id", id);
+    const { error } = await supabase.from("wishlist").delete().eq("id", id);
+    if (error) {
+      setRows(previous);
+      toast.error(error.message);
+    }
   };
 
   const toggleNotify = async (r: Row) => {
     const next = !r.notify_on_drop;
+    const previous = rows;
     setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, notify_on_drop: next } : x)) ?? null);
-    await supabase.from("wishlist").update({ notify_on_drop: next }).eq("id", r.id);
+    const { error } = await supabase
+      .from("wishlist")
+      .update({ notify_on_drop: next })
+      .eq("id", r.id);
+    if (error) {
+      setRows(previous);
+      toast.error(error.message);
+    }
   };
 
   const setTargetPrice = async (r: Row) => {
@@ -100,12 +145,17 @@ function WishlistPage() {
     const input = window.prompt(t("wishlist.setTargetPrompt"), current);
     if (input === null) return;
     const n = input.trim() === "" ? null : Number(input);
-    if (input.trim() !== "" && !Number.isFinite(n)) {
+    if (input.trim() !== "" && (!Number.isFinite(n) || Number(n) < 0)) {
       toast.error(t("common.error"));
       return;
     }
+    const previous = rows;
     setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, target_price: n } : x)) ?? null);
-    await supabase.from("wishlist").update({ target_price: n }).eq("id", r.id);
+    const { error } = await supabase.from("wishlist").update({ target_price: n }).eq("id", r.id);
+    if (error) {
+      setRows(previous);
+      toast.error(error.message);
+    }
   };
 
   if (loading || (user && rows === null)) {
@@ -148,7 +198,11 @@ function WishlistPage() {
               disabled={checking}
               className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-[11px] text-gold disabled:opacity-50"
             >
-              {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {checking ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
               {checking ? t("wishlist.checking") : t("wishlist.checkNow")}
             </button>
           ) : null}
@@ -196,7 +250,12 @@ function WishlistPage() {
                 <div className="flex gap-3">
                   <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
                     {r.image_url ? (
-                      <img src={r.image_url} alt="" className="h-full w-full object-cover" />
+                      <WineImage
+                        src={r.image_url}
+                        alt={r.wine_name}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
                     ) : (
                       <Wine className="h-6 w-6 text-gold/60" />
                     )}
@@ -211,19 +270,28 @@ function WishlistPage() {
                       {r.wine_type ? ` • ${r.wine_type}` : ""}
                     </p>
                     {r.grape_varieties?.length ? (
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{r.grape_varieties.join(", ")}</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {r.grape_varieties.join(", ")}
+                      </p>
                     ) : null}
                     {r.last_checked_price != null && (
                       <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        {t("wishlist.currentPrice")}: {r.price_currency ?? "kr"} {r.last_checked_price}
+                        {t("wishlist.currentPrice")}: {r.price_currency ?? "kr"}{" "}
+                        {r.last_checked_price}
                         {r.last_checked_at && (
-                          <span className="opacity-60"> · {new Date(r.last_checked_at).toLocaleDateString()}</span>
+                          <span className="opacity-60">
+                            {" "}
+                            · {new Date(r.last_checked_at).toLocaleDateString()}
+                          </span>
                         )}
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button
-                        onClick={(e) => { e.stopPropagation(); setTargetPrice(r); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTargetPrice(r);
+                        }}
                         className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-[11px] text-gold hover:bg-background/70"
                       >
                         <Tag className="h-3 w-3" />
@@ -232,14 +300,21 @@ function WishlistPage() {
                           : t("wishlist.setTarget")}
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleNotify(r); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleNotify(r);
+                        }}
                         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] ${
                           r.notify_on_drop
                             ? "border-success/40 bg-success/10 text-success"
                             : "border-white/10 bg-background/40 text-muted-foreground"
                         }`}
                       >
-                        {r.notify_on_drop ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+                        {r.notify_on_drop ? (
+                          <Bell className="h-3 w-3" />
+                        ) : (
+                          <BellOff className="h-3 w-3" />
+                        )}
                         {r.notify_on_drop ? t("wishlist.alertOn") : t("wishlist.alertOff")}
                       </button>
                       {r.systembolaget_url && (
@@ -265,7 +340,10 @@ function WishlistPage() {
                     </div>
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); remove(r.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      remove(r.id);
+                    }}
                     aria-label={t("common.delete")}
                     className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-white/5 hover:text-destructive"
                   >
