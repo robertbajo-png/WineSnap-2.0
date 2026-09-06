@@ -98,12 +98,16 @@ async function matchAndAttachSystembolaget(
   },
 ): Promise<void> {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return;
     const res = await fetch("/api/public/hooks/match-systembolaget", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(input),
     });
     if (!res.ok) return;
+
     const data = (await res.json()) as {
       match: {
         systembolaget_id: string;
