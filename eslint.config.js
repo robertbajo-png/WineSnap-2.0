@@ -24,5 +24,18 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // Shared primitives, the i18n provider and the router factory intentionally
+    // export helpers alongside components; Fast Refresh granularity is not a concern there.
+    files: [
+      "src/components/ui/**/*.tsx",
+      "src/components/AromaChip.tsx",
+      "src/components/AromaIcon.tsx",
+      "src/i18n/**/*.tsx",
+      "src/router.tsx",
+    ],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
   eslintPluginPrettier,
 );
+
