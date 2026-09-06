@@ -94,9 +94,36 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    if (import.meta.env.DEV) return;
+    const register = () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          // Pick up new builds without a manual hard refresh.
+          reg.addEventListener("updatefound", () => {
+            const next = reg.installing;
+            if (!next) return;
+            next.addEventListener("statechange", () => {
+              if (next.state === "installed" && navigator.serviceWorker.controller) {
+                next.postMessage("SKIP_WAITING");
+              }
+            });
+          });
+        })
+        .catch(() => {
+          /* service worker is a progressive enhancement */
+        });
+    };
+    window.addEventListener("load", register);
+    return () => window.removeEventListener("load", register);
+  }, []);
+
   return (
     <I18nProvider>
       <Outlet />
     </I18nProvider>
   );
 }
+
