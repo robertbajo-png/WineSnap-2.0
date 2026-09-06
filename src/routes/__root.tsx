@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 
-
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -128,4 +127,3 @@ function RootComponent() {
     </I18nProvider>
   );
 }
-
