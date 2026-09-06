@@ -827,7 +827,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLangState(l);
     try {
       localStorage.setItem("lang", l);
-    } catch {}
+    } catch {
+      // storage unavailable (private mode) — language stays for this session only
+    }
   };
 
   const t = (k: TKey) =>
