@@ -96,7 +96,11 @@ export const Route = createFileRoute("/api/public/hooks/check-wishlist-prices")(
                 row.last_checked_price != null ? Number(row.last_checked_price) : null;
               const priceImproved = lastPrice == null || hit.price < lastPrice;
 
-              if (belowTarget && !pendingAlert && (row.price_alert_triggered_at == null || priceImproved)) {
+              if (
+                belowTarget &&
+                !pendingAlert &&
+                (row.price_alert_triggered_at == null || priceImproved)
+              ) {
                 patch.price_alert_triggered_at = new Date().toISOString();
                 patch.price_alert_seen_at = null;
                 triggered += 1;
