@@ -146,6 +146,15 @@ afterAll(async () => {
   }
 }, 30_000);
 
+test("account deletion cascades without recreating a taste profile", async () => {
+  const user = randomUUID();
+  await db.query("INSERT INTO auth.users (id,email) VALUES ($1,$2)", [user, `${user}@example.test`]);
+  await db.query("INSERT INTO wines (user_id,wine_name) VALUES ($1,'Deletion regression')", [user]);
+  await db.query("DELETE FROM auth.users WHERE id=$1", [user]);
+  expect((await db.query("SELECT * FROM taste_profile WHERE user_id=$1", [user])).rows).toHaveLength(0);
+  expect((await db.query("SELECT * FROM wines WHERE user_id=$1", [user])).rows).toHaveLength(0);
+});
+
 test("preserves existing usernames and public share IDs", async () => {
   expect(
     (await db.query("SELECT username FROM profiles WHERE id=$1", [owner])).rows[0].username,
