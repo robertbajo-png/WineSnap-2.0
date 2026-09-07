@@ -18,6 +18,14 @@ describe("getWineLabelPath", () => {
     expect(getWineLabelPath("https://images.example.com/wine.jpg")).toBeNull();
   });
 
+  test("rechecks access instead of reusing a stored signed URL", () => {
+    expect(
+      getWineLabelPath(
+        "https://example.supabase.co/storage/v1/object/sign/wine-labels/owner/label.png?token=old-token",
+      ),
+    ).toBe("owner/label.png");
+  });
+
   test("handles empty values", () => {
     expect(getWineLabelPath(null)).toBeNull();
   });

@@ -26,6 +26,11 @@ ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 CREATE FUNCTION storage.foldername(name text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$
   SELECT (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1)-1];
 $$;
+-- Simulated operation context for policy unit tests; hosted tests use Storage HTTP.
+CREATE FUNCTION storage.allow_any_operation(operations text[]) RETURNS boolean
+LANGUAGE sql STABLE AS $$
+  SELECT coalesce(current_setting('test.storage_operation', true) = ANY(operations), false);
+$$;
 GRANT USAGE ON SCHEMA public, auth, storage TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
 GRANT SELECT ON storage.objects TO anon;

@@ -1,5 +1,7 @@
 const BUCKET = "wine-labels";
-const PUBLIC_MARKER = `/storage/v1/object/public/${BUCKET}/`;
+const MARKERS = ["public", "sign", "authenticated"].map(
+  (mode) => `/storage/v1/object/${mode}/${BUCKET}/`,
+);
 
 export function getWineLabelPath(value: string | null | undefined) {
   if (!value) return null;
@@ -7,9 +9,9 @@ export function getWineLabelPath(value: string | null | undefined) {
 
   try {
     const url = new URL(value);
-    const markerIndex = url.pathname.indexOf(PUBLIC_MARKER);
-    if (markerIndex === -1) return null;
-    return decodeURIComponent(url.pathname.slice(markerIndex + PUBLIC_MARKER.length));
+    const marker = MARKERS.find((value) => url.pathname.startsWith(value));
+    if (!marker) return null;
+    return decodeURIComponent(url.pathname.slice(marker.length));
   } catch {
     return null;
   }

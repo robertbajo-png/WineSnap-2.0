@@ -146,12 +146,35 @@ afterAll(async () => {
   }
 }, 30_000);
 
+test("storage download signing is denied even to the owner", async () => {
+  const client = await connection();
+  try {
+    await client.query("SET ROLE authenticated");
+    await client.query("SELECT set_config('request.jwt.claim.sub', $1, false)", [owner]);
+    for (const operation of ["object.sign", "object.sign_many", "render.image_sign"]) {
+      await client.query("SELECT set_config('test.storage_operation', $1, false)", [operation]);
+      expect((await client.query("SELECT * FROM storage.objects")).rows).toHaveLength(0);
+    }
+    await client.query(
+      "SELECT set_config('test.storage_operation', 'object.get_authenticated', false)",
+    );
+    expect((await client.query("SELECT * FROM storage.objects")).rows.length).toBeGreaterThan(0);
+  } finally {
+    await client.end();
+  }
+});
+
 test("account deletion cascades without recreating a taste profile", async () => {
   const user = randomUUID();
-  await db.query("INSERT INTO auth.users (id,email) VALUES ($1,$2)", [user, `${user}@example.test`]);
+  await db.query("INSERT INTO auth.users (id,email) VALUES ($1,$2)", [
+    user,
+    `${user}@example.test`,
+  ]);
   await db.query("INSERT INTO wines (user_id,wine_name) VALUES ($1,'Deletion regression')", [user]);
   await db.query("DELETE FROM auth.users WHERE id=$1", [user]);
-  expect((await db.query("SELECT * FROM taste_profile WHERE user_id=$1", [user])).rows).toHaveLength(0);
+  expect(
+    (await db.query("SELECT * FROM taste_profile WHERE user_id=$1", [user])).rows,
+  ).toHaveLength(0);
   expect((await db.query("SELECT * FROM wines WHERE user_id=$1", [user])).rows).toHaveLength(0);
 });
 

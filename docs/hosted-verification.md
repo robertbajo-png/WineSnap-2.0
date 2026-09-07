@@ -1,5 +1,31 @@
 # Hosted Supabase verification - 2026-09-07
 
+## Follow-up: download authorization
+
+The working branch now downloads label bytes with `cache: no-store`, displays
+component-owned blob URLs, and releases/refreshes them on Auth changes and focus.
+It no longer caches transferable signed links. Stored legacy signed URLs are
+parsed back into Storage paths instead of reused.
+
+New migration `20260907100000_disable_label_signing.sql` restricts single, batch,
+and transformed-image signing using Supabase's operation-aware policy helper:
+https://supabase.com/docs/guides/storage/schema/helper-functions
+Deploy the frontend before applying this policy; old clients need signed URLs.
+Require `storage.allow_any_operation(text[])` on the target Storage version.
+
+This follow-up has NOT been applied to hosted Supabase: the browser connection
+timed out twice. The updated hosted runner also has NOT been run with this policy.
+The 18 hosted passes below describe the previous implementation, not this update.
+Local policy tests simulate operation context; they cannot establish actual
+Storage HTTP behavior. Hosted single/batch signing and post-unshare download
+checks must pass before publication, followed by browser/Auth-switch checks.
+
+Previously issued signed tokens are NOT revoked by this policy. The former app
+issued one-hour tokens, but API callers could request different lifetimes.
+Do not claim all legacy links are invalid after one hour. Immediate legacy-token
+invalidation requires a separately verified object-path migration/deletion and
+cache strategy, preserving owner data. Nothing can retract already saved bytes.
+
 ## Scope
 
 Only WineSnap-test (`pzniyupmgwvlldvztzqh`, eu-west-1) was changed.
