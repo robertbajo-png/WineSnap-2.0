@@ -13,12 +13,19 @@ https://supabase.com/docs/guides/storage/schema/helper-functions
 Deploy the frontend before applying this policy; old clients need signed URLs.
 Require `storage.allow_any_operation(text[])` on the target Storage version.
 
-This follow-up has NOT been applied to hosted Supabase: the browser connection
-timed out twice. The updated hosted runner also has NOT been run with this policy.
-The 18 hosted passes below describe the previous implementation, not this update.
-Local policy tests simulate operation context; they cannot establish actual
-Storage HTTP behavior. Hosted single/batch signing and post-unshare download
-checks must pass before publication, followed by browser/Auth-switch checks.
+On 2026-09-09 this migration was applied to WineSnap-test and recorded in
+supabase_migrations.schema_migrations in the same transaction. The SQL result
+confirmed the RESTRICTIVE policy. The connection was recovered by resetting the
+browser tool session and selecting the in-app browser directly. The previously
+pasted SQL was in the AI prompt, not the SQL editor; no SQL had been submitted.
+
+All 22 updated hosted API checks passed (exit code 0), including owner and anonymous
+single signing denial, batch signing denial, shared-image downloads, immediate
+post-unshare anonymous download denial and continued owner access. Fixture cleanup
+completed. The 18 hosted passes below are historical results from the earlier run.
+Browser rendering/Auth-switch tests and production rollout remain outstanding.
+The transformed-image signing restriction is covered by local policy tests only;
+it has not yet been exercised through the hosted transformation endpoint.
 
 Previously issued signed tokens are NOT revoked by this policy. The former app
 issued one-hour tokens, but API callers could request different lifetimes.
