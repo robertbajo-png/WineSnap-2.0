@@ -21,8 +21,14 @@ this project's credentials. No live model request was made during this review.
 
 Eight mocked tests pass covering valid responses, missing/wrong/malformed tools,
 schema failure, truncation, 402/429, network/500 errors and deadlines during both
-connection and body reading. Lint passes. These tests do not replace Deno runtime
-checking or deployed Edge Function tests.
+connection and body reading. Lint passes. On 2026-09-09 all four handlers passed
+`deno check --no-config --no-lock` using Deno 2.9.6. CI now runs that same check.
+This is Deno static validation, not a deployed Edge Function or live model test.
+
+The Lovable project connector was inspected read-only. WineSnap 2.0 still reports
+commit `e3fdd096`, not the hardening work branch. A workspace search for wine
+returned the published WineSnap 2.0 and older wine-lens-snap projects; neither was
+identified as the separate test deployment. No existing project was modified.
 
 ## Release Gates
 
@@ -36,6 +42,6 @@ checking or deployed Edge Function tests.
    with a small labelled fixture set. Analyze-wine still prompts the model to infer
    plausible missing values; factual accuracy/uncertainty remains a separate risk.
 5. Verify deployed CORS/Auth, rate limiting, insufficient-credit errors and UI
-   behavior, and explicitly Deno-check the handlers (frontend tsc excludes them).
+   behavior. Deno static checking is complete; frontend tsc alone excludes handlers.
 
 No Edge Functions or production settings were deployed or changed by this work.

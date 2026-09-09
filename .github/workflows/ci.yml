@@ -20,6 +20,16 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run lint
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Check Edge Functions with Deno
+        run: >-
+          deno check --no-config --no-lock
+          supabase/functions/analyze-wine/index.ts
+          supabase/functions/restaurant-match/index.ts
+          supabase/functions/taste-suggestions/index.ts
+          supabase/functions/wine-suggestions/index.ts
       - run: bun run test
       - run: bun run build
         env:
