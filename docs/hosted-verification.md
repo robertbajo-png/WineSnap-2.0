@@ -1,5 +1,26 @@
 # Hosted Supabase verification - 2026-09-07
 
+## Clean release checks - 2026-09-09
+
+Verified code commit `99f81fc` in a separate clean worktree with a fresh Bun
+cache and `--frozen-lockfile --force --backend=copyfile`. The initial default
+installation failed with missing lifecycle files; the fresh-cache installation
+succeeded. No dependencies were copied from the old worktree. The installed
+Lovable config is 2.13.1, matching the manifest. The lockfile was unchanged.
+
+`bun run check` exited 0: typecheck, lint, 32 tests (94 assertions), and client/SSR
+production build all passed. Build used only the test project's public URL/key.
+Build warnings remain about ignored dependency `use client` directives and the
+generated Cloudflare config overriding `main`; deployment behavior is not yet
+verified. No production deployment was performed.
+
+Service worker cache version is now v2. Navigations no longer persist HTML;
+offline fallback uses only the neutral offline document. Cache cleanup preserves
+other applications' caches, and asset caching is limited to `/assets/` with
+no-store/private responses excluded. Four focused tests cover cache cleanup,
+navigation, offline fallback and API/private-image/no-store bypass.
+These are isolated worker tests, not a browser update/lifecycle test.
+
 ## Follow-up: download authorization
 
 The working branch now downloads label bytes with `cache: no-store`, displays
@@ -84,8 +105,8 @@ both pass. This migration is installed only in the test project (21 total).
 3. Verify deployed AI model identifiers, timeout/error behavior, and cron reporting.
 4. Implement browser E2E for login, scanning, cellar, sharing and wishlist;
    complete desktop/accessibility/PWA update checks.
-5. Repeat release checks using a clean dependency installation. An earlier build
-   used copied dependencies with a Lovable config version older than the manifest.
+5. Clean-install release checks are now passed as described above. Browser PWA
+   upgrade/lifecycle verification and deployment smoke tests are still pending.
 
 The passing checks are not a production-release approval or completion of all
 previously identified frontend/backend work.
