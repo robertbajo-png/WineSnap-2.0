@@ -209,7 +209,7 @@ ${disliked ? `\nExplicitly avoid wines similar to these low-rated wines: ${disli
 
 Suggest 8 new wines they'd enjoy.`;
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetchLovable({
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -241,9 +241,7 @@ Suggest 8 new wines they'd enjoy.`;
       });
     }
 
-    const data = await resp.json();
-    const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    const parsed = SuggestionResultSchema.parse(args ? JSON.parse(args) : { suggestions: [] });
+    const parsed = await parseAiTool(resp, "suggest_wines", SuggestionResultSchema);
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -252,3 +250,4 @@ Suggest 8 new wines they'd enjoy.`;
     return errorResponse(req, e);
   }
 });
+import { fetchLovable, parseAiTool } from "../_shared/ai.ts";

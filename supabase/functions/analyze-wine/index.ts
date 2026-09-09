@@ -213,7 +213,7 @@ Deno.serve(async (req: Request) => {
       userContent = `Identify the following wine based on the user's description and return structured data. If details are missing, infer plausible values from the description. User description: "${text}"`;
     }
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetchLovable({
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -253,10 +253,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`AI gateway: ${aiRes.status}`);
     }
 
-    const data = await aiRes.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("AI returned no tool call");
-    const wine = WineResultSchema.parse(JSON.parse(toolCall.function.arguments));
+    const wine = await parseAiTool(aiRes, "extract_wine", WineResultSchema);
 
     return new Response(JSON.stringify({ wine }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -265,3 +262,4 @@ Deno.serve(async (req: Request) => {
     return errorResponse(req, e);
   }
 });
+import { fetchLovable, parseAiTool } from "../_shared/ai.ts";

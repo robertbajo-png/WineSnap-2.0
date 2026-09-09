@@ -106,7 +106,7 @@ Grapes: ${(wine.grape_varieties ?? []).join(", ") || "—"}
 Profile — body:${wine.body ?? "?"}/10, tannin:${wine.tannin ?? "?"}/10, acidity:${wine.acidity ?? "?"}/10, oak:${wine.oak ?? "?"}/10, sweetness:${wine.sweetness ?? "?"}/10, fruit:${wine.fruit ?? "?"}/10
 Notes: ${[...(wine.primary_notes ?? []), ...(wine.secondary_notes ?? []), ...(wine.tertiary_notes ?? [])].join(", ") || "—"}`;
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetchLovable({
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -141,9 +141,7 @@ Notes: ${[...(wine.primary_notes ?? []), ...(wine.secondary_notes ?? []), ...(wi
       });
     }
 
-    const data = await resp.json();
-    const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    const parsed = SuggestionResultSchema.parse(args ? JSON.parse(args) : { suggestions: [] });
+    const parsed = await parseAiTool(resp, "suggest_wines", SuggestionResultSchema);
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -152,3 +150,4 @@ Notes: ${[...(wine.primary_notes ?? []), ...(wine.secondary_notes ?? []), ...(wi
     return errorResponse(req, e);
   }
 });
+import { fetchLovable, parseAiTool } from "../_shared/ai.ts";

@@ -175,7 +175,7 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
       userContent.push({ type: "image_url", image_url: { url: image } });
     }
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetchLovable({
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -207,9 +207,7 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
       });
     }
 
-    const data = await resp.json();
-    const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    const parsed = RestaurantResultSchema.parse(args ? JSON.parse(args) : { picks: [] });
+    const parsed = await parseAiTool(resp, "rank_wines", RestaurantResultSchema);
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -218,3 +216,4 @@ Computed from ${taste?.total_wines ?? 0} cellar wines:
     return errorResponse(req, e);
   }
 });
+import { fetchLovable, parseAiTool } from "../_shared/ai.ts";
