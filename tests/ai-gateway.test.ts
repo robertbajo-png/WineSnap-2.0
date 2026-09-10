@@ -1,7 +1,17 @@
 import { afterEach, expect, spyOn, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { fetchLovable, parseAiTool } from "../supabase/functions/_shared/ai.ts";
 
 const original = globalThis.fetch;
+test("wine extraction retains Terra forced-tool compatibility", () => {
+  const source = readFileSync(
+    new URL("../supabase/functions/analyze-wine/index.ts", import.meta.url),
+    "utf8",
+  );
+  expect(source).toMatch(
+    /model:\s*"openai\/gpt-5\.6-terra",\s*(?:\/\/[^\n]*\n\s*)?reasoning_effort:\s*"none"/,
+  );
+});
 afterEach(() => {
   globalThis.fetch = original;
 });

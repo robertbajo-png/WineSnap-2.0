@@ -221,6 +221,8 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: "openai/gpt-5.6-terra",
+        // Terra requires non-reasoning mode for forced tools on chat/completions.
+        reasoning_effort: "none",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },

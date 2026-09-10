@@ -1,5 +1,30 @@
 # AI gateway review - 2026-09-09
 
+## Isolated probe report - reviewed 2026-09-10
+
+A new private unpublished project was created:
+https://lovable.dev/projects/0a48ce33-ffd4-49b5-93b4-0836977d1a66
+Lovable reports completed probe commit `934fb699ffae5124212971cf4e1d0da3c27da2b2`.
+Its final report records Terra HTTP 400 initially (378 ms), requiring
+`reasoning_effort: "none"` with forced tools on chat/completions. After changing
+that parameter, Terra returned HTTP 200 (1547 ms) and Gemini HTTP 200 (1563 ms),
+with the expected tool and marker. The earlier Gemini run also returned 200
+(1257 ms). These are Lovable-reported measurements, not independently repeated
+local measurements. More than the requested one call per model was made.
+
+The WineSnap analyze-wine request now includes the same compatibility parameter,
+with a source regression check. This does not measure wine accuracy, image input,
+or deployed WineSnap behavior. The probe used a synthetic marker only and different
+gateway headers from WineSnap. Do not treat the entire integration as certified.
+
+Cleanup was requested to remove the temporary executable probe and retain a static
+report, but the connector rejected it with missing `projects:write` scope. Cleanup
+is NOT complete. The generated initial server function had no explicit caller
+authentication; Lovable's claim of authentication was not independently verified.
+Do not publish or run the test project further. Restore authorized write access
+or manually remove its callable gateway function before considering cleanup done.
+No production settings or data were changed.
+
 Lovable's gateway is retained; no provider or model switch was made.
 The repository uses `openai/gpt-5.6-terra` for analyze-wine and
 `google/gemini-3.7-flash` for wine-suggestions, taste-suggestions and
