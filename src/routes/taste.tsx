@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,8 +108,11 @@ function TastePage() {
   const [showMoreRegions, setShowMoreRegions] = useState(false);
   const [showMoreGrapes, setShowMoreGrapes] = useState(false);
 
+  const hydrated = useRef(false);
+
   useEffect(() => {
-    if (!user) return;
+    if (!user || hydrated.current) return;
+    hydrated.current = true;
     supabase
       .from("profiles")
       .select("*")
@@ -127,7 +130,7 @@ function TastePage() {
         if (p.tannin != null) setTannin(p.tannin * 10);
         if (p.acidity != null) setAcid(p.acidity * 10);
       });
-  }, [user]);
+  }, [user?.id]);
 
   const toggle = (arr: string[], setter: (v: string[]) => void, v: string) => {
     setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -356,6 +359,7 @@ function SliderRow({
             type="range"
             min={0}
             max={100}
+            step={10}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value))}
             className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
