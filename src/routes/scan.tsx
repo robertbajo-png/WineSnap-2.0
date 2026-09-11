@@ -152,6 +152,11 @@ function ScanPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (isUnidentified(data?.wine)) throw new Error(t("scan.notIdentified"));
+      if (isPartial(data.wine)) {
+        setPendingMatch({ wine: data.wine, imageUrl: null, storagePath: null, mode: "text" });
+        setStage("confirm");
+        return;
+      }
       const inserted = await persistWine(data.wine, null);
       logEvent("wine_scanned", {
         mode: "text",
@@ -196,6 +201,16 @@ function ScanPage() {
       if (isUnidentified(data?.wine)) {
         await supabase.storage.from("wine-labels").remove([path]);
         throw new Error(t("scan.notIdentified"));
+      }
+      if (isPartial(data.wine)) {
+        setPendingMatch({
+          wine: data.wine,
+          imageUrl: pub.publicUrl,
+          storagePath: path,
+          mode: "camera",
+        });
+        setStage("confirm");
+        return;
       }
 
       const inserted = await persistWine(data.wine, pub.publicUrl);
