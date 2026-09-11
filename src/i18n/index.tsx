@@ -185,6 +185,10 @@ const en = {
   "scan.matchFound": "Match Found",
   "scan.matchDesc": "We found a great match for this wine.",
   "scan.savedToCellar": "Saved to your cellar",
+  "scan.incompleteTitle": "Uncertain match",
+  "scan.incompleteDesc": "The label could only be read partially. Review the details below and choose whether to save the wine anyway.",
+  "scan.saveAnyway": "Save anyway",
+  "scan.tryAgain": "Try again",
   "scan.viewDetails": "View Details",
   "scan.saveToCellar": "Save to Cellar",
 
@@ -592,6 +596,10 @@ const sv: Record<keyof typeof en, string> = {
   "scan.matchFound": "Träff hittad",
   "scan.matchDesc": "Vi hittade en bra matchning för vinet.",
   "scan.savedToCellar": "Sparat i din källare",
+  "scan.incompleteTitle": "Osäker träff",
+  "scan.incompleteDesc": "Etiketten kunde bara läsas delvis. Granska uppgifterna nedan och välj om du vill spara vinet ändå.",
+  "scan.saveAnyway": "Spara ändå",
+  "scan.tryAgain": "Försök igen",
   "scan.viewDetails": "Visa detaljer",
   "scan.saveToCellar": "Till källaren",
 
