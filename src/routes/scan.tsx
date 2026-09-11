@@ -17,7 +17,14 @@ export const Route = createFileRoute("/scan")({
   component: ScanPage,
 });
 
-type Stage = "idle" | "analyzing" | "match";
+type Stage = "idle" | "analyzing" | "match" | "confirm";
+
+type PendingMatch = {
+  wine: AnalyzedWine;
+  imageUrl: string | null;
+  storagePath: string | null;
+  mode: "camera" | "text";
+};
 
 type AnalyzedWine = {
   producer?: string | null;
@@ -66,6 +73,7 @@ function ScanPage() {
   const [mode, setMode] = useState<"camera" | "text">("camera");
   const [text, setText] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -74,14 +82,23 @@ function ScanPage() {
     }
   }, [user, loading, navigate, t]);
 
+  const badMarker = /unidentified|not visible|unreadable|unknown|okänd|kan inte|ej synlig/;
+
   const isUnidentified = (w: AnalyzedWine | null | undefined) => {
     if (!w) return true;
     const name = (w.wine_name ?? "").toLowerCase().trim();
     const producer = (w.producer ?? "").toLowerCase().trim();
-    const bad = /unidentified|not visible|unreadable|unknown|okänd|kan inte|ej synlig/;
-    const nameBad = !name || bad.test(name);
-    const producerBad = !producer || bad.test(producer);
+    const nameBad = !name || badMarker.test(name);
+    const producerBad = !producer || badMarker.test(producer);
     return nameBad && producerBad;
+  };
+
+  const isPartial = (w: AnalyzedWine) => {
+    const name = (w.wine_name ?? "").toLowerCase().trim();
+    const producer = (w.producer ?? "").toLowerCase().trim();
+    if (badMarker.test(name) || badMarker.test(producer)) return true;
+    if (name.includes("(") || producer.includes("(")) return true;
+    return !w.vintage || !w.region || !w.grape_varieties?.length;
   };
 
   const persistWine = async (w: AnalyzedWine, imageUrl: string | null) => {
@@ -135,6 +152,11 @@ function ScanPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (isUnidentified(data?.wine)) throw new Error(t("scan.notIdentified"));
+      if (isPartial(data.wine)) {
+        setPendingMatch({ wine: data.wine, imageUrl: null, storagePath: null, mode: "text" });
+        setStage("confirm");
+        return;
+      }
       const inserted = await persistWine(data.wine, null);
       logEvent("wine_scanned", {
         mode: "text",
@@ -180,6 +202,16 @@ function ScanPage() {
         await supabase.storage.from("wine-labels").remove([path]);
         throw new Error(t("scan.notIdentified"));
       }
+      if (isPartial(data.wine)) {
+        setPendingMatch({
+          wine: data.wine,
+          imageUrl: pub.publicUrl,
+          storagePath: path,
+          mode: "camera",
+        });
+        setStage("confirm");
+        return;
+      }
 
       const inserted = await persistWine(data.wine, pub.publicUrl);
       // Also register the label in wine_photos
@@ -204,6 +236,52 @@ function ScanPage() {
       setStage("idle");
     }
   };
+
+  const savePending = async () => {
+    if (!pendingMatch || !user) return;
+    setStage("analyzing");
+    try {
+      const inserted = await persistWine(pendingMatch.wine, pendingMatch.imageUrl);
+      if (pendingMatch.storagePath && pendingMatch.imageUrl) {
+        await supabase.from("wine_photos").insert({
+          wine_id: inserted.id,
+          user_id: user.id,
+          url: pendingMatch.imageUrl,
+          storage_path: pendingMatch.storagePath,
+          kind: "label",
+          sort_order: 0,
+        });
+      }
+      logEvent("wine_scanned", {
+        mode: pendingMatch.mode,
+        wine_id: inserted.id,
+        wine_type: inserted.wine_type,
+        partial: true,
+      });
+      setScanned(inserted);
+      setPendingMatch(null);
+      setStage("match");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+      setStage("confirm");
+    }
+  };
+
+  const discardPending = async () => {
+    const pm = pendingMatch;
+    setPendingMatch(null);
+    setStage("idle");
+    if (pm?.storagePath) {
+      await supabase.storage.from("wine-labels").remove([pm.storagePath]);
+    }
+  };
+
+  if (stage === "confirm" && pendingMatch) {
+    return (
+      <ConfirmMatch wine={pendingMatch.wine} imageUrl={pendingMatch.imageUrl} onSave={savePending} onDiscard={discardPending} />
+    );
+  }
 
   if (stage === "match" && scanned) {
     return (
@@ -395,6 +473,79 @@ function ScanPage() {
           e.target.value = "";
         }}
       />
+    </div>
+  );
+}
+
+function ConfirmMatch({
+  wine,
+  imageUrl,
+  onSave,
+  onDiscard,
+}: {
+  wine: AnalyzedWine;
+  imageUrl: string | null;
+  onSave: () => void;
+  onDiscard: () => void;
+}) {
+  const t = useT();
+  const rows: [string, string][] = (
+    [
+      [t("scan.fieldProducer"), wine.producer],
+      [t("scan.fieldName"), wine.wine_name],
+      [t("scan.fieldVintage"), wine.vintage ? String(wine.vintage) : null],
+      [t("scan.fieldRegion"), [wine.region, wine.country].filter(Boolean).join(", ") || null],
+      [t("scan.fieldGrapes"), wine.grape_varieties?.join(", ") || null],
+      [t("scan.fieldType"), wine.wine_type],
+    ] as [string, string | null][]
+  ).filter((r): r is [string, string] => Boolean(r[1]));
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-background text-foreground"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <header className="flex items-center justify-between px-5 pt-4">
+        <span className="h-9 w-9" />
+        <p className="font-display text-base">{t("scan.result")}</p>
+        <span className="h-9 w-9" />
+      </header>
+
+      <div className="flex flex-1 flex-col items-center justify-center px-6">
+        <h1 className="text-center font-display text-2xl text-gold">{t("scan.incompleteTitle")}</h1>
+        <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
+          {t("scan.incompleteDesc")}
+        </p>
+
+        <div className="mt-6 w-full max-w-sm rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
+          <div className="flex items-start gap-3">
+            <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
+              {imageUrl ? (
+                <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Wine className="h-6 w-6 text-gold/60" />
+              )}
+            </div>
+            <dl className="min-w-0 flex-1 space-y-1.5">
+              {rows.map(([label, value]) => (
+                <div key={label} className="flex items-baseline justify-between gap-3 text-sm">
+                  <dt className="shrink-0 text-xs uppercase tracking-wider text-cream/50">{label}</dt>
+                  <dd className="truncate text-right text-cream">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
+        <Button variant="outline" onClick={onDiscard} className="h-12 border-white/15 bg-transparent">
+          {t("scan.tryAgain")}
+        </Button>
+        <Button onClick={onSave} className="h-12 bg-gradient-burgundy text-cream">
+          <Check className="h-4 w-4" /> {t("scan.saveAnyway")}
+        </Button>
+      </div>
     </div>
   );
 }
