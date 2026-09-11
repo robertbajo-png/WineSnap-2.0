@@ -232,7 +232,7 @@ function ScanPage() {
         mode: pendingMatch.mode,
         wine_id: inserted.id,
         wine_type: inserted.wine_type,
-        partial: true,
+        partial: pendingMatch.partial,
       });
       setScanned(inserted);
       setPendingMatch(null);
@@ -255,7 +255,7 @@ function ScanPage() {
 
   if (stage === "confirm" && pendingMatch) {
     return (
-      <ConfirmMatch wine={pendingMatch.wine} imageUrl={pendingMatch.imageUrl} onSave={savePending} onDiscard={discardPending} />
+      <ConfirmMatch wine={pendingMatch.wine} imageUrl={pendingMatch.imageUrl} partial={pendingMatch.partial} onSave={savePending} onDiscard={discardPending} />
     );
   }
 
