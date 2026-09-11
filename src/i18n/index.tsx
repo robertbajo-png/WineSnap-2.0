@@ -21,7 +21,7 @@ const en = {
   "home.feat.collect.title": "Collect & Grow",
   "home.feat.collect.desc": "Track your bottles and cellar value",
   "home.cta.start": "Start Scanning",
-  "home.cta.later": "View my cellar",
+  
 
   // Profile
   "profile.title": "Profile",
