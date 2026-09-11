@@ -114,18 +114,14 @@ function ForYouPage() {
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-gold" />
-              <h1 className="font-display text-2xl text-gold">{t("foryou.title")}</h1>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {generatedAt
-                ? `${t("foryou.updated")} ${new Date(generatedAt).toLocaleString()}`
-                : t("foryou.subtitle")}
-            </p>
-          </div>
+        <div className="flex flex-col items-center">
+          <h1 className="font-display text-2xl text-gold">{t("foryou.title")}</h1>
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            {generatedAt
+              ? `${t("foryou.updated")} ${new Date(generatedAt).toLocaleString()}`
+              : t("foryou.subtitle")}
+          </p>
+        </div>
           <button
             onClick={generate}
             disabled={busy}

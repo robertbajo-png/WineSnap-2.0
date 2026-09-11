@@ -167,7 +167,7 @@ function RestaurantPage() {
         >
           <ArrowLeft className="h-5 w-5 text-cream" />
         </button>
-        <h1 className="font-display text-lg text-cream">{t("restaurant.title")}</h1>
+        <h1 className="font-display text-2xl text-gold">{t("restaurant.title")}</h1>
         <button
           onClick={() => setShowHistory((v) => !v)}
           className={`flex h-10 w-10 items-center justify-center rounded-full border ${showHistory ? "border-gold/50 bg-gold/10 text-gold" : "border-white/10 text-cream"}`}

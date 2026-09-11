@@ -71,7 +71,7 @@ function SearchPage() {
           <Logo size="md" />
         </header>
 
-        <h1 className="mt-5 font-display text-[32px] leading-tight">{t("search.title")}</h1>
+        <h1 className="mt-5 text-center font-display text-2xl text-gold">{t("search.title")}</h1>
 
         <div className="mt-4">
           <div className="relative">

@@ -152,7 +152,7 @@ function EditPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="font-display text-lg">{t("edit.title")}</h1>
+          <h1 className="font-display text-2xl text-gold">{t("edit.title")}</h1>
           <div className="w-9" />
         </header>
 

@@ -122,7 +122,7 @@ function NotesPage() {
           <button onClick={() => window.history.back()} className="text-sm text-foreground/80">
             {t("common.cancel")}
           </button>
-          <h1 className="font-display text-xl text-gold">{t("notes.title")}</h1>
+          <h1 className="font-display text-2xl text-gold">{t("notes.title")}</h1>
           <button
             onClick={save}
             disabled={saving}

@@ -100,7 +100,7 @@ function PairingsPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="font-display text-xl text-gold">{t("pairings.title")}</h1>
+          <h1 className="font-display text-2xl text-gold">{t("pairings.title")}</h1>
           <span className="h-9 w-9" />
         </header>
 
