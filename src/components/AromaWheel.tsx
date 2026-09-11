@@ -104,6 +104,7 @@ export function AromaWheel({
   onSelectFamily,
   onSelectCenter,
   centerActive,
+  simple = false,
 }: {
   size?: number;
   className?: string;
@@ -112,6 +113,8 @@ export function AromaWheel({
   onSelectFamily?: (family: string | null) => void;
   onSelectCenter?: () => void;
   centerActive?: boolean;
+  /** Simple mode: single family ring only — no sub/leaf rings or tick marks. */
+  simple?: boolean;
 }) {
   const cx = size / 2;
   const cy = size / 2;
