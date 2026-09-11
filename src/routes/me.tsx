@@ -43,8 +43,6 @@ type ProfileRow = {
   acidity?: number | null;
   price_min?: number | null;
   price_max?: number | null;
-  personalized_recs?: boolean;
-  hide_disliked?: boolean;
 };
 
 function MePage() {
@@ -80,7 +78,7 @@ function MePage() {
     supabase
       .from("profiles")
       .select(
-        "display_name,username,bio,is_public,preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,hide_disliked",
+        "display_name,username,bio,is_public,preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max",
       )
       .eq("id", user.id)
       .maybeSingle()
