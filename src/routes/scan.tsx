@@ -24,6 +24,7 @@ type PendingMatch = {
   imageUrl: string | null;
   storagePath: string | null;
   mode: "camera" | "text";
+  partial: boolean;
 };
 
 type AnalyzedWine = {
@@ -152,19 +153,14 @@ function ScanPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (isUnidentified(data?.wine)) throw new Error(t("scan.notIdentified"));
-      if (isPartial(data.wine)) {
-        setPendingMatch({ wine: data.wine, imageUrl: null, storagePath: null, mode: "text" });
-        setStage("confirm");
-        return;
-      }
-      const inserted = await persistWine(data.wine, null);
-      logEvent("wine_scanned", {
+      setPendingMatch({
+        wine: data.wine,
+        imageUrl: null,
+        storagePath: null,
         mode: "text",
-        wine_id: inserted.id,
-        wine_type: inserted.wine_type,
+        partial: isPartial(data.wine),
       });
-      setScanned(inserted);
-      setStage("match");
+      setStage("confirm");
     } catch (e) {
       console.error(e);
       toast.error(e instanceof Error ? e.message : t("common.error"));
@@ -202,34 +198,14 @@ function ScanPage() {
         await supabase.storage.from("wine-labels").remove([path]);
         throw new Error(t("scan.notIdentified"));
       }
-      if (isPartial(data.wine)) {
-        setPendingMatch({
-          wine: data.wine,
-          imageUrl: pub.publicUrl,
-          storagePath: path,
-          mode: "camera",
-        });
-        setStage("confirm");
-        return;
-      }
-
-      const inserted = await persistWine(data.wine, pub.publicUrl);
-      // Also register the label in wine_photos
-      await supabase.from("wine_photos").insert({
-        wine_id: inserted.id,
-        user_id: user.id,
-        url: pub.publicUrl,
-        storage_path: path,
-        kind: "label",
-        sort_order: 0,
-      });
-      logEvent("wine_scanned", {
+      setPendingMatch({
+        wine: data.wine,
+        imageUrl: pub.publicUrl,
+        storagePath: path,
         mode: "camera",
-        wine_id: inserted.id,
-        wine_type: inserted.wine_type,
+        partial: isPartial(data.wine),
       });
-      setScanned(inserted);
-      setStage("match");
+      setStage("confirm");
     } catch (e) {
       console.error(e);
       toast.error(e instanceof Error ? e.message : t("common.error"));
@@ -256,7 +232,7 @@ function ScanPage() {
         mode: pendingMatch.mode,
         wine_id: inserted.id,
         wine_type: inserted.wine_type,
-        partial: true,
+        partial: pendingMatch.partial,
       });
       setScanned(inserted);
       setPendingMatch(null);
@@ -279,7 +255,7 @@ function ScanPage() {
 
   if (stage === "confirm" && pendingMatch) {
     return (
-      <ConfirmMatch wine={pendingMatch.wine} imageUrl={pendingMatch.imageUrl} onSave={savePending} onDiscard={discardPending} />
+      <ConfirmMatch wine={pendingMatch.wine} imageUrl={pendingMatch.imageUrl} partial={pendingMatch.partial} onSave={savePending} onDiscard={discardPending} />
     );
   }
 
@@ -480,11 +456,13 @@ function ScanPage() {
 function ConfirmMatch({
   wine,
   imageUrl,
+  partial,
   onSave,
   onDiscard,
 }: {
   wine: AnalyzedWine;
   imageUrl: string | null;
+  partial: boolean;
   onSave: () => void;
   onDiscard: () => void;
 }) {
@@ -512,9 +490,11 @@ function ConfirmMatch({
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6">
-        <h1 className="text-center font-display text-2xl text-gold">{t("scan.incompleteTitle")}</h1>
+        <h1 className="text-center font-display text-2xl text-gold">
+          {t(partial ? "scan.incompleteTitle" : "scan.confirmTitle")}
+        </h1>
         <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
-          {t("scan.incompleteDesc")}
+          {t(partial ? "scan.incompleteDesc" : "scan.confirmDesc")}
         </p>
 
         <div className="mt-6 w-full max-w-sm rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
@@ -540,10 +520,10 @@ function ConfirmMatch({
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
         <Button variant="outline" onClick={onDiscard} className="h-12 border-white/15 bg-transparent">
-          {t("scan.tryAgain")}
+          {t(partial ? "scan.tryAgain" : "scan.discard")}
         </Button>
         <Button onClick={onSave} className="h-12 bg-gradient-burgundy text-cream">
-          <Check className="h-4 w-4" /> {t("scan.saveAnyway")}
+          <Check className="h-4 w-4" /> {t(partial ? "scan.saveAnyway" : "scan.save")}
         </Button>
       </div>
     </div>
