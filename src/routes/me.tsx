@@ -44,7 +44,6 @@ type ProfileRow = {
   price_min?: number | null;
   price_max?: number | null;
   personalized_recs?: boolean;
-  new_arrivals_alerts?: boolean;
   hide_disliked?: boolean;
 };
 
@@ -81,7 +80,7 @@ function MePage() {
     supabase
       .from("profiles")
       .select(
-        "display_name,username,bio,is_public,preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked",
+        "display_name,username,bio,is_public,preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,hide_disliked",
       )
       .eq("id", user.id)
       .maybeSingle()
@@ -228,12 +227,6 @@ function MePage() {
               desc={t("profile.personalizedDesc")}
               value={profile?.personalized_recs ?? true}
               onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)}
-            />
-            <ToggleRow
-              title={t("profile.newArrivals")}
-              desc={t("profile.newArrivalsDesc")}
-              value={profile?.new_arrivals_alerts ?? true}
-              onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)}
             />
             <FavRow
               icon={null}
