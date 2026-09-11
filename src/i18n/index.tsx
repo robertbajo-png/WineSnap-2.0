@@ -30,7 +30,7 @@ const en = {
   "profile.tasted": "Tasted",
   "profile.avgRating": "Avg. Rating",
   "profile.favorites": "Favorites",
-  "profile.edit": "Edit",
+  
   "profile.wineTypes": "Wine Types",
   "profile.tasteProfile": "Taste Profile",
   "profile.regions": "Regions",
@@ -443,7 +443,7 @@ const sv: Record<keyof typeof en, string> = {
   "profile.tasted": "Provade",
   "profile.avgRating": "Snittbetyg",
   "profile.favorites": "Favoriter",
-  "profile.edit": "Redigera",
+  
   "profile.wineTypes": "Vintyper",
   "profile.tasteProfile": "Smakprofil",
   "profile.regions": "Regioner",
