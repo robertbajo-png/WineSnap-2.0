@@ -114,13 +114,7 @@ function CellarPage() {
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <Link
-            to="/cellar/overview"
-            aria-label={t("cellar.overview")}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
-          >
-            <BarChart3 className="h-5 w-5" strokeWidth={1.6} />
-          </Link>
+          <div className="h-9 w-9" />
           <h1 className="font-display text-xl">{t("cellar.title")}</h1>
           <Link
             to="/scan"
