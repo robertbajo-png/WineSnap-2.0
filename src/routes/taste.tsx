@@ -357,6 +357,68 @@ function TastePage() {
   );
 }
 
+function AddOwn({
+  placeholder,
+  addLabel,
+  openLabel,
+  onAdd,
+}: {
+  placeholder: string;
+  addLabel: string;
+  openLabel: string;
+  onAdd: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+
+  const submit = () => {
+    const clean = value.trim().slice(0, 60);
+    if (!clean) return;
+    onAdd(clean);
+    setValue("");
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-2 text-xs text-gold/90 underline underline-offset-4"
+      >
+        {openLabel}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex gap-2">
+      <input
+        autoFocus
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+          if (e.key === "Escape") setOpen(false);
+        }}
+        placeholder={placeholder}
+        maxLength={60}
+        className="h-9 flex-1 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-foreground outline-none focus:border-gold/50"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        className="h-9 rounded-full border border-burgundy bg-burgundy px-4 text-xs text-cream"
+      >
+        {addLabel}
+      </button>
+    </div>
+  );
+}
+
 function SliderRow({
   label,
   leftLabel,
