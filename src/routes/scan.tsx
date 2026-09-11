@@ -237,6 +237,52 @@ function ScanPage() {
     }
   };
 
+  const savePending = async () => {
+    if (!pendingMatch || !user) return;
+    setStage("analyzing");
+    try {
+      const inserted = await persistWine(pendingMatch.wine, pendingMatch.imageUrl);
+      if (pendingMatch.storagePath && pendingMatch.imageUrl) {
+        await supabase.from("wine_photos").insert({
+          wine_id: inserted.id,
+          user_id: user.id,
+          url: pendingMatch.imageUrl,
+          storage_path: pendingMatch.storagePath,
+          kind: "label",
+          sort_order: 0,
+        });
+      }
+      logEvent("wine_scanned", {
+        mode: pendingMatch.mode,
+        wine_id: inserted.id,
+        wine_type: inserted.wine_type,
+        partial: true,
+      });
+      setScanned(inserted);
+      setPendingMatch(null);
+      setStage("match");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+      setStage("confirm");
+    }
+  };
+
+  const discardPending = async () => {
+    const pm = pendingMatch;
+    setPendingMatch(null);
+    setStage("idle");
+    if (pm?.storagePath) {
+      await supabase.storage.from("wine-labels").remove([pm.storagePath]);
+    }
+  };
+
+  if (stage === "confirm" && pendingMatch) {
+    return (
+      <ConfirmMatch wine={pendingMatch.wine} imageUrl={pendingMatch.imageUrl} onSave={savePending} onDiscard={discardPending} />
+    );
+  }
+
   if (stage === "match" && scanned) {
     return (
       <MatchFound
