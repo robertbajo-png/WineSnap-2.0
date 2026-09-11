@@ -100,7 +100,7 @@ function TastePage() {
   const [regions, setRegions] = useState<string[]>(["Bordeaux", "Tuscany"]);
   const [grapes, setGrapes] = useState<string[]>([]);
   const [body, setBody] = useState(80);
-  const [dry, setDry] = useState(85);
+  
   const [oak, setOak] = useState(90);
   const [tannin, setTannin] = useState(70);
   const [acid, setAcid] = useState(75);
@@ -206,13 +206,6 @@ function TastePage() {
               rightLabel={t("taste.bold")}
               value={body}
               onChange={setBody}
-            />
-            <SliderRow
-              label={t("taste.dry")}
-              leftLabel={t("taste.sweet")}
-              rightLabel={t("taste.dry")}
-              value={dry}
-              onChange={setDry}
             />
             <SliderRow
               label={t("taste.oak")}
