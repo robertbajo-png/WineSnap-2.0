@@ -439,7 +439,7 @@ const sv: Record<keyof typeof en, string> = {
   "home.feat.collect.title": "Samla & väx",
   "home.feat.collect.desc": "Håll koll på flaskor och källarens värde",
   "home.cta.start": "Börja skanna",
-  "home.cta.later": "Visa min källare",
+  
 
   "profile.title": "Profil",
   "profile.memberSince": "Medlem sedan",
