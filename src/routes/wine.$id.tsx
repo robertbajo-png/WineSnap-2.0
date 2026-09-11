@@ -214,19 +214,26 @@ function WineDetailPage() {
                   text: t("wine.shareText"),
                   url,
                 };
-                if (navigator.share) {
-                  try {
-                    await navigator.share(shareData);
-                  } catch {
-                    /* cancelled */
-                  }
-                } else {
+                const copyLink = async () => {
                   try {
                     await navigator.clipboard.writeText(url);
                     toast.success(t("wine.linkCopied"));
+                    return true;
                   } catch {
-                    /* noop */
+                    return false;
                   }
+                };
+                if (navigator.share) {
+                  try {
+                    await navigator.share(shareData);
+                    return;
+                  } catch (err) {
+                    // User cancelled -> do nothing. Blocked (e.g. inside an iframe) -> copy instead.
+                    if (err instanceof DOMException && err.name === "AbortError") return;
+                  }
+                }
+                if (!(await copyLink())) {
+                  window.prompt(t("wine.share"), url);
                 }
               }}
               aria-label={t("wine.share")}
