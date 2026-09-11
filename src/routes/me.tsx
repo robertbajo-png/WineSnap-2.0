@@ -152,12 +152,7 @@ function MePage() {
 
         {/* Favorites */}
         <section className="mt-7">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg text-gold">{t("profile.favorites")}</h2>
-            <Link to="/taste" className="text-xs text-burgundy">
-              {t("profile.edit")}
-            </Link>
-          </div>
+          <h2 className="font-display text-lg text-gold">{t("profile.favorites")}</h2>
           <div className="mt-3 space-y-2.5">
             <FavRow
               to="/taste"
