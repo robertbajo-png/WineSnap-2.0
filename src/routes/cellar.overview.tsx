@@ -60,17 +60,45 @@ function CellarOverviewPage() {
   const { user } = useAuth();
   const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const SELECT_COLS =
+    "region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at,market_price,market_price_currency,market_price_checked_at";
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("wines")
-      .select(
-        "region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at",
-      )
+      .select(SELECT_COLS)
       .eq("user_id", user.id)
-      .then(({ data }) => setWines((data as WineRow[]) ?? []));
+      .then(({ data }) => setWines((data as unknown as WineRow[]) ?? []));
   }, [user]);
+
+  async function refreshValues() {
+    if (!user || refreshing) return;
+    setRefreshing(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("No session");
+      const res = await fetch("/api/public/hooks/refresh-cellar-values", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json()) as { updated?: number; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Request failed");
+      const { data } = await supabase
+        .from("wines")
+        .select(SELECT_COLS)
+        .eq("user_id", user.id);
+      setWines((data as unknown as WineRow[]) ?? []);
+      toast.success(`${t("overview.valuesUpdated")} (${json.updated ?? 0})`);
+    } catch {
+      toast.error(t("overview.valuesFailed"));
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const active = wines.filter((w) => !w.consumed_at);
   const consumed = wines.filter((w) => w.consumed_at);
