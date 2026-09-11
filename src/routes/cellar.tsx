@@ -113,12 +113,11 @@ function CellarPage() {
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
-        <header className="flex items-center justify-between">
-          <div className="h-9 w-9" />
+        <header className="relative flex items-center justify-center">
           <h1 className="font-display text-2xl text-gold">{t("cellar.title")}</h1>
           <Link
             to="/scan"
-            className="flex h-9 items-center gap-1 rounded-full bg-gradient-burgundy px-3 text-xs font-medium text-cream"
+            className="absolute right-0 flex h-9 items-center gap-1 rounded-full bg-gradient-burgundy px-3 text-xs font-medium text-cream"
           >
             <Plus className="h-3.5 w-3.5" /> {t("cellar.add")}
           </Link>
