@@ -117,9 +117,9 @@ function CellarPage() {
           <h1 className="font-display text-2xl text-gold">{t("cellar.title")}</h1>
           <Link
             to="/scan"
-            className="absolute right-0 flex h-9 items-center gap-1 rounded-full bg-gradient-burgundy px-3 text-xs font-medium text-cream"
+            className="absolute right-0 flex h-8 items-center gap-1 rounded-full bg-gradient-burgundy px-2.5 text-xs font-medium text-cream"
           >
-            <Plus className="h-3.5 w-3.5" /> {t("cellar.add")}
+            <Plus className="h-3 w-3" /> {t("cellar.add")}
           </Link>
         </header>
 
