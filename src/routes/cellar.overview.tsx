@@ -118,6 +118,30 @@ function CellarOverviewPage() {
   const currency =
     priced.find((w) => w.purchase_currency)?.purchase_currency?.toUpperCase() ?? "SEK";
 
+  const valued = active.filter((w) => w.market_price != null);
+  const marketValue = valued.reduce(
+    (s, w) => s + Number(w.market_price ?? 0) * (w.quantity ?? 1),
+    0,
+  );
+  const marketCurrency =
+    valued.find((w) => w.market_price_currency)?.market_price_currency?.toUpperCase() ?? "SEK";
+  const comparable = valued.filter((w) => w.purchase_price != null);
+  const comparableCost = comparable.reduce(
+    (s, w) => s + Number(w.purchase_price ?? 0) * (w.quantity ?? 1),
+    0,
+  );
+  const comparableMarket = comparable.reduce(
+    (s, w) => s + Number(w.market_price ?? 0) * (w.quantity ?? 1),
+    0,
+  );
+  const delta = comparableMarket - comparableCost;
+  const deltaPct = comparableCost > 0 ? (delta / comparableCost) * 100 : 0;
+  const lastChecked = valued
+    .map((w) => w.market_price_checked_at)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+
   const now = new Date().getFullYear();
   const pastPeak = active
     .filter((w) => w.vintage && w.vintage < now - 6)
