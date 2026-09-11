@@ -296,6 +296,12 @@ function TastePage() {
               {showMoreLabel(showMoreRegions)}
             </button>
           </div>
+          <AddOwn
+            placeholder={t("taste.addRegionPlaceholder")}
+            addLabel={t("taste.add")}
+            openLabel={t("taste.addOwn")}
+            onAdd={(v: string) => setRegions((prev) => (prev.includes(v) ? prev : [...prev, v]))}
+          />
         </section>
 
         <section id="grapes" className="mt-7 scroll-mt-20">
