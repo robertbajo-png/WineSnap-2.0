@@ -74,6 +74,16 @@ function ScanPage() {
     }
   }, [user, loading, navigate, t]);
 
+  const isUnidentified = (w: AnalyzedWine | null | undefined) => {
+    if (!w) return true;
+    const name = (w.wine_name ?? "").toLowerCase().trim();
+    const producer = (w.producer ?? "").toLowerCase().trim();
+    const bad = /unidentified|not visible|unreadable|unknown|okänd|kan inte|ej synlig/;
+    const nameBad = !name || bad.test(name);
+    const producerBad = !producer || bad.test(producer);
+    return nameBad && producerBad;
+  };
+
   const persistWine = async (w: AnalyzedWine, imageUrl: string | null) => {
     if (!user) throw new Error("Not authenticated");
     const { data: inserted, error: insErr } = await supabase
