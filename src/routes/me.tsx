@@ -35,6 +35,7 @@ type ProfileRow = {
   is_public?: boolean;
   preferred_types?: string[];
   preferred_regions?: string[];
+  preferred_grapes?: string[];
   body?: number | null;
   sweetness?: number | null;
   oak?: number | null;
@@ -80,7 +81,7 @@ function MePage() {
     supabase
       .from("profiles")
       .select(
-        "display_name,username,bio,is_public,preferred_types,preferred_regions,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked",
+        "display_name,username,bio,is_public,preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max,personalized_recs,new_arrivals_alerts,hide_disliked",
       )
       .eq("id", user.id)
       .maybeSingle()
@@ -198,12 +199,15 @@ function MePage() {
               hash="grapes"
               icon={<Grape className="h-4 w-4 text-gold" />}
               label={t("profile.grapes")}
-              value={
-                topGrapes.length
-                  ? topGrapes.slice(0, 2).join(", ") +
-                    (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "")
-                  : "—"
-              }
+              value={(() => {
+                const list = profile?.preferred_grapes?.length
+                  ? profile.preferred_grapes
+                  : topGrapes;
+                return list.length
+                  ? list.slice(0, 2).join(", ") +
+                      (list.length > 2 ? ` +${list.length - 2}` : "")
+                  : t("profile.notSet");
+              })()}
             />
             <FavRow
               to="/wishlist"
