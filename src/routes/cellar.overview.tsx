@@ -291,6 +291,54 @@ function CellarOverviewPage() {
           </section>
         )}
 
+        {active.length > 0 && (
+          <section className="mt-4 rounded-2xl border border-gold/20 bg-gradient-to-b from-gold/[0.06] to-transparent p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {t("overview.marketValue")}
+                </p>
+                <p className="mt-1 font-display text-3xl text-cream">
+                  {valued.length ? formatMoney(marketValue, marketCurrency) : "—"}
+                </p>
+                {valued.length > 0 && comparable.length > 0 && (
+                  <p
+                    className={`mt-1 inline-flex items-center gap-1 text-xs ${
+                      delta >= 0 ? "text-success" : "text-destructive"
+                    }`}
+                  >
+                    {delta >= 0 ? (
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <TrendingDown className="h-3.5 w-3.5" />
+                    )}
+                    {delta >= 0 ? "+" : "−"}
+                    {formatMoney(Math.abs(delta), marketCurrency)} ({Math.abs(deltaPct).toFixed(0)}%){" "}
+                    <span className="text-muted-foreground">{t("overview.vsPurchase")}</span>
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={refreshValues}
+                disabled={refreshing}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gold/30 bg-card/50 px-3 py-1.5 text-[11px] text-gold disabled:opacity-60"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                {refreshing ? t("overview.updating") : t("overview.updateValues")}
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {valued.length
+                ? `${valued.length} ${t("overview.valued")} · ${t("overview.marketValueDesc")}${
+                    lastChecked
+                      ? ` · ${t("overview.lastChecked")} ${new Date(lastChecked).toLocaleDateString()}`
+                      : ""
+                  }`
+                : t("overview.marketValueEmpty")}
+            </p>
+          </section>
+        )}
+
         {typeStats.length > 0 && (
           <section className="mt-6">
             <h2 className="font-display text-base text-cream">{t("overview.byType")}</h2>
