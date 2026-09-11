@@ -104,6 +104,7 @@ export function AromaWheel({
   onSelectFamily,
   onSelectCenter,
   centerActive,
+  simple = false,
 }: {
   size?: number;
   className?: string;
@@ -112,6 +113,8 @@ export function AromaWheel({
   onSelectFamily?: (family: string | null) => void;
   onSelectCenter?: () => void;
   centerActive?: boolean;
+  /** Simple mode: single family ring only — no sub/leaf rings or tick marks. */
+  simple?: boolean;
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -155,12 +158,69 @@ export function AromaWheel({
           famElems.push(
             <path
               key={`fam-${fi}`}
-              d={arcPath(cx, cy, rInner, rMid, famStart, famEnd)}
+              d={
+                simple
+                  ? arcPath(cx, cy, rInner, rOuter, famStart, famEnd)
+                  : arcPath(cx, cy, rInner, rMid, famStart, famEnd)
+              }
               fill={fam.color}
               stroke={stroke}
               strokeWidth={1}
             />,
           );
+
+          if (simple) {
+            if (labels || size >= 200) {
+              const mid = famStart + 30;
+              const r = (rInner + rOuter) / 2;
+              const p = polar(cx, cy, r, mid);
+              famElems.push(
+                <text
+                  key={`fname-${fi}`}
+                  x={p.x}
+                  y={p.y + size * 0.012}
+                  textAnchor="middle"
+                  fontSize={size * 0.042}
+                  className="fill-cream font-display pointer-events-none"
+                >
+                  {fam.name}
+                </text>,
+              );
+            }
+            if (isSelected) {
+              famElems.push(
+                <path
+                  key={`hl-${fi}`}
+                  d={arcPath(cx, cy, rInner - 1, rOuter + 1, famStart, famEnd)}
+                  fill="none"
+                  stroke="oklch(0.85 0.16 75)"
+                  strokeWidth={1.6}
+                  className="pointer-events-none"
+                />,
+              );
+            }
+            groups.push(
+              <g
+                key={`g-${fi}`}
+                onClick={
+                  interactive
+                    ? (e) => {
+                        e.stopPropagation();
+                        onSelectFamily?.(isSelected ? null : fam.name);
+                      }
+                    : undefined
+                }
+                style={{
+                  cursor: interactive ? "pointer" : undefined,
+                  opacity: dim ? 0.35 : 1,
+                  transition: "opacity 200ms ease",
+                }}
+              >
+                {famElems}
+              </g>,
+            );
+            return;
+          }
 
           let subAngle = famStart;
           fam.subs.forEach((sub, si) => {
@@ -189,8 +249,8 @@ export function AromaWheel({
               famElems.push(
                 <text
                   key={`t-${id}`}
-                  fontSize={size * 0.024}
-                  className="fill-cream/85 font-display pointer-events-none"
+                  fontSize={size * 0.028}
+                  className="fill-cream/95 font-display pointer-events-none"
                 >
                   <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
                     {sub.name}
@@ -227,8 +287,8 @@ export function AromaWheel({
                 famElems.push(
                   <text
                     key={`t-${id}`}
-                    fontSize={size * 0.021}
-                    className="fill-cream/75 font-display pointer-events-none"
+                    fontSize={size * 0.024}
+                    className="fill-cream/90 font-display pointer-events-none"
                   >
                     <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
                       {leaf}
@@ -251,7 +311,7 @@ export function AromaWheel({
                 x={p.x}
                 y={p.y + size * 0.012}
                 textAnchor="middle"
-                fontSize={size * 0.034}
+                fontSize={size * 0.04}
                 className="fill-cream font-display pointer-events-none"
               >
                 {fam.name}
@@ -303,7 +363,8 @@ export function AromaWheel({
       })()}
 
       {/* gold tick marks on outer rim */}
-      {Array.from({ length: 120 }).map((_, i) => {
+      {!simple &&
+        Array.from({ length: 120 }).map((_, i) => {
         const a = (i * 3 - 90) * (Math.PI / 180);
         const r1 = rOuter + pad * 0.2;
         const r2 = rOuter + pad * (i % 10 === 0 ? 0.9 : 0.5);
