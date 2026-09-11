@@ -118,7 +118,7 @@ function ForYouPage() {
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-gold" />
-              <h1 className="font-display text-3xl text-cream">{t("foryou.title")}</h1>
+              <h1 className="font-display text-2xl text-gold">{t("foryou.title")}</h1>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {generatedAt
