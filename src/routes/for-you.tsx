@@ -114,18 +114,11 @@ function ForYouPage() {
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
-        <div className="flex flex-col items-center">
-          <h1 className="font-display text-2xl text-gold">{t("foryou.title")}</h1>
-          <p className="mt-1 text-center text-xs text-muted-foreground">
-            {generatedAt
-              ? `${t("foryou.updated")} ${new Date(generatedAt).toLocaleString()}`
-              : t("foryou.subtitle")}
-          </p>
-        </div>
+        <header className="relative flex items-center justify-center">
           <button
             onClick={generate}
             disabled={busy}
-            className="mt-1 flex h-9 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-xs text-gold disabled:opacity-50"
+            className="absolute right-0 top-0 flex h-9 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-xs text-gold disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -134,7 +127,15 @@ function ForYouPage() {
             )}
             {suggestions.length ? t("foryou.refresh") : t("foryou.generate")}
           </button>
-        </div>
+          <div className="text-center">
+            <h1 className="font-display text-2xl text-gold">{t("foryou.title")}</h1>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {generatedAt
+                ? `${t("foryou.updated")} ${new Date(generatedAt).toLocaleString()}`
+                : t("foryou.subtitle")}
+            </p>
+          </div>
+        </header>
 
         {error && (
           <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
