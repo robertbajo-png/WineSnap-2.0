@@ -99,9 +99,7 @@ function HomePage() {
             {t("home.cta.restaurant")}
           </Link>
 
-          <Link to="/cellar" className="mt-3 mb-4 block text-center font-display text-sm text-gold">
-            {t("home.cta.later")}
-          </Link>
+
         </div>
       </div>
     </AppShell>
