@@ -519,6 +519,7 @@ const sv: Record<keyof typeof en, string> = {
   "taste.grapesSub": "Välj druvorna du oftast tar till.",
   "taste.save": "Spara preferenser",
   "taste.saved": "Preferenser sparade",
+  "taste.saveFailed": "Kunde inte spara preferenser",
   "taste.body": "Kropp",
   "taste.light": "Lätt",
   "taste.bold": "Fyllig",
