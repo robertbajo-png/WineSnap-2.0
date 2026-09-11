@@ -11,9 +11,7 @@ import {
   Share2,
   Pencil,
   Clock,
-  Bookmark,
 } from "lucide-react";
-import { addToWishlist } from "@/lib/wishlist";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
