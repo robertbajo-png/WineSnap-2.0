@@ -222,23 +222,11 @@ function MePage() {
           <h2 className="font-display text-lg text-gold">{t("profile.recommended")}</h2>
           <p className="mt-1 text-xs text-muted-foreground">{t("profile.recommendedDesc")}</p>
           <div className="mt-3 space-y-2.5 pb-4">
-            <ToggleRow
-              title={t("profile.personalized")}
-              desc={t("profile.personalizedDesc")}
-              value={profile?.personalized_recs ?? true}
-              onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)}
-            />
             <FavRow
               icon={null}
               label={t("profile.priceRange")}
               value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))}
               onClick={() => editPriceRange(user?.id, profile, setProfile, lang)}
-            />
-            <ToggleRow
-              title={t("profile.hideDisliked")}
-              desc={t("profile.hideDislikedDesc")}
-              value={profile?.hide_disliked ?? true}
-              onChange={(v) => updatePref(user?.id, { hide_disliked: v }, setProfile)}
             />
           </div>
         </section>
