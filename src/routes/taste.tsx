@@ -342,7 +342,7 @@ function TastePage() {
             placeholder={t("taste.addGrapePlaceholder")}
             addLabel={t("taste.add")}
             openLabel={t("taste.addOwn")}
-            onAdd={(v) => setGrapes((prev) => (prev.includes(v) ? prev : [...prev, v]))}
+            onAdd={(v: string) => setGrapes((prev) => (prev.includes(v) ? prev : [...prev, v]))}
           />
         </section>
 
