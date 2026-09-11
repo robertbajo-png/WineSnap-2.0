@@ -105,6 +105,7 @@ const en = {
   "taste.grapesSub": "Pick the grapes you reach for.",
   "taste.save": "Save Preferences",
   "taste.saved": "Preferences saved",
+  "taste.saveFailed": "Could not save preferences",
   "taste.body": "Body",
   "taste.light": "Light",
   "taste.bold": "Bold",
