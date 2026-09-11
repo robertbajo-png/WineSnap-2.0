@@ -66,7 +66,7 @@ function FriendsPage() {
   return (
     <AppShell>
       <header className="mb-4">
-        <h1 className="font-display text-3xl text-gold">{t("friends.title")}</h1>
+        <h1 className="font-display text-2xl text-gold">{t("friends.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("friends.subtitle")}</p>
       </header>
 

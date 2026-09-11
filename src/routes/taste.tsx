@@ -190,7 +190,7 @@ function TastePage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="text-center">
-            <h1 className="font-display text-xl text-gold">{t("taste.title")}</h1>
+            <h1 className="font-display text-2xl text-gold">{t("taste.title")}</h1>
             <p className="text-[11px] text-muted-foreground">{t("taste.subtitle")}</p>
           </div>
           <span className="h-9 w-9" />
