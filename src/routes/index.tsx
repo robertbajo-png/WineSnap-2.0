@@ -82,14 +82,8 @@ function HomePage() {
             ))}
           </div>
 
-          {/* Pagination dots */}
-          <div className="mt-4 flex justify-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-            <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-            <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-          </div>
-
           {/* CTA */}
+
           <Link
             to="/scan"
             className="mt-5 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-lg text-cream shadow-elegant ring-1 ring-burgundy/40"
