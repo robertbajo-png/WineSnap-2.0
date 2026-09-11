@@ -34,6 +34,9 @@ type WineRow = {
   consumed_at: string | null;
   quantity: number | null;
   created_at: string;
+  market_price: number | null;
+  market_price_currency: string | null;
+  market_price_checked_at: string | null;
 };
 
 const PALETTE = [
