@@ -147,6 +147,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: "openai/gpt-5.6-terra",
+        reasoning_effort: "none",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },
