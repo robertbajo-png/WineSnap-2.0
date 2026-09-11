@@ -100,7 +100,7 @@ function TastePage() {
   const [regions, setRegions] = useState<string[]>(["Bordeaux", "Tuscany"]);
   const [grapes, setGrapes] = useState<string[]>([]);
   const [body, setBody] = useState(80);
-  const [dry, setDry] = useState(85);
+  
   const [oak, setOak] = useState(90);
   const [tannin, setTannin] = useState(70);
   const [acid, setAcid] = useState(75);
@@ -146,8 +146,13 @@ function TastePage() {
       tannin: Math.round(tannin / 10),
       acidity: Math.round(acid / 10),
     };
-    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" })
+      .select("id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!data) return toast.error(t("taste.saveFailed"));
     toast.success(t("taste.saved"));
     navigate({ to: "/me" });
   };
@@ -206,13 +211,6 @@ function TastePage() {
               rightLabel={t("taste.bold")}
               value={body}
               onChange={setBody}
-            />
-            <SliderRow
-              label={t("taste.dry")}
-              leftLabel={t("taste.sweet")}
-              rightLabel={t("taste.dry")}
-              value={dry}
-              onChange={setDry}
             />
             <SliderRow
               label={t("taste.oak")}
