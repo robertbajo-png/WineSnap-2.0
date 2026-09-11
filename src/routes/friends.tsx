@@ -65,9 +65,13 @@ function FriendsPage() {
 
   return (
     <AppShell>
-      <header className="mb-4">
-        <h1 className="font-display text-2xl text-gold">{t("friends.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("friends.subtitle")}</p>
+      <header className="flex items-center justify-between">
+        <span className="h-9 w-9" />
+        <div className="text-center">
+          <h1 className="font-display text-2xl text-gold">{t("friends.title")}</h1>
+          <p className="text-[11px] text-muted-foreground">{t("friends.subtitle")}</p>
+        </div>
+        <span className="h-9 w-9" />
       </header>
 
       <div className="mb-5 flex gap-1 rounded-xl border border-white/10 bg-card/40 p-1">
