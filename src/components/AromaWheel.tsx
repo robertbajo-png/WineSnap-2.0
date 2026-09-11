@@ -363,7 +363,8 @@ export function AromaWheel({
       })()}
 
       {/* gold tick marks on outer rim */}
-      {Array.from({ length: 120 }).map((_, i) => {
+      {!simple &&
+        Array.from({ length: 120 }).map((_, i) => {
         const a = (i * 3 - 90) * (Math.PI / 180);
         const r1 = rOuter + pad * 0.2;
         const r2 = rOuter + pad * (i % 10 === 0 ? 0.9 : 0.5);
