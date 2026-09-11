@@ -17,7 +17,14 @@ export const Route = createFileRoute("/scan")({
   component: ScanPage,
 });
 
-type Stage = "idle" | "analyzing" | "match";
+type Stage = "idle" | "analyzing" | "match" | "confirm";
+
+type PendingMatch = {
+  wine: AnalyzedWine;
+  imageUrl: string | null;
+  storagePath: string | null;
+  mode: "camera" | "text";
+};
 
 type AnalyzedWine = {
   producer?: string | null;
@@ -66,6 +73,7 @@ function ScanPage() {
   const [mode, setMode] = useState<"camera" | "text">("camera");
   const [text, setText] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -74,14 +82,23 @@ function ScanPage() {
     }
   }, [user, loading, navigate, t]);
 
+  const badMarker = /unidentified|not visible|unreadable|unknown|okänd|kan inte|ej synlig/;
+
   const isUnidentified = (w: AnalyzedWine | null | undefined) => {
     if (!w) return true;
     const name = (w.wine_name ?? "").toLowerCase().trim();
     const producer = (w.producer ?? "").toLowerCase().trim();
-    const bad = /unidentified|not visible|unreadable|unknown|okänd|kan inte|ej synlig/;
-    const nameBad = !name || bad.test(name);
-    const producerBad = !producer || bad.test(producer);
+    const nameBad = !name || badMarker.test(name);
+    const producerBad = !producer || badMarker.test(producer);
     return nameBad && producerBad;
+  };
+
+  const isPartial = (w: AnalyzedWine) => {
+    const name = (w.wine_name ?? "").toLowerCase().trim();
+    const producer = (w.producer ?? "").toLowerCase().trim();
+    if (badMarker.test(name) || badMarker.test(producer)) return true;
+    if (name.includes("(") || producer.includes("(")) return true;
+    return !w.vintage || !w.region || !w.grape_varieties?.length;
   };
 
   const persistWine = async (w: AnalyzedWine, imageUrl: string | null) => {
