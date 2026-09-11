@@ -11,9 +11,7 @@ import {
   Share2,
   Pencil,
   Clock,
-  Bookmark,
 } from "lucide-react";
-import { addToWishlist } from "@/lib/wishlist";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -236,27 +234,6 @@ function WineDetailPage() {
             >
               <Share2 className="h-4 w-4" />
             </button>
-            <button
-              onClick={() =>
-                addToWishlist({
-                  id: w.id,
-                  producer: w.producer,
-                  wine_name: w.wine_name ?? "",
-                  vintage: w.vintage,
-                  region: w.region,
-                  country: w.country,
-                  wine_type: w.wine_type,
-                  grape_varieties: w.grape_varieties,
-                  image_url: w.image_url,
-                  description: w.description,
-                  source: "cellar",
-                })
-              }
-              aria-label={t("wishlist.saveBtn")}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
-            >
-              <Bookmark className="h-4 w-4" />
-            </button>
             <Link
               to="/wine/$id/edit"
               params={{ id: w.id }}
@@ -264,13 +241,6 @@ function WineDetailPage() {
               className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
             >
               <Pencil className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/wine/$id/notes"
-              params={{ id: w.id }}
-              className="ml-1 text-xs text-burgundy hover:underline"
-            >
-              {t("wine.editNotes")}
             </Link>
           </div>
         </header>
