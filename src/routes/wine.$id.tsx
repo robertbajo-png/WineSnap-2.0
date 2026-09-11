@@ -18,7 +18,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WineDetailSkeleton } from "@/components/Skeleton";
-import { AromaWheel, AROMA_FAMILIES } from "@/components/AromaWheel";
+import { AromaWheel } from "@/components/AromaWheel";
 import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
