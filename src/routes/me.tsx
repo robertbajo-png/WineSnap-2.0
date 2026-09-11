@@ -229,12 +229,6 @@ function MePage() {
               value={profile?.personalized_recs ?? true}
               onChange={(v) => updatePref(user?.id, { personalized_recs: v }, setProfile)}
             />
-            <ToggleRow
-              title={t("profile.newArrivals")}
-              desc={t("profile.newArrivalsDesc")}
-              value={profile?.new_arrivals_alerts ?? true}
-              onChange={(v) => updatePref(user?.id, { new_arrivals_alerts: v }, setProfile)}
-            />
             <FavRow
               icon={null}
               label={t("profile.priceRange")}
