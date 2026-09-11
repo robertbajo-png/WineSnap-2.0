@@ -249,8 +249,8 @@ export function AromaWheel({
               famElems.push(
                 <text
                   key={`t-${id}`}
-                  fontSize={size * 0.024}
-                  className="fill-cream/85 font-display pointer-events-none"
+                  fontSize={size * 0.028}
+                  className="fill-cream/95 font-display pointer-events-none"
                 >
                   <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
                     {sub.name}
@@ -287,8 +287,8 @@ export function AromaWheel({
                 famElems.push(
                   <text
                     key={`t-${id}`}
-                    fontSize={size * 0.021}
-                    className="fill-cream/75 font-display pointer-events-none"
+                    fontSize={size * 0.024}
+                    className="fill-cream/90 font-display pointer-events-none"
                   >
                     <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
                       {leaf}
@@ -311,7 +311,7 @@ export function AromaWheel({
                 x={p.x}
                 y={p.y + size * 0.012}
                 textAnchor="middle"
-                fontSize={size * 0.034}
+                fontSize={size * 0.04}
                 className="fill-cream font-display pointer-events-none"
               >
                 {fam.name}
