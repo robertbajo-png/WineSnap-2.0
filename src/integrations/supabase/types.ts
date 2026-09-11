@@ -359,6 +359,10 @@ export type Database = {
           id: string
           image_url: string | null
           is_public: boolean
+          market_price: number | null
+          market_price_checked_at: string | null
+          market_price_currency: string | null
+          market_price_source: string | null
           notes: string | null
           oak: number | null
           primary_notes: string[] | null
@@ -372,6 +376,8 @@ export type Database = {
           serving_temp: string | null
           share_id: string | null
           sweetness: number | null
+          systembolaget_id: string | null
+          systembolaget_url: string | null
           tannin: number | null
           tertiary_notes: string[] | null
           updated_at: string
@@ -397,6 +403,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_public?: boolean
+          market_price?: number | null
+          market_price_checked_at?: string | null
+          market_price_currency?: string | null
+          market_price_source?: string | null
           notes?: string | null
           oak?: number | null
           primary_notes?: string[] | null
@@ -410,6 +420,8 @@ export type Database = {
           serving_temp?: string | null
           share_id?: string | null
           sweetness?: number | null
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
           tannin?: number | null
           tertiary_notes?: string[] | null
           updated_at?: string
@@ -435,6 +447,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_public?: boolean
+          market_price?: number | null
+          market_price_checked_at?: string | null
+          market_price_currency?: string | null
+          market_price_source?: string | null
           notes?: string | null
           oak?: number | null
           primary_notes?: string[] | null
@@ -448,6 +464,8 @@ export type Database = {
           serving_temp?: string | null
           share_id?: string | null
           sweetness?: number | null
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
           tannin?: number | null
           tertiary_notes?: string[] | null
           updated_at?: string

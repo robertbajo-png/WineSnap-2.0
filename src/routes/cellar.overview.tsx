@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +34,9 @@ type WineRow = {
   consumed_at: string | null;
   quantity: number | null;
   created_at: string;
+  market_price: number | null;
+  market_price_currency: string | null;
+  market_price_checked_at: string | null;
 };
 
 const PALETTE = [
@@ -56,17 +60,45 @@ function CellarOverviewPage() {
   const { user } = useAuth();
   const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const SELECT_COLS =
+    "region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at,market_price,market_price_currency,market_price_checked_at";
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("wines")
-      .select(
-        "region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at",
-      )
+      .select(SELECT_COLS)
       .eq("user_id", user.id)
-      .then(({ data }) => setWines((data as WineRow[]) ?? []));
+      .then(({ data }) => setWines((data as unknown as WineRow[]) ?? []));
   }, [user]);
+
+  async function refreshValues() {
+    if (!user || refreshing) return;
+    setRefreshing(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("No session");
+      const res = await fetch("/api/public/hooks/refresh-cellar-values", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json()) as { updated?: number; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Request failed");
+      const { data } = await supabase
+        .from("wines")
+        .select(SELECT_COLS)
+        .eq("user_id", user.id);
+      setWines((data as unknown as WineRow[]) ?? []);
+      toast.success(`${t("overview.valuesUpdated")} (${json.updated ?? 0})`);
+    } catch {
+      toast.error(t("overview.valuesFailed"));
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const active = wines.filter((w) => !w.consumed_at);
   const consumed = wines.filter((w) => w.consumed_at);
@@ -85,6 +117,30 @@ function CellarOverviewPage() {
     : 0;
   const currency =
     priced.find((w) => w.purchase_currency)?.purchase_currency?.toUpperCase() ?? "SEK";
+
+  const valued = active.filter((w) => w.market_price != null);
+  const marketValue = valued.reduce(
+    (s, w) => s + Number(w.market_price ?? 0) * (w.quantity ?? 1),
+    0,
+  );
+  const marketCurrency =
+    valued.find((w) => w.market_price_currency)?.market_price_currency?.toUpperCase() ?? "SEK";
+  const comparable = valued.filter((w) => w.purchase_price != null);
+  const comparableCost = comparable.reduce(
+    (s, w) => s + Number(w.purchase_price ?? 0) * (w.quantity ?? 1),
+    0,
+  );
+  const comparableMarket = comparable.reduce(
+    (s, w) => s + Number(w.market_price ?? 0) * (w.quantity ?? 1),
+    0,
+  );
+  const delta = comparableMarket - comparableCost;
+  const deltaPct = comparableCost > 0 ? (delta / comparableCost) * 100 : 0;
+  const lastChecked = valued
+    .map((w) => w.market_price_checked_at)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
 
   const now = new Date().getFullYear();
   const pastPeak = active
@@ -232,6 +288,54 @@ function CellarOverviewPage() {
               label={t("overview.avgRating")}
               sub={ratingStats.rated ? `${ratingStats.rated} ${t("overview.rated")}` : ""}
             />
+          </section>
+        )}
+
+        {active.length > 0 && (
+          <section className="mt-4 rounded-2xl border border-gold/20 bg-gradient-to-b from-gold/[0.06] to-transparent p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {t("overview.marketValue")}
+                </p>
+                <p className="mt-1 font-display text-3xl text-cream">
+                  {valued.length ? formatMoney(marketValue, marketCurrency) : "—"}
+                </p>
+                {valued.length > 0 && comparable.length > 0 && (
+                  <p
+                    className={`mt-1 inline-flex items-center gap-1 text-xs ${
+                      delta >= 0 ? "text-success" : "text-destructive"
+                    }`}
+                  >
+                    {delta >= 0 ? (
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <TrendingDown className="h-3.5 w-3.5" />
+                    )}
+                    {delta >= 0 ? "+" : "−"}
+                    {formatMoney(Math.abs(delta), marketCurrency)} ({Math.abs(deltaPct).toFixed(0)}%){" "}
+                    <span className="text-muted-foreground">{t("overview.vsPurchase")}</span>
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={refreshValues}
+                disabled={refreshing}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gold/30 bg-card/50 px-3 py-1.5 text-[11px] text-gold disabled:opacity-60"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                {refreshing ? t("overview.updating") : t("overview.updateValues")}
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {valued.length
+                ? `${valued.length} ${t("overview.valued")} · ${t("overview.marketValueDesc")}${
+                    lastChecked
+                      ? ` · ${t("overview.lastChecked")} ${new Date(lastChecked).toLocaleDateString()}`
+                      : ""
+                  }`
+                : t("overview.marketValueEmpty")}
+            </p>
           </section>
         )}
 
