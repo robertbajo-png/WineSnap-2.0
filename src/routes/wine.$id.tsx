@@ -322,28 +322,30 @@ function WineDetailPage() {
         {tab === "aromas" && (
           <>
             <Section title={t("wine.aromaProfile")}>
-              {/* Simplified single-ring wheel */}
-              <div className="relative mt-2 flex items-center justify-center py-2">
-                <div className="pointer-events-none absolute h-[200px] w-[200px] rounded-full bg-gold/8 blur-3xl" />
-                <AromaWheel
-                  size={230}
-                  simple
-                  selectedFamily={selectedFamily}
-                  onSelectFamily={(f) => {
-                    setSelectedFamily(f);
-                    setThisWineMode(false);
-                  }}
-                  centerActive={thisWineMode}
-                  onSelectCenter={() => {
-                    setThisWineMode((v) => !v);
-                    setSelectedFamily(null);
-                  }}
-                />
+              {/* Hero wheel with soft glow */}
+              <div className="relative mt-1 flex items-center justify-center py-3">
+                <div className="pointer-events-none absolute h-[260px] w-[260px] rounded-full bg-burgundy/15 blur-3xl" />
+                <div className="pointer-events-none absolute h-[210px] w-[210px] rounded-full bg-gold/10 blur-2xl" />
+                <div className="relative rounded-full border border-white/10 bg-gradient-to-b from-card/60 to-background/40 p-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
+                  <AromaWheel
+                    size={340}
+                    selectedFamily={selectedFamily}
+                    onSelectFamily={(f) => {
+                      setSelectedFamily(f);
+                      setThisWineMode(false);
+                    }}
+                    centerActive={thisWineMode}
+                    onSelectCenter={() => {
+                      setThisWineMode((v) => !v);
+                      setSelectedFamily(null);
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Active filter indicator */}
               {(selectedFamily || thisWineMode) && (
-                <div className="mt-1 flex items-center justify-center gap-2">
+                <div className="mt-2 flex items-center justify-center gap-2">
                   <span className="font-display text-xs uppercase tracking-[0.2em] text-gold/80">
                     {thisWineMode ? t("wine.thisWineAromas") : selectedFamily}
                   </span>
