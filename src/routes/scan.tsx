@@ -456,11 +456,13 @@ function ScanPage() {
 function ConfirmMatch({
   wine,
   imageUrl,
+  partial,
   onSave,
   onDiscard,
 }: {
   wine: AnalyzedWine;
   imageUrl: string | null;
+  partial: boolean;
   onSave: () => void;
   onDiscard: () => void;
 }) {
