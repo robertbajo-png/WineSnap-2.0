@@ -490,9 +490,11 @@ function ConfirmMatch({
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6">
-        <h1 className="text-center font-display text-2xl text-gold">{t("scan.incompleteTitle")}</h1>
+        <h1 className="text-center font-display text-2xl text-gold">
+          {t(partial ? "scan.incompleteTitle" : "scan.confirmTitle")}
+        </h1>
         <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
-          {t("scan.incompleteDesc")}
+          {t(partial ? "scan.incompleteDesc" : "scan.confirmDesc")}
         </p>
 
         <div className="mt-6 w-full max-w-sm rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
@@ -518,10 +520,10 @@ function ConfirmMatch({
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
         <Button variant="outline" onClick={onDiscard} className="h-12 border-white/15 bg-transparent">
-          {t("scan.tryAgain")}
+          {t(partial ? "scan.tryAgain" : "scan.discard")}
         </Button>
         <Button onClick={onSave} className="h-12 bg-gradient-burgundy text-cream">
-          <Check className="h-4 w-4" /> {t("scan.saveAnyway")}
+          <Check className="h-4 w-4" /> {t(partial ? "scan.saveAnyway" : "scan.save")}
         </Button>
       </div>
     </div>
