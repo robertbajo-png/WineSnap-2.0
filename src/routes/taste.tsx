@@ -110,14 +110,20 @@ function TastePage() {
 
   const hydrated = useRef(false);
 
-  // Scroll to the section named in the URL hash (e.g. /taste#regions)
+  // Scroll to the section named in the URL hash (e.g. /taste#regions).
+  // Retry briefly: the router's scroll restoration resets scroll after navigation.
   useEffect(() => {
     const id = window.location.hash.slice(1);
     if (!id) return;
-    const timer = setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
-    return () => clearTimeout(timer);
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (++tries >= 6) clearInterval(timer);
+    }, 250);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
