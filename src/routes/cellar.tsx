@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Wine, ChevronRight, Star, BarChart3, Camera } from "lucide-react";
+import { Plus, Search, Wine, ChevronRight, Star, Camera } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { EmptyState } from "@/components/EmptyState";
 import { CellarRowSkeleton } from "@/components/Skeleton";
