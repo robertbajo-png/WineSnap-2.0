@@ -110,6 +110,16 @@ function TastePage() {
 
   const hydrated = useRef(false);
 
+  // Scroll to the section named in the URL hash (e.g. /taste#regions)
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    const timer = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     if (!user || hydrated.current) return;
     hydrated.current = true;
