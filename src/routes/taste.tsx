@@ -146,8 +146,13 @@ function TastePage() {
       tannin: Math.round(tannin / 10),
       acidity: Math.round(acid / 10),
     };
-    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" })
+      .select("id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!data) return toast.error(t("taste.saveFailed"));
     toast.success(t("taste.saved"));
     navigate({ to: "/me" });
   };
