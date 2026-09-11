@@ -176,6 +176,10 @@ function ScanPage() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (isUnidentified(data?.wine)) {
+        await supabase.storage.from("wine-labels").remove([path]);
+        throw new Error(t("scan.notIdentified"));
+      }
 
       const inserted = await persistWine(data.wine, pub.publicUrl);
       // Also register the label in wine_photos
