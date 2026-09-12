@@ -79,6 +79,28 @@ const en = {
   "login.noAccount": "No account? Sign up",
   "login.hasAccount": "Have an account? Sign in",
   "login.created": "Account created — sign in.",
+  "login.forgot": "Forgot password?",
+
+  // Password reset
+  "reset.forgotTitle": "Reset password",
+  "reset.forgotSub": "Enter your email and we'll send you a reset link.",
+  "reset.sendLink": "Send reset link",
+  "reset.sentNeutral":
+    "If an account exists for that email, a reset link is on its way. Check your inbox and spam folder.",
+  "reset.backToLogin": "Back to sign in",
+  "reset.rateLimit": "Too many attempts. Please wait a few minutes and try again.",
+  "reset.networkError": "Something went wrong. Check your connection and try again.",
+  "reset.newTitle": "New password",
+  "reset.newSub": "Choose a new password for your account.",
+  "reset.newPassword": "New password",
+  "reset.confirmPassword": "Confirm new password",
+  "reset.savePassword": "Save password",
+  "reset.checking": "Verifying your reset link…",
+  "reset.invalidLink": "This reset link is invalid or has expired.",
+  "reset.requestNew": "Request a new link",
+  "reset.tooShort": "The password must be at least 6 characters.",
+  "reset.mismatch": "The passwords do not match.",
+  "reset.updated": "Password updated.",
 
   // About
   "about.back": "Back",
