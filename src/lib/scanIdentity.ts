@@ -148,7 +148,9 @@ export function isVintageSupported(vintage: number, labelText: string): boolean 
   return haystack.includes(` ${short} `);
 }
 
-function readField(field: unknown): { value: string; meta: FieldMeta; source: IdentitySource } | null {
+function readField(
+  field: unknown,
+): { value: string; meta: FieldMeta; source: IdentitySource } | null {
   if (field == null) return null;
   const f = typeof field === "object" ? (field as IdentityField) : { value: field };
   const raw = f.value;
@@ -365,11 +367,21 @@ export function createAttemptGuard(): AttemptGuard {
 /* ------------------------------------------------------------------ */
 
 export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
-export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+export const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
 
-export type ImageCheck = { ok: true; mimeType: string } | { ok: false; reason: "type" | "size" | "empty" };
+export type ImageCheck =
+  | { ok: true; mimeType: string }
+  | { ok: false; reason: "type" | "size" | "empty" };
 
-export function checkImageInput(file: { type?: string; size?: number } | null | undefined): ImageCheck {
+export function checkImageInput(
+  file: { type?: string; size?: number } | null | undefined,
+): ImageCheck {
   if (!file || !file.size) return { ok: false, reason: "empty" };
   if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "size" };
   const type = (file.type || "").toLowerCase();

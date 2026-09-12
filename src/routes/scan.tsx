@@ -362,7 +362,6 @@ function ScanPage() {
     );
   }
 
-
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col bg-background text-foreground"
@@ -586,7 +585,9 @@ function ConfirmMatch({
             <dl className="min-w-0 flex-1 space-y-1.5">
               {rows.map(([label, value]) => (
                 <div key={label} className="flex items-baseline justify-between gap-3 text-sm">
-                  <dt className="shrink-0 text-xs uppercase tracking-wider text-cream/50">{label}</dt>
+                  <dt className="shrink-0 text-xs uppercase tracking-wider text-cream/50">
+                    {label}
+                  </dt>
                   <dd className="truncate text-right text-cream">{value}</dd>
                 </div>
               ))}
@@ -624,11 +625,7 @@ function ConfirmMatch({
           {t(partial ? "scan.tryAgain" : "scan.discard")}
         </Button>
         <Button onClick={onSave} disabled={busy} className="h-12 bg-gradient-burgundy text-cream">
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Check className="h-4 w-4" />
-          )}{" "}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{" "}
           {t(partial ? "scan.saveAnyway" : "scan.save")}
         </Button>
       </div>
