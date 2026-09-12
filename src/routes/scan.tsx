@@ -8,6 +8,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
+import {
+  checkImageInput,
+  createAttemptGuard,
+  extensionForMime,
+  isUncertain,
+  sanitizeAnalysis,
+  type AnalyzedWine,
+  type SanitizedAnalysis,
+} from "@/lib/scanIdentity";
 const LabelCropper = lazy(() =>
   import("@/components/LabelCropper").then((m) => ({ default: m.LabelCropper })),
 );
@@ -21,34 +30,14 @@ type Stage = "idle" | "analyzing" | "match" | "confirm";
 
 type PendingMatch = {
   wine: AnalyzedWine;
+  /** Local preview of exactly the image we submitted (no public storage needed). */
+  previewUrl: string | null;
   imageUrl: string | null;
   storagePath: string | null;
   mode: "camera" | "text";
   partial: boolean;
-};
-
-type AnalyzedWine = {
-  producer?: string | null;
-  wine_name?: string | null;
-  vintage?: number | null;
-  grape_varieties?: string[] | null;
-  region?: string | null;
-  country?: string | null;
-  wine_type?: string | null;
-  description?: string | null;
-  fruit?: number | null;
-  tannin?: number | null;
-  acidity?: number | null;
-  oak?: number | null;
-  sweetness?: number | null;
-  body?: number | null;
-  primary_notes?: string[] | null;
-  secondary_notes?: string[] | null;
-  tertiary_notes?: string[] | null;
-  food_pairings?: unknown;
-  serving_temp?: string | null;
-  glass_type?: string | null;
-  decant?: boolean | null;
+  labelText: string;
+  confidence: number;
 };
 
 type ScannedWine = {
@@ -75,6 +64,28 @@ function ScanPage() {
   const [text, setText] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // One guard for the whole page: every analysis attempt gets an id, and a late
+  // response from an abandoned attempt is dropped instead of overwriting state.
+  const guardRef = useRef(createAttemptGuard());
+  const previewUrlRef = useRef<string | null>(null);
+
+  const setPreviewUrl = (url: string | null) => {
+    if (previewUrlRef.current && previewUrlRef.current !== url) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = url;
+  };
+
+  useEffect(() => {
+    const guard = guardRef.current;
+    return () => {
+      guard.cancel();
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -82,25 +93,6 @@ function ScanPage() {
       navigate({ to: "/login" });
     }
   }, [user, loading, navigate, t]);
-
-  const badMarker = /unidentified|not visible|unreadable|unknown|okänd|kan inte|ej synlig/;
-
-  const isUnidentified = (w: AnalyzedWine | null | undefined) => {
-    if (!w) return true;
-    const name = (w.wine_name ?? "").toLowerCase().trim();
-    const producer = (w.producer ?? "").toLowerCase().trim();
-    const nameBad = !name || badMarker.test(name);
-    const producerBad = !producer || badMarker.test(producer);
-    return nameBad && producerBad;
-  };
-
-  const isPartial = (w: AnalyzedWine) => {
-    const name = (w.wine_name ?? "").toLowerCase().trim();
-    const producer = (w.producer ?? "").toLowerCase().trim();
-    if (badMarker.test(name) || badMarker.test(producer)) return true;
-    if (name.includes("(") || producer.includes("(")) return true;
-    return !w.vintage || !w.region || !w.grape_varieties?.length;
-  };
 
   const persistWine = async (w: AnalyzedWine, imageUrl: string | null) => {
     if (!user) throw new Error("Not authenticated");
@@ -138,44 +130,93 @@ function ScanPage() {
     return inserted as ScannedWine;
   };
 
+  const applyResult = (
+    result: SanitizedAnalysis,
+    base: Omit<PendingMatch, "wine" | "partial" | "labelText" | "confidence">,
+  ) => {
+    setPendingMatch({
+      ...base,
+      wine: result.wine,
+      partial: isUncertain(result),
+      labelText: result.labelText,
+      confidence: result.minConfidence,
+    });
+    setStage("confirm");
+  };
+
   const handleText = async () => {
     if (!user) return;
+    const guard = guardRef.current;
+    if (guard.isBusy()) return;
     const q = text.trim();
     if (q.length < 3) {
       toast.error(t("scan.describeError"));
       return;
     }
+    const attempt = guard.start();
     setStage("analyzing");
     try {
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
         body: { text: q },
       });
+      if (!guard.isCurrent(attempt)) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (isUnidentified(data?.wine)) throw new Error(t("scan.notIdentified"));
-      setPendingMatch({
-        wine: data.wine,
+      const result = sanitizeAnalysis(data?.wine, q);
+      if (!result.identified) throw new Error(t("scan.notIdentified"));
+      applyResult(result, {
+        previewUrl: null,
         imageUrl: null,
         storagePath: null,
         mode: "text",
-        partial: isPartial(data.wine),
       });
-      setStage("confirm");
     } catch (e) {
+      if (!guard.isCurrent(attempt)) return;
       console.error(e);
       toast.error(e instanceof Error ? e.message : t("common.error"));
       setStage("idle");
+    } finally {
+      guard.finish(attempt);
     }
   };
 
-  const handleFile = async (file: File | Blob) => {
+  const handleFile = async (image: Blob, mimeTypeHint: string) => {
     if (!user) return;
+    const guard = guardRef.current;
+    if (guard.isBusy()) return;
+
+    const check = checkImageInput({ type: mimeTypeHint || image.type, size: image.size });
+    if (!check.ok) {
+      toast.error(
+        t(
+          check.reason === "size"
+            ? "scan.imageTooLarge"
+            : check.reason === "type"
+              ? "scan.imageType"
+              : "scan.imageError",
+        ),
+      );
+      setStage("idle");
+      return;
+    }
+    const mimeType = check.mimeType;
+
+    const attempt = guard.start();
     setStage("analyzing");
+    // Show exactly the bytes we submit, straight from the device.
+    setPreviewUrl(URL.createObjectURL(image));
+    const localPreview = previewUrlRef.current;
+
+    let path: string | null = null;
     try {
-      const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-      const { error: upErr } = await supabase.storage.from("wine-labels").upload(path, file, {
-        contentType: "image/jpeg",
-      });
+      path = `${user.id}/${crypto.randomUUID()}.${extensionForMime(mimeType)}`;
+      const { error: upErr } = await supabase.storage
+        .from("wine-labels")
+        .upload(path, image, { contentType: mimeType });
+      if (!guard.isCurrent(attempt)) {
+        await supabase.storage.from("wine-labels").remove([path]);
+        return;
+      }
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
 
@@ -183,39 +224,55 @@ function ScanPage() {
         const r = new FileReader();
         r.onload = () => {
           const s = r.result as string;
-          res(s.split(",")[1]);
+          const payload = s.split(",")[1];
+          if (!payload) rej(new Error(t("scan.imageError")));
+          else res(payload);
         };
-        r.onerror = rej;
-        r.readAsDataURL(file);
+        r.onerror = () => rej(new Error(t("scan.imageError")));
+        r.readAsDataURL(image);
       });
+      if (!guard.isCurrent(attempt)) {
+        await supabase.storage.from("wine-labels").remove([path]);
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { imageBase64: base64, mimeType: "image/jpeg" },
+        body: { imageBase64: base64, mimeType },
       });
+      if (!guard.isCurrent(attempt)) {
+        await supabase.storage.from("wine-labels").remove([path]);
+        return;
+      }
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (isUnidentified(data?.wine)) {
+
+      const result = sanitizeAnalysis(data?.wine);
+      if (!result.identified) {
         await supabase.storage.from("wine-labels").remove([path]);
+        path = null;
         throw new Error(t("scan.notIdentified"));
       }
-      setPendingMatch({
-        wine: data.wine,
+      applyResult(result, {
+        previewUrl: localPreview,
         imageUrl: pub.publicUrl,
         storagePath: path,
         mode: "camera",
-        partial: isPartial(data.wine),
       });
-      setStage("confirm");
     } catch (e) {
+      if (!guard.isCurrent(attempt)) return;
       console.error(e);
+      if (path) await supabase.storage.from("wine-labels").remove([path]);
+      setPreviewUrl(null);
       toast.error(e instanceof Error ? e.message : t("common.error"));
       setStage("idle");
+    } finally {
+      guard.finish(attempt);
     }
   };
 
   const savePending = async () => {
-    if (!pendingMatch || !user) return;
-    setStage("analyzing");
+    if (!pendingMatch || !user || saving) return;
+    setSaving(true);
     try {
       const inserted = await persistWine(pendingMatch.wine, pendingMatch.imageUrl);
       if (pendingMatch.storagePath && pendingMatch.imageUrl) {
@@ -236,17 +293,21 @@ function ScanPage() {
       });
       setScanned(inserted);
       setPendingMatch(null);
+      setPreviewUrl(null);
       setStage("match");
     } catch (e) {
       console.error(e);
       toast.error(e instanceof Error ? e.message : t("common.error"));
       setStage("confirm");
+    } finally {
+      setSaving(false);
     }
   };
 
   const discardPending = async () => {
     const pm = pendingMatch;
     setPendingMatch(null);
+    setPreviewUrl(null);
     setStage("idle");
     if (pm?.storagePath) {
       await supabase.storage.from("wine-labels").remove([pm.storagePath]);
@@ -255,7 +316,16 @@ function ScanPage() {
 
   if (stage === "confirm" && pendingMatch) {
     return (
-      <ConfirmMatch wine={pendingMatch.wine} imageUrl={pendingMatch.imageUrl} partial={pendingMatch.partial} onSave={savePending} onDiscard={discardPending} />
+      <ConfirmMatch
+        wine={pendingMatch.wine}
+        imageUrl={pendingMatch.previewUrl ?? pendingMatch.imageUrl}
+        partial={pendingMatch.partial}
+        labelText={pendingMatch.labelText}
+        confidence={pendingMatch.confidence}
+        busy={saving}
+        onSave={savePending}
+        onDiscard={discardPending}
+      />
     );
   }
 
@@ -278,19 +348,20 @@ function ScanPage() {
           file={pendingFile}
           busy={stage === "analyzing"}
           onCancel={() => {
+            guardRef.current.cancel();
             setPendingFile(null);
             setStage("idle");
           }}
-          onConfirm={async (blob) => {
-            const file = pendingFile;
+          onError={() => toast.error(t("scan.imageError"))}
+          onConfirm={async (image, meta) => {
             setPendingFile(null);
-            await handleFile(blob);
-            void file;
+            await handleFile(image, meta.mimeType);
           }}
         />
       </Suspense>
     );
   }
+
 
   return (
     <div
