@@ -592,7 +592,6 @@ function ConfirmMatch({
               ))}
             </dl>
           </div>
-          </div>
 
           {confidence > 0 && (
             <p className="mt-3 text-xs text-cream/50">
