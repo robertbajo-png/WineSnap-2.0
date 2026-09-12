@@ -592,15 +592,45 @@ function ConfirmMatch({
               ))}
             </dl>
           </div>
+          </div>
+
+          {confidence > 0 && (
+            <p className="mt-3 text-xs text-cream/50">
+              {t("scan.confidence")}: {Math.round(confidence)}%
+            </p>
+          )}
+          <p className="mt-1 text-xs text-cream/40">{t("scan.unknownFields")}</p>
+          <p className="mt-1 text-xs text-cream/40">{t("scan.tasteEstimate")}</p>
+
+          {labelText.trim() && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs uppercase tracking-wider text-cream/50">
+                {t("scan.labelRead")}
+              </summary>
+              <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-cream/70">
+                {labelText.trim()}
+              </pre>
+            </details>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
-        <Button variant="outline" onClick={onDiscard} className="h-12 border-white/15 bg-transparent">
+        <Button
+          variant="outline"
+          onClick={onDiscard}
+          disabled={busy}
+          className="h-12 border-white/15 bg-transparent"
+        >
           {t(partial ? "scan.tryAgain" : "scan.discard")}
         </Button>
-        <Button onClick={onSave} className="h-12 bg-gradient-burgundy text-cream">
-          <Check className="h-4 w-4" /> {t(partial ? "scan.saveAnyway" : "scan.save")}
+        <Button onClick={onSave} disabled={busy} className="h-12 bg-gradient-burgundy text-cream">
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          )}{" "}
+          {t(partial ? "scan.saveAnyway" : "scan.save")}
         </Button>
       </div>
     </div>
