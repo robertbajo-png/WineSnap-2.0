@@ -88,6 +88,8 @@ function ResetPasswordPage() {
       const { error: err } = await supabase.auth.updateUser({ password });
       if (err) {
         if (err.status === 429 || /rate limit/i.test(err.message)) setError(t("reset.rateLimit"));
+        else if (err.code === "weak_password" || /weak|leaked|pwned|known to be/i.test(err.message))
+          setError(t("reset.weakPassword"));
         else if (/session|expired|jwt/i.test(err.message)) setState("invalid");
         else setError(err.message);
         return;
