@@ -99,6 +99,7 @@ const en = {
   "reset.requestNew": "Request a new link",
   "reset.tooShort": "The password must be at least 6 characters.",
   "reset.mismatch": "The passwords do not match.",
+  "reset.weakPassword": "That password appears in lists of leaked passwords, so it can't be used. Please choose a different, stronger password.",
   "reset.updated": "Password updated.",
 
   // About
@@ -552,6 +553,7 @@ const sv: Record<keyof typeof en, string> = {
   "reset.requestNew": "Begär en ny länk",
   "reset.tooShort": "Lösenordet måste vara minst 6 tecken.",
   "reset.mismatch": "Lösenorden stämmer inte överens.",
+  "reset.weakPassword": "Det lösenordet finns i listor över läckta lösenord och kan inte användas. Välj ett annat, starkare lösenord — gärna en lång mening du kommer ihåg.",
   "reset.updated": "Lösenordet är uppdaterat.",
 
   "about.back": "Tillbaka",
