@@ -528,12 +528,18 @@ function ConfirmMatch({
   wine,
   imageUrl,
   partial,
+  labelText,
+  confidence,
+  busy,
   onSave,
   onDiscard,
 }: {
   wine: AnalyzedWine;
   imageUrl: string | null;
   partial: boolean;
+  labelText: string;
+  confidence: number;
+  busy?: boolean;
   onSave: () => void;
   onDiscard: () => void;
 }) {
