@@ -61,7 +61,8 @@ function ResetPasswordPage() {
       if (cancelled) return;
       if (data.session) setState("ready");
       else if (!hasRecoveryGrant(hash, search)) setState("invalid");
-      else setTimeout(() => !cancelled && setState((s) => (s === "checking" ? "invalid" : s)), 4000);
+      else
+        setTimeout(() => !cancelled && setState((s) => (s === "checking" ? "invalid" : s)), 4000);
     };
     void check();
 

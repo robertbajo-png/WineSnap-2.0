@@ -51,7 +51,9 @@ describe("hasRecoveryGrant", () => {
 
 describe("recoveryLinkError", () => {
   it("surfaces expired links", () => {
-    expect(recoveryLinkError("#error_code=otp_expired&error=access_denied", "")).toBe("otp_expired");
+    expect(recoveryLinkError("#error_code=otp_expired&error=access_denied", "")).toBe(
+      "otp_expired",
+    );
     expect(recoveryLinkError("", "?error=access_denied")).toBe("access_denied");
     expect(recoveryLinkError("", "")).toBeNull();
   });

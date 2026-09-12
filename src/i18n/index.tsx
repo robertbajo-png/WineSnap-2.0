@@ -21,7 +21,6 @@ const en = {
   "home.feat.collect.title": "Collect & Grow",
   "home.feat.collect.desc": "Track your bottles and cellar value",
   "home.cta.start": "Start Scanning",
-  
 
   // Profile
   "profile.title": "Profile",
@@ -30,7 +29,7 @@ const en = {
   "profile.tasted": "Tasted",
   "profile.avgRating": "Avg. Rating",
   "profile.favorites": "Favorites",
-  
+
   "profile.wineTypes": "Wine Types",
   "profile.tasteProfile": "Taste Profile",
   "profile.regions": "Regions",
@@ -205,18 +204,21 @@ const en = {
   "scan.descHint": "Producer, vintage, region, grape — anything you know helps.",
   "scan.identify": "Identify wine",
   "scan.describeError": "Please describe the wine in a few words",
-  "scan.notIdentified": "We couldn't read the label. Try a sharper, closer photo of the front label.",
+  "scan.notIdentified":
+    "We couldn't read the label. Try a sharper, closer photo of the front label.",
   "scan.signInInfo": "Sign in to scan wine labels",
   "scan.result": "Scan Result",
   "scan.matchFound": "Match Found",
   "scan.matchDesc": "We found a great match for this wine.",
   "scan.savedToCellar": "Saved to your cellar",
   "scan.incompleteTitle": "Uncertain match",
-  "scan.incompleteDesc": "The label could only be read partially. Review the details below and choose whether to save the wine anyway.",
+  "scan.incompleteDesc":
+    "The label could only be read partially. Review the details below and choose whether to save the wine anyway.",
   "scan.saveAnyway": "Save anyway",
   "scan.tryAgain": "Try again",
   "scan.confirmTitle": "Is this right?",
-  "scan.confirmDesc": "Review what we found below and choose whether to save the wine to your cellar.",
+  "scan.confirmDesc":
+    "Review what we found below and choose whether to save the wine to your cellar.",
   "scan.save": "Save",
   "scan.discard": "Discard",
   "scan.fieldProducer": "Producer",
@@ -476,7 +478,6 @@ const sv: Record<keyof typeof en, string> = {
   "home.feat.collect.title": "Samla & väx",
   "home.feat.collect.desc": "Håll koll på flaskor och källarens värde",
   "home.cta.start": "Börja skanna",
-  
 
   "profile.title": "Profil",
   "profile.memberSince": "Medlem sedan",
@@ -484,7 +485,7 @@ const sv: Record<keyof typeof en, string> = {
   "profile.tasted": "Provade",
   "profile.avgRating": "Snittbetyg",
   "profile.favorites": "Favoriter",
-  
+
   "profile.wineTypes": "Vintyper",
   "profile.tasteProfile": "Smakprofil",
   "profile.regions": "Regioner",
@@ -651,14 +652,16 @@ const sv: Record<keyof typeof en, string> = {
   "scan.descHint": "Producent, årgång, region, druva — allt du vet hjälper.",
   "scan.identify": "Identifiera vinet",
   "scan.describeError": "Beskriv vinet med några ord",
-  "scan.notIdentified": "Vi kunde inte läsa etiketten. Ta en skarpare bild närmare framsidans etikett.",
+  "scan.notIdentified":
+    "Vi kunde inte läsa etiketten. Ta en skarpare bild närmare framsidans etikett.",
   "scan.signInInfo": "Logga in för att skanna vinetiketter",
   "scan.result": "Skanningsresultat",
   "scan.matchFound": "Träff hittad",
   "scan.matchDesc": "Vi hittade en bra matchning för vinet.",
   "scan.savedToCellar": "Sparat i din källare",
   "scan.incompleteTitle": "Osäker träff",
-  "scan.incompleteDesc": "Etiketten kunde bara läsas delvis. Granska uppgifterna nedan och välj om du vill spara vinet ändå.",
+  "scan.incompleteDesc":
+    "Etiketten kunde bara läsas delvis. Granska uppgifterna nedan och välj om du vill spara vinet ändå.",
   "scan.saveAnyway": "Spara ändå",
   "scan.tryAgain": "Försök igen",
   "scan.confirmTitle": "Stämmer det här?",
