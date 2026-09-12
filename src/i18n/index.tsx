@@ -99,7 +99,8 @@ const en = {
   "reset.requestNew": "Request a new link",
   "reset.tooShort": "The password must be at least 6 characters.",
   "reset.mismatch": "The passwords do not match.",
-  "reset.weakPassword": "That password appears in lists of leaked passwords, so it can't be used. Please choose a different, stronger password.",
+  "reset.weakPassword":
+    "That password appears in lists of leaked passwords, so it can't be used. Please choose a different, stronger password.",
   "reset.updated": "Password updated.",
 
   // About
@@ -230,6 +231,13 @@ const en = {
   "scan.fieldType": "Type",
   "scan.viewDetails": "View Details",
   "scan.saveToCellar": "Save to Cellar",
+  "scan.imageTooLarge": "That photo is too large. Try a smaller one.",
+  "scan.imageType": "That file is not a photo we can read.",
+  "scan.imageError": "We couldn't read that photo. Please try again.",
+  "scan.labelRead": "Text read from the label",
+  "scan.unknownFields": "Anything we couldn't read is left blank.",
+  "scan.confidence": "Certainty",
+  "scan.tasteEstimate": "Taste and serving details are estimates, not read from the label.",
 
   // Wine detail
   "wine.back": "Back",
@@ -423,6 +431,7 @@ const en = {
   "crop.adjust": "Adjust label",
   "crop.retake": "Retake",
   "crop.use": "Use photo",
+  "crop.useOriginal": "Use the whole photo",
   "photos.title": "Photos",
   "photos.add": "Add photo",
   "photos.empty": "No extra photos yet.",
@@ -553,7 +562,8 @@ const sv: Record<keyof typeof en, string> = {
   "reset.requestNew": "Begär en ny länk",
   "reset.tooShort": "Lösenordet måste vara minst 6 tecken.",
   "reset.mismatch": "Lösenorden stämmer inte överens.",
-  "reset.weakPassword": "Det lösenordet finns i listor över läckta lösenord och kan inte användas. Välj ett annat, starkare lösenord — gärna en lång mening du kommer ihåg.",
+  "reset.weakPassword":
+    "Det lösenordet finns i listor över läckta lösenord och kan inte användas. Välj ett annat, starkare lösenord — gärna en lång mening du kommer ihåg.",
   "reset.updated": "Lösenordet är uppdaterat.",
 
   "about.back": "Tillbaka",
@@ -678,6 +688,13 @@ const sv: Record<keyof typeof en, string> = {
   "scan.fieldType": "Typ",
   "scan.viewDetails": "Visa detaljer",
   "scan.saveToCellar": "Till källaren",
+  "scan.imageTooLarge": "Bilden är för stor. Prova en mindre bild.",
+  "scan.imageType": "Filen är inte en bild vi kan läsa.",
+  "scan.imageError": "Vi kunde inte läsa bilden. Försök igen.",
+  "scan.labelRead": "Text vi läste på etiketten",
+  "scan.unknownFields": "Det vi inte kunde läsa lämnas tomt.",
+  "scan.confidence": "Säkerhet",
+  "scan.tasteEstimate": "Smak och servering är uppskattningar, inte avläst från etiketten.",
 
   "wine.back": "Tillbaka",
   "wine.editNotes": "Redigera notering",
@@ -858,6 +875,7 @@ const sv: Record<keyof typeof en, string> = {
   "crop.adjust": "Justera etikett",
   "crop.retake": "Ta om",
   "crop.use": "Använd bild",
+  "crop.useOriginal": "Använd hela bilden",
   "photos.title": "Bilder",
   "photos.add": "Lägg till bild",
   "photos.empty": "Inga extra bilder än.",
