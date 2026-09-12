@@ -14,11 +14,13 @@ import { Route as TasteRouteImport } from './routes/taste'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RestaurantRouteImport } from './routes/restaurant'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as FriendsRouteImport } from './routes/friends'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForYouRouteImport } from './routes/for-you'
 import { Route as CellarRouteImport } from './routes/cellar'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -60,6 +62,11 @@ const RestaurantRoute = RestaurantRouteImport.update({
   path: '/restaurant',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -83,6 +90,11 @@ const HistoryRoute = HistoryRouteImport.update({
 const FriendsRoute = FriendsRouteImport.update({
   id: '/friends',
   path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForYouRoute = ForYouRouteImport.update({
@@ -170,11 +182,13 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
@@ -197,11 +211,13 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
@@ -225,11 +241,13 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
@@ -254,11 +272,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/forgot-password'
     | '/friends'
     | '/history'
     | '/login'
     | '/me'
     | '/onboarding'
+    | '/reset-password'
     | '/restaurant'
     | '/scan'
     | '/search'
@@ -281,11 +301,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/forgot-password'
     | '/friends'
     | '/history'
     | '/login'
     | '/me'
     | '/onboarding'
+    | '/reset-password'
     | '/restaurant'
     | '/scan'
     | '/search'
@@ -308,11 +330,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/forgot-password'
     | '/friends'
     | '/history'
     | '/login'
     | '/me'
     | '/onboarding'
+    | '/reset-password'
     | '/restaurant'
     | '/scan'
     | '/search'
@@ -336,11 +360,13 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CellarRoute: typeof CellarRouteWithChildren
   ForYouRoute: typeof ForYouRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   FriendsRoute: typeof FriendsRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   OnboardingRoute: typeof OnboardingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   RestaurantRoute: typeof RestaurantRoute
   ScanRoute: typeof ScanRoute
   SearchRoute: typeof SearchRoute
@@ -391,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestaurantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -424,6 +457,13 @@ declare module '@tanstack/react-router' {
       path: '/friends'
       fullPath: '/friends'
       preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/for-you': {
@@ -566,11 +606,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CellarRoute: CellarRouteWithChildren,
   ForYouRoute: ForYouRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   FriendsRoute: FriendsRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   OnboardingRoute: OnboardingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   RestaurantRoute: RestaurantRoute,
   ScanRoute: ScanRoute,
   SearchRoute: SearchRoute,

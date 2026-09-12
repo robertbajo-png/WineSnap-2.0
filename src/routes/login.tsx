@@ -111,6 +111,16 @@ function LoginPage() {
                 : t("login.createAccount")}
           </Button>
         </form>
+        {mode === "signin" && (
+          <div className="mt-3 text-center">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              {t("login.forgot")}
+            </Link>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
