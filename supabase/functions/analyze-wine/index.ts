@@ -218,13 +218,19 @@ Deno.serve(async (req: Request) => {
     if (!toolCall) throw new Error("AI returned no tool call");
     const parsed = JSON.parse(toolCall.function.arguments);
 
+    // Text mode: the user's own words are the authoritative evidence, even if
+    // the model invented a label_text. Image mode: only the transcription counts.
+    const isTextMode = !imageBase64 && !imageUrl;
+    const labelText = authoritativeLabelText(parsed.label_text, isTextMode ? String(text ?? "") : "");
+
     const wine = {
-      label_text: typeof parsed.label_text === "string" ? parsed.label_text : "",
-      identity: scrubIdentity(parsed.identity),
+      label_text: labelText,
+      identity: validateIdentity(parsed.identity, labelText),
       taste: parsed.taste ?? {},
     };
 
     return json({ wine });
+
   } catch (e) {
     console.error("analyze-wine error:", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
