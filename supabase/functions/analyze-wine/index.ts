@@ -7,6 +7,11 @@
 // source ("label" | "inference" | "unknown"), confidence and evidence quote.
 // Identity is never invented: unknown stays unknown. Taste/serving values are
 // explicitly estimates and are kept separate from the read facts.
+//
+// The validation rules are shared verbatim with the client (see the import
+// below) so server and browser cannot drift apart.
+
+import { authoritativeLabelText, validateIdentity } from "../../../src/lib/labelValidation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -137,36 +142,8 @@ const wineTool = {
   },
 };
 
-type Field = { value: unknown; source?: string; confidence?: number; evidence?: string | null };
-
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const MAX_BASE64_CHARS = 18_000_000; // ~13 MB binary
-
-/** Defence in depth: strip identity the model did not claim to have read. */
-function scrubIdentity(identity: Record<string, unknown> | undefined) {
-  if (!identity || typeof identity !== "object") return {};
-  const clean = (f: unknown): Field | null => {
-    if (!f || typeof f !== "object") return null;
-    const field = f as Field;
-    const source = String(field.source ?? "unknown").toLowerCase();
-    const confidence = Number(field.confidence ?? 0) || 0;
-    if (source !== "label" || confidence < 50 || field.value == null || field.value === "") {
-      return { value: null, source: "unknown", confidence, evidence: field.evidence ?? null };
-    }
-    return { value: field.value, source: "label", confidence, evidence: field.evidence ?? null };
-  };
-
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(identity)) {
-    if (key === "grape_varieties") {
-      const list = Array.isArray(value) ? value : [];
-      out[key] = list.map(clean).filter((f): f is Field => Boolean(f && f.value));
-    } else {
-      out[key] = clean(value);
-    }
-  }
-  return out;
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -245,9 +222,17 @@ Deno.serve(async (req: Request) => {
     if (!toolCall) throw new Error("AI returned no tool call");
     const parsed = JSON.parse(toolCall.function.arguments);
 
+    // Text mode: the user's own words are the authoritative evidence, even if
+    // the model invented a label_text. Image mode: only the transcription counts.
+    const isTextMode = !imageBase64 && !imageUrl;
+    const labelText = authoritativeLabelText(
+      parsed.label_text,
+      isTextMode ? String(text ?? "") : "",
+    );
+
     const wine = {
-      label_text: typeof parsed.label_text === "string" ? parsed.label_text : "",
-      identity: scrubIdentity(parsed.identity),
+      label_text: labelText,
+      identity: validateIdentity(parsed.identity, labelText),
       taste: parsed.taste ?? {},
     };
 

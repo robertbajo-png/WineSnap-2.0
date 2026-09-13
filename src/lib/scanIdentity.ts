@@ -1,23 +1,37 @@
 /**
- * Pure helpers for the wine scan pipeline.
+ * Scan-pipeline helpers for the client.
  *
- * The AI model returns a transcription of the visible label text plus one entry
- * per identity field with a declared source. We never trust inferred identity:
- * a producer / wine name / vintage / region / grape is only kept when the model
- * says it read it off the label AND the value is actually supported by the
- * transcribed text. Evidence from the same model is not independent proof, so
- * this is a consistency check, not a guarantee against hallucination — but it
- * removes the common failure where the model swaps in a famous wine it knows.
+ * The identity rules themselves live in ./labelValidation.ts, which is shared
+ * verbatim with the analyze-wine edge function so client and server cannot
+ * drift apart. This file adds the client-only pieces: shaping the response into
+ * a wine we can render, the attempt guard, and image input checks.
  */
 
-export type IdentitySource = "label" | "inference" | "unknown";
+import {
+  authoritativeLabelText,
+  isAcceptableField,
+  isSupportedByLabelText,
+  isVintageSupported,
+  normalizeText,
+  num,
+  parseVintage,
+  readField,
+  BAD_MARKER,
+  MIN_CONFIDENCE,
+  type FieldMeta,
+  type IdentityField,
+  type IdentitySource,
+} from "./labelValidation";
 
-export type IdentityField = {
-  value?: unknown;
-  source?: string | null;
-  confidence?: number | null;
-  evidence?: string | null;
+export {
+  authoritativeLabelText,
+  isAcceptableField,
+  isSupportedByLabelText,
+  isVintageSupported,
+  normalizeText,
+  MIN_CONFIDENCE,
 };
+export type { FieldMeta, IdentityField, IdentitySource };
 
 export type AnalyzedWine = {
   producer?: string | null;
@@ -43,11 +57,6 @@ export type AnalyzedWine = {
   decant?: boolean | null;
 };
 
-export type FieldMeta = {
-  confidence: number;
-  evidence: string | null;
-};
-
 export type SanitizedAnalysis = {
   wine: AnalyzedWine;
   labelText: string;
@@ -59,124 +68,12 @@ export type SanitizedAnalysis = {
   minConfidence: number;
 };
 
-const BAD_MARKER =
-  /unidentified|not visible|unreadable|illegible|unknown|not specified|n\/a|okänd|kan inte|ej synlig|ej läsbar/i;
-
-const MIN_CONFIDENCE = 50;
-
-const STOPWORDS = new Set([
-  "wine",
-  "wines",
-  "weingut",
-  "weinguts",
-  "winery",
-  "estate",
-  "domaine",
-  "domain",
-  "chateau",
-  "château",
-  "castello",
-  "tenuta",
-  "bodega",
-  "bodegas",
-  "cantina",
-  "quinta",
-  "the",
-  "and",
-  "und",
-  "der",
-  "die",
-  "das",
-  "del",
-  "della",
-  "des",
-  "de",
-  "di",
-  "du",
-  "da",
-  "la",
-  "le",
-  "el",
-  "vin",
-  "vino",
-  "wein",
-  "cuvee",
-  "cuvée",
-  "reserva",
-  "reserve",
-]);
-
-export function normalizeText(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function significantTokens(value: string): string[] {
-  return normalizeText(value)
-    .split(" ")
-    .filter((tok) => tok.length >= 3 && !STOPWORDS.has(tok));
-}
-
-/**
- * True when the value plausibly appears in the transcribed label text.
- * Requires a majority of the value's significant tokens to be present.
- */
-export function isSupportedByLabelText(value: string, labelText: string): boolean {
-  const haystack = ` ${normalizeText(labelText)} `;
-  if (haystack.trim().length === 0) return false;
-
-  const tokens = significantTokens(value);
-  if (tokens.length === 0) {
-    const normalized = normalizeText(value);
-    return normalized.length > 0 && haystack.includes(` ${normalized} `);
-  }
-
-  const hits = tokens.filter((tok) => haystack.includes(` ${tok} `)).length;
-  return hits >= Math.ceil(tokens.length / 2);
-}
-
-/** Vintage may be printed in full ("2023") or shortened ("20 / 23", "'23"). */
-export function isVintageSupported(vintage: number, labelText: string): boolean {
-  const haystack = ` ${normalizeText(labelText)} `;
-  const full = String(vintage);
-  if (haystack.includes(` ${full} `)) return true;
-  const short = full.slice(2);
-  return haystack.includes(` ${short} `);
-}
-
-function readField(
-  field: unknown,
-): { value: string; meta: FieldMeta; source: IdentitySource } | null {
-  if (field == null) return null;
-  const f = typeof field === "object" ? (field as IdentityField) : { value: field };
-  const raw = f.value;
-  if (raw == null) return null;
-  const value = String(raw).trim();
-  if (!value || BAD_MARKER.test(value)) return null;
-  const source = (String(f.source ?? "unknown").toLowerCase() as IdentitySource) ?? "unknown";
-  const confidence = Math.max(0, Math.min(100, Number(f.confidence ?? 0) || 0));
-  return {
-    value,
-    source: source === "label" || source === "inference" ? source : "unknown",
-    meta: { confidence, evidence: f.evidence ? String(f.evidence) : null },
-  };
-}
-
 type RawAnalysis = {
   label_text?: unknown;
   identity?: Record<string, unknown>;
   taste?: Record<string, unknown>;
   [key: string]: unknown;
 };
-
-function num(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
 
 function strArray(v: unknown): string[] | null {
   if (!Array.isArray(v)) return null;
@@ -186,12 +83,12 @@ function strArray(v: unknown): string[] | null {
 
 /**
  * Validate a raw model response into a wine we are willing to show.
- * `fallbackLabelText` is used for text-mode scans, where the user's own
- * description is the evidence instead of a photographed label.
+ * `userText` is the user's own description in text mode; when present it is the
+ * authoritative evidence, even if the model invented a label_text.
  */
-export function sanitizeAnalysis(raw: unknown, fallbackLabelText = ""): SanitizedAnalysis {
+export function sanitizeAnalysis(raw: unknown, userText = ""): SanitizedAnalysis {
   const r = (raw ?? {}) as RawAnalysis;
-  const labelText = String(r.label_text ?? "").trim() || fallbackLabelText.trim();
+  const labelText = authoritativeLabelText(r.label_text, userText);
   const identity = (r.identity ?? {}) as Record<string, unknown>;
   const taste = (r.taste ?? r) as Record<string, unknown>;
 
@@ -199,18 +96,10 @@ export function sanitizeAnalysis(raw: unknown, fallbackLabelText = ""): Sanitize
   const meta: SanitizedAnalysis["meta"] = {};
   const confidences: number[] = [];
 
-  const keep = (
-    key: keyof AnalyzedWine,
-    field: unknown,
-    supported: (value: string) => boolean,
-  ): string | null => {
+  const keep = (key: keyof AnalyzedWine, field: unknown): string | null => {
     const parsed = readField(field);
     if (!parsed) return null;
-    if (parsed.source !== "label" || parsed.meta.confidence < MIN_CONFIDENCE) {
-      rejected.push(key as string);
-      return null;
-    }
-    if (!supported(parsed.value)) {
+    if (!isAcceptableField(parsed, labelText)) {
       rejected.push(key as string);
       return null;
     }
@@ -219,28 +108,20 @@ export function sanitizeAnalysis(raw: unknown, fallbackLabelText = ""): Sanitize
     return parsed.value;
   };
 
-  const supportedBy = (value: string) => isSupportedByLabelText(value, labelText);
-
-  const producer = keep("producer", identity.producer, supportedBy);
-  const wine_name = keep("wine_name", identity.wine_name, supportedBy);
-  const region = keep("region", identity.region, supportedBy);
-  // Country is usually printed, but may also be implied by an appellation we
-  // already accepted; still require the model to claim it read it.
-  const country = keep("country", identity.country, (v) => supportedBy(v) || Boolean(region));
+  const producer = keep("producer", identity.producer);
+  const wine_name = keep("wine_name", identity.wine_name);
+  const region = keep("region", identity.region);
+  // No bypass: a country must be supported by the label text like anything else.
+  const country = keep("country", identity.country);
 
   let vintage: number | null = null;
   const vintageParsed = readField(identity.vintage);
   if (vintageParsed) {
-    const year = num(vintageParsed.value.replace(/[^0-9]/g, ""));
-    const maxYear = new Date().getUTCFullYear() + 2;
-    if (
-      year == null ||
-      year < 1800 ||
-      year > maxYear ||
-      vintageParsed.source !== "label" ||
-      vintageParsed.meta.confidence < MIN_CONFIDENCE ||
-      !isVintageSupported(year, labelText)
-    ) {
+    const year = parseVintage(vintageParsed.value);
+    const ok =
+      year != null &&
+      isAcceptableField(vintageParsed, labelText, () => isVintageSupported(year, labelText));
+    if (!ok || year == null) {
       rejected.push("vintage");
     } else {
       vintage = year;
@@ -250,17 +131,12 @@ export function sanitizeAnalysis(raw: unknown, fallbackLabelText = ""): Sanitize
   }
 
   let grape_varieties: string[] | null = null;
-  const grapesRaw = identity.grape_varieties;
-  const grapeList = Array.isArray(grapesRaw) ? grapesRaw : [];
+  const grapeList = Array.isArray(identity.grape_varieties) ? identity.grape_varieties : [];
   const grapes: string[] = [];
   for (const g of grapeList) {
     const parsed = readField(g);
     if (!parsed) continue;
-    if (parsed.source !== "label" || parsed.meta.confidence < MIN_CONFIDENCE) {
-      rejected.push("grape_varieties");
-      continue;
-    }
-    if (!supportedBy(parsed.value)) {
+    if (!isAcceptableField(parsed, labelText)) {
       rejected.push("grape_varieties");
       continue;
     }
@@ -284,7 +160,7 @@ export function sanitizeAnalysis(raw: unknown, fallbackLabelText = ""): Sanitize
     grape_varieties,
     wine_type,
     // Everything below is an estimate derived from the identified wine/style,
-    // never a fact read off the label.
+    // never a fact read off the label. Unknown stays null, never 0.
     description: (taste.description as string | undefined)?.trim() || null,
     fruit: num(taste.fruit),
     tannin: num(taste.tannin),

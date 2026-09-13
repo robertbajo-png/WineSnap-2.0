@@ -9,18 +9,25 @@ import {
   sanitizeAnalysis,
   MAX_IMAGE_BYTES,
 } from "./scanIdentity";
+import { validateIdentity } from "./labelValidation";
 
-const labelField = (value: unknown, confidence = 90, evidence = "printed on label") => ({
+/** Default evidence = the value itself, i.e. an honest quote. */
+const labelField = (value: unknown, confidence = 90, evidence?: string) => ({
   value,
   source: "label",
   confidence,
-  evidence,
+  evidence: evidence ?? String(value),
 });
 
 describe("label text support", () => {
   it("accepts values printed on the label", () => {
     expect(isSupportedByLabelText("Zehn Morgen", "ZEHN MORGEN 20/23 NAHE")).toBe(true);
     expect(isSupportedByLabelText("Nahe", "ZEHN MORGEN 20/23 NAHE")).toBe(true);
+  });
+
+  it("requires every significant word, not half of them", () => {
+    expect(isSupportedByLabelText("Zehn Zilliken", "ZEHN MORGEN")).toBe(false);
+    expect(isSupportedByLabelText("Morgen Riesling", "ZEHN MORGEN")).toBe(false);
   });
 
   it("rejects values that are nowhere on the label", () => {
@@ -46,9 +53,9 @@ describe("sanitizeAnalysis", () => {
       label_text: zehnMorgenLabel,
       identity: {
         wine_name: labelField("Zehn Morgen"),
-        vintage: labelField("2023"),
+        vintage: labelField("2023", 90, "20 / 23"),
         region: labelField("Nahe"),
-        country: labelField("Germany", 80),
+        country: labelField("Germany", 80, "Germany"),
         grape_varieties: [labelField("Chardonnay"), labelField("Weisser Burgunder")],
         wine_type: labelField("white"),
       },
@@ -61,6 +68,8 @@ describe("sanitizeAnalysis", () => {
     expect(result.wine.region).toBe("Nahe");
     expect(result.wine.grape_varieties).toEqual(["Chardonnay", "Weisser Burgunder"]);
     expect(result.wine.acidity).toBe(8);
+    // "Germany" is not printed on this label, so it must not survive.
+    expect(result.wine.country).toBeNull();
   });
 
   it("rejects the reported Zilliken/Mosel/Riesling hallucination", () => {
@@ -69,7 +78,7 @@ describe("sanitizeAnalysis", () => {
       identity: {
         producer: labelField("Weingut Zilliken (Forstmeister Geltz)"),
         wine_name: labelField("Zilliken Mosel Riesling"),
-        vintage: labelField("2023"),
+        vintage: labelField("2023", 90, "20 / 23"),
         region: labelField("Mosel"),
         country: labelField("Germany"),
         grape_varieties: [labelField("Riesling")],
@@ -84,6 +93,35 @@ describe("sanitizeAnalysis", () => {
     expect(result.identified).toBe(false);
     expect(result.rejected).toContain("producer");
     expect(isUncertain(result)).toBe(true);
+  });
+
+  it("does not accept a country that is absent from the label (no region bypass)", () => {
+    const result = sanitizeAnalysis({
+      label_text: "ZEHN MORGEN NAHE",
+      identity: {
+        wine_name: labelField("Zehn Morgen"),
+        region: labelField("Nahe"),
+        country: { value: "France", source: "label", confidence: 95, evidence: "NAHE" },
+      },
+      taste: {},
+    });
+    expect(result.wine.region).toBe("Nahe");
+    expect(result.wine.country).toBeNull();
+    expect(result.rejected).toContain("country");
+  });
+
+  it("rejects a value whose quoted evidence is fabricated", () => {
+    const result = sanitizeAnalysis({
+      label_text: "ZEHN MORGEN NAHE",
+      identity: {
+        producer: { value: "Zehn Morgen", source: "label", confidence: 95, evidence: "Zilliken" },
+        wine_name: { value: "Zehn Morgen", source: "label", confidence: 95, evidence: null },
+      },
+      taste: {},
+    });
+    expect(result.wine.producer).toBeNull();
+    expect(result.wine.wine_name).toBeNull();
+    expect(result.rejected).toEqual(expect.arrayContaining(["producer", "wine_name"]));
   });
 
   it("never fills identity gaps from inference", () => {
@@ -137,6 +175,64 @@ describe("sanitizeAnalysis", () => {
     expect(result.wine.producer).toBe("Château Margaux");
     expect(result.wine.vintage).toBe(2015);
   });
+
+  it("keeps the user's text authoritative even when the model invents a label_text", () => {
+    const result = sanitizeAnalysis(
+      {
+        label_text: "WEINGUT ZILLIKEN MOSEL RIESLING 2023",
+        identity: {
+          producer: labelField("Weingut Zilliken"),
+          region: labelField("Mosel"),
+          grape_varieties: [labelField("Riesling")],
+          wine_name: labelField("Zehn Morgen"),
+        },
+        taste: {},
+      },
+      "Zehn Morgen 2023",
+    );
+    expect(result.wine.producer).toBeNull();
+    expect(result.wine.region).toBeNull();
+    expect(result.wine.grape_varieties).toBeNull();
+    expect(result.wine.wine_name).toBe("Zehn Morgen");
+  });
+
+  it("keeps unknown taste values null instead of 0", () => {
+    const result = sanitizeAnalysis({
+      label_text: "ZEHN MORGEN",
+      identity: { wine_name: labelField("Zehn Morgen") },
+      taste: { fruit: null, tannin: undefined, oak: "", acidity: 0, body: 6 },
+    });
+    expect(result.wine.fruit).toBeNull();
+    expect(result.wine.tannin).toBeNull();
+    expect(result.wine.oak).toBeNull();
+    expect(result.wine.acidity).toBe(0);
+    expect(result.wine.body).toBe(6);
+  });
+});
+
+describe("server-side validateIdentity (same rules)", () => {
+  const label = "ZEHN MORGEN 20 / 23 NAHE";
+
+  it("nulls values, fabricated evidence and half matches before responding", () => {
+    const out = validateIdentity(
+      {
+        producer: labelField("Weingut Zilliken"),
+        wine_name: labelField("Zehn Zilliken"),
+        region: labelField("Nahe"),
+        country: { value: "France", source: "label", confidence: 95, evidence: "NAHE" },
+        vintage: labelField("2023", 90, "20 / 23"),
+        grape_varieties: [labelField("Riesling")],
+      },
+      label,
+    );
+
+    expect((out.producer as { value: unknown }).value).toBeNull();
+    expect((out.wine_name as { value: unknown }).value).toBeNull();
+    expect((out.region as { value: unknown }).value).toBe("Nahe");
+    expect((out.country as { value: unknown }).value).toBeNull();
+    expect((out.vintage as { value: unknown }).value).toBe("2023");
+    expect(out.grape_varieties).toEqual([]);
+  });
 });
 
 describe("attempt guard", () => {
@@ -178,7 +274,10 @@ describe("image input checks", () => {
   });
 
   it("rejects empty, oversized and non-image files", () => {
-    expect(checkImageInput({ type: "image/jpeg", size: 0 })).toEqual({ ok: false, reason: "empty" });
+    expect(checkImageInput({ type: "image/jpeg", size: 0 })).toEqual({
+      ok: false,
+      reason: "empty",
+    });
     expect(checkImageInput({ type: "image/jpeg", size: MAX_IMAGE_BYTES + 1 })).toEqual({
       ok: false,
       reason: "size",
