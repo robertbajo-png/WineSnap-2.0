@@ -526,6 +526,7 @@ function ConfirmMatch({
   wine,
   imageUrl,
   labelText,
+  mode,
   busy,
   onSave,
   onDiscard,
@@ -533,6 +534,7 @@ function ConfirmMatch({
   wine: AnalyzedWine;
   imageUrl: string | null;
   labelText: string;
+  mode: "camera" | "text";
   busy?: boolean;
   onSave: () => void;
   onDiscard: () => void;
@@ -564,10 +566,11 @@ function ConfirmMatch({
         <h1 className="text-center font-display text-2xl text-gold">{t("scan.reviewTitle")}</h1>
         <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
           {t("scan.reviewDesc")}
+          {mode === "camera" && ` ${t("scan.reviewCheckLabel")}`}
         </p>
 
         <div className="mt-6 w-full max-w-sm rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
-          <div className="flex h-56 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-burgundy/30 to-background/60">
+          <div className="flex h-56 w-full items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/30 to-background/60">
             {imageUrl ? (
               <img
                 src={imageUrl}
