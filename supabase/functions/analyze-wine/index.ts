@@ -11,7 +11,10 @@
 // The validation rules are shared verbatim with the client (see the import
 // below) so server and browser cannot drift apart.
 
-import { authoritativeLabelText, validateIdentity } from "../../../src/lib/labelValidation.ts";
+// NOTE: ./labelValidation.ts is a byte-identical copy of src/lib/labelValidation.ts.
+// The edge bundler cannot reach outside the function directory, so the copy lives
+// here. Keep the two files in sync — see labelValidation.sync.test.ts.
+import { authoritativeLabelText, validateIdentity } from "./labelValidation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
