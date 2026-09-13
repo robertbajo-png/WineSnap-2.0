@@ -320,6 +320,7 @@ function ScanPage() {
         wine={pendingMatch.wine}
         imageUrl={pendingMatch.previewUrl ?? pendingMatch.imageUrl}
         labelText={pendingMatch.labelText}
+        mode={pendingMatch.mode}
         busy={saving}
         onSave={savePending}
         onDiscard={discardPending}
