@@ -218,6 +218,10 @@ const en = {
     "The label could only be read partially. Review the details below and choose whether to save the wine anyway.",
   "scan.saveAnyway": "Save anyway",
   "scan.tryAgain": "Try again",
+  "scan.reviewTitle": "Review the wine details",
+  "scan.reviewDesc":
+    "These details were read from your photo by AI. Check them against the label before saving.",
+  "scan.imageAlt": "The photo you submitted of the wine label",
   "scan.confirmTitle": "Is this right?",
   "scan.confirmDesc":
     "Review what we found below and choose whether to save the wine to your cellar.",
@@ -676,6 +680,10 @@ const sv: Record<keyof typeof en, string> = {
     "Etiketten kunde bara läsas delvis. Granska uppgifterna nedan och välj om du vill spara vinet ändå.",
   "scan.saveAnyway": "Spara ändå",
   "scan.tryAgain": "Försök igen",
+  "scan.reviewTitle": "Granska vinuppgifterna",
+  "scan.reviewDesc":
+    "Uppgifterna är avlästa från ditt foto av AI. Kontrollera dem mot etiketten innan du sparar.",
+  "scan.imageAlt": "Bilden du skickade in på vinetiketten",
   "scan.confirmTitle": "Stämmer det här?",
   "scan.confirmDesc": "Granska det vi hittade nedan och välj om du vill spara vinet i din källare.",
   "scan.save": "Spara",

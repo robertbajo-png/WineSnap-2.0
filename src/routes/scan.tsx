@@ -319,9 +319,7 @@ function ScanPage() {
       <ConfirmMatch
         wine={pendingMatch.wine}
         imageUrl={pendingMatch.previewUrl ?? pendingMatch.imageUrl}
-        partial={pendingMatch.partial}
         labelText={pendingMatch.labelText}
-        confidence={pendingMatch.confidence}
         busy={saving}
         onSave={savePending}
         onDiscard={discardPending}
@@ -526,18 +524,14 @@ function ScanPage() {
 function ConfirmMatch({
   wine,
   imageUrl,
-  partial,
   labelText,
-  confidence,
   busy,
   onSave,
   onDiscard,
 }: {
   wine: AnalyzedWine;
   imageUrl: string | null;
-  partial: boolean;
   labelText: string;
-  confidence: number;
   busy?: boolean;
   onSave: () => void;
   onDiscard: () => void;
@@ -559,47 +553,41 @@ function ConfirmMatch({
       className="fixed inset-0 z-50 flex flex-col bg-background text-foreground"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <header className="flex items-center justify-between px-5 pt-4">
+      <header className="flex shrink-0 items-center justify-between px-5 pt-4">
         <span className="h-9 w-9" />
         <p className="font-display text-base">{t("scan.result")}</p>
         <span className="h-9 w-9" />
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-6">
-        <h1 className="text-center font-display text-2xl text-gold">
-          {t(partial ? "scan.incompleteTitle" : "scan.confirmTitle")}
-        </h1>
+      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 py-6">
+        <h1 className="text-center font-display text-2xl text-gold">{t("scan.reviewTitle")}</h1>
         <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
-          {t(partial ? "scan.incompleteDesc" : "scan.confirmDesc")}
+          {t("scan.reviewDesc")}
         </p>
 
         <div className="mt-6 w-full max-w-sm rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
-          <div className="flex items-start gap-3">
-            <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
-              {imageUrl ? (
-                <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <Wine className="h-6 w-6 text-gold/60" />
-              )}
-            </div>
-            <dl className="min-w-0 flex-1 space-y-1.5">
-              {rows.map(([label, value]) => (
-                <div key={label} className="flex items-baseline justify-between gap-3 text-sm">
-                  <dt className="shrink-0 text-xs uppercase tracking-wider text-cream/50">
-                    {label}
-                  </dt>
-                  <dd className="truncate text-right text-cream">{value}</dd>
-                </div>
-              ))}
-            </dl>
+          <div className="flex h-56 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-burgundy/30 to-background/60">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={t("scan.imageAlt")}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <Wine className="h-8 w-8 text-gold/60" />
+            )}
           </div>
 
-          {confidence > 0 && (
-            <p className="mt-3 text-xs text-cream/50">
-              {t("scan.confidence")}: {Math.round(confidence)}%
-            </p>
-          )}
-          <p className="mt-1 text-xs text-cream/40">{t("scan.unknownFields")}</p>
+          <dl className="mt-4 space-y-1.5">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-3 text-sm">
+                <dt className="shrink-0 text-xs uppercase tracking-wider text-cream/50">{label}</dt>
+                <dd className="min-w-0 break-words text-right text-cream">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mt-3 text-xs text-cream/40">{t("scan.unknownFields")}</p>
           <p className="mt-1 text-xs text-cream/40">{t("scan.tasteEstimate")}</p>
 
           {labelText.trim() && (
@@ -615,18 +603,18 @@ function ConfirmMatch({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
+      <div className="grid shrink-0 grid-cols-2 gap-3 px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
         <Button
           variant="outline"
           onClick={onDiscard}
           disabled={busy}
           className="h-12 border-white/15 bg-transparent"
         >
-          {t(partial ? "scan.tryAgain" : "scan.discard")}
+          {t("scan.discard")}
         </Button>
         <Button onClick={onSave} disabled={busy} className="h-12 bg-gradient-burgundy text-cream">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{" "}
-          {t(partial ? "scan.saveAnyway" : "scan.save")}
+          {t("scan.save")}
         </Button>
       </div>
     </div>
