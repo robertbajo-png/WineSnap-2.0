@@ -7,6 +7,16 @@
 // source ("label" | "inference" | "unknown"), confidence and evidence quote.
 // Identity is never invented: unknown stays unknown. Taste/serving values are
 // explicitly estimates and are kept separate from the read facts.
+//
+// The validation rules are shared verbatim with the client (see the import
+// below) so server and browser cannot drift apart.
+
+import {
+  authoritativeLabelText,
+  validateIdentity,
+} from "../../../src/lib/labelValidation.ts";
+
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
