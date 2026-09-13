@@ -680,6 +680,10 @@ const sv: Record<keyof typeof en, string> = {
     "Etiketten kunde bara läsas delvis. Granska uppgifterna nedan och välj om du vill spara vinet ändå.",
   "scan.saveAnyway": "Spara ändå",
   "scan.tryAgain": "Försök igen",
+  "scan.reviewTitle": "Granska vinuppgifterna",
+  "scan.reviewDesc":
+    "Uppgifterna är avlästa från ditt foto av AI. Kontrollera dem mot etiketten innan du sparar.",
+  "scan.imageAlt": "Bilden du skickade in på vinetiketten",
   "scan.confirmTitle": "Stämmer det här?",
   "scan.confirmDesc": "Granska det vi hittade nedan och välj om du vill spara vinet i din källare.",
   "scan.save": "Spara",
