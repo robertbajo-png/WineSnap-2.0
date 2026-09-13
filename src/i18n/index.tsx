@@ -218,6 +218,10 @@ const en = {
     "The label could only be read partially. Review the details below and choose whether to save the wine anyway.",
   "scan.saveAnyway": "Save anyway",
   "scan.tryAgain": "Try again",
+  "scan.reviewTitle": "Review the wine details",
+  "scan.reviewDesc":
+    "These details were read from your photo by AI. Check them against the label before saving.",
+  "scan.imageAlt": "The photo you submitted of the wine label",
   "scan.confirmTitle": "Is this right?",
   "scan.confirmDesc":
     "Review what we found below and choose whether to save the wine to your cellar.",

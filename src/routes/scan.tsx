@@ -319,9 +319,7 @@ function ScanPage() {
       <ConfirmMatch
         wine={pendingMatch.wine}
         imageUrl={pendingMatch.previewUrl ?? pendingMatch.imageUrl}
-        partial={pendingMatch.partial}
         labelText={pendingMatch.labelText}
-        confidence={pendingMatch.confidence}
         busy={saving}
         onSave={savePending}
         onDiscard={discardPending}
