@@ -137,36 +137,9 @@ const wineTool = {
   },
 };
 
-type Field = { value: unknown; source?: string; confidence?: number; evidence?: string | null };
-
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const MAX_BASE64_CHARS = 18_000_000; // ~13 MB binary
 
-/** Defence in depth: strip identity the model did not claim to have read. */
-function scrubIdentity(identity: Record<string, unknown> | undefined) {
-  if (!identity || typeof identity !== "object") return {};
-  const clean = (f: unknown): Field | null => {
-    if (!f || typeof f !== "object") return null;
-    const field = f as Field;
-    const source = String(field.source ?? "unknown").toLowerCase();
-    const confidence = Number(field.confidence ?? 0) || 0;
-    if (source !== "label" || confidence < 50 || field.value == null || field.value === "") {
-      return { value: null, source: "unknown", confidence, evidence: field.evidence ?? null };
-    }
-    return { value: field.value, source: "label", confidence, evidence: field.evidence ?? null };
-  };
-
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(identity)) {
-    if (key === "grape_varieties") {
-      const list = Array.isArray(value) ? value : [];
-      out[key] = list.map(clean).filter((f): f is Field => Boolean(f && f.value));
-    } else {
-      out[key] = clean(value);
-    }
-  }
-  return out;
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
