@@ -220,7 +220,8 @@ const en = {
   "scan.tryAgain": "Try again",
   "scan.reviewTitle": "Review the wine details",
   "scan.reviewDesc":
-    "These details were read from your photo by AI. Check them against the label before saving.",
+    "These details were interpreted by AI. Check them before saving.",
+  "scan.reviewCheckLabel": "Check them against the label.",
   "scan.imageAlt": "The photo you submitted of the wine label",
   "scan.confirmTitle": "Is this right?",
   "scan.confirmDesc":
@@ -681,8 +682,8 @@ const sv: Record<keyof typeof en, string> = {
   "scan.saveAnyway": "Spara ändå",
   "scan.tryAgain": "Försök igen",
   "scan.reviewTitle": "Granska vinuppgifterna",
-  "scan.reviewDesc":
-    "Uppgifterna är avlästa från ditt foto av AI. Kontrollera dem mot etiketten innan du sparar.",
+  "scan.reviewDesc": "Uppgifterna är tolkade av AI. Kontrollera dem innan du sparar.",
+  "scan.reviewCheckLabel": "Kontrollera dem mot etiketten.",
   "scan.imageAlt": "Bilden du skickade in på vinetiketten",
   "scan.confirmTitle": "Stämmer det här?",
   "scan.confirmDesc": "Granska det vi hittade nedan och välj om du vill spara vinet i din källare.",
