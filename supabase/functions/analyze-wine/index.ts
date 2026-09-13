@@ -11,12 +11,7 @@
 // The validation rules are shared verbatim with the client (see the import
 // below) so server and browser cannot drift apart.
 
-import {
-  authoritativeLabelText,
-  validateIdentity,
-} from "../../../src/lib/labelValidation.ts";
-
-
+import { authoritativeLabelText, validateIdentity } from "../../../src/lib/labelValidation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -150,7 +145,6 @@ const wineTool = {
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 const MAX_BASE64_CHARS = 18_000_000; // ~13 MB binary
 
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -231,7 +225,10 @@ Deno.serve(async (req: Request) => {
     // Text mode: the user's own words are the authoritative evidence, even if
     // the model invented a label_text. Image mode: only the transcription counts.
     const isTextMode = !imageBase64 && !imageUrl;
-    const labelText = authoritativeLabelText(parsed.label_text, isTextMode ? String(text ?? "") : "");
+    const labelText = authoritativeLabelText(
+      parsed.label_text,
+      isTextMode ? String(text ?? "") : "",
+    );
 
     const wine = {
       label_text: labelText,
@@ -240,7 +237,6 @@ Deno.serve(async (req: Request) => {
     };
 
     return json({ wine });
-
   } catch (e) {
     console.error("analyze-wine error:", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);

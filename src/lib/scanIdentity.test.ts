@@ -274,7 +274,10 @@ describe("image input checks", () => {
   });
 
   it("rejects empty, oversized and non-image files", () => {
-    expect(checkImageInput({ type: "image/jpeg", size: 0 })).toEqual({ ok: false, reason: "empty" });
+    expect(checkImageInput({ type: "image/jpeg", size: 0 })).toEqual({
+      ok: false,
+      reason: "empty",
+    });
     expect(checkImageInput({ type: "image/jpeg", size: MAX_IMAGE_BYTES + 1 })).toEqual({
       ok: false,
       reason: "size",
