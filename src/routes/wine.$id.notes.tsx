@@ -69,6 +69,7 @@ type WineRow = {
 };
 
 type HistoryRow = StoredTastingNote & { id: string; created_at: string };
+type SaveResult = { data: unknown; error: { message: string } | null };
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -170,7 +171,7 @@ function NotesPage() {
     if (!user) return;
     setSaving(true);
     const payload = buildTastingNoteInsert(draft, user.id, id);
-    const outcome = await runGuardedSave(saveGuard.current, () =>
+    const outcome = await runGuardedSave<SaveResult>(saveGuard.current, async () =>
       supabase.from("tasting_notes").insert(payload as never).select("*").single(),
     );
     if (!outcome.started) return;
