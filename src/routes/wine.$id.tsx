@@ -16,8 +16,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WineDetailSkeleton } from "@/components/Skeleton";
-import { AromaWheel } from "@/components/AromaWheel";
-import { AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
+import { AromaProfileTabs } from "@/components/AromaProfileTabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -25,6 +24,7 @@ import { useT, useI18n } from "@/i18n";
 import type { TKey } from "@/i18n";
 import { computeDrinkingWindow } from "@/lib/drinkingWindow";
 import { PhotoGallery } from "@/components/PhotoGallery";
+import { normalizeIntensities } from "@/lib/tastingNotes";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -82,6 +82,7 @@ type TastingNote = {
   finish: string | null;
   location: string | null;
   tasted_at: string;
+  aroma_intensities?: unknown;
 };
 
 function WineDetailPage() {
@@ -92,8 +93,6 @@ function WineDetailPage() {
   const [w, setW] = useState<WineRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("aromas");
-  const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
-  const [thisWineMode, setThisWineMode] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
@@ -133,7 +132,7 @@ function WineDetailPage() {
       });
     supabase
       .from("tasting_notes")
-      .select("id,rating,notes,aromas,finish,location,tasted_at")
+        .select("*")
       .eq("wine_id", id)
       .order("tasted_at", { ascending: false })
       .limit(5)
@@ -299,99 +298,17 @@ function WineDetailPage() {
         {tab === "aromas" && (
           <>
             <Section title={t("wine.aromaProfile")}>
-              {/* Hero wheel with soft glow */}
-              <div className="relative mt-1 flex items-center justify-center py-3">
-                <div className="pointer-events-none absolute h-[260px] w-[260px] rounded-full bg-burgundy/15 blur-3xl" />
-                <div className="pointer-events-none absolute h-[210px] w-[210px] rounded-full bg-gold/10 blur-2xl" />
-                <div className="relative rounded-full border border-white/10 bg-gradient-to-b from-card/60 to-background/40 p-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
-                  <AromaWheel
-                    size={340}
-                    selectedFamily={selectedFamily}
-                    onSelectFamily={(f) => {
-                      setSelectedFamily(f);
-                      setThisWineMode(false);
-                    }}
-                    centerActive={thisWineMode}
-                    onSelectCenter={() => {
-                      setThisWineMode((v) => !v);
-                      setSelectedFamily(null);
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Active filter indicator */}
-              {(selectedFamily || thisWineMode) && (
-                <div className="mt-2 flex items-center justify-center gap-2">
-                  <span className="font-display text-xs uppercase tracking-[0.2em] text-gold/80">
-                    {thisWineMode ? t("wine.thisWineAromas") : selectedFamily}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSelectedFamily(null);
-                      setThisWineMode(false);
-                    }}
-                    className="rounded-full border border-white/10 px-2 py-0.5 font-display text-[10px] text-muted-foreground hover:text-cream"
-                  >
-                    {t("common.clear")}
-                  </button>
-                </div>
-              )}
-
-              {/* Clean aroma list */}
-              {(() => {
-                const wineAromas = aromas.length
-                  ? aromas
-                  : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"];
-                const filtered = thisWineMode
-                  ? wineAromas
-                  : selectedFamily
-                    ? wineAromas.filter((a) => aromaFamilyLabel(a) === selectedFamily)
-                    : wineAromas;
-                if (filtered.length === 0) {
-                  return (
-                    <p className="mt-5 rounded-2xl border border-white/8 bg-card/40 p-6 text-center text-sm text-muted-foreground">
-                      {t("wine.noFamilyAromas")}
-                    </p>
-                  );
+              <AromaProfileTabs
+                aiAromas={aromas}
+                personalAromas={latestPersonalAromas(notes)}
+                mineAfter={
+                  <Button asChild variant="outline" className="mt-5 w-full">
+                    <Link to="/wine/$id/notes" params={{ id: w.id }}>
+                      <Plus className="h-4 w-4" /> {t("wine.notesAdd")}
+                    </Link>
+                  </Button>
                 }
-                return (
-                  <ul className="mt-4 divide-y divide-white/6 border-y border-white/6">
-                    {filtered.slice(0, 8).map((a, i) => {
-                      const intensity = 4 - (i % 3);
-                      return (
-                        <li key={a + i} className="flex items-center gap-3.5 py-3">
-                          <AromaIcon name={a} size={44} />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-display text-[15px] leading-tight text-cream">
-                              {a}
-                            </div>
-                            <div className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
-                              {aromaFamilyLabel(a)}
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((d) => (
-                                <span
-                                  key={d}
-                                  className={cn(
-                                    "h-1.5 w-1.5 rounded-full",
-                                    d <= intensity + 1 ? "bg-gold" : "bg-white/10",
-                                  )}
-                                />
-                              ))}
-                            </div>
-                            <span className="font-display text-[10px] uppercase tracking-wider text-gold/70">
-                              {intensityLabel(intensity)}
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                );
-              })()}
+              />
             </Section>
 
             <Section title={t("wine.tastingProfile")}>
@@ -751,38 +668,12 @@ function computeRating(w: {
   return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
 }
 
-function aromaEmoji(name: string): string {
-  const n = name.toLowerCase();
-  if (/cherry|berry|plum|currant|strawberry|raspberry/.test(n)) return "🍒";
-  if (/oak|wood|cedar|smoke/.test(n)) return "🪵";
-  if (/vanilla|cream|butter/.test(n)) return "🍦";
-  if (/tobacco|leather|earth/.test(n)) return "🍂";
-  if (/apple|pear|citrus|lemon|lime|grape/.test(n)) return "🍏";
-  if (/floral|rose|violet/.test(n)) return "🌹";
-  if (/spice|pepper|clove|cinnamon/.test(n)) return "🌶️";
-  if (/chocolate|cocoa|coffee/.test(n)) return "🍫";
-  return "🍇";
-}
-
-function aromaFamily(name: string): string {
-  const n = name.toLowerCase();
-  if (
-    /cherry|berry|plum|currant|strawberry|raspberry|fruit|apple|pear|citrus|lemon|lime|grape/.test(
-      n,
-    )
-  )
-    return "Fruit";
-  if (/oak|wood|cedar|smoke/.test(n)) return "Oak";
-  if (/vanilla|cream|butter|chocolate|cocoa|coffee/.test(n)) return "Sweet";
-  if (/tobacco|leather|earth|mushroom/.test(n)) return "Earth";
-  if (/floral|rose|violet|jasmine/.test(n)) return "Floral";
-  if (/spice|pepper|clove|cinnamon|nutmeg/.test(n)) return "Spice";
-  return "Aromatic";
-}
-
-function intensityLabel(v: number): string {
-  if (v >= 4) return "Strong";
-  if (v >= 3) return "Med+";
-  if (v >= 2) return "Med";
-  return "Light";
+function latestPersonalAromas(notes: TastingNote[]) {
+  const latest = notes[0];
+  const intensities = normalizeIntensities(latest?.aroma_intensities);
+  return (latest?.aromas ?? []).map((name) => ({
+    name,
+    active: true,
+    intensity: intensities[name] ?? null,
+  }));
 }
