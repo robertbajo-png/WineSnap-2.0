@@ -39,7 +39,10 @@ export const Route = createFileRoute("/wine/$id/notes")({
       { title: "Tasting Notes — WineSnap" },
       { name: "description", content: "Record and compare your personal wine tasting notes." },
       { property: "og:title", content: "Tasting Notes — WineSnap" },
-      { property: "og:description", content: "Record and compare your personal wine tasting notes." },
+      {
+        property: "og:description",
+        content: "Record and compare your personal wine tasting notes.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -85,7 +88,10 @@ function NotesPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const saveGuard = useRef(createSaveGuard());
 
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(baseline), [draft, baseline]);
+  const dirty = useMemo(
+    () => JSON.stringify(draft) !== JSON.stringify(baseline),
+    [draft, baseline],
+  );
   const aiAromas = useMemo(
     () => [
       ...(wine?.primary_notes ?? []),
@@ -147,9 +153,14 @@ function NotesPage() {
     const clean = name.trim().slice(0, 60);
     if (!clean) return;
     setDraft((current) => {
-      if (current.aromas.some((aroma) => aroma.name.toLocaleLowerCase() === clean.toLocaleLowerCase()))
+      if (
+        current.aromas.some((aroma) => aroma.name.toLocaleLowerCase() === clean.toLocaleLowerCase())
+      )
         return current;
-      return { ...current, aromas: [...current.aromas, { name: clean, active: true, intensity: null }] };
+      return {
+        ...current,
+        aromas: [...current.aromas, { name: clean, active: true, intensity: null }],
+      };
     });
     setPickerOpen(false);
   };
@@ -221,18 +232,29 @@ function NotesPage() {
 
         <Tabs defaultValue="mine" className="mt-5">
           <TabsList className="grid h-11 w-full grid-cols-2 rounded-md border border-border bg-card/60 p-1">
-            <TabsTrigger value="ai" className="rounded-sm">{t("notes.tab.ai")}</TabsTrigger>
-            <TabsTrigger value="mine" className="rounded-sm">{t("notes.tab.mine")}</TabsTrigger>
+            <TabsTrigger value="ai" className="rounded-sm">
+              {t("notes.tab.ai")}
+            </TabsTrigger>
+            <TabsTrigger value="mine" className="rounded-sm">
+              {t("notes.tab.mine")}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="ai" className="mt-6">
             <SectionTitle>{t("notes.aiAromas")}</SectionTitle>
             {aiAromas.length ? (
-              <AromaList aromas={aiAromas.map((name) => ({ name, active: true, intensity: null }))} readOnly />
+              <AromaList
+                aromas={aiAromas.map((name) => ({ name, active: true, intensity: null }))}
+                readOnly
+              />
             ) : (
-              <p className="border-y border-border py-5 text-sm text-muted-foreground">{t("notes.aiEmpty")}</p>
+              <p className="border-y border-border py-5 text-sm text-muted-foreground">
+                {t("notes.aiEmpty")}
+              </p>
             )}
-            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{t("notes.aiDisclaimer")}</p>
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+              {t("notes.aiDisclaimer")}
+            </p>
           </TabsContent>
 
           <TabsContent value="mine" className="mt-6 space-y-7">
@@ -247,7 +269,9 @@ function NotesPage() {
                   onActive={(index, active) =>
                     setDraft((current) => ({
                       ...current,
-                      aromas: current.aromas.map((aroma, i) => (i === index ? { ...aroma, active } : aroma)),
+                      aromas: current.aromas.map((aroma, i) =>
+                        i === index ? { ...aroma, active } : aroma,
+                      ),
                     }))
                   }
                   onIntensity={(index, intensity) =>
@@ -260,21 +284,52 @@ function NotesPage() {
                   }
                 />
               ) : (
-                <p className="border-y border-border py-5 text-sm text-muted-foreground">{t("notes.aromasEmpty")}</p>
+                <p className="border-y border-border py-5 text-sm text-muted-foreground">
+                  {t("notes.aromasEmpty")}
+                </p>
               )}
             </section>
 
             <section>
-              <label htmlFor="note-summary" className="font-display text-lg text-gold">{t("notes.summary")}</label>
-              <Textarea id="note-summary" value={draft.summary} onChange={(e) => setField("summary", e.target.value)} rows={4} placeholder={t("notes.summaryPh")} className="mt-3 bg-card/40" />
+              <label htmlFor="note-summary" className="font-display text-lg text-gold">
+                {t("notes.summary")}
+              </label>
+              <Textarea
+                id="note-summary"
+                value={draft.summary}
+                onChange={(e) => setField("summary", e.target.value)}
+                rows={4}
+                placeholder={t("notes.summaryPh")}
+                className="mt-3 bg-card/40"
+              />
             </section>
 
             <section>
               <SectionTitle>{t("notes.overall")}</SectionTitle>
-              <div className="mt-3 flex items-center gap-2" role="radiogroup" aria-label={t("notes.overall")}>
+              <div
+                className="mt-3 flex items-center gap-2"
+                role="radiogroup"
+                aria-label={t("notes.overall")}
+              >
                 {[1, 2, 3, 4, 5].map((rating) => (
-                  <Button key={rating} type="button" variant="ghost" size="icon" role="radio" aria-checked={draft.rating === rating} aria-label={`${rating} / 5`} onClick={() => setField("rating", rating)}>
-                    <Star className={cn("h-6 w-6", draft.rating != null && rating <= draft.rating ? "fill-gold text-gold" : "text-muted-foreground")} />
+                  <Button
+                    key={rating}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    role="radio"
+                    aria-checked={draft.rating === rating}
+                    aria-label={`${rating} / 5`}
+                    onClick={() => setField("rating", rating)}
+                  >
+                    <Star
+                      className={cn(
+                        "h-6 w-6",
+                        draft.rating != null && rating <= draft.rating
+                          ? "fill-gold text-gold"
+                          : "text-muted-foreground",
+                      )}
+                    />
                   </Button>
                 ))}
               </div>
@@ -284,7 +339,12 @@ function NotesPage() {
               <SectionTitle>{t("notes.palate")}</SectionTitle>
               <div className="mt-3 space-y-5">
                 {(["acidity", "tannin", "body", "sweetness"] as const).map((field) => (
-                  <OptionalTasteSlider key={field} label={t(`taste.${field}` as TKey)} value={draft[field]} onChange={(value) => setField(field, value)} />
+                  <OptionalTasteSlider
+                    key={field}
+                    label={t(`taste.${field}` as TKey)}
+                    value={draft[field]}
+                    onChange={(value) => setField(field, value)}
+                  />
                 ))}
               </div>
             </section>
@@ -293,7 +353,12 @@ function NotesPage() {
               <SectionTitle>{t("notes.finish")}</SectionTitle>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {(["Short", "Medium", "Long"] as const).map((finish) => (
-                  <Button key={finish} type="button" variant={draft.finish === finish ? "default" : "outline"} onClick={() => setField("finish", finish)}>
+                  <Button
+                    key={finish}
+                    type="button"
+                    variant={draft.finish === finish ? "default" : "outline"}
+                    onClick={() => setField("finish", finish)}
+                  >
                     {t(`notes.${finish.toLowerCase()}` as TKey)}
                   </Button>
                 ))}
@@ -304,20 +369,38 @@ function NotesPage() {
               <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-xs">
                 <Calendar className="h-4 w-4 text-gold" />
                 <span className="sr-only">{t("notes.date")}</span>
-                <input type="date" value={draft.tastedAt} onChange={(e) => setField("tastedAt", e.target.value)} className="min-w-0 flex-1 bg-transparent focus:outline-none" />
+                <input
+                  type="date"
+                  value={draft.tastedAt}
+                  onChange={(e) => setField("tastedAt", e.target.value)}
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none"
+                />
               </label>
               <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-xs">
                 <MapPin className="h-4 w-4 text-gold" />
                 <span className="sr-only">{t("notes.location")}</span>
-                <input value={draft.location} onChange={(e) => setField("location", e.target.value)} placeholder={t("notes.locationPh")} className="min-w-0 flex-1 bg-transparent focus:outline-none" />
+                <input
+                  value={draft.location}
+                  onChange={(e) => setField("location", e.target.value)}
+                  placeholder={t("notes.locationPh")}
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none"
+                />
               </label>
             </section>
 
             <ComparisonSection wine={wine} draft={draft} aiAromas={aiAromas} />
             <WheelSection />
-            <HistorySection history={history} lang={lang} onUse={(note) => setDraft(draftFromStored(note))} />
+            <HistorySection
+              history={history}
+              lang={lang}
+              onUse={(note) => setDraft(draftFromStored(note))}
+            />
 
-            <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full bg-burgundy text-cream hover:bg-burgundy/90">
+            <Button
+              onClick={save}
+              disabled={saving || !dirty}
+              className="h-11 w-full bg-burgundy text-cream hover:bg-burgundy/90"
+            >
               {saving ? t("login.wait") : t("notes.saveMine")}
             </Button>
           </TabsContent>
@@ -331,7 +414,12 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-display text-lg text-gold">{children}</h2>;
 }
 
-function AromaList({ aromas, readOnly = false, onActive, onIntensity }: {
+function AromaList({
+  aromas,
+  readOnly = false,
+  onActive,
+  onIntensity,
+}: {
   aromas: TastingNoteDraft["aromas"];
   readOnly?: boolean;
   onActive?: (index: number, active: boolean) => void;
@@ -341,16 +429,38 @@ function AromaList({ aromas, readOnly = false, onActive, onIntensity }: {
   return (
     <ul className="mt-3 divide-y divide-border border-y border-border">
       {aromas.map((aroma, index) => (
-        <li key={`${aroma.name}-${index}`} className={cn("flex min-h-20 items-center gap-3 py-3", !aroma.active && "opacity-55")}>
-          {!readOnly && <Checkbox checked={aroma.active} onCheckedChange={(checked) => onActive?.(index, checked === true)} aria-label={t("notes.aromaActive").replace("{name}", aroma.name)} />}
+        <li
+          key={`${aroma.name}-${index}`}
+          className={cn("flex min-h-20 items-center gap-3 py-3", !aroma.active && "opacity-55")}
+        >
+          {!readOnly && (
+            <Checkbox
+              checked={aroma.active}
+              onCheckedChange={(checked) => onActive?.(index, checked === true)}
+              aria-label={t("notes.aromaActive").replace("{name}", aroma.name)}
+            />
+          )}
           <AromaIcon name={aroma.name} size={48} />
           <div className="min-w-0 flex-1">
             <p className="font-display text-base leading-tight text-cream">{aroma.name}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
             {!readOnly && (
               <div className="mt-2">
-                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground"><span>{t("notes.weak")}</span><span>{aroma.intensity == null ? t("notes.notSet") : `${aroma.intensity}/5`}</span><span>{t("notes.clear")}</span></div>
-                <Slider min={1} max={5} step={1} value={aroma.intensity == null ? [] : [aroma.intensity]} onValueChange={(value) => value[0] != null && onIntensity?.(index, value[0])} aria-label={t("notes.intensityFor").replace("{name}", aroma.name)} />
+                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                  <span>{t("notes.weak")}</span>
+                  <span>
+                    {aroma.intensity == null ? t("notes.notSet") : `${aroma.intensity}/5`}
+                  </span>
+                  <span>{t("notes.clear")}</span>
+                </div>
+                <Slider
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={aroma.intensity == null ? [] : [aroma.intensity]}
+                  onValueChange={(value) => value[0] != null && onIntensity?.(index, value[0])}
+                  aria-label={t("notes.intensityFor").replace("{name}", aroma.name)}
+                />
               </div>
             )}
           </div>
@@ -360,21 +470,50 @@ function AromaList({ aromas, readOnly = false, onActive, onIntensity }: {
   );
 }
 
-function AromaPicker({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (open: boolean) => void; onAdd: (name: string) => void }) {
+function AromaPicker({
+  open,
+  onOpenChange,
+  onAdd,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdd: (name: string) => void;
+}) {
   const t = useT();
   const [query, setQuery] = useState("");
-  const exact = AROMA_OPTIONS.some((name) => name.toLocaleLowerCase() === query.trim().toLocaleLowerCase());
+  const exact = AROMA_OPTIONS.some(
+    (name) => name.toLocaleLowerCase() === query.trim().toLocaleLowerCase(),
+  );
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild><Button type="button" variant="outline" size="sm"><Plus />{t("notes.addAroma")}</Button></PopoverTrigger>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          <Plus />
+          {t("notes.addAroma")}
+        </Button>
+      </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2.5rem))] p-0">
         <Command shouldFilter>
-          <CommandInput value={query} onValueChange={setQuery} placeholder={t("notes.searchAroma")} />
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder={t("notes.searchAroma")}
+          />
           <CommandList>
             <CommandEmpty>{t("notes.noAromaMatch")}</CommandEmpty>
             <CommandGroup>
-              {query.trim() && !exact && <CommandItem value={query} onSelect={() => onAdd(query)}><Plus />{t("notes.addOwn").replace("{name}", query.trim())}</CommandItem>}
-              {AROMA_OPTIONS.map((name) => <CommandItem key={name} value={name} onSelect={() => onAdd(name)}><AromaIcon name={name} size={28} />{name}</CommandItem>)}
+              {query.trim() && !exact && (
+                <CommandItem value={query} onSelect={() => onAdd(query)}>
+                  <Plus />
+                  {t("notes.addOwn").replace("{name}", query.trim())}
+                </CommandItem>
+              )}
+              {AROMA_OPTIONS.map((name) => (
+                <CommandItem key={name} value={name} onSelect={() => onAdd(name)}>
+                  <AromaIcon name={name} size={28} />
+                  {name}
+                </CommandItem>
+              ))}
             </CommandGroup>
           </CommandList>
         </Command>
@@ -383,34 +522,150 @@ function AromaPicker({ open, onOpenChange, onAdd }: { open: boolean; onOpenChang
   );
 }
 
-function OptionalTasteSlider({ label, value, onChange }: { label: string; value: number | null; onChange: (value: number) => void }) {
+function OptionalTasteSlider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number) => void;
+}) {
   const t = useT();
-  return <div><div className="mb-2 flex justify-between text-xs"><span>{label}</span><span className="text-muted-foreground">{value == null ? t("notes.notSet") : `${value}/10`}</span></div><Slider min={1} max={10} step={1} value={value == null ? [] : [value]} onValueChange={(next) => next[0] != null && onChange(next[0])} aria-label={label} /></div>;
+  return (
+    <div>
+      <div className="mb-2 flex justify-between text-xs">
+        <span>{label}</span>
+        <span className="text-muted-foreground">
+          {value == null ? t("notes.notSet") : `${value}/10`}
+        </span>
+      </div>
+      <Slider
+        min={1}
+        max={10}
+        step={1}
+        value={value == null ? [] : [value]}
+        onValueChange={(next) => next[0] != null && onChange(next[0])}
+        aria-label={label}
+      />
+    </div>
+  );
 }
 
 function Expandable({ title, children }: { title: string; children: React.ReactNode }) {
-  return <Collapsible><CollapsibleTrigger asChild><Button type="button" variant="ghost" className="w-full justify-between border-y border-border px-0 font-display text-base text-gold">{title}<ChevronDown /></Button></CollapsibleTrigger><CollapsibleContent className="py-4">{children}</CollapsibleContent></Collapsible>;
+  return (
+    <Collapsible>
+      <CollapsibleTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-between border-y border-border px-0 font-display text-base text-gold"
+        >
+          {title}
+          <ChevronDown />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="py-4">{children}</CollapsibleContent>
+    </Collapsible>
+  );
 }
 
-function ComparisonSection({ wine, draft, aiAromas }: { wine: WineRow; draft: TastingNoteDraft; aiAromas: string[] }) {
+function ComparisonSection({
+  wine,
+  draft,
+  aiAromas,
+}: {
+  wine: WineRow;
+  draft: TastingNoteDraft;
+  aiAromas: string[];
+}) {
   const t = useT();
   const active = draft.aromas.filter((aroma) => aroma.active).map((aroma) => aroma.name);
-  return <Expandable title={t("notes.compareAi")}><div className="grid grid-cols-2 gap-4 text-sm"><div><p className="mb-2 font-medium text-gold">{t("notes.tab.ai")}</p><p className="leading-relaxed text-muted-foreground">{aiAromas.join(", ") || "—"}</p><TasteValues wine={wine} /></div><div><p className="mb-2 font-medium text-gold">{t("notes.tab.mine")}</p><p className="leading-relaxed text-muted-foreground">{active.join(", ") || "—"}</p><TasteValues wine={draft} /></div></div></Expandable>;
+  return (
+    <Expandable title={t("notes.compareAi")}>
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <p className="mb-2 font-medium text-gold">{t("notes.tab.ai")}</p>
+          <p className="leading-relaxed text-muted-foreground">{aiAromas.join(", ") || "—"}</p>
+          <TasteValues wine={wine} />
+        </div>
+        <div>
+          <p className="mb-2 font-medium text-gold">{t("notes.tab.mine")}</p>
+          <p className="leading-relaxed text-muted-foreground">{active.join(", ") || "—"}</p>
+          <TasteValues wine={draft} />
+        </div>
+      </div>
+    </Expandable>
+  );
 }
 
-function TasteValues({ wine }: { wine: Pick<WineRow, "body" | "tannin" | "acidity" | "sweetness"> | Pick<TastingNoteDraft, "body" | "tannin" | "acidity" | "sweetness"> }) {
+function TasteValues({
+  wine,
+}: {
+  wine:
+    | Pick<WineRow, "body" | "tannin" | "acidity" | "sweetness">
+    | Pick<TastingNoteDraft, "body" | "tannin" | "acidity" | "sweetness">;
+}) {
   const t = useT();
-  return <dl className="mt-3 space-y-1 text-xs text-muted-foreground">{(["body", "tannin", "acidity", "sweetness"] as const).map((key) => <div key={key} className="flex justify-between gap-2"><dt>{t(`taste.${key}` as TKey)}</dt><dd>{wine[key] == null ? "—" : `${wine[key]}/10`}</dd></div>)}</dl>;
+  return (
+    <dl className="mt-3 space-y-1 text-xs text-muted-foreground">
+      {(["body", "tannin", "acidity", "sweetness"] as const).map((key) => (
+        <div key={key} className="flex justify-between gap-2">
+          <dt>{t(`taste.${key}` as TKey)}</dt>
+          <dd>{wine[key] == null ? "—" : `${wine[key]}/10`}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 function WheelSection() {
   const t = useT();
-  return <Expandable title={t("notes.showWheel")}><div className="flex justify-center overflow-hidden"><AromaWheel size={300} showLabels /></div></Expandable>;
+  return (
+    <Expandable title={t("notes.showWheel")}>
+      <div className="flex justify-center overflow-hidden">
+        <AromaWheel size={300} showLabels />
+      </div>
+    </Expandable>
+  );
 }
 
-function HistorySection({ history, lang, onUse }: { history: HistoryRow[]; lang: "sv" | "en"; onUse: (note: HistoryRow) => void }) {
+function HistorySection({
+  history,
+  lang,
+  onUse,
+}: {
+  history: HistoryRow[];
+  lang: "sv" | "en";
+  onUse: (note: HistoryRow) => void;
+}) {
   const t = useT();
-  return <Expandable title={t("notes.previous")}>
-    {history.length === 0 ? <p className="text-sm text-muted-foreground">{t("notes.previousEmpty")}</p> : <ul className="divide-y divide-border border-y border-border">{history.map((note) => <li key={note.id} className="py-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs text-gold">{new Date(note.tasted_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US")}</p><p className="mt-1 text-sm leading-relaxed text-foreground/80">{note.notes || note.aromas?.join(", ") || "—"}</p></div><Button type="button" variant="ghost" size="sm" onClick={() => onUse(note)}><History />{t("notes.useAsNew")}</Button></div></li>)}</ul>}
-  </Expandable>;
+  return (
+    <Expandable title={t("notes.previous")}>
+      {history.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("notes.previousEmpty")}</p>
+      ) : (
+        <ul className="divide-y divide-border border-y border-border">
+          {history.map((note) => (
+            <li key={note.id} className="py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-gold">
+                    {new Date(note.tasted_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US")}
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-foreground/80">
+                    {note.notes || note.aromas?.join(", ") || "—"}
+                  </p>
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => onUse(note)}>
+                  <History />
+                  {t("notes.useAsNew")}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Expandable>
+  );
 }
