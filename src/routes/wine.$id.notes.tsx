@@ -1,337 +1,675 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Star, Wine, Plus, Calendar, MapPin, X } from "lucide-react";
+import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Calendar, ChevronDown, History, MapPin, Plus, Star, Wine } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AROMA_OPTIONS, AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
+import { AromaWheel } from "@/components/AromaWheel";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
+import { useT, useI18n, type TKey } from "@/i18n";
+import {
+  buildTastingNoteInsert,
+  createSaveGuard,
+  draftFromStored,
+  EMPTY_TASTING_NOTE,
+  runGuardedSave,
+  type StoredTastingNote,
+  type TastingNoteDraft,
+} from "@/lib/tastingNotes";
 import { cn } from "@/lib/utils";
-import { useT } from "@/i18n";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/wine/$id/notes")({
-  head: () => ({ meta: [{ title: "Tasting Notes — WineSnap" }] }),
+  head: () => ({
+    meta: [
+      { title: "Tasting Notes — WineSnap" },
+      { name: "description", content: "Record and compare your personal wine tasting notes." },
+      { property: "og:title", content: "Tasting Notes — WineSnap" },
+      {
+        property: "og:description",
+        content: "Record and compare your personal wine tasting notes.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: NotesPage,
 });
 
 type WineRow = {
   id: string;
+  user_id: string;
   image_url: string | null;
   wine_name: string | null;
   vintage: number | null;
   region: string | null;
   country: string | null;
   primary_notes: string[] | null;
+  secondary_notes: string[] | null;
+  tertiary_notes: string[] | null;
+  body: number | null;
+  tannin: number | null;
+  acidity: number | null;
+  sweetness: number | null;
 };
+
+type HistoryRow = StoredTastingNote & { id: string; created_at: string };
+type SaveResult = { data: unknown; error: { message: string } | null };
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function NotesPage() {
   const { id } = Route.useParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const t = useT();
-  const [w, setW] = useState<WineRow | null>(null);
-  const [rating, setRating] = useState(0);
-  const [aromas, setAromas] = useState<string[]>([]);
-  const [newAroma, setNewAroma] = useState("");
-  const [acidity, setAcidity] = useState(50);
-  const [tannin, setTannin] = useState(50);
-  const [body, setBody] = useState(50);
-  const [sweetness, setSweetness] = useState(50);
-  const [finish, setFinish] = useState<"Short" | "Medium" | "Long">("Medium");
-  const [text, setText] = useState("");
-  const [location, setLocation] = useState("Home");
-  const [tastedAt, setTastedAt] = useState<string>(new Date().toISOString().slice(0, 10));
+  const { lang } = useI18n();
+  const [wine, setWine] = useState<WineRow | null>(null);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [draft, setDraft] = useState<TastingNoteDraft>(() => EMPTY_TASTING_NOTE(today()));
+  const [baseline, setBaseline] = useState<TastingNoteDraft>(() => EMPTY_TASTING_NOTE(today()));
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const saveGuard = useRef(createSaveGuard());
+
+  const dirty = useMemo(
+    () => JSON.stringify(draft) !== JSON.stringify(baseline),
+    [draft, baseline],
+  );
+  const aiAromas = useMemo(
+    () => [
+      ...(wine?.primary_notes ?? []),
+      ...(wine?.secondary_notes ?? []),
+      ...(wine?.tertiary_notes ?? []),
+    ],
+    [wine],
+  );
 
   useEffect(() => {
-    supabase
-      .from("wines")
-      .select("id,image_url,wine_name,vintage,region,country,primary_notes")
-      .eq("id", id)
-      .maybeSingle()
-      .then(({ data }) => {
-        const r = data as WineRow | null;
-        setW(r);
-        if (r?.primary_notes?.length) setAromas(r.primary_notes.slice(0, 5));
-      });
-  }, [id]);
+    if (!user && !authLoading) navigate({ to: "/login" });
+  }, [authLoading, navigate, user]);
 
-  const removeAroma = (a: string) => setAromas(aromas.filter((x) => x !== a));
-  const addAroma = () => {
-    const a = newAroma.trim();
-    if (!a) return;
-    if (aromas.includes(a)) {
-      setNewAroma("");
-      return;
-    }
-    setAromas([...aromas, a]);
-    setNewAroma("");
-  };
-
-  const save = async () => {
-    if (!user) {
-      navigate({ to: "/login" });
-      return;
-    }
-    setSaving(true);
-    const noteRow = {
-      user_id: user.id,
-      wine_id: id,
-      rating: Math.round(rating * 10) / 10 || null,
-      aromas,
-      body: Math.round(body / 10),
-      tannin: Math.round(tannin / 10),
-      acidity: Math.round(acidity / 10),
-      sweetness: Math.round(sweetness / 10),
-      finish,
-      notes: text || null,
-      location: location || null,
-      tasted_at: tastedAt,
-    };
-    const [{ error: noteErr }, { error: wineErr }] = await Promise.all([
-      supabase.from("tasting_notes").insert(noteRow as never),
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    Promise.all([
       supabase
         .from("wines")
-        .update({
-          user_rating: Math.round(rating) || null,
-          notes: text || null,
-          primary_notes: aromas,
-          acidity: Math.round(acidity / 10),
-          tannin: Math.round(tannin / 10),
-          body: Math.round(body / 10),
-          sweetness: Math.round(sweetness / 10),
-        })
-        .eq("id", id),
-    ]);
-    setSaving(false);
-    if (noteErr || wineErr) return toast.error((noteErr || wineErr)!.message);
-    toast.success(t("notes.saved"));
+        .select(
+          "id,user_id,image_url,wine_name,vintage,region,country,primary_notes,secondary_notes,tertiary_notes,body,tannin,acidity,sweetness",
+        )
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("tasting_notes")
+        .select("*")
+        .eq("wine_id", id)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+    ]).then(([wineResult, notesResult]) => {
+      if (!active) return;
+      if (wineResult.error) toast.error(t("notes.loadFailed"));
+      if (notesResult.error) toast.error(t("notes.historyFailed"));
+      setWine(wineResult.data as WineRow | null);
+      setHistory((notesResult.data as unknown as HistoryRow[] | null) ?? []);
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [id, t, user]);
+
+  useBlocker({
+    disabled: !dirty,
+    enableBeforeUnload: dirty,
+    shouldBlockFn: () => !window.confirm(t("notes.unsavedConfirm")),
+  });
+
+  const leave = () => {
     navigate({ to: "/wine/$id", params: { id } });
   };
 
-  if (!w)
+  const setField = <K extends keyof TastingNoteDraft>(key: K, value: TastingNoteDraft[K]) =>
+    setDraft((current) => ({ ...current, [key]: value }));
+
+  const addAroma = (name: string) => {
+    const clean = name.trim().slice(0, 60);
+    if (!clean) return;
+    setDraft((current) => {
+      if (
+        current.aromas.some((aroma) => aroma.name.toLocaleLowerCase() === clean.toLocaleLowerCase())
+      )
+        return current;
+      return {
+        ...current,
+        aromas: [...current.aromas, { name: clean, active: true, intensity: null }],
+      };
+    });
+    setPickerOpen(false);
+  };
+
+  const save = async () => {
+    if (!user) return;
+    setSaving(true);
+    const payload = buildTastingNoteInsert(draft, user.id, id);
+    const outcome = await runGuardedSave<SaveResult>(saveGuard.current, async () =>
+      supabase
+        .from("tasting_notes")
+        .insert(payload as never)
+        .select("*")
+        .single(),
+    );
+    if (!outcome.started) return;
+    setSaving(false);
+    if (outcome.error || outcome.result?.error || !outcome.result?.data) {
+      toast.error(t("notes.saveFailed"));
+      return;
+    }
+    setHistory((current) => [outcome.result?.data as unknown as HistoryRow, ...current]);
+    const empty = EMPTY_TASTING_NOTE(today());
+    setDraft(empty);
+    setBaseline(empty);
+    toast.success(t("notes.saved"));
+  };
+
+  if (loading || authLoading)
     return (
       <AppShell>
-        <div className="mt-20 text-center text-muted-foreground">{t("common.loading")}</div>
+        <p className="mt-20 text-center text-sm text-muted-foreground">{t("common.loading")}</p>
+      </AppShell>
+    );
+
+  if (!wine)
+    return (
+      <AppShell>
+        <p className="mt-20 text-center text-sm text-muted-foreground">{t("wine.notFound")}</p>
       </AppShell>
     );
 
   return (
-    <AppShell>
-      <div className="-mx-5 -mt-6 px-5 pt-3">
-        <header className="flex items-center justify-between">
-          <button onClick={() => window.history.back()} className="text-sm text-foreground/80">
+    <AppShell hideNav>
+      <div className="-mx-5 -mt-6 min-h-screen px-5 pb-8 pt-3">
+        <header className="grid grid-cols-[72px_1fr_72px] items-center">
+          <Button variant="ghost" size="sm" onClick={leave} className="justify-start px-0">
             {t("common.cancel")}
-          </button>
-          <h1 className="font-display text-2xl text-gold">{t("notes.title")}</h1>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="rounded-full bg-gradient-burgundy px-3.5 py-1.5 text-xs font-medium text-cream disabled:opacity-50"
-          >
-            {saving ? t("login.wait") : t("notes.save")}
-          </button>
+          </Button>
+          <h1 className="text-center font-display text-2xl text-gold">{t("notes.title")}</h1>
+          <div />
         </header>
 
-        <section className="mt-4 flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3">
-          <div className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
-            {w.image_url ? (
-              <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+        <section className="mt-5 flex items-center gap-3 border-b border-border pb-4">
+          <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card">
+            {wine.image_url ? (
+              <img src={wine.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
-              <Wine className="h-5 w-5 text-gold/60" />
+              <Wine className="h-5 w-5 text-gold" />
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-base text-cream">
-              {w.wine_name ?? "Unknown"} {w.vintage ?? ""}
+          <div className="min-w-0">
+            <p className="font-display text-lg leading-tight text-cream">
+              {wine.wine_name ?? t("wine.unknown")} {wine.vintage ?? ""}
             </p>
-            <p className="truncate text-xs text-gold">
-              {[w.region, w.country].filter(Boolean).join(", ")}
+            <p className="mt-1 text-xs text-gold">
+              {[wine.region, wine.country].filter(Boolean).join(", ") || "—"}
             </p>
           </div>
         </section>
 
-        <section className="mt-5">
-          <p className="text-sm text-foreground/85">{t("notes.overall")}</p>
-          <div className="mt-2 flex items-center gap-3">
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <button key={i} onClick={() => setRating(i)} aria-label={`${i}`}>
-                  <Star
-                    className={cn("h-7 w-7", i <= rating ? "fill-gold text-gold" : "text-white/15")}
+        <Tabs defaultValue="mine" className="mt-5">
+          <TabsList className="grid h-11 w-full grid-cols-2 rounded-md border border-border bg-card/60 p-1">
+            <TabsTrigger value="ai" className="rounded-sm">
+              {t("notes.tab.ai")}
+            </TabsTrigger>
+            <TabsTrigger value="mine" className="rounded-sm">
+              {t("notes.tab.mine")}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="ai" className="mt-6">
+            <SectionTitle>{t("notes.aiAromas")}</SectionTitle>
+            {aiAromas.length ? (
+              <AromaList
+                aromas={aiAromas.map((name) => ({ name, active: true, intensity: null }))}
+                readOnly
+              />
+            ) : (
+              <p className="border-y border-border py-5 text-sm text-muted-foreground">
+                {t("notes.aiEmpty")}
+              </p>
+            )}
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+              {t("notes.aiDisclaimer")}
+            </p>
+          </TabsContent>
+
+          <TabsContent value="mine" className="mt-6 space-y-7">
+            <section>
+              <div className="flex items-center justify-between gap-3">
+                <SectionTitle>{t("notes.myAromas")}</SectionTitle>
+                <AromaPicker open={pickerOpen} onOpenChange={setPickerOpen} onAdd={addAroma} />
+              </div>
+              {draft.aromas.length ? (
+                <AromaList
+                  aromas={draft.aromas}
+                  onActive={(index, active) =>
+                    setDraft((current) => ({
+                      ...current,
+                      aromas: current.aromas.map((aroma, i) =>
+                        i === index ? { ...aroma, active } : aroma,
+                      ),
+                    }))
+                  }
+                  onIntensity={(index, intensity) =>
+                    setDraft((current) => ({
+                      ...current,
+                      aromas: current.aromas.map((aroma, i) =>
+                        i === index ? { ...aroma, intensity, active: true } : aroma,
+                      ),
+                    }))
+                  }
+                />
+              ) : (
+                <p className="border-y border-border py-5 text-sm text-muted-foreground">
+                  {t("notes.aromasEmpty")}
+                </p>
+              )}
+            </section>
+
+            <section>
+              <label htmlFor="note-summary" className="font-display text-lg text-gold">
+                {t("notes.summary")}
+              </label>
+              <Textarea
+                id="note-summary"
+                value={draft.summary}
+                onChange={(e) => setField("summary", e.target.value)}
+                rows={4}
+                placeholder={t("notes.summaryPh")}
+                className="mt-3 bg-card/40"
+              />
+            </section>
+
+            <section>
+              <SectionTitle>{t("notes.overall")}</SectionTitle>
+              <div
+                className="mt-3 flex items-center gap-2"
+                role="radiogroup"
+                aria-label={t("notes.overall")}
+              >
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <Button
+                    key={rating}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    role="radio"
+                    aria-checked={draft.rating === rating}
+                    aria-label={`${rating} / 5`}
+                    onClick={() => setField("rating", rating)}
+                  >
+                    <Star
+                      className={cn(
+                        "h-6 w-6",
+                        draft.rating != null && rating <= draft.rating
+                          ? "fill-gold text-gold"
+                          : "text-muted-foreground",
+                      )}
+                    />
+                  </Button>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <SectionTitle>{t("notes.palate")}</SectionTitle>
+              <div className="mt-3 space-y-5">
+                {(["acidity", "tannin", "body", "sweetness"] as const).map((field) => (
+                  <OptionalTasteSlider
+                    key={field}
+                    label={t(`taste.${field}` as TKey)}
+                    value={draft[field]}
+                    onChange={(value) => setField(field, value)}
                   />
-                </button>
-              ))}
-            </div>
-            <span className="ml-auto font-display text-2xl text-cream">{rating.toFixed(1)}</span>
-          </div>
-        </section>
+                ))}
+              </div>
+            </section>
 
-        <section className="mt-6">
-          <p className="text-sm text-foreground/85">{t("notes.aromas")}</p>
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {aromas.map((a) => (
-              <button
-                key={a}
-                onClick={() => removeAroma(a)}
-                className="flex h-9 items-center gap-1.5 rounded-full border border-white/12 bg-card/40 px-3 text-xs"
-              >
-                <span>{a}</span>
-                <X className="h-3 w-3 opacity-70" />
-              </button>
-            ))}
-          </div>
-          <div className="mt-2 flex gap-2">
-            <input
-              value={newAroma}
-              onChange={(e) => setNewAroma(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addAroma();
-                }
-              }}
-              placeholder={t("notes.addAromaPh")}
-              className="h-9 flex-1 rounded-full border border-dashed border-gold/40 bg-transparent px-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-gold focus:outline-none"
+            <section>
+              <SectionTitle>{t("notes.finish")}</SectionTitle>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {(["Short", "Medium", "Long"] as const).map((finish) => (
+                  <Button
+                    key={finish}
+                    type="button"
+                    variant={draft.finish === finish ? "default" : "outline"}
+                    onClick={() => setField("finish", finish)}
+                  >
+                    {t(`notes.${finish.toLowerCase()}` as TKey)}
+                  </Button>
+                ))}
+              </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-xs">
+                <Calendar className="h-4 w-4 text-gold" />
+                <span className="sr-only">{t("notes.date")}</span>
+                <input
+                  type="date"
+                  value={draft.tastedAt}
+                  onChange={(e) => setField("tastedAt", e.target.value)}
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none"
+                />
+              </label>
+              <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-xs">
+                <MapPin className="h-4 w-4 text-gold" />
+                <span className="sr-only">{t("notes.location")}</span>
+                <input
+                  value={draft.location}
+                  onChange={(e) => setField("location", e.target.value)}
+                  placeholder={t("notes.locationPh")}
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none"
+                />
+              </label>
+            </section>
+
+            <ComparisonSection wine={wine} draft={draft} aiAromas={aiAromas} />
+            <WheelSection />
+            <HistorySection
+              history={history}
+              lang={lang}
+              onUse={(note) => setDraft(draftFromStored(note))}
             />
-            <button
-              onClick={addAroma}
-              className="flex h-9 items-center gap-1 rounded-full border border-gold/40 px-3 text-xs text-gold"
+
+            <Button
+              onClick={save}
+              disabled={saving || !dirty}
+              className="h-11 w-full bg-burgundy text-cream hover:bg-burgundy/90"
             >
-              <Plus className="h-3 w-3" /> {t("notes.addAroma")}
-            </button>
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <p className="text-sm text-foreground/85">{t("notes.palate")}</p>
-          <div className="mt-3 space-y-3.5">
-            <PalateRow
-              label={t("taste.acidity")}
-              leftLabel={t("taste.low")}
-              rightLabel={t("taste.high")}
-              value={acidity}
-              onChange={setAcidity}
-            />
-            <PalateRow
-              label={t("taste.tannin")}
-              leftLabel={t("taste.low")}
-              rightLabel={t("taste.high")}
-              value={tannin}
-              onChange={setTannin}
-            />
-            <PalateRow
-              label={t("taste.body")}
-              leftLabel={t("taste.light")}
-              rightLabel={t("taste.bold")}
-              value={body}
-              onChange={setBody}
-            />
-            <PalateRow
-              label={t("taste.sweetness")}
-              leftLabel={t("taste.dry")}
-              rightLabel={t("taste.sweet")}
-              value={sweetness}
-              onChange={setSweetness}
-            />
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <p className="text-sm text-foreground/85">{t("notes.finish")}</p>
-          <div className="mt-2 flex gap-2">
-            {(["Short", "Medium", "Long"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFinish(f)}
-                className={cn(
-                  "h-10 flex-1 rounded-xl border text-xs transition-colors",
-                  finish === f
-                    ? "border-burgundy bg-burgundy text-cream"
-                    : "border-white/10 bg-card/40 text-foreground/80",
-                )}
-              >
-                {f === "Short"
-                  ? t("notes.short")
-                  : f === "Medium"
-                    ? t("notes.medium")
-                    : t("notes.long")}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <p className="text-sm text-foreground/85">{t("notes.notes")}</p>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={3}
-            placeholder={t("notes.notesPh")}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-card/40 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
-          />
-        </section>
-
-        <section className="mt-3 mb-4 grid grid-cols-2 gap-2">
-          <label className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-card/40 px-3 text-xs text-foreground/85">
-            <Calendar className="h-3.5 w-3.5 text-gold" />
-            <input
-              type="date"
-              value={tastedAt}
-              onChange={(e) => setTastedAt(e.target.value)}
-              className="flex-1 bg-transparent focus:outline-none"
-            />
-          </label>
-          <label className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-card/40 px-3 text-xs text-foreground/85">
-            <MapPin className="h-3.5 w-3.5 text-gold" />
-            <input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder={t("notes.locationPh")}
-              className="flex-1 bg-transparent focus:outline-none placeholder:text-muted-foreground"
-            />
-          </label>
-        </section>
+              {saving ? t("login.wait") : t("notes.saveMine")}
+            </Button>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );
 }
 
-function PalateRow({
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="font-display text-lg text-gold">{children}</h2>;
+}
+
+function AromaList({
+  aromas,
+  readOnly = false,
+  onActive,
+  onIntensity,
+}: {
+  aromas: TastingNoteDraft["aromas"];
+  readOnly?: boolean;
+  onActive?: (index: number, active: boolean) => void;
+  onIntensity?: (index: number, value: number) => void;
+}) {
+  const t = useT();
+  return (
+    <ul className="mt-3 divide-y divide-border border-y border-border">
+      {aromas.map((aroma, index) => (
+        <li
+          key={`${aroma.name}-${index}`}
+          className={cn("flex min-h-20 items-center gap-3 py-3", !aroma.active && "opacity-55")}
+        >
+          {!readOnly && (
+            <Checkbox
+              checked={aroma.active}
+              onCheckedChange={(checked) => onActive?.(index, checked === true)}
+              aria-label={t("notes.aromaActive").replace("{name}", aroma.name)}
+            />
+          )}
+          <AromaIcon name={aroma.name} size={48} />
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base leading-tight text-cream">{aroma.name}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
+            {!readOnly && (
+              <div className="mt-2">
+                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                  <span>{t("notes.weak")}</span>
+                  <span>
+                    {aroma.intensity == null ? t("notes.notSet") : `${aroma.intensity}/5`}
+                  </span>
+                  <span>{t("notes.clear")}</span>
+                </div>
+                <Slider
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={aroma.intensity == null ? [] : [aroma.intensity]}
+                  onValueChange={(value) => value[0] != null && onIntensity?.(index, value[0])}
+                  aria-label={t("notes.intensityFor").replace("{name}", aroma.name)}
+                />
+              </div>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AromaPicker({
+  open,
+  onOpenChange,
+  onAdd,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdd: (name: string) => void;
+}) {
+  const t = useT();
+  const [query, setQuery] = useState("");
+  const exact = AROMA_OPTIONS.some(
+    (name) => name.toLocaleLowerCase() === query.trim().toLocaleLowerCase(),
+  );
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          <Plus />
+          {t("notes.addAroma")}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2.5rem))] p-0">
+        <Command shouldFilter>
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder={t("notes.searchAroma")}
+          />
+          <CommandList>
+            <CommandEmpty>{t("notes.noAromaMatch")}</CommandEmpty>
+            <CommandGroup>
+              {query.trim() && !exact && (
+                <CommandItem value={query} onSelect={() => onAdd(query)}>
+                  <Plus />
+                  {t("notes.addOwn").replace("{name}", query.trim())}
+                </CommandItem>
+              )}
+              {AROMA_OPTIONS.map((name) => (
+                <CommandItem key={name} value={name} onSelect={() => onAdd(name)}>
+                  <AromaIcon name={name} size={28} />
+                  {name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function OptionalTasteSlider({
   label,
-  leftLabel,
-  rightLabel,
   value,
   onChange,
 }: {
   label: string;
-  leftLabel: string;
-  rightLabel: string;
-  value: number;
-  onChange: (v: number) => void;
+  value: number | null;
+  onChange: (value: number) => void;
 }) {
+  const t = useT();
   return (
-    <div className="grid grid-cols-[72px_36px_1fr_36px] items-center gap-2">
-      <span className="text-xs text-foreground/85">{label}</span>
-      <span className="text-[10px] text-muted-foreground">{leftLabel}</span>
-      <div className="relative h-1 rounded-full bg-white/10">
-        <div
-          className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper"
-          style={{ width: `${value}%` }}
-        />
-        <span
-          className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cream bg-gold shadow"
-          style={{ left: `${value}%` }}
-        />
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={value}
-          onChange={(e) => onChange(parseInt(e.target.value))}
-          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-        />
+    <div>
+      <div className="mb-2 flex justify-between text-xs">
+        <span>{label}</span>
+        <span className="text-muted-foreground">
+          {value == null ? t("notes.notSet") : `${value}/10`}
+        </span>
       </div>
-      <span className="text-right text-[10px] text-muted-foreground">{rightLabel}</span>
+      <Slider
+        min={1}
+        max={10}
+        step={1}
+        value={value == null ? [] : [value]}
+        onValueChange={(next) => next[0] != null && onChange(next[0])}
+        aria-label={label}
+      />
     </div>
+  );
+}
+
+function Expandable({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Collapsible>
+      <CollapsibleTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-between border-y border-border px-0 font-display text-base text-gold"
+        >
+          {title}
+          <ChevronDown />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="py-4">{children}</CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function ComparisonSection({
+  wine,
+  draft,
+  aiAromas,
+}: {
+  wine: WineRow;
+  draft: TastingNoteDraft;
+  aiAromas: string[];
+}) {
+  const t = useT();
+  const active = draft.aromas.filter((aroma) => aroma.active).map((aroma) => aroma.name);
+  return (
+    <Expandable title={t("notes.compareAi")}>
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <p className="mb-2 font-medium text-gold">{t("notes.tab.ai")}</p>
+          <p className="leading-relaxed text-muted-foreground">{aiAromas.join(", ") || "—"}</p>
+          <TasteValues wine={wine} />
+        </div>
+        <div>
+          <p className="mb-2 font-medium text-gold">{t("notes.tab.mine")}</p>
+          <p className="leading-relaxed text-muted-foreground">{active.join(", ") || "—"}</p>
+          <TasteValues wine={draft} />
+        </div>
+      </div>
+    </Expandable>
+  );
+}
+
+function TasteValues({
+  wine,
+}: {
+  wine:
+    | Pick<WineRow, "body" | "tannin" | "acidity" | "sweetness">
+    | Pick<TastingNoteDraft, "body" | "tannin" | "acidity" | "sweetness">;
+}) {
+  const t = useT();
+  return (
+    <dl className="mt-3 space-y-1 text-xs text-muted-foreground">
+      {(["body", "tannin", "acidity", "sweetness"] as const).map((key) => (
+        <div key={key} className="flex justify-between gap-2">
+          <dt>{t(`taste.${key}` as TKey)}</dt>
+          <dd>{wine[key] == null ? "—" : `${wine[key]}/10`}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function WheelSection() {
+  const t = useT();
+  return (
+    <Expandable title={t("notes.showWheel")}>
+      <div className="flex justify-center overflow-hidden">
+        <AromaWheel size={300} showLabels />
+      </div>
+    </Expandable>
+  );
+}
+
+function HistorySection({
+  history,
+  lang,
+  onUse,
+}: {
+  history: HistoryRow[];
+  lang: "sv" | "en";
+  onUse: (note: HistoryRow) => void;
+}) {
+  const t = useT();
+  return (
+    <Expandable title={t("notes.previous")}>
+      {history.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("notes.previousEmpty")}</p>
+      ) : (
+        <ul className="divide-y divide-border border-y border-border">
+          {history.map((note) => (
+            <li key={note.id} className="py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-gold">
+                    {new Date(note.tasted_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US")}
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-foreground/80">
+                    {note.notes || note.aromas?.join(", ") || "—"}
+                  </p>
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => onUse(note)}>
+                  <History />
+                  {t("notes.useAsNew")}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Expandable>
   );
 }

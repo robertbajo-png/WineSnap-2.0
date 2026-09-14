@@ -129,6 +129,33 @@ const MAP: { match: RegExp; src: string; family: Family; label: string }[] = [
   },
 ];
 
+export const AROMA_OPTIONS = [
+  "Black cherry",
+  "Blackberry",
+  "Plum",
+  "Fig",
+  "Citrus peel",
+  "Violet",
+  "Rose",
+  "Black pepper",
+  "Baking spice",
+  "Vanilla",
+  "Cocoa",
+  "Coffee",
+  "Cedar",
+  "Oak",
+  "Tobacco",
+  "Leather",
+  "Forest floor",
+  "Wet stone",
+  "Graphite",
+  "Mushroom",
+  "Dried herbs",
+  "Honey",
+  "Almond",
+  "Smoke",
+] as const;
+
 const FAMILY_LABEL: Record<Family, string> = {
   berry: "Berry",
   fruit: "Fruit",
