@@ -5,6 +5,7 @@ import {
   draftFromStored,
   EMPTY_TASTING_NOTE,
   normalizeIntensities,
+  runGuardedSave,
 } from "./tastingNotes";
 
 describe("personal tasting note data", () => {
@@ -67,4 +68,14 @@ it("blocks a duplicate save until the first finishes", () => {
   expect(guard.tryStart()).toBe(false);
   guard.finish();
   expect(guard.tryStart()).toBe(true);
+});
+
+it("releases the save guard after a failed request", async () => {
+  const guard = createSaveGuard();
+  const failure = await runGuardedSave(guard, async () => {
+    throw new Error("offline");
+  });
+  expect(failure).toMatchObject({ started: true, error: expect.any(Error) });
+  const retry = await runGuardedSave(guard, async () => "saved");
+  expect(retry).toEqual({ started: true, result: "saved" });
 });

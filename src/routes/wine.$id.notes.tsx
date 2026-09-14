@@ -27,6 +27,7 @@ import {
   createSaveGuard,
   draftFromStored,
   EMPTY_TASTING_NOTE,
+  runGuardedSave,
   type StoredTastingNote,
   type TastingNoteDraft,
 } from "@/lib/tastingNotes";
@@ -166,21 +167,19 @@ function NotesPage() {
   };
 
   const save = async () => {
-    if (!user || !saveGuard.current.tryStart()) return;
+    if (!user) return;
     setSaving(true);
     const payload = buildTastingNoteInsert(draft, user.id, id);
-    const { data, error } = await supabase
-      .from("tasting_notes")
-      .insert(payload as never)
-      .select("*")
-      .single();
-    saveGuard.current.finish();
+    const outcome = await runGuardedSave(saveGuard.current, () =>
+      supabase.from("tasting_notes").insert(payload as never).select("*").single(),
+    );
+    if (!outcome.started) return;
     setSaving(false);
-    if (error) {
+    if (outcome.error || outcome.result?.error || !outcome.result?.data) {
       toast.error(t("notes.saveFailed"));
       return;
     }
-    setHistory((current) => [data as unknown as HistoryRow, ...current]);
+    setHistory((current) => [outcome.result?.data as unknown as HistoryRow, ...current]);
     const empty = EMPTY_TASTING_NOTE(today());
     setDraft(empty);
     setBaseline(empty);

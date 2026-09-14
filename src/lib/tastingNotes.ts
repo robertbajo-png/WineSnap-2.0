@@ -115,3 +115,17 @@ export function createSaveGuard() {
     },
   };
 }
+
+export async function runGuardedSave<T>(
+  guard: ReturnType<typeof createSaveGuard>,
+  operation: () => Promise<T>,
+): Promise<{ started: false } | { started: true; result?: T; error?: unknown }> {
+  if (!guard.tryStart()) return { started: false };
+  try {
+    return { started: true, result: await operation() };
+  } catch (error) {
+    return { started: true, error };
+  } finally {
+    guard.finish();
+  }
+}
