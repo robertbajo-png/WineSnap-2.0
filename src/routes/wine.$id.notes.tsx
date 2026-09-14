@@ -2,10 +2,10 @@ import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronDown, History, MapPin, Plus, Star, Wine } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { AROMA_OPTIONS, AromaIcon, aromaFamilyLabel } from "@/components/AromaIcon";
+import { AROMA_OPTIONS, AromaIcon } from "@/components/AromaIcon";
 import { AromaWheel } from "@/components/AromaWheel";
+import { AromaRows } from "@/components/AromaProfileTabs";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Command,
@@ -247,7 +247,7 @@ function NotesPage() {
           <TabsContent value="ai" className="mt-6">
             <SectionTitle>{t("notes.aiAromas")}</SectionTitle>
             {aiAromas.length ? (
-              <AromaList
+              <AromaRows
                 aromas={aiAromas.map((name) => ({ name, active: true, intensity: null }))}
                 readOnly
               />
@@ -268,7 +268,7 @@ function NotesPage() {
                 <AromaPicker open={pickerOpen} onOpenChange={setPickerOpen} onAdd={addAroma} />
               </div>
               {draft.aromas.length ? (
-                <AromaList
+                <AromaRows
                   aromas={draft.aromas}
                   onActive={(index, active) =>
                     setDraft((current) => ({
@@ -416,76 +416,6 @@ function NotesPage() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-display text-lg text-gold">{children}</h2>;
-}
-
-function AromaList({
-  aromas,
-  readOnly = false,
-  onActive,
-  onIntensity,
-}: {
-  aromas: TastingNoteDraft["aromas"];
-  readOnly?: boolean;
-  onActive?: (index: number, active: boolean) => void;
-  onIntensity?: (index: number, value: number) => void;
-}) {
-  const t = useT();
-  return (
-    <ul className="mt-3 divide-y divide-border border-y border-border">
-      {aromas.map((aroma, index) => (
-        <li
-          key={`${aroma.name}-${index}`}
-          className={cn("flex min-h-20 items-center gap-3 py-3", !aroma.active && "opacity-55")}
-        >
-          {!readOnly && (
-            <Checkbox
-              checked={aroma.active}
-              onCheckedChange={(checked) => onActive?.(index, checked === true)}
-              aria-label={t("notes.aromaActive").replace("{name}", aroma.name)}
-            />
-          )}
-          <AromaIcon name={aroma.name} size={48} />
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-base leading-tight text-cream">{aroma.name}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
-            {!readOnly && (
-              <div className="mt-2">
-                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
-                  <span>{t("notes.weak")}</span>
-                  <span>
-                    {aroma.intensity == null ? t("notes.notSet") : `${aroma.intensity}/5`}
-                  </span>
-                  <span>{t("notes.clear")}</span>
-                </div>
-                {aroma.intensity == null ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!aroma.active}
-                    onClick={() => onIntensity?.(index, 1)}
-                    className="w-full"
-                  >
-                    {t("notes.chooseIntensity")}
-                  </Button>
-                ) : (
-                  <Slider
-                    min={1}
-                    max={5}
-                    step={1}
-                    value={[aroma.intensity]}
-                    disabled={!aroma.active}
-                    onValueChange={(value) => value[0] != null && onIntensity?.(index, value[0])}
-                    aria-label={t("notes.intensityFor").replace("{name}", aroma.name)}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function AromaPicker({
