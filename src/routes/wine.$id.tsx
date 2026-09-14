@@ -132,7 +132,7 @@ function WineDetailPage() {
       });
     supabase
       .from("tasting_notes")
-        .select("*")
+      .select("*")
       .eq("wine_id", id)
       .order("tasted_at", { ascending: false })
       .limit(5)
