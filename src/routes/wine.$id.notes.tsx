@@ -172,7 +172,11 @@ function NotesPage() {
     setSaving(true);
     const payload = buildTastingNoteInsert(draft, user.id, id);
     const outcome = await runGuardedSave<SaveResult>(saveGuard.current, async () =>
-      supabase.from("tasting_notes").insert(payload as never).select("*").single(),
+      supabase
+        .from("tasting_notes")
+        .insert(payload as never)
+        .select("*")
+        .single(),
     );
     if (!outcome.started) return;
     setSaving(false);
