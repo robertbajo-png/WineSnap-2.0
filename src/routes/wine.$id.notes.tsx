@@ -113,7 +113,7 @@ function NotesPage() {
         .maybeSingle(),
       supabase
         .from("tasting_notes")
-        .select("id,rating,aromas,body,tannin,acidity,sweetness,finish,notes,location,tasted_at,created_at")
+        .select("id,rating,aromas,aroma_intensities,body,tannin,acidity,sweetness,finish,notes,location,tasted_at,created_at")
         .eq("wine_id", id)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
@@ -163,7 +163,7 @@ function NotesPage() {
     const { data, error } = await supabase
       .from("tasting_notes")
       .insert(payload as never)
-      .select("id,rating,aromas,body,tannin,acidity,sweetness,finish,notes,location,tasted_at,created_at")
+      .select("id,rating,aromas,aroma_intensities,body,tannin,acidity,sweetness,finish,notes,location,tasted_at,created_at")
       .single();
     saveGuard.current.finish();
     setSaving(false);

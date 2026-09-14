@@ -29,14 +29,25 @@ describe("personal tasting note data", () => {
       { name: "Cedar", active: false, intensity: 5 },
       { name: "Smoke", active: true, intensity: 7 },
     ];
-    expect(buildTastingNoteInsert(draft, "u", "w")).toMatchObject({ aromas: ["Smoke"], aroma_intensities: {} });
+    expect(buildTastingNoteInsert(draft, "u", "w")).toMatchObject({
+      aromas: ["Smoke"],
+      aroma_intensities: {},
+    });
   });
 
   it("loads historical values without inventing missing intensities", () => {
     const draft = draftFromStored({
-      rating: 4, aromas: ["Violet", "Oak"], aroma_intensities: { Violet: 2 }, body: null,
-      tannin: 3, acidity: null, sweetness: 1, finish: "Long", notes: "Fresh and floral",
-      location: "Home", tasted_at: "2026-09-01",
+      rating: 4,
+      aromas: ["Violet", "Oak"],
+      aroma_intensities: { Violet: 2 },
+      body: null,
+      tannin: 3,
+      acidity: null,
+      sweetness: 1,
+      finish: "Long",
+      notes: "Fresh and floral",
+      location: "Home",
+      tasted_at: "2026-09-01",
     });
     expect(draft.aromas).toEqual([
       { name: "Violet", active: true, intensity: 2 },

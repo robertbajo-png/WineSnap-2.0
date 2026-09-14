@@ -219,8 +219,7 @@ const en = {
   "scan.saveAnyway": "Save anyway",
   "scan.tryAgain": "Try again",
   "scan.reviewTitle": "Review the wine details",
-  "scan.reviewDesc":
-    "These details were interpreted by AI. Check them before saving.",
+  "scan.reviewDesc": "These details were interpreted by AI. Check them before saving.",
   "scan.reviewCheckLabel": "Check them against the label.",
   "scan.imageAlt": "The photo you submitted of the wine label",
   "scan.confirmTitle": "Is this right?",
@@ -307,7 +306,8 @@ const en = {
   "notes.tab.mine": "My Notes",
   "notes.aiAromas": "AI aroma suggestions",
   "notes.aiEmpty": "There are no AI aroma suggestions for this wine.",
-  "notes.aiDisclaimer": "AI suggestions are estimates. Your notes remain separate and are never used to overwrite them.",
+  "notes.aiDisclaimer":
+    "AI suggestions are estimates. Your notes remain separate and are never used to overwrite them.",
   "notes.myAromas": "My aromas",
   "notes.aromasEmpty": "No personal aromas added yet.",
   "notes.summary": "My summary",
@@ -792,7 +792,8 @@ const sv: Record<keyof typeof en, string> = {
   "notes.tab.mine": "Mina noter",
   "notes.aiAromas": "AI:s aromförslag",
   "notes.aiEmpty": "Det finns inga AI-förslag på aromer för det här vinet.",
-  "notes.aiDisclaimer": "AI-förslag är uppskattningar. Dina noter hålls separata och skriver aldrig över dem.",
+  "notes.aiDisclaimer":
+    "AI-förslag är uppskattningar. Dina noter hålls separata och skriver aldrig över dem.",
   "notes.myAromas": "Mina aromer",
   "notes.aromasEmpty": "Du har inte lagt till några egna aromer än.",
   "notes.summary": "Min sammanfattning",
