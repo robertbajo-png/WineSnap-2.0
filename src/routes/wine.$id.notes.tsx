@@ -457,14 +457,28 @@ function AromaList({
                   </span>
                   <span>{t("notes.clear")}</span>
                 </div>
-                <Slider
-                  min={1}
-                  max={5}
-                  step={1}
-                  value={aroma.intensity == null ? [] : [aroma.intensity]}
-                  onValueChange={(value) => value[0] != null && onIntensity?.(index, value[0])}
-                  aria-label={t("notes.intensityFor").replace("{name}", aroma.name)}
-                />
+                {aroma.intensity == null ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!aroma.active}
+                    onClick={() => onIntensity?.(index, 1)}
+                    className="w-full"
+                  >
+                    {t("notes.chooseIntensity")}
+                  </Button>
+                ) : (
+                  <Slider
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={[aroma.intensity]}
+                    disabled={!aroma.active}
+                    onValueChange={(value) => value[0] != null && onIntensity?.(index, value[0])}
+                    aria-label={t("notes.intensityFor").replace("{name}", aroma.name)}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -544,14 +558,26 @@ function OptionalTasteSlider({
           {value == null ? t("notes.notSet") : `${value}/10`}
         </span>
       </div>
-      <Slider
-        min={1}
-        max={10}
-        step={1}
-        value={value == null ? [] : [value]}
-        onValueChange={(next) => next[0] != null && onChange(next[0])}
-        aria-label={label}
-      />
+      {value == null ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange(1)}
+          className="w-full"
+        >
+          {t("notes.chooseValue")}
+        </Button>
+      ) : (
+        <Slider
+          min={1}
+          max={10}
+          step={1}
+          value={[value]}
+          onValueChange={(next) => next[0] != null && onChange(next[0])}
+          aria-label={label}
+        />
+      )}
     </div>
   );
 }
