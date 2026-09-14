@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronDown, History, MapPin, Plus, Star, Wine } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -113,7 +113,7 @@ function NotesPage() {
         .maybeSingle(),
       supabase
         .from("tasting_notes")
-        .select("id,rating,aromas,aroma_intensities,body,tannin,acidity,sweetness,finish,notes,location,tasted_at,created_at")
+        .select("*")
         .eq("wine_id", id)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
@@ -122,7 +122,7 @@ function NotesPage() {
       if (wineResult.error) toast.error(t("notes.loadFailed"));
       if (notesResult.error) toast.error(t("notes.historyFailed"));
       setWine(wineResult.data as WineRow | null);
-      setHistory((notesResult.data as HistoryRow[] | null) ?? []);
+      setHistory((notesResult.data as unknown as HistoryRow[] | null) ?? []);
       setLoading(false);
     });
     return () => {
@@ -130,15 +130,13 @@ function NotesPage() {
     };
   }, [id, t, user]);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  useBlocker({
+    disabled: !dirty,
+    enableBeforeUnload: dirty,
+    shouldBlockFn: () => !window.confirm(t("notes.unsavedConfirm")),
+  });
 
   const leave = () => {
-    if (dirty && !window.confirm(t("notes.unsavedConfirm"))) return;
     navigate({ to: "/wine/$id", params: { id } });
   };
 
@@ -163,7 +161,7 @@ function NotesPage() {
     const { data, error } = await supabase
       .from("tasting_notes")
       .insert(payload as never)
-      .select("id,rating,aromas,aroma_intensities,body,tannin,acidity,sweetness,finish,notes,location,tasted_at,created_at")
+      .select("*")
       .single();
     saveGuard.current.finish();
     setSaving(false);
@@ -171,7 +169,7 @@ function NotesPage() {
       toast.error(t("notes.saveFailed"));
       return;
     }
-    setHistory((current) => [data as HistoryRow, ...current]);
+    setHistory((current) => [data as unknown as HistoryRow, ...current]);
     const empty = EMPTY_TASTING_NOTE(today());
     setDraft(empty);
     setBaseline(empty);
