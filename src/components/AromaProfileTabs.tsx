@@ -79,7 +79,7 @@ function EmptyAromas({ text }: { text: string }) {
   return <p className="border-y border-border py-5 text-sm text-muted-foreground">{text}</p>;
 }
 
-function AromaRows({
+export function AromaRows({
   aromas,
   readOnly = false,
   onActive,
