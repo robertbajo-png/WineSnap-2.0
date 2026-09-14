@@ -247,7 +247,7 @@ function NotesPage() {
           <TabsContent value="ai" className="mt-6">
             <SectionTitle>{t("notes.aiAromas")}</SectionTitle>
             {aiAromas.length ? (
-              <AromaList
+              <AromaRows
                 aromas={aiAromas.map((name) => ({ name, active: true, intensity: null }))}
                 readOnly
               />
@@ -268,7 +268,7 @@ function NotesPage() {
                 <AromaPicker open={pickerOpen} onOpenChange={setPickerOpen} onAdd={addAroma} />
               </div>
               {draft.aromas.length ? (
-                <AromaList
+                <AromaRows
                   aromas={draft.aromas}
                   onActive={(index, active) =>
                     setDraft((current) => ({
