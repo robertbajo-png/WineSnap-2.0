@@ -26,6 +26,7 @@ import {
   buildTastingNoteInsert,
   createSaveGuard,
   draftFromStored,
+  draftAfterSave,
   EMPTY_TASTING_NOTE,
   runGuardedSave,
   type StoredTastingNote,
@@ -125,14 +126,20 @@ function NotesPage() {
         .eq("wine_id", id)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
-    ]).then(([wineResult, notesResult]) => {
-      if (!active) return;
-      if (wineResult.error) toast.error(t("notes.loadFailed"));
-      if (notesResult.error) toast.error(t("notes.historyFailed"));
-      setWine(wineResult.data as WineRow | null);
-      setHistory((notesResult.data as unknown as HistoryRow[] | null) ?? []);
-      setLoading(false);
-    });
+    ])
+      .then(([wineResult, notesResult]) => {
+        if (!active) return;
+        if (wineResult.error) toast.error(t("notes.loadFailed"));
+        if (notesResult.error) toast.error(t("notes.historyFailed"));
+        setWine(wineResult.data as WineRow | null);
+        setHistory((notesResult.data as unknown as HistoryRow[] | null) ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        toast.error(t("notes.loadFailed"));
+        setLoading(false);
+      });
     return () => {
       active = false;
     };
@@ -168,7 +175,7 @@ function NotesPage() {
   };
 
   const save = async () => {
-    if (!user) return;
+    if (!user || !wine || wine.user_id !== user.id || saving) return;
     setSaving(true);
     const payload = buildTastingNoteInsert(draft, user.id, id);
     const outcome = await runGuardedSave<SaveResult>(saveGuard.current, async () =>
@@ -186,7 +193,8 @@ function NotesPage() {
     }
     setHistory((current) => [outcome.result?.data as unknown as HistoryRow, ...current]);
     const empty = EMPTY_TASTING_NOTE(today());
-    setDraft(empty);
+    // Preserve edits made while the submitted snapshot was being saved.
+    setDraft((current) => draftAfterSave(current, draft, empty));
     setBaseline(empty);
     toast.success(t("notes.saved"));
   };

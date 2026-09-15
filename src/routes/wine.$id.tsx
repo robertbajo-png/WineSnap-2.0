@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -28,7 +28,7 @@ import { normalizeIntensities } from "@/lib/tastingNotes";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
-  component: WineDetailPage,
+  component: WineRoute,
 });
 
 type Pair = { dish: string; reason: string };
@@ -84,6 +84,13 @@ type TastingNote = {
   tasted_at: string;
   aroma_intensities?: unknown;
 };
+
+function WineRoute() {
+  const isDetail = useRouterState({
+    select: (state) => state.matches[state.matches.length - 1]?.routeId === "/wine/$id",
+  });
+  return isDetail ? <WineDetailPage /> : <Outlet />;
+}
 
 function WineDetailPage() {
   const { id } = Route.useParams();

@@ -3,12 +3,20 @@ import {
   buildTastingNoteInsert,
   createSaveGuard,
   draftFromStored,
+  draftAfterSave,
   EMPTY_TASTING_NOTE,
   normalizeIntensities,
   runGuardedSave,
 } from "./tastingNotes";
 
 describe("personal tasting note data", () => {
+  it("preserves edits made while a save is pending", () => {
+    const submitted = { ...EMPTY_TASTING_NOTE("2026-09-14"), summary: "First note" };
+    const current = { ...submitted, summary: "New unsaved words" };
+    const empty = EMPTY_TASTING_NOTE("2026-09-15");
+    expect(draftAfterSave(current, submitted, empty)).toBe(current);
+    expect(draftAfterSave({ ...submitted }, submitted, empty)).toBe(empty);
+  });
   it("keeps AI fields out of the personal note payload", () => {
     const draft = EMPTY_TASTING_NOTE("2026-09-14");
     draft.aromas = [{ name: "Violet", active: true, intensity: 4 }];

@@ -116,6 +116,14 @@ export function createSaveGuard() {
   };
 }
 
+export function draftAfterSave(
+  current: TastingNoteDraft,
+  submitted: TastingNoteDraft,
+  empty: TastingNoteDraft,
+): TastingNoteDraft {
+  return JSON.stringify(current) === JSON.stringify(submitted) ? empty : current;
+}
+
 export async function runGuardedSave<T>(
   guard: ReturnType<typeof createSaveGuard>,
   operation: () => Promise<T>,
