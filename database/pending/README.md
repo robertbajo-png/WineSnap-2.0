@@ -26,4 +26,5 @@ and an empty JSON-object default. Then test one owner-authored note save and
 reload. No new grants or policies are needed because this is a column on the
 existing owner-restricted table.
 
-Current status: prepared and versioned, not applied to any environment.
+Current status: applied (2026-09-15). The column exists in the connected
+database and the generated types include it.
