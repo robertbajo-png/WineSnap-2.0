@@ -221,6 +221,7 @@ export type Database = {
       tasting_notes: {
         Row: {
           acidity: number | null
+          aroma_intensities: Json
           aromas: string[] | null
           body: number | null
           created_at: string
@@ -238,6 +239,7 @@ export type Database = {
         }
         Insert: {
           acidity?: number | null
+          aroma_intensities?: Json
           aromas?: string[] | null
           body?: number | null
           created_at?: string
@@ -255,6 +257,7 @@ export type Database = {
         }
         Update: {
           acidity?: number | null
+          aroma_intensities?: Json
           aromas?: string[] | null
           body?: number | null
           created_at?: string
