@@ -262,6 +262,50 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_events: {
+        Row: {
+          candidate: Json
+          candidate_key: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          source: string
+          user_id: string
+          wine_id: string | null
+        }
+        Insert: {
+          candidate?: Json
+          candidate_key: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          source: string
+          user_id: string
+          wine_id?: string | null
+        }
+        Update: {
+          candidate?: Json
+          candidate_key?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          source?: string
+          user_id?: string
+          wine_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_events_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_scans: {
         Row: {
           created_at: string
