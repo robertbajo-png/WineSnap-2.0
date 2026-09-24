@@ -11,6 +11,7 @@ import {
   Share2,
   Pencil,
   Clock,
+  MessageCircleMore,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -193,6 +194,14 @@ function WineDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-1">
+            <Link
+              to="/ask"
+              search={{ wineId: w.id, source: "wine" }}
+              aria-label={t("ask.title")}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            >
+              <MessageCircleMore className="h-4 w-4" />
+            </Link>
             <button
               onClick={async () => {
                 // Ensure the wine is public and has a share_id, then share the public /w/:shareId link

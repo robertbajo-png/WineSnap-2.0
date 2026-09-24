@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.extract-preference-signals]
 verify_jwt = true
+
+[functions.ask-winesnap]
+verify_jwt = true

@@ -38,6 +38,83 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_context: Json
+          last_message_at: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_context?: Json
+          last_message_at?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_context?: Json
+          last_message_at?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          context: Json
+          conversation_id: string
+          created_at: string
+          id: string
+          model: string | null
+          role: string
+          token_usage: Json | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          context?: Json
+          conversation_id: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role: string
+          token_usage?: Json | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          context?: Json
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role?: string
+          token_usage?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       derived_preferences: {
         Row: {
           attribute: string

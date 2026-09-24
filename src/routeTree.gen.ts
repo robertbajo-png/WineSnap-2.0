@@ -23,6 +23,7 @@ import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForYouRouteImport } from './routes/for-you'
 import { Route as CellarRouteImport } from './routes/cellar'
+import { Route as AskRouteImport } from './routes/ask'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -107,6 +108,11 @@ const CellarRoute = CellarRouteImport.update({
   path: '/cellar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AskRoute = AskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/ask': typeof AskRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/ask': typeof AskRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/ask': typeof AskRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -270,6 +279,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ask'
     | '/cellar'
     | '/for-you'
     | '/forgot-password'
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ask'
     | '/cellar'
     | '/for-you'
     | '/forgot-password'
@@ -328,6 +339,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ask'
     | '/cellar'
     | '/for-you'
     | '/forgot-password'
@@ -358,6 +370,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
+  AskRoute: typeof AskRoute
   CellarRoute: typeof CellarRouteWithChildren
   ForYouRoute: typeof ForYouRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -478,6 +491,13 @@ declare module '@tanstack/react-router' {
       path: '/cellar'
       fullPath: '/cellar'
       preLoaderRoute: typeof CellarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ask': {
+      id: '/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -604,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
+  AskRoute: AskRoute,
   CellarRoute: CellarRouteWithChildren,
   ForYouRoute: ForYouRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,

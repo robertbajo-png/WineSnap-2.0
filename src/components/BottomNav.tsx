@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, Sparkles, Camera, Wine, User } from "lucide-react";
+import { Home, MessageCircleMore, Camera, Wine, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
 
@@ -8,7 +8,7 @@ export function BottomNav() {
   const t = useT();
   const left = [
     { to: "/", icon: Home, label: t("nav.home") },
-    { to: "/for-you", icon: Sparkles, label: t("nav.forYou") },
+    { to: "/ask", icon: MessageCircleMore, label: t("nav.ask") },
   ] as const;
   const right = [
     { to: "/cellar", icon: Wine, label: t("nav.cellar") },
