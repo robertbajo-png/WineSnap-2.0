@@ -10,7 +10,7 @@ export type RecommendationEventType =
   | "dismiss"
   | "compare";
 
-export type RecommendationSource = "for_you" | "similar" | "compare" | "ask";
+export type RecommendationSource = "for_you" | "similar" | "compare" | "ask" | "social";
 
 export function recommendationKey(candidate: RecommendationCandidate) {
   return [candidate.producer, candidate.wine_name, candidate.vintage]

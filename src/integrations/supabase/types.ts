@@ -187,6 +187,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_taste_similarity: {
+        Row: {
+          calculated_at: string
+          confidence: number
+          peer_user_id: string
+          shared_preference_count: number
+          similarity_score: number
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          confidence: number
+          peer_user_id: string
+          shared_preference_count: number
+          similarity_score: number
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          confidence?: number
+          peer_user_id?: string
+          shared_preference_count?: number
+          similarity_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           acidity: number | null
@@ -848,6 +875,45 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_social_discovery: {
+        Args: { _limit?: number }
+        Returns: {
+          avatar_url: string | null
+          bio: string | null
+          display_name: string | null
+          is_following: boolean
+          profile_id: string
+          recent_public_wines: number
+          shared_preference_count: number
+          similarity_confidence: number | null
+          similarity_score: number | null
+          username: string | null
+        }[]
+      }
+      get_social_wine_discovery: {
+        Args: { _limit?: number }
+        Returns: {
+          author_display_name: string | null
+          author_id: string
+          author_username: string | null
+          country: string | null
+          created_at: string
+          grape_varieties: string[] | null
+          image_url: string | null
+          is_following: boolean
+          producer: string | null
+          region: string | null
+          share_id: string | null
+          shared_preference_count: number
+          similarity_confidence: number | null
+          taste_similarity: number | null
+          user_rating: number | null
+          vintage: number | null
+          wine_id: string
+          wine_name: string | null
+          wine_type: Database["public"]["Enums"]["wine_type"] | null
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -858,6 +924,10 @@ export type Database = {
       recompute_taste_profile: {
         Args: { _user_id: string }
         Returns: undefined
+      }
+      refresh_my_taste_similarities: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
     }
     Enums: {
