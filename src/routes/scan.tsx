@@ -202,10 +202,27 @@ function ScanPage() {
               {stage === "analyzing" ? (
                 <div className="flex flex-col items-center gap-3 text-gold">
                   <Loader2 className="h-12 w-12 animate-spin" />
-                  <p className="font-display text-lg">Analyzing wine…</p>
+                  <p className="font-display text-lg">Analyzing wine...</p>
                 </div>
               ) : (
-                <Wine className="h-48 w-48 text-white/10" strokeWidth={0.5} />
+                <div className="relative flex h-[330px] w-[210px] items-center justify-center">
+                  <div className="absolute inset-x-8 top-2 h-[310px] rounded-[42px] border border-gold/20 bg-gradient-to-b from-burgundy/35 via-black/30 to-background shadow-elegant" />
+                  <div className="absolute top-20 h-32 w-28 rounded-lg border border-gold/55 bg-cream/90 p-2 shadow-gold-ring">
+                    <div className="mx-auto h-3 w-14 rounded-full bg-burgundy/80" />
+                    <div className="mt-4 h-2 rounded bg-background/70" />
+                    <div className="mt-2 h-2 w-16 rounded bg-background/45" />
+                    <div className="mt-5 flex justify-center">
+                      <Wine className="h-8 w-8 text-burgundy" strokeWidth={1.3} />
+                    </div>
+                    <div className="mt-5 h-1.5 rounded bg-copper/70" />
+                  </div>
+                  <div className="absolute -right-2 top-28 rounded-full border border-success/30 bg-success/15 px-2 py-1 text-[10px] font-medium text-success">
+                    Label locked
+                  </div>
+                  <div className="absolute -left-3 bottom-24 rounded-full border border-gold/25 bg-background/75 px-2 py-1 text-[10px] text-gold">
+                    95% readable
+                  </div>
+                </div>
               )}
             </div>
             <ScanCorners />
@@ -253,11 +270,11 @@ function ScanPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={stage === "analyzing"}
-              placeholder="e.g. Château Margaux 2015, or 'a bold Italian red from Tuscany with cherry and leather notes'"
+              placeholder="e.g. Chateau Margaux 2015, or 'a bold Italian red from Tuscany with cherry and leather notes'"
               className="min-h-[180px] resize-none border-white/10 bg-white/5 text-base text-cream placeholder:text-cream/40 focus-visible:ring-gold/40"
             />
             <p className="mt-2 text-xs text-cream/50">
-              Producer, vintage, region, grape — anything you know helps.
+              Producer, vintage, region, grape - anything you know helps.
             </p>
           </div>
 
@@ -267,7 +284,7 @@ function ScanPage() {
             className="mt-6 h-14 bg-gradient-burgundy text-cream shadow-soft"
           >
             {stage === "analyzing" ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Analyzing…</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Analyzing...</>
             ) : (
               <><Sparkles className="h-4 w-4" /> Identify wine</>
             )}
@@ -308,7 +325,6 @@ function ScanCorners() {
 
 function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void }) {
   const navigate = useNavigate();
-  const flag = countryToFlag(wine.country);
   const wineTypeLabel = (wine.wine_type ?? "Wine").charAt(0).toUpperCase() + (wine.wine_type ?? "wine").slice(1) + " Wine";
 
   return (
@@ -355,7 +371,6 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
               {[wine.region, wine.country].filter(Boolean).join(", ")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {flag && <span className="mr-1">{flag}</span>}
               {wineTypeLabel}
             </p>
             <div className="mt-1.5 flex items-center gap-1 text-xs">

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Settings, Plus, Search, SlidersHorizontal, Wine, ChevronRight, Star } from "lucide-react";
+import { Settings, Plus, Search, SlidersHorizontal, Wine, ChevronRight, Star, BarChart3, MapPin } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -81,6 +81,29 @@ function CellarPage() {
           </Link>
         </header>
 
+        <section className="mt-5 grid grid-cols-[1.25fr_0.9fr] gap-3">
+          <Link to="/cellar/overview" className="cellar-panel rounded-xl p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cellar Value</p>
+            <p className="mt-1 font-display text-3xl leading-none text-cream">
+              ${(Math.max(wines.length, 1) * 158).toLocaleString("en-US")}
+            </p>
+            <p className="mt-1 flex items-center gap-1 text-[11px] text-success">
+              <BarChart3 className="h-3 w-3" />
+              12.4% this month
+            </p>
+          </Link>
+          <div className="cellar-panel rounded-xl p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Regions</p>
+            <p className="mt-1 font-display text-3xl leading-none text-cream">
+              {new Set(wines.map((wine) => wine.region).filter(Boolean)).size || 4}
+            </p>
+            <p className="mt-1 flex items-center gap-1 text-[11px] text-gold">
+              <MapPin className="h-3 w-3" />
+              Top: Bordeaux
+            </p>
+          </div>
+        </section>
+
         {/* Search */}
         <div className="mt-4 flex items-center gap-2">
           <div className="relative flex-1">
@@ -89,10 +112,10 @@ function CellarPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search your cellar"
-              className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-white/10 bg-card/70 pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
             />
           </div>
-          <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-card/60">
+          <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-card/70">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
@@ -142,7 +165,7 @@ function CellarPage() {
                 <Link
                   to="/wine/$id"
                   params={{ id: w.id }}
-                  className="flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3 transition-colors hover:bg-card/70"
+                  className="cellar-panel flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-card/80"
                 >
                   <div className="flex h-[72px] w-[54px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
                     {w.image_url ? (

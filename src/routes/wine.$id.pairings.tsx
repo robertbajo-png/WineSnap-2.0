@@ -26,11 +26,11 @@ type WineRow = {
 const CATEGORIES = ["Best Matches", "Meat", "Pasta & Risotto", "Cheese"] as const;
 type Category = typeof CATEGORIES[number];
 
-const FALLBACK: { dish: string; reason: string; emoji: string; match: number }[] = [
-  { dish: "Steak", reason: "The rich, savory flavors of steak highlight the wine's structure and dark fruit.", emoji: "🥩", match: 92 },
-  { dish: "Mushroom risotto", reason: "Earthy mushrooms and creamy risotto complement the wine's depth and elegance.", emoji: "🍚", match: 89 },
-  { dish: "Aged cheddar", reason: "Sharp, aged cheddar brings out the wine's complexity and smooth tannins.", emoji: "🧀", match: 85 },
-  { dish: "Herb-roasted lamb", reason: "Herbs and lamb enhance the wine's aromas and balanced finish.", emoji: "🍖", match: 84 },
+const FALLBACK: { dish: string; reason: string; label: string; match: number }[] = [
+  { dish: "Steak", reason: "The rich, savory flavors of steak highlight the wine's structure and dark fruit.", label: "ST", match: 92 },
+  { dish: "Mushroom risotto", reason: "Earthy mushrooms and creamy risotto complement the wine's depth and elegance.", label: "MR", match: 89 },
+  { dish: "Aged cheddar", reason: "Sharp, aged cheddar brings out the wine's complexity and smooth tannins.", label: "CH", match: 85 },
+  { dish: "Herb-roasted lamb", reason: "Herbs and lamb enhance the wine's aromas and balanced finish.", label: "LB", match: 84 },
 ];
 
 function PairingsPage() {
@@ -104,12 +104,12 @@ function PairingsPage() {
           {pairings.map((p, i) => {
             const fb = FALLBACK[i] ?? FALLBACK[0];
             const match = ("match" in p ? (p as any).match : null) ?? fb.match;
-            const emoji = ("emoji" in p ? (p as any).emoji : null) ?? fb.emoji;
+            const label = ("label" in p ? (p as any).label : null) ?? fb.label;
             return (
               <li key={i}>
                 <div className="flex gap-3 rounded-xl border border-white/8 bg-card/50 p-3">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-white/8 to-white/0 text-4xl">
-                    {emoji}
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-copper/20 bg-gradient-to-b from-white/8 to-white/0 font-display text-2xl text-gold">
+                    {label}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
@@ -134,7 +134,7 @@ function PairingsPage() {
           <div className="min-w-0 flex-1 text-xs">
             <p className="font-medium text-gold">Serving Tip</p>
             <p className="mt-0.5 text-foreground/80">
-              {w.serving_temp ?? "Decant for 30–60 minutes and serve at 16–18°C (60–64°F) for the best experience."}
+              {w.serving_temp ?? "Decant for 30-60 minutes and serve at 16-18 C (60-64 F) for the best experience."}
             </p>
           </div>
         </div>

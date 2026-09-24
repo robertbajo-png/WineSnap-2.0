@@ -16,7 +16,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
-      <div className="border-t border-white/8 bg-background/95 backdrop-blur-xl">
+      <div className="border-t border-white/10 bg-background/90 shadow-elegant backdrop-blur-xl">
         <ul className="mx-auto grid max-w-md grid-cols-5 items-end px-4 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2">
           {left.map((it) => (
             <NavItem key={it.to} {...it} active={pathname === it.to} />
@@ -28,7 +28,7 @@ export function BottomNav() {
               aria-label="Scan"
               className={cn(
                 "relative flex h-[64px] w-[64px] items-center justify-center rounded-full border-2 border-gold bg-background ring-4 ring-background transition-transform",
-                scanActive ? "scale-105" : "hover:scale-105",
+                scanActive ? "scale-105 shadow-gold-ring" : "shadow-soft hover:scale-105",
               )}
             >
               <Camera className="h-7 w-7 text-gold" strokeWidth={1.6} />

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Star, Wine, Plus, Calendar, MapPin, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AromaIcon, aromaMeta } from "@/components/AromaChip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -122,16 +123,22 @@ function NotesPage() {
             <button className="text-xs text-burgundy">Edit</button>
           </div>
           <div className="mt-2.5 flex flex-wrap gap-2">
-            {aromas.map((a) => (
-              <button
-                key={a}
-                onClick={() => removeAroma(a)}
-                className="flex h-9 items-center gap-1.5 rounded-full border border-white/12 bg-card/40 px-3 text-xs"
-              >
-                <span className="text-sm">{aromaEmoji(a)}</span>
-                <span>{a}</span>
-              </button>
-            ))}
+            {aromas.map((a) => {
+              const meta = aromaMeta(a);
+              return (
+                <button
+                  key={a}
+                  onClick={() => removeAroma(a)}
+                  className="flex min-h-10 items-center gap-2 rounded-full border border-white/12 bg-card/45 py-1 pl-1 pr-3 text-xs shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] transition-colors hover:border-gold/20 hover:bg-card/70"
+                >
+                  <AromaIcon name={a} className="h-8 w-8 rounded-full" iconClassName="h-4 w-4" />
+                  <span className="flex flex-col items-start leading-tight">
+                    <span className="text-cream">{a}</span>
+                    <span className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">{meta.familyLabel}</span>
+                  </span>
+                </button>
+              );
+            })}
             <button className="flex h-9 items-center gap-1 rounded-full border border-dashed border-gold/40 px-3 text-xs text-gold">
               <Plus className="h-3 w-3" /> Add Aroma
             </button>
@@ -210,6 +217,19 @@ function PalateRow({ label, leftLabel, rightLabel, value, onChange }: { label: s
       <span className="text-right text-[10px] text-muted-foreground">{rightLabel}</span>
     </div>
   );
+}
+
+function aromaLabel(name: string): string {
+  const n = name.toLowerCase();
+  if (/cherry|berry|plum|currant|strawberry|raspberry/.test(n)) return "Fr";
+  if (/oak|wood|cedar|smoke/.test(n)) return "Ok";
+  if (/vanilla|cream|butter/.test(n)) return "Vn";
+  if (/tobacco|leather|earth/.test(n)) return "Er";
+  if (/apple|pear|citrus|lemon|lime/.test(n)) return "Ci";
+  if (/floral|rose|violet/.test(n)) return "Fl";
+  if (/spice|pepper|clove|cinnamon/.test(n)) return "Sp";
+  if (/chocolate|cocoa|coffee/.test(n)) return "Co";
+  return "Ar";
 }
 
 function aromaEmoji(name: string): string {

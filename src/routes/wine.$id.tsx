@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Wine, Trash2, Star, ChevronRight, Utensils, NotebookPen } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AromaWheel, AromaSlider } from "@/components/AromaWheel";
+import { AromaIcon, aromaMeta } from "@/components/AromaChip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -123,6 +124,25 @@ function WineDetailPage() {
           </div>
         </section>
 
+        <section className="mt-4 grid grid-cols-3 gap-2">
+          <InfoTile label="Match" value={`${match}%`} tone="success" />
+          <InfoTile label="Rating" value={rating.toFixed(1)} />
+          <InfoTile label="Value" value={`$${price}`} />
+        </section>
+
+        <section className="mt-4 grid grid-cols-2 gap-3">
+          <Link to="/wine/$id/pairings" params={{ id }} className="cellar-panel rounded-xl p-4">
+            <Utensils className="h-5 w-5 text-gold" />
+            <p className="mt-3 font-display text-base text-cream">Pairings</p>
+            <p className="mt-1 text-xs text-muted-foreground">Food matches and serving tips.</p>
+          </Link>
+          <Link to="/wine/$id/notes" params={{ id }} className="cellar-panel rounded-xl p-4">
+            <NotebookPen className="h-5 w-5 text-gold" />
+            <p className="mt-3 font-display text-base text-cream">Tasting Notes</p>
+            <p className="mt-1 text-xs text-muted-foreground">Rate aromas, palate, and finish.</p>
+          </Link>
+        </section>
+
         {/* Tabs */}
         <div className="mt-5 flex gap-5 overflow-x-auto border-b border-white/8 text-sm">
           {TABS.map((t) => (
@@ -148,13 +168,15 @@ function WineDetailPage() {
                 <ul className="flex-1 space-y-1.5">
                   {(aromas.length ? aromas : ["Black cherry", "Plum", "Oak", "Vanilla", "Cedar", "Tobacco"]).slice(0, 6).map((a, i) => {
                     const intensity = 4 - (i % 3);
+                    const meta = aromaMeta(a);
                     return (
                       <li key={a + i}>
-                        <button className="flex w-full items-center gap-2 rounded-lg border border-white/8 bg-card/40 px-2.5 py-2 text-left transition-colors hover:bg-card/60">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center text-base">
-                            {aromaEmoji(a)}
+                        <button className="group flex w-full items-center gap-2.5 rounded-xl border border-white/8 bg-card/45 px-2.5 py-2.5 text-left shadow-[inset_0_1px_0_oklch(1_0_0/0.04)] transition-colors hover:border-gold/20 hover:bg-card/70">
+                          <AromaIcon name={a} className="h-8 w-8 rounded-xl" iconClassName="h-4 w-4" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12px] text-cream">{a}</span>
+                            <span className="mt-0.5 block text-[9px] uppercase tracking-[0.2em] text-muted-foreground">{meta.familyLabel}</span>
                           </span>
-                          <span className="min-w-0 flex-1 truncate text-[12px] text-cream">{a}</span>
                           <span className="flex items-center gap-1">
                             {[1, 2, 3, 4].map((d) => (
                               <span
@@ -176,7 +198,7 @@ function WineDetailPage() {
             </Section>
 
             <Section title="Tasting Profile">
-              <Card className="bg-card/50 p-4">
+              <Card className="cellar-panel p-4">
                 <SliderRow label="Body" leftLabel="Light" rightLabel="Full" value={pct(w.body)} />
                 <SliderRow label="Tannins" leftLabel="Low" rightLabel="High" value={pct(w.tannin)} />
                 <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={pct(w.acidity)} />
@@ -189,7 +211,7 @@ function WineDetailPage() {
         {tab === "Overview" && (
           <div className="mt-5 space-y-4">
             {w.description && (
-              <Card className="bg-card/50 p-4">
+              <Card className="cellar-panel p-4">
                 <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>
               </Card>
             )}
@@ -254,6 +276,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function InfoTile({ label, value, tone }: { label: string; value: string; tone?: "success" }) {
+  return (
+    <div className="cellar-panel rounded-xl px-2 py-3 text-center">
+      <p className={cn("font-display text-xl leading-none text-cream", tone === "success" && "text-success")}>{value}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
 function KV({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between border-b border-white/8 pb-2.5">
@@ -287,6 +318,19 @@ function computeRating(w: { fruit: number | null; tannin: number | null; acidity
   if (vals.length === 0) return 4.0;
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
   return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
+}
+
+function aromaLabel(name: string): string {
+  const n = name.toLowerCase();
+  if (/cherry|berry|plum|currant|strawberry|raspberry/.test(n)) return "Fr";
+  if (/oak|wood|cedar|smoke/.test(n)) return "Ok";
+  if (/vanilla|cream|butter/.test(n)) return "Vn";
+  if (/tobacco|leather|earth/.test(n)) return "Er";
+  if (/apple|pear|citrus|lemon|lime|grape/.test(n)) return "Ci";
+  if (/floral|rose|violet/.test(n)) return "Fl";
+  if (/spice|pepper|clove|cinnamon/.test(n)) return "Sp";
+  if (/chocolate|cocoa|coffee/.test(n)) return "Co";
+  return "Ar";
 }
 
 function aromaEmoji(name: string): string {
