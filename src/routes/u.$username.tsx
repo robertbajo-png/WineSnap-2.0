@@ -18,6 +18,7 @@ import {
 } from "@/lib/social";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
+import { tasteSimilarityLevel } from "@/lib/socialDiscovery";
 
 export const Route = createFileRoute("/u/$username")({
   head: ({ params }) => ({
@@ -68,11 +69,19 @@ function UserProfilePage() {
     if (!profile || following === null || busy) return;
     setBusy(true);
     if (following) {
-      await unfollow(profile.id);
+      const changed = await unfollow(profile.id);
+      if (!changed) {
+        setBusy(false);
+        return;
+      }
       setFollowing(false);
       setCounts((c) => ({ ...c, followers: Math.max(0, c.followers - 1) }));
     } else {
-      await follow(profile.id);
+      const changed = await follow(profile.id);
+      if (!changed) {
+        setBusy(false);
+        return;
+      }
       setFollowing(true);
       setCounts((c) => ({ ...c, followers: c.followers + 1 }));
     }
@@ -104,6 +113,9 @@ function UserProfilePage() {
               </p>
               {profile.username && (
                 <p className="text-xs text-muted-foreground">@{profile.username}</p>
+              )}
+              {user && user.id !== profile.id && (
+                <TasteOverlap profile={profile} label={t("friends.similarity.label")} />
               )}
             </div>
             {user && user.id !== profile.id && following !== null && (
@@ -148,7 +160,7 @@ function UserProfilePage() {
                       <Link
                         to="/w/$shareId"
                         params={{ shareId: w.share_id }}
-                        className="block overflow-hidden rounded-xl border border-white/10 bg-card/40"
+                        className="block overflow-hidden rounded-md border border-white/10 bg-card/40"
                       >
                         <div className="aspect-[3/4] w-full overflow-hidden bg-background">
                           {w.image_url ? (
@@ -184,9 +196,29 @@ function UserProfilePage() {
   );
 }
 
+function TasteOverlap({ profile, label }: { profile: PublicProfile; label: string }) {
+  const { t } = useI18n();
+  const level = tasteSimilarityLevel(profile);
+  return (
+    <p className="mt-1.5 text-[11px] text-muted-foreground">
+      {label}: <span className="text-foreground/80">{t(`friends.similarity.${level}`)}</span>
+      {profile.shared_preference_count > 0 && (
+        <span>
+          {" "}
+          ·{" "}
+          {t("friends.similarity.evidence").replace(
+            "{count}",
+            String(profile.shared_preference_count),
+          )}
+        </span>
+      )}
+    </p>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-white/10 bg-card/50 px-2 py-3 text-center">
+    <div className="flex flex-col items-center rounded-md border border-white/10 bg-card/50 px-2 py-3 text-center">
       <p className="font-display text-xl text-cream">{value}</p>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>

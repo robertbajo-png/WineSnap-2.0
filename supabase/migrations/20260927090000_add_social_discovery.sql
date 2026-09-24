@@ -38,6 +38,25 @@ BEGIN
     RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
   END IF;
 
+  -- Prevent concurrent discovery calls from replacing the same user's rows.
+  PERFORM pg_advisory_xact_lock(hashtextextended(viewer_id::text, 0));
+  SELECT count(*)::integer
+  INTO refreshed_count
+  FROM public.user_taste_similarity similarity
+  WHERE similarity.user_id = viewer_id
+    AND similarity.calculated_at >= now() - interval '5 minutes'
+    AND similarity.calculated_at >= coalesce(
+      (
+        SELECT max(preference.updated_at)
+        FROM public.derived_preferences preference
+        WHERE preference.user_id = viewer_id
+      ),
+      '-infinity'::timestamptz
+    );
+  IF refreshed_count > 0 THEN
+    RETURN refreshed_count;
+  END IF;
+
   DELETE FROM public.user_taste_similarity WHERE user_id = viewer_id;
 
   INSERT INTO public.user_taste_similarity (

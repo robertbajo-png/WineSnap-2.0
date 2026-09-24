@@ -535,8 +535,9 @@ const en = {
   "photos.kind.hero": "Hero",
 
   // Friends / social
-  "friends.title": "Friends",
-  "friends.subtitle": "See what people you follow are drinking.",
+  "friends.title": "Discover",
+  "friends.subtitle": "Wine inspiration through people you trust.",
+  "friends.signIn": "Sign in to discover people and wines.",
   "friends.tab.feed": "Feed",
   "friends.tab.discover": "Discover",
   "friends.empty.title": "Your feed is quiet",
@@ -545,6 +546,20 @@ const en = {
   "friends.search.ph": "Search by name or @username",
   "friends.search.hint": "Search for someone by name or username.",
   "friends.search.none": "No public profiles matched.",
+  "friends.discover.loading": "Finding relevant people and wines…",
+  "friends.discover.people": "People with taste like yours",
+  "friends.discover.peopleDesc": "Based on shared preferences with enough supporting evidence.",
+  "friends.discover.wines": "From similar palates",
+  "friends.discover.winesDesc": "Public wines liked by people you follow or share taste with.",
+  "friends.discover.learning":
+    "WineSnap needs a few more ratings before it can identify reliable taste overlap.",
+  "friends.discover.noWines": "No relevant public wines yet. Follow people to build this feed.",
+  "friends.similarity.strong": "Strong taste overlap",
+  "friends.similarity.some": "Some taste overlap",
+  "friends.similarity.low": "Different taste",
+  "friends.similarity.learning": "Not enough shared data",
+  "friends.similarity.label": "Taste overlap",
+  "friends.similarity.evidence": "{count} shared signals",
   "friends.follow": "Follow",
   "friends.following": "Following",
   "friends.followers": "Followers",
@@ -558,8 +573,8 @@ const en = {
   "profile.usernamePh": "yourhandle",
   "profile.bio": "Bio",
   "profile.bioPh": "A short line about your taste…",
-  "profile.friends": "Friends",
-  "profile.friendsDesc": "Follow other wine lovers and see their feed.",
+  "profile.friends": "Discover",
+  "profile.friendsDesc": "Find people and public wines that fit your taste.",
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
@@ -1066,8 +1081,9 @@ const sv: Record<keyof typeof en, string> = {
   "photos.kind.context": "Ögonblicket",
   "photos.kind.hero": "Hero",
 
-  "friends.title": "Vänner",
-  "friends.subtitle": "Se vad personerna du följer dricker.",
+  "friends.title": "Upptäck",
+  "friends.subtitle": "Vininspiration genom personer du litar på.",
+  "friends.signIn": "Logga in för att upptäcka personer och viner.",
   "friends.tab.feed": "Flöde",
   "friends.tab.discover": "Upptäck",
   "friends.empty.title": "Ditt flöde är tomt",
@@ -1076,6 +1092,21 @@ const sv: Record<keyof typeof en, string> = {
   "friends.search.ph": "Sök på namn eller @användarnamn",
   "friends.search.hint": "Sök efter någon på namn eller användarnamn.",
   "friends.search.none": "Inga publika profiler matchade.",
+  "friends.discover.loading": "Hittar relevanta personer och viner…",
+  "friends.discover.people": "Personer med smak som liknar din",
+  "friends.discover.peopleDesc": "Baserat på gemensamma preferenser med tillräckligt stöd.",
+  "friends.discover.wines": "Från liknande smakprofiler",
+  "friends.discover.winesDesc": "Publika viner från personer du följer eller delar smak med.",
+  "friends.discover.learning":
+    "WineSnap behöver några fler betyg innan tillförlitliga smaklikheter kan visas.",
+  "friends.discover.noWines":
+    "Inga relevanta publika viner ännu. Följ personer för att bygga flödet.",
+  "friends.similarity.strong": "Stark smaklikhet",
+  "friends.similarity.some": "Viss smaklikhet",
+  "friends.similarity.low": "Annorlunda smak",
+  "friends.similarity.learning": "För lite gemensam data",
+  "friends.similarity.label": "Smaklikhet",
+  "friends.similarity.evidence": "{count} gemensamma signaler",
   "friends.follow": "Följ",
   "friends.following": "Följer",
   "friends.followers": "Följare",
@@ -1089,8 +1120,8 @@ const sv: Record<keyof typeof en, string> = {
   "profile.usernamePh": "dittnamn",
   "profile.bio": "Bio",
   "profile.bioPh": "En kort rad om din smak…",
-  "profile.friends": "Vänner",
-  "profile.friendsDesc": "Följ andra vinälskare och se deras flöde.",
+  "profile.friends": "Upptäck",
+  "profile.friendsDesc": "Hitta personer och publika viner som passar din smak.",
 };
 
 const dict = { en, sv } as const;
