@@ -18,6 +18,9 @@ CREATE INDEX recommendation_events_user_recent_idx
   ON public.recommendation_events(user_id, created_at DESC);
 CREATE INDEX recommendation_events_candidate_idx
   ON public.recommendation_events(user_id, candidate_key, event_type);
+CREATE UNIQUE INDEX recommendation_events_single_feedback_idx
+  ON public.recommendation_events(user_id, source, candidate_key)
+  WHERE event_type IN ('like', 'dislike');
 
 ALTER TABLE public.recommendation_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.recommendation_events FROM PUBLIC, anon;

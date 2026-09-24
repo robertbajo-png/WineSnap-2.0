@@ -31,5 +31,6 @@ describe("recommendation backend contracts", () => {
     );
     expect(migration).toContain("auth.uid() = user_id");
     expect(migration).toContain("sync_recommendation_feedback_signals");
+    expect(migration).toContain("recommendation_events_single_feedback_idx");
   });
 });

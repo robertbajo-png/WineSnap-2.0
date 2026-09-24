@@ -217,7 +217,11 @@ Return 10 candidate wines.`;
         reason: String((candidate as { style_reason?: string }).style_reason ?? ""),
       }));
 
-    return json({ suggestions: ranked, cold_start: !memory.length && !profile });
+    return json({
+      suggestions: ranked,
+      cold_start:
+        !memory.length && ranked.every((candidate) => candidate.match_confidence === "low"),
+    });
   } catch (error) {
     const timeout = error instanceof DOMException && error.name === "TimeoutError";
     console.error("taste-suggestions error", error);

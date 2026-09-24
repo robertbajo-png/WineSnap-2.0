@@ -1,14 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Sparkles, Wine, RefreshCw, Loader2, Bookmark } from "lucide-react";
-import { addToWishlist } from "@/lib/wishlist";
+import { useEffect, useMemo, useState } from "react";
+import { Bookmark, Loader2, RefreshCw, Sparkles, ThumbsDown, ThumbsUp, Wine } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
-import { supabase } from "@/integrations/supabase/client";
+import { RecommendationMatch } from "@/components/RecommendationMatch";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useT } from "@/i18n";
-import type { DerivedPreference } from "@/lib/wineMemory";
+import { useI18n, useT } from "@/i18n";
+import { supabase } from "@/integrations/supabase/client";
+import type { MatchEvidence, RecommendationCandidate } from "@/lib/recommendationEngine";
+import {
+  recommendationKey,
+  recordRecommendationEvent,
+  type RecommendationEventType,
+} from "@/lib/recommendationEvents";
+import { addToWishlist } from "@/lib/wishlist";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/for-you")({
   head: () => ({
@@ -16,93 +24,120 @@ export const Route = createFileRoute("/for-you")({
       { title: "Suggestions — WineSnap" },
       {
         name: "description",
-        content: "AI-generated wine suggestions based on your taste and cellar.",
+        content: "Wine recommendations ranked from your taste profile and Wine Memory.",
       },
     ],
   }),
   component: ForYouPage,
 });
 
-type Suggestion = {
+type Suggestion = RecommendationCandidate & {
   producer: string;
   wine_name: string;
-  vintage?: string;
   region: string;
   country: string;
   wine_type: string;
   grape_varieties?: string[];
   price_range?: string;
   match_score: number;
+  match_confidence: "low" | "medium" | "high";
+  match_evidence: MatchEvidence[];
   reason: string;
 };
 
-const CACHE_KEY = "winesnap:suggestions:v2";
+type FeedbackState = Record<string, "like" | "dislike">;
 
 function ForYouPage() {
   const { user, loading } = useAuth();
+  const { lang } = useI18n();
   const t = useT();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [feedback, setFeedback] = useState<FeedbackState>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<number | null>(null);
+  const [coldStart, setColdStart] = useState(false);
+  const cacheKey = useMemo(() => (user ? `winesnap:suggestions:v3:${user.id}` : null), [user]);
 
   useEffect(() => {
+    setSuggestions([]);
+    setGeneratedAt(null);
+    setColdStart(false);
+    if (!cacheKey) return;
     try {
-      const raw = localStorage.getItem(CACHE_KEY);
+      const raw = localStorage.getItem(cacheKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         setSuggestions(parsed.suggestions ?? []);
         setGeneratedAt(parsed.generatedAt ?? null);
+        setColdStart(Boolean(parsed.coldStart));
       }
     } catch {
-      /* noop */
+      localStorage.removeItem(cacheKey);
     }
-  }, []);
+  }, [cacheKey]);
 
   const generate = async () => {
-    if (!user) return;
+    if (!user || !cacheKey) return;
     setBusy(true);
     setError(null);
     try {
-      const [{ data: profile }, { data: taste }, { data: cellar }, { data: memory }] =
-        await Promise.all([
-          supabase
-            .from("profiles")
-            .select(
-              "preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max",
-            )
-            .eq("id", user.id)
-            .maybeSingle(),
-          supabase.from("taste_profile").select("*").eq("user_id", user.id).maybeSingle(),
-          supabase
-            .from("wines")
-            .select("producer,wine_name,vintage,region,country,user_rating")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(30),
-          supabase
-            .from("derived_preferences")
-            .select("attribute,value_text,value_number,preference_score,confidence,evidence_count")
-            .eq("user_id", user.id)
-            .order("confidence", { ascending: false })
-            .limit(30),
-        ]);
-
-      const { data, error: fnError } = await supabase.functions.invoke("taste-suggestions", {
-        body: { profile, taste, cellar, memory: (memory ?? []) as DerivedPreference[] },
+      const { data, error: functionError } = await supabase.functions.invoke("taste-suggestions", {
+        body: { language: lang },
       });
-      if (fnError) throw fnError;
+      if (functionError) throw functionError;
       if (data?.error) throw new Error(data.error);
 
       const list: Suggestion[] = data?.suggestions ?? [];
+      const isColdStart = Boolean(data?.cold_start);
+      const timestamp = Date.now();
       setSuggestions(list);
-      const ts = Date.now();
-      setGeneratedAt(ts);
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ suggestions: list, generatedAt: ts }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("common.error"));
+      setFeedback({});
+      setGeneratedAt(timestamp);
+      setColdStart(isColdStart);
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({ suggestions: list, generatedAt: timestamp, coldStart: isColdStart }),
+      );
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : t("common.error"));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const sendFeedback = async (suggestion: Suggestion, eventType: RecommendationEventType) => {
+    const key = recommendationKey(suggestion);
+    if (!key || (eventType !== "like" && eventType !== "dislike")) return;
+    if (feedback[key] === eventType) return;
+    const saved = await recordRecommendationEvent(eventType, "for_you", suggestion, {
+      match_score: suggestion.match_score,
+      confidence: suggestion.match_confidence,
+    });
+    if (!saved) {
+      toast.error(t("recommendation.feedbackError"));
+      return;
+    }
+    setFeedback((current) => ({ ...current, [key]: eventType }));
+    toast.success(t("recommendation.feedbackSaved"));
+  };
+
+  const saveSuggestion = async (suggestion: Suggestion) => {
+    const saved = await addToWishlist({
+      producer: suggestion.producer,
+      wine_name: suggestion.wine_name,
+      vintage: suggestion.vintage,
+      region: suggestion.region,
+      country: suggestion.country,
+      wine_type: suggestion.wine_type,
+      grape_varieties: suggestion.grape_varieties,
+      source: "ai",
+      ai_data: suggestion as never,
+    });
+    if (saved) {
+      await recordRecommendationEvent("save", "for_you", suggestion, {
+        match_score: suggestion.match_score,
+      });
     }
   };
 
@@ -126,7 +161,7 @@ function ForYouPage() {
           <button
             onClick={generate}
             disabled={busy}
-            className="absolute right-0 top-0 flex h-9 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-xs text-gold disabled:opacity-50"
+            className="absolute right-0 top-0 flex h-9 items-center gap-1.5 rounded-md border border-gold/40 bg-background/60 px-3 text-xs text-gold disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -145,8 +180,14 @@ function ForYouPage() {
           </div>
         </header>
 
+        {coldStart && suggestions.length > 0 && (
+          <div className="mt-4 border-l-2 border-gold/50 bg-gold/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            {t("recommendation.coldStart")}
+          </div>
+        )}
+
         {error && (
-          <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+          <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
             {error}
             <Button variant="ghost" size="sm" onClick={generate} className="ml-2 h-6 text-xs">
               {t("common.retry")}
@@ -172,53 +213,79 @@ function ForYouPage() {
           </div>
         ) : (
           <div className="mt-6 space-y-3 pb-4">
-            {suggestions.map((s, i) => (
-              <article key={i} className="rounded-xl border border-white/8 bg-card/50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
+            {suggestions.map((suggestion) => {
+              const key = recommendationKey(suggestion);
+              const selectedFeedback = feedback[key];
+              return (
+                <article key={key} className="rounded-md border border-white/8 bg-card/50 p-4">
+                  <div className="min-w-0">
                     <p className="font-display text-base leading-tight text-cream">
-                      {s.producer} — {s.wine_name} {s.vintage ?? ""}
+                      {suggestion.producer} — {suggestion.wine_name} {suggestion.vintage ?? ""}
                     </p>
                     <p className="mt-0.5 text-xs text-gold">
-                      {[s.region, s.country].filter(Boolean).join(", ")}
-                      {s.wine_type ? ` • ${s.wine_type}` : ""}
+                      {[suggestion.region, suggestion.country].filter(Boolean).join(", ")}
+                      {suggestion.wine_type ? ` • ${suggestion.wine_type}` : ""}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[11px] font-medium text-success">
-                    {Math.round(s.match_score)}%
-                  </span>
-                </div>
-                {s.grape_varieties?.length ? (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    {s.grape_varieties.join(", ")}
-                    {s.price_range ? ` • ${s.price_range}` : ""}
+
+                  <div className="mt-3 border-y border-white/8 py-3">
+                    <RecommendationMatch
+                      score={suggestion.match_score}
+                      confidence={suggestion.match_confidence}
+                      evidence={suggestion.match_evidence ?? []}
+                    />
+                  </div>
+
+                  {suggestion.grape_varieties?.length || suggestion.price_range ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      {suggestion.grape_varieties?.join(", ")}
+                      {suggestion.grape_varieties?.length && suggestion.price_range ? " • " : ""}
+                      {suggestion.price_range}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-xs leading-relaxed text-foreground/80">
+                    {suggestion.reason}
                   </p>
-                ) : s.price_range ? (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">{s.price_range}</p>
-                ) : null}
-                <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
-                <div className="mt-2 flex justify-end">
-                  <button
-                    onClick={() =>
-                      addToWishlist({
-                        producer: s.producer,
-                        wine_name: s.wine_name,
-                        vintage: s.vintage,
-                        region: s.region,
-                        country: s.country,
-                        wine_type: s.wine_type,
-                        grape_varieties: s.grape_varieties,
-                        source: "ai",
-                        ai_data: s as never,
-                      })
-                    }
-                    className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-[11px] text-gold hover:bg-background/70"
-                  >
-                    <Bookmark className="h-3 w-3" /> {t("wishlist.saveBtn")}
-                  </button>
-                </div>
-              </article>
-            ))}
+
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/8 pt-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => sendFeedback(suggestion, "like")}
+                        aria-label={t("recommendation.like")}
+                        title={t("recommendation.like")}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-md border transition-colors",
+                          selectedFeedback === "like"
+                            ? "border-success/40 bg-success/15 text-success"
+                            : "border-white/10 text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => sendFeedback(suggestion, "dislike")}
+                        aria-label={t("recommendation.notForMe")}
+                        title={t("recommendation.notForMe")}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-md border transition-colors",
+                          selectedFeedback === "dislike"
+                            ? "border-destructive/40 bg-destructive/15 text-destructive"
+                            : "border-white/10 text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => saveSuggestion(suggestion)}
+                      className="flex h-8 items-center gap-1.5 rounded-md border border-gold/30 bg-background/40 px-2.5 text-[11px] text-gold hover:bg-background/70"
+                    >
+                      <Bookmark className="h-3.5 w-3.5" /> {t("wishlist.saveBtn")}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>

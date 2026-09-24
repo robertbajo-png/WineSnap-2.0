@@ -35,6 +35,20 @@ export async function recordRecommendationEvent(
   const candidateKey = recommendationKey(candidate);
   if (!candidateKey) return false;
 
+  if (eventType === "like" || eventType === "dislike") {
+    const { error: replaceError } = await supabase
+      .from("recommendation_events")
+      .delete()
+      .eq("user_id", data.user.id)
+      .eq("source", source)
+      .eq("candidate_key", candidateKey)
+      .in("event_type", ["like", "dislike"]);
+    if (replaceError) {
+      console.error("Could not replace recommendation feedback", replaceError);
+      return false;
+    }
+  }
+
   const { error } = await supabase.from("recommendation_events").insert({
     user_id: data.user.id,
     wine_id: null,
