@@ -1,7 +1,13 @@
 project_id = "mervdrbnwgreaifobasw"
 
 [functions.analyze-wine]
-verify_jwt = false
+verify_jwt = true
 
 [functions.restaurant-match]
-verify_jwt = false
+verify_jwt = true
+
+[functions.taste-suggestions]
+verify_jwt = true
+
+[functions.wine-suggestions]
+verify_jwt = true

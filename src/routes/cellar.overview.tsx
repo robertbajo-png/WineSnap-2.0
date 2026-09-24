@@ -87,10 +87,7 @@ function CellarOverviewPage() {
       });
       const json = (await res.json()) as { updated?: number; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Request failed");
-      const { data } = await supabase
-        .from("wines")
-        .select(SELECT_COLS)
-        .eq("user_id", user.id);
+      const { data } = await supabase.from("wines").select(SELECT_COLS).eq("user_id", user.id);
       setWines((data as unknown as WineRow[]) ?? []);
       toast.success(`${t("overview.valuesUpdated")} (${json.updated ?? 0})`);
     } catch {
@@ -313,8 +310,8 @@ function CellarOverviewPage() {
                       <TrendingDown className="h-3.5 w-3.5" />
                     )}
                     {delta >= 0 ? "+" : "−"}
-                    {formatMoney(Math.abs(delta), marketCurrency)} ({Math.abs(deltaPct).toFixed(0)}%){" "}
-                    <span className="text-muted-foreground">{t("overview.vsPurchase")}</span>
+                    {formatMoney(Math.abs(delta), marketCurrency)} ({Math.abs(deltaPct).toFixed(0)}
+                    %) <span className="text-muted-foreground">{t("overview.vsPurchase")}</span>
                   </p>
                 )}
               </div>

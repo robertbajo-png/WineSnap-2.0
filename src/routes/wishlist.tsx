@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { WineImage } from "@/components/WineImage";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
@@ -219,7 +220,7 @@ function WishlistPage() {
                 <div className="flex gap-3">
                   <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
                     {r.image_url ? (
-                      <img src={r.image_url} alt="" className="h-full w-full object-cover" />
+                      <WineImage src={r.image_url} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <Wine className="h-6 w-6 text-gold/60" />
                     )}

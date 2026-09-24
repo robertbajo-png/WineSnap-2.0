@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Plus, Trash2, X, Loader2, Wine } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
+import { WineImage } from "./WineImage";
 const LabelCropper = lazy(() =>
   import("./LabelCropper").then((m) => ({ default: m.LabelCropper })),
 );
@@ -27,7 +28,9 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
   const [photos, setPhotos] = useState<Photo[] | null>(null);
   const [pending, setPending] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; storagePath: string | null } | null>(
+    null,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -57,12 +60,11 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
         .from("wine-labels")
         .upload(path, blob, { contentType: "image/jpeg" });
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
       const nextOrder = (photos?.[photos.length - 1]?.sort_order ?? 0) + 1;
       const { error: insErr } = await supabase.from("wine_photos").insert({
         wine_id: wineId,
         user_id: user.id,
-        url: pub.publicUrl,
+        url: path,
         storage_path: path,
         kind: "bottle",
         sort_order: nextOrder,
@@ -87,11 +89,25 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
     await load();
   };
 
-  const combined: Array<{ id: string; url: string; kind: string; photo?: Photo }> = [];
+  const combined: Array<{
+    id: string;
+    url: string;
+    storagePath: string | null;
+    kind: string;
+    photo?: Photo;
+  }> = [];
   if ((!photos || photos.length === 0) && fallbackUrl) {
-    combined.push({ id: "__fallback", url: fallbackUrl, kind: "label" });
+    combined.push({ id: "__fallback", url: fallbackUrl, storagePath: null, kind: "label" });
   }
-  (photos ?? []).forEach((p) => combined.push({ id: p.id, url: p.url, kind: p.kind, photo: p }));
+  (photos ?? []).forEach((p) =>
+    combined.push({
+      id: p.id,
+      url: p.url,
+      storagePath: p.storage_path,
+      kind: p.kind,
+      photo: p,
+    }),
+  );
 
   return (
     <>
@@ -101,8 +117,18 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
             key={c.id}
             className="group relative aspect-[3/4] overflow-hidden rounded-lg border border-white/8 bg-white/5"
           >
-            <button type="button" onClick={() => setLightbox(c.url)} className="absolute inset-0">
-              <img src={c.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+            <button
+              type="button"
+              onClick={() => setLightbox({ url: c.url, storagePath: c.storagePath })}
+              className="absolute inset-0"
+            >
+              <WineImage
+                src={c.url}
+                storagePath={c.storagePath}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
             </button>
             <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-display uppercase tracking-wide text-cream/85">
               {t(`photos.kind.${c.kind}` as never) || c.kind}
@@ -175,7 +201,12 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
           >
             <X className="h-5 w-5" />
           </button>
-          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-xl object-contain" />
+          <WineImage
+            src={lightbox.url}
+            storagePath={lightbox.storagePath}
+            alt=""
+            className="max-h-full max-w-full rounded-xl object-contain"
+          />
         </div>
       )}
     </>

@@ -15,6 +15,7 @@
 // The edge bundler cannot reach outside the function directory, so the copy lives
 // here. Keep the two files in sync — see labelValidation.sync.test.ts.
 import { authoritativeLabelText, validateIdentity } from "./labelValidation.ts";
+import { requireAiAccess } from "../_shared/aiSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -150,6 +151,14 @@ const MAX_BASE64_CHARS = 18_000_000; // ~13 MB binary
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const access = await requireAiAccess(req, {
+    functionName: "analyze-wine",
+    limit: 20,
+    windowSeconds: 300,
+    corsHeaders,
+  });
+  if (access instanceof Response) return access;
 
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {

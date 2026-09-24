@@ -98,8 +98,6 @@ function HomePage() {
             <UtensilsCrossed className="h-4 w-4" />
             {t("home.cta.restaurant")}
           </Link>
-
-
         </div>
       </div>
     </AppShell>

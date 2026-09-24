@@ -89,7 +89,10 @@ export const Route = createFileRoute("/api/public/hooks/refresh-cellar-values")(
             if (updateError) failures.push({ id: row.id, message: updateError.message });
             else updated += 1;
           } catch (e) {
-            failures.push({ id: row.id, message: e instanceof Error ? e.message : "Unknown error" });
+            failures.push({
+              id: row.id,
+              message: e instanceof Error ? e.message : "Unknown error",
+            });
           }
         }
 
@@ -150,9 +153,7 @@ async function fetchPrice(args: {
     return {
       price,
       productNumber,
-      url: productNumber
-        ? `https://www.systembolaget.se/produkt/vin/${productNumber}`
-        : undefined,
+      url: productNumber ? `https://www.systembolaget.se/produkt/vin/${productNumber}` : undefined,
     };
   }
   return null;

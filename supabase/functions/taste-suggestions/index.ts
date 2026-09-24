@@ -1,5 +1,6 @@
 // Edge function: taste-suggestions
 // Generates AI wine recommendations based on a user's full taste profile + cellar.
+import { requireAiAccess } from "../_shared/aiSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +64,14 @@ const tool = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const access = await requireAiAccess(req, {
+    functionName: "taste-suggestions",
+    limit: 10,
+    windowSeconds: 300,
+    corsHeaders,
+  });
+  if (access instanceof Response) return access;
 
   try {
     const { profile, taste, cellar } = await req.json();

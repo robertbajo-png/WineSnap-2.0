@@ -196,8 +196,7 @@ function MePage() {
                   ? profile.preferred_grapes
                   : topGrapes;
                 return list.length
-                  ? list.slice(0, 2).join(", ") +
-                      (list.length > 2 ? ` +${list.length - 2}` : "")
+                  ? list.slice(0, 2).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "")
                   : t("profile.notSet");
               })()}
             />

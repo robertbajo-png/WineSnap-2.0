@@ -365,25 +365,25 @@ export function AromaWheel({
       {/* gold tick marks on outer rim */}
       {!simple &&
         Array.from({ length: 120 }).map((_, i) => {
-        const a = (i * 3 - 90) * (Math.PI / 180);
-        const r1 = rOuter + pad * 0.2;
-        const r2 = rOuter + pad * (i % 10 === 0 ? 0.9 : 0.5);
-        const x1 = cx + r1 * Math.cos(a);
-        const y1 = cy + r1 * Math.sin(a);
-        const x2 = cx + r2 * Math.cos(a);
-        const y2 = cy + r2 * Math.sin(a);
-        return (
-          <line
-            key={`tk-${i}`}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={goldRim}
-            strokeWidth={i % 10 === 0 ? 0.9 : 0.5}
-          />
-        );
-      })}
+          const a = (i * 3 - 90) * (Math.PI / 180);
+          const r1 = rOuter + pad * 0.2;
+          const r2 = rOuter + pad * (i % 10 === 0 ? 0.9 : 0.5);
+          const x1 = cx + r1 * Math.cos(a);
+          const y1 = cy + r1 * Math.sin(a);
+          const x2 = cx + r2 * Math.cos(a);
+          const y2 = cy + r2 * Math.sin(a);
+          return (
+            <line
+              key={`tk-${i}`}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={goldRim}
+              strokeWidth={i % 10 === 0 ? 0.9 : 0.5}
+            />
+          );
+        })}
 
       {/* outer rim */}
       <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={goldRim} strokeWidth="1" />

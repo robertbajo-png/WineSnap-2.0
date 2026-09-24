@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, UserPlus, UserCheck, Star } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Skeleton } from "@/components/Skeleton";
+import { WineImage } from "@/components/WineImage";
 import { EmptyState } from "@/components/EmptyState";
 import { Wine } from "lucide-react";
 import {
@@ -151,7 +152,7 @@ function UserProfilePage() {
                       >
                         <div className="aspect-[3/4] w-full overflow-hidden bg-background">
                           {w.image_url ? (
-                            <img
+                            <WineImage
                               src={w.image_url}
                               alt={w.wine_name ?? ""}
                               className="h-full w-full object-cover"

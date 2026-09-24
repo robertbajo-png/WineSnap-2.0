@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Wine, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { WineImage } from "@/components/WineImage";
 
 export const Route = createFileRoute("/w/$shareId")({
   head: () => ({
@@ -113,7 +114,11 @@ function PublicWinePage() {
       <div className="mx-auto mt-6 max-w-md">
         {w.image_url && (
           <div className="overflow-hidden rounded-3xl border border-white/10 shadow-elegant">
-            <img src={w.image_url} alt={w.wine_name ?? "Wine"} className="w-full object-cover" />
+            <WineImage
+              src={w.image_url}
+              alt={w.wine_name ?? "Wine"}
+              className="w-full object-cover"
+            />
           </div>
         )}
 

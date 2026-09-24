@@ -1,5 +1,6 @@
 // Edge function: wine-suggestions
 // Returns AI-generated similar wine recommendations based on a wine's profile.
+import { requireAiAccess } from "../_shared/aiSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,6 +45,14 @@ const tool = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const access = await requireAiAccess(req, {
+    functionName: "wine-suggestions",
+    limit: 15,
+    windowSeconds: 300,
+    corsHeaders,
+  });
+  if (access instanceof Response) return access;
 
   try {
     const wine = await req.json();

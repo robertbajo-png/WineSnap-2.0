@@ -1,6 +1,7 @@
 // Edge function: restaurant-match
 // Given a list of wines from a restaurant menu (text or from a photo) and the
 // user's taste profile, rank the best matches with sommelier reasoning.
+import { requireAiAccess } from "../_shared/aiSecurity.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,6 +58,14 @@ const tool = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const access = await requireAiAccess(req, {
+    functionName: "restaurant-match",
+    limit: 10,
+    windowSeconds: 300,
+    corsHeaders,
+  });
+  if (access instanceof Response) return access;
 
   try {
     const { text, image, profile, taste } = await req.json();

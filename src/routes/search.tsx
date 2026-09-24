@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { EmptyState } from "@/components/EmptyState";
 import { CellarRowSkeleton } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
+import { WineImage } from "@/components/WineImage";
 import { supabase } from "@/integrations/supabase/client";
 import { useT } from "@/i18n";
 
@@ -149,7 +150,7 @@ function ResultCard({ w }: { w: WineRow }) {
       >
         <div className="relative flex h-[88px] w-[68px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
           {w.image_url ? (
-            <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+            <WineImage src={w.image_url} alt="" className="h-full w-full object-cover" />
           ) : (
             <Wine className="h-6 w-6 text-gold/60" />
           )}

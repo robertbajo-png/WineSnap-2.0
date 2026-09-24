@@ -2,6 +2,7 @@ import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronDown, History, MapPin, Plus, Star, Wine } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { WineImage } from "@/components/WineImage";
 import { AROMA_OPTIONS, AromaIcon } from "@/components/AromaIcon";
 import { AromaWheel } from "@/components/AromaWheel";
 import { AromaRows } from "@/components/AromaProfileTabs";
@@ -227,7 +228,7 @@ function NotesPage() {
         <section className="mt-5 flex items-center gap-3 border-b border-border pb-4">
           <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card">
             {wine.image_url ? (
-              <img src={wine.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage src={wine.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <Wine className="h-5 w-5 text-gold" />
             )}

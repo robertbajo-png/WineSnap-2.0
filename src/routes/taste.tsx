@@ -94,13 +94,14 @@ type Profile = {
 
 function TastePage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const navigate = useNavigate();
   const t = useT();
   const [types, setTypes] = useState<string[]>(["Red"]);
   const [regions, setRegions] = useState<string[]>(["Bordeaux", "Tuscany"]);
   const [grapes, setGrapes] = useState<string[]>([]);
   const [body, setBody] = useState(80);
-  
+
   const [oak, setOak] = useState(90);
   const [tannin, setTannin] = useState(70);
   const [acid, setAcid] = useState(75);
@@ -127,12 +128,12 @@ function TastePage() {
   }, []);
 
   useEffect(() => {
-    if (!user || hydrated.current) return;
+    if (!userId || hydrated.current) return;
     hydrated.current = true;
     supabase
       .from("profiles")
       .select("*")
-      .eq("id", user.id)
+      .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {
         const p = data as Profile | null;
@@ -146,7 +147,7 @@ function TastePage() {
         if (p.tannin != null) setTannin(p.tannin * 10);
         if (p.acidity != null) setAcid(p.acidity * 10);
       });
-  }, [user?.id]);
+  }, [userId]);
 
   const toggle = (arr: string[], setter: (v: string[]) => void, v: string) => {
     setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);

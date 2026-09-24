@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { X, ImageIcon, Loader2, Wine, Check, Type, Camera, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WineImage } from "@/components/WineImage";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -218,8 +219,6 @@ function ScanPage() {
         return;
       }
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("wine-labels").getPublicUrl(path);
-
       const base64 = await new Promise<string>((res, rej) => {
         const r = new FileReader();
         r.onload = () => {
@@ -254,7 +253,7 @@ function ScanPage() {
       }
       applyResult(result, {
         previewUrl: localPreview,
-        imageUrl: pub.publicUrl,
+        imageUrl: path,
         storagePath: path,
         mode: "camera",
       });
@@ -677,7 +676,7 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
         <div className="mt-8 flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
           <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
             {wine.image_url ? (
-              <img src={wine.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage src={wine.image_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <Wine className="h-7 w-7 text-gold/60" />
             )}
