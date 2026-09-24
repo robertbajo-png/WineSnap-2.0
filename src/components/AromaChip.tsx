@@ -136,7 +136,11 @@ export function aromaMeta(name: string): AromaMeta {
   let family: AromaFamily = "berry";
   let Icon: LucideIcon = Grape;
 
-  if (/cherry|berry|plum|currant|strawberry|raspberry|blackberry|blueberry|cranberry|bär|körsbär|plommon/i.test(n)) {
+  if (
+    /cherry|berry|plum|currant|strawberry|raspberry|blackberry|blueberry|cranberry|bär|körsbär|plommon/i.test(
+      n,
+    )
+  ) {
     family = "berry";
     Icon = Cherry;
   } else if (/apple|pear|äpple|päron/i.test(n)) {
@@ -189,7 +193,15 @@ export function aromaMeta(name: string): AromaMeta {
   return { family, Icon, ...FAMILY_STYLE[family] };
 }
 
-export function AromaIcon({ name, className, iconClassName }: { name: string; className?: string; iconClassName?: string }) {
+export function AromaIcon({
+  name,
+  className,
+  iconClassName,
+}: {
+  name: string;
+  className?: string;
+  iconClassName?: string;
+}) {
   const meta = aromaMeta(name);
   const Icon = meta.Icon;
 
@@ -214,9 +226,7 @@ export function AromaChip({ name }: { name: string }) {
   return (
     <div className="flex w-20 shrink-0 flex-col items-center gap-2">
       <AromaIcon name={name} className="h-14 w-14 rounded-3xl" iconClassName="h-6 w-6" />
-      <span className="line-clamp-2 text-center text-[10px] leading-tight text-cream">
-        {name}
-      </span>
+      <span className="line-clamp-2 text-center text-[10px] leading-tight text-cream">{name}</span>
       <span className="text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
         {meta.familyLabel}
       </span>
