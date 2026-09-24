@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
+import type { DerivedPreference } from "@/lib/wineMemory";
 
 export const Route = createFileRoute("/for-you")({
   head: () => ({
@@ -35,7 +36,7 @@ type Suggestion = {
   reason: string;
 };
 
-const CACHE_KEY = "winesnap:suggestions:v1";
+const CACHE_KEY = "winesnap:suggestions:v2";
 
 function ForYouPage() {
   const { user, loading } = useAuth();
@@ -63,25 +64,32 @@ function ForYouPage() {
     setBusy(true);
     setError(null);
     try {
-      const [{ data: profile }, { data: taste }, { data: cellar }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select(
-            "preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max",
-          )
-          .eq("id", user.id)
-          .maybeSingle(),
-        supabase.from("taste_profile").select("*").eq("user_id", user.id).maybeSingle(),
-        supabase
-          .from("wines")
-          .select("producer,wine_name,vintage,region,country,user_rating")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(30),
-      ]);
+      const [{ data: profile }, { data: taste }, { data: cellar }, { data: memory }] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select(
+              "preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max",
+            )
+            .eq("id", user.id)
+            .maybeSingle(),
+          supabase.from("taste_profile").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase
+            .from("wines")
+            .select("producer,wine_name,vintage,region,country,user_rating")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(30),
+          supabase
+            .from("derived_preferences")
+            .select("attribute,value_text,value_number,preference_score,confidence,evidence_count")
+            .eq("user_id", user.id)
+            .order("confidence", { ascending: false })
+            .limit(30),
+        ]);
 
       const { data, error: fnError } = await supabase.functions.invoke("taste-suggestions", {
-        body: { profile, taste, cellar },
+        body: { profile, taste, cellar, memory: (memory ?? []) as DerivedPreference[] },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
