@@ -9,6 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -53,9 +56,11 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
+    "nitro": "3.0.260603-beta",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
+    "react-easy-crop": "^6.2.2",
     "react-hook-form": "^7.71.2",
     "react-resizable-panels": "^4.6.5",
     "recharts": "^2.15.4",
@@ -69,7 +74,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^1.4.0",
+    "@lovable.dev/vite-tanstack-config": "2.13.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -83,6 +88,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^5.0.0"
   }
 }

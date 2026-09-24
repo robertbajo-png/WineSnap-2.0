@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n";
+import type { TKey } from "@/i18n";
 
 export const Route = createFileRoute("/taste")({
   head: () => ({
@@ -17,13 +19,72 @@ export const Route = createFileRoute("/taste")({
   component: TastePage,
 });
 
-const REGIONS = ["Bordeaux", "Burgundy", "Tuscany", "Napa Valley", "Rioja", "Barossa Valley", "Champagne", "Mosel", "+ More"];
+const POPULAR_REGIONS = [
+  "Bordeaux",
+  "Burgundy",
+  "Tuscany",
+  "Napa Valley",
+  "Rioja",
+  "Champagne",
+  "Barossa Valley",
+];
+const MORE_REGIONS = [
+  "Piedmont",
+  "Veneto",
+  "Sicily",
+  "Sonoma",
+  "Oregon",
+  "Ribera del Duero",
+  "Priorat",
+  "Douro",
+  "Alentejo",
+  "Margaret River",
+  "Marlborough",
+  "Loire",
+  "Rhône",
+  "Alsace",
+  "Provence",
+  "Mosel",
+  "Rheingau",
+  "Mendoza",
+  "Maipo Valley",
+  "Stellenbosch",
+  "Tokaj",
+];
 const TYPES = ["Red", "White", "Sparkling"] as const;
+const POPULAR_GRAPES = [
+  "Cabernet Sauvignon",
+  "Merlot",
+  "Pinot Noir",
+  "Syrah",
+  "Chardonnay",
+  "Sauvignon Blanc",
+  "Riesling",
+];
+const MORE_GRAPES = [
+  "Tempranillo",
+  "Sangiovese",
+  "Nebbiolo",
+  "Malbec",
+  "Grenache",
+  "Zinfandel",
+  "Cabernet Franc",
+  "Petit Verdot",
+  "Gamay",
+  "Pinot Grigio",
+  "Viognier",
+  "Chenin Blanc",
+  "Gewürztraminer",
+  "Albariño",
+  "Grüner Veltliner",
+  "Semillon",
+];
 
 type Profile = {
   id: string;
   preferred_types: string[] | null;
   preferred_regions: string[] | null;
+  preferred_grapes: string[] | null;
   body: number | null;
   sweetness: number | null;
   oak: number | null;
@@ -33,30 +94,60 @@ type Profile = {
 
 function TastePage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const navigate = useNavigate();
+  const t = useT();
   const [types, setTypes] = useState<string[]>(["Red"]);
   const [regions, setRegions] = useState<string[]>(["Bordeaux", "Tuscany"]);
+  const [grapes, setGrapes] = useState<string[]>([]);
   const [body, setBody] = useState(80);
-  const [dry, setDry] = useState(85);
+
   const [oak, setOak] = useState(90);
   const [tannin, setTannin] = useState(70);
   const [acid, setAcid] = useState(75);
   const [sweet, setSweet] = useState(20);
+  const [showMoreRegions, setShowMoreRegions] = useState(false);
+  const [showMoreGrapes, setShowMoreGrapes] = useState(false);
+
+  const hydrated = useRef(false);
+
+  // Scroll to the section named in the URL hash (e.g. /taste#regions).
+  // Retry briefly: the router's scroll restoration resets scroll after navigation.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (++tries >= 6) clearInterval(timer);
+    }, 250);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
-    if (!user) return;
-    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle().then(({ data }) => {
-      const p = data as Profile | null;
-      if (!p) return;
-      if (p.preferred_types) setTypes(p.preferred_types);
-      if (p.preferred_regions) setRegions(p.preferred_regions);
-      if (p.body != null) setBody(p.body * 10);
-      if (p.sweetness != null) setSweet(p.sweetness * 10);
-      if (p.oak != null) setOak(p.oak * 10);
-      if (p.tannin != null) setTannin(p.tannin * 10);
-      if (p.acidity != null) setAcid(p.acidity * 10);
-    });
-  }, [user]);
+    if (!userId || hydrated.current) return;
+    hydrated.current = true;
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        const p = data as Profile | null;
+        if (!p) return;
+        if (p.preferred_types) setTypes(p.preferred_types);
+        if (p.preferred_regions) setRegions(p.preferred_regions);
+        if (p.preferred_grapes) setGrapes(p.preferred_grapes);
+        if (p.body != null) setBody(p.body * 10);
+        if (p.sweetness != null) setSweet(p.sweetness * 10);
+        if (p.oak != null) setOak(p.oak * 10);
+        if (p.tannin != null) setTannin(p.tannin * 10);
+        if (p.acidity != null) setAcid(p.acidity * 10);
+      });
+  }, [userId]);
 
   const toggle = (arr: string[], setter: (v: string[]) => void, v: string) => {
     setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -68,41 +159,53 @@ function TastePage() {
       id: user.id,
       preferred_types: types,
       preferred_regions: regions,
+      preferred_grapes: grapes,
       body: Math.round(body / 10),
       sweetness: Math.round(sweet / 10),
       oak: Math.round(oak / 10),
       tannin: Math.round(tannin / 10),
       acidity: Math.round(acid / 10),
     };
-    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" })
+      .select("id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
-    toast.success("Preferences saved");
+    if (!data) return toast.error(t("taste.saveFailed"));
+    toast.success(t("taste.saved"));
     navigate({ to: "/me" });
   };
+
+  const typeLabel = (ty: string) => t(`type.${ty.toLowerCase()}` as TKey) || ty;
+  const showMoreLabel = (v: boolean) => (v ? t("common.showLess") : t("common.showMore"));
 
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <button onClick={() => window.history.back()} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
+          <button
+            onClick={() => window.history.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+          >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="text-center">
-            <h1 className="font-display text-xl text-gold">Taste Preferences</h1>
-            <p className="text-[11px] text-muted-foreground">Tell us what you enjoy most.</p>
+            <h1 className="font-display text-2xl text-gold">{t("taste.title")}</h1>
+            <p className="text-[11px] text-muted-foreground">{t("taste.subtitle")}</p>
           </div>
           <span className="h-9 w-9" />
         </header>
 
-        <section className="mt-6">
-          <h2 className="font-display text-base text-gold">1. Wine Types</h2>
+        <section id="types" className="mt-6 scroll-mt-20">
+          <h2 className="font-display text-base text-gold">{t("taste.wineTypes")}</h2>
           <div className="mt-3 flex gap-2">
-            {TYPES.map((t) => {
-              const active = types.includes(t);
+            {TYPES.map((ty) => {
+              const active = types.includes(ty);
               return (
                 <button
-                  key={t}
-                  onClick={() => toggle(types, setTypes, t)}
+                  key={ty}
+                  onClick={() => toggle(types, setTypes, ty)}
                   className={cn(
                     "flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm transition-colors",
                     active
@@ -110,7 +213,7 @@ function TastePage() {
                       : "border-white/15 bg-card/40 text-foreground/80",
                   )}
                 >
-                  {t}
+                  {typeLabel(ty)}
                   {active && <Check className="h-4 w-4" />}
                 </button>
               );
@@ -118,24 +221,57 @@ function TastePage() {
           </div>
         </section>
 
-        <section className="mt-6">
-          <h2 className="font-display text-base text-gold">2. Taste Profile</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Adjust the sliders to match your palate.</p>
+        <section id="profile" className="mt-6 scroll-mt-20">
+          <h2 className="font-display text-base text-gold">{t("taste.profileHeading")}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("taste.profileSub")}</p>
           <div className="mt-4 space-y-4">
-            <SliderRow label="Bold" leftLabel="Light" rightLabel="Bold" value={body} onChange={setBody} />
-            <SliderRow label="Dry" leftLabel="Sweet" rightLabel="Dry" value={dry} onChange={setDry} />
-            <SliderRow label="Oak" leftLabel="No Oak" rightLabel="Oaked" value={oak} onChange={setOak} />
-            <SliderRow label="Tannin" leftLabel="Low" rightLabel="High" value={tannin} onChange={setTannin} />
-            <SliderRow label="Acidity" leftLabel="Low" rightLabel="High" value={acid} onChange={setAcid} />
-            <SliderRow label="Sweetness" leftLabel="Dry" rightLabel="Sweet" value={sweet} onChange={setSweet} muted />
+            <SliderRow
+              label={t("taste.body")}
+              leftLabel={t("taste.light")}
+              rightLabel={t("taste.bold")}
+              value={body}
+              onChange={setBody}
+            />
+            <SliderRow
+              label={t("taste.oak")}
+              leftLabel={t("taste.noOak")}
+              rightLabel={t("taste.oaked")}
+              value={oak}
+              onChange={setOak}
+            />
+            <SliderRow
+              label={t("taste.tannin")}
+              leftLabel={t("taste.low")}
+              rightLabel={t("taste.high")}
+              value={tannin}
+              onChange={setTannin}
+            />
+            <SliderRow
+              label={t("taste.acidity")}
+              leftLabel={t("taste.low")}
+              rightLabel={t("taste.high")}
+              value={acid}
+              onChange={setAcid}
+            />
+            <SliderRow
+              label={t("taste.sweetness")}
+              leftLabel={t("taste.dry")}
+              rightLabel={t("taste.sweet")}
+              value={sweet}
+              onChange={setSweet}
+            />
           </div>
         </section>
 
-        <section className="mt-7">
-          <h2 className="font-display text-base text-gold">3. Favorite Regions</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Select up to 5 regions you love.</p>
+        <section id="regions" className="mt-7 scroll-mt-20">
+          <h2 className="font-display text-base text-gold">{t("taste.regions")}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("taste.regionsSub")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {REGIONS.map((r) => {
+            {[
+              ...POPULAR_REGIONS,
+              ...(showMoreRegions ? MORE_REGIONS : []),
+              ...regions.filter((r) => !POPULAR_REGIONS.includes(r) && !MORE_REGIONS.includes(r)),
+            ].map((r) => {
               const active = regions.includes(r);
               return (
                 <button
@@ -153,17 +289,134 @@ function TastePage() {
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setShowMoreRegions((v) => !v)}
+              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
+            >
+              {showMoreLabel(showMoreRegions)}
+            </button>
           </div>
+          <AddOwn
+            placeholder={t("taste.addRegionPlaceholder")}
+            addLabel={t("taste.add")}
+            openLabel={t("taste.addOwn")}
+            onAdd={(v: string) => setRegions((prev) => (prev.includes(v) ? prev : [...prev, v]))}
+          />
+        </section>
+
+        <section id="grapes" className="mt-7 scroll-mt-20">
+          <h2 className="font-display text-base text-gold">{t("taste.grapes")}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("taste.grapesSub")}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              ...POPULAR_GRAPES,
+              ...(showMoreGrapes ? MORE_GRAPES : []),
+              ...grapes.filter((g) => !POPULAR_GRAPES.includes(g) && !MORE_GRAPES.includes(g)),
+            ].map((g) => {
+              const active = grapes.includes(g);
+              return (
+                <button
+                  key={g}
+                  onClick={() => toggle(grapes, setGrapes, g)}
+                  className={cn(
+                    "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition-colors",
+                    active
+                      ? "border-burgundy bg-burgundy text-cream"
+                      : "border-white/15 bg-card/40 text-foreground/80",
+                  )}
+                >
+                  {g}
+                  {active && <Check className="h-3 w-3" />}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowMoreGrapes((v) => !v)}
+              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
+            >
+              {showMoreLabel(showMoreGrapes)}
+            </button>
+          </div>
+          <AddOwn
+            placeholder={t("taste.addGrapePlaceholder")}
+            addLabel={t("taste.add")}
+            openLabel={t("taste.addOwn")}
+            onAdd={(v: string) => setGrapes((prev) => (prev.includes(v) ? prev : [...prev, v]))}
+          />
         </section>
 
         <button
           onClick={save}
-          className="mt-8 mb-4 flex h-13 h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-base text-cream shadow-elegant ring-1 ring-burgundy/40"
+          className="mt-8 mb-4 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-base text-cream shadow-elegant ring-1 ring-burgundy/40"
         >
-          Save Preferences
+          {t("taste.save")}
         </button>
       </div>
     </AppShell>
+  );
+}
+
+function AddOwn({
+  placeholder,
+  addLabel,
+  openLabel,
+  onAdd,
+}: {
+  placeholder: string;
+  addLabel: string;
+  openLabel: string;
+  onAdd: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+
+  const submit = () => {
+    const clean = value.trim().slice(0, 60);
+    if (!clean) return;
+    onAdd(clean);
+    setValue("");
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-2 text-xs text-gold/90 underline underline-offset-4"
+      >
+        {openLabel}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex gap-2">
+      <input
+        autoFocus
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+          if (e.key === "Escape") setOpen(false);
+        }}
+        placeholder={placeholder}
+        maxLength={60}
+        className="h-9 flex-1 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-foreground outline-none focus:border-gold/50"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        className="h-9 rounded-full border border-burgundy bg-burgundy px-4 text-xs text-cream"
+      >
+        {addLabel}
+      </button>
+    </div>
   );
 }
 
@@ -173,14 +426,12 @@ function SliderRow({
   rightLabel,
   value,
   onChange,
-  muted = false,
 }: {
   label: string;
   leftLabel: string;
   rightLabel: string;
   value: number;
   onChange: (v: number) => void;
-  muted?: boolean;
 }) {
   return (
     <div className="grid grid-cols-[64px_1fr] items-center gap-3">
@@ -188,26 +439,21 @@ function SliderRow({
       <div>
         <div className="relative h-1.5 rounded-full bg-white/10">
           <div
-            className={cn(
-              "absolute left-0 top-0 h-full rounded-full",
-              muted ? "bg-white/30" : "bg-gradient-to-r from-burgundy to-copper",
-            )}
+            className="pointer-events-none absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-burgundy to-copper"
             style={{ width: `${value}%` }}
+          />
+          <span
+            className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 border-cream bg-burgundy shadow"
+            style={{ left: `${value}%` }}
           />
           <input
             type="range"
             min={0}
             max={100}
+            step={10}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value))}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          />
-          <span
-            className={cn(
-              "absolute top-1/2 h-4 w-4 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 shadow",
-              muted ? "border-white/40 bg-white" : "border-cream bg-burgundy",
-            )}
-            style={{ left: `${value}%` }}
+            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
           />
         </div>
         <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">

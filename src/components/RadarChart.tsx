@@ -27,9 +27,7 @@ export function RadarChart({
     return [cx + Math.cos(angle) * (r + 16), cy + Math.sin(angle) * (r + 16)] as const;
   };
 
-  const polygon = axes
-    .map((a, i) => point(i, a.value ?? 0).join(","))
-    .join(" ");
+  const polygon = axes.map((a, i) => point(i, a.value ?? 0).join(",")).join(" ");
 
   const grids = [0.25, 0.5, 0.75, 1].map((s) => {
     const pts = Array.from({ length: n })
@@ -44,13 +42,7 @@ export function RadarChart({
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
       {grids.map((p, i) => (
-        <polygon
-          key={i}
-          points={p}
-          fill="none"
-          stroke="oklch(1 0 0 / 0.08)"
-          strokeWidth={1}
-        />
+        <polygon key={i} points={p} fill="none" stroke="oklch(1 0 0 / 0.08)" strokeWidth={1} />
       ))}
       {axes.map((_, i) => {
         const [x, y] = point(i, max);

@@ -1,9 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Settings, Wine, GlassWater, Star, ChevronRight, Camera, Grape, MapPin, BookmarkIcon, LogOut } from "lucide-react";
+import {
+  Wine,
+  GlassWater,
+  Star,
+  ChevronRight,
+  Grape,
+  MapPin,
+  BookmarkIcon,
+  LogOut,
+  Languages,
+  Bookmark,
+  Users,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n, type Lang } from "@/i18n";
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -15,12 +28,31 @@ export const Route = createFileRoute("/me")({
   component: MePage,
 });
 
+type ProfileRow = {
+  display_name?: string;
+  username?: string | null;
+  bio?: string | null;
+  is_public?: boolean;
+  preferred_types?: string[];
+  preferred_regions?: string[];
+  preferred_grapes?: string[];
+  body?: number | null;
+  sweetness?: number | null;
+  oak?: number | null;
+  tannin?: number | null;
+  acidity?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
+};
+
 function MePage() {
   const { user } = useAuth();
+  const { t, lang, setLang } = useI18n();
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
   const [avg, setAvg] = useState(0);
-  const [profile, setProfile] = useState<{ display_name?: string; preferred_types?: string[]; preferred_regions?: string[] } | null>(null);
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+
   const [topGrapes, setTopGrapes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -31,9 +63,9 @@ function MePage() {
       .then(({ data }) => {
         const ws = data ?? [];
         setBottles(ws.length);
-        setTasted(ws.filter((w: any) => w.user_rating != null).length);
+        setTasted(ws.filter((w) => w.user_rating != null).length);
         const ratings = ws
-          .map((w: any) => {
+          .map((w) => {
             if (w.user_rating != null) return w.user_rating;
             const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v) => v != null);
             if (!vals.length) return null;
@@ -45,10 +77,12 @@ function MePage() {
       });
     supabase
       .from("profiles")
-      .select("display_name,preferred_types,preferred_regions")
+      .select(
+        "display_name,username,bio,is_public,preferred_types,preferred_regions,preferred_grapes,body,sweetness,oak,tannin,acidity,price_min,price_max",
+      )
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => setProfile(data as any));
+      .then(({ data }) => setProfile(data as ProfileRow));
     supabase
       .from("taste_profile")
       .select("favorite_grapes")
@@ -56,22 +90,27 @@ function MePage() {
       .maybeSingle()
       .then(({ data }) => {
         const fg = (data?.favorite_grapes ?? {}) as Record<string, number>;
-        const sorted = Object.entries(fg).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+        const sorted = Object.entries(fg)
+          .sort((a, b) => b[1] - a[1])
+          .map(([g]) => g);
         setTopGrapes(sorted);
       });
   }, [user]);
 
-  const memberSince = user ? new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "—";
+  const memberSince = user
+    ? new Date(user.created_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US", {
+        month: "long",
+        year: "numeric",
+      })
+    : "—";
 
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
           <span className="h-9 w-9" />
-          <h1 className="font-display text-xl text-gold">Profile</h1>
-          <button aria-label="Settings" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5">
-            <Settings className="h-5 w-5" strokeWidth={1.6} />
-          </button>
+          <h1 className="font-display text-2xl text-gold">{t("profile.title")}</h1>
+          <span className="h-9 w-9" />
         </header>
 
         {/* Avatar + name */}
@@ -80,61 +119,201 @@ function MePage() {
             <div className="flex h-full w-full items-center justify-center font-display text-2xl text-gold">
               {(profile?.display_name ?? user?.email ?? "A")[0].toUpperCase()}
             </div>
-            <button className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-gold text-background">
-              <Camera className="h-3 w-3" />
-            </button>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-display text-2xl text-cream">{profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}</p>
-            <p className="text-xs text-gold">Wine Explorer</p>
-            <p className="text-[11px] text-muted-foreground">Member since {memberSince}</p>
+            <p className="font-display text-2xl text-cream">
+              {profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}
+            </p>
+            <p className="text-xs text-gold">{t(explorerTierKey(bottles))}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("profile.memberSince")} {memberSince}
+            </p>
           </div>
         </section>
 
         {/* Stats */}
         <section className="mt-5 grid grid-cols-3 gap-2">
-          <StatBox icon={<Wine className="h-4 w-4 text-gold" />} value={String(bottles)} label="Bottles" />
-          <StatBox icon={<GlassWater className="h-4 w-4 text-gold" />} value={String(tasted)} label="Tasted" />
-          <StatBox icon={<Star className="h-4 w-4 fill-gold text-gold" />} value={avg ? avg.toFixed(1) : "—"} label="Avg. Rating" />
+          <StatBox
+            icon={<Wine className="h-4 w-4 text-gold" />}
+            value={String(bottles)}
+            label={t("profile.bottles")}
+          />
+          <StatBox
+            icon={<GlassWater className="h-4 w-4 text-gold" />}
+            value={String(tasted)}
+            label={t("profile.tasted")}
+          />
+          <StatBox
+            icon={<Star className="h-4 w-4 fill-gold text-gold" />}
+            value={avg ? avg.toFixed(1) : "—"}
+            label={t("profile.avgRating")}
+          />
         </section>
 
         {/* Favorites */}
         <section className="mt-7">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg text-gold">Favorites</h2>
-            <Link to="/taste" className="text-xs text-burgundy">Edit</Link>
-          </div>
+          <h2 className="font-display text-lg text-gold">{t("profile.favorites")}</h2>
           <div className="mt-3 space-y-2.5">
-            <FavRow icon={<Wine className="h-4 w-4 text-gold" />} label="Wine Types" value={(profile?.preferred_types ?? ["Red", "White"]).join(", ")} />
-            <FavRow icon={<BookmarkIcon className="h-4 w-4 text-gold" />} label="Taste Profile" value="Bold • Dry • Oaked" />
-            <FavRow icon={<MapPin className="h-4 w-4 text-gold" />} label="Regions" value={(profile?.preferred_regions ?? ["Bordeaux", "Tuscany"]).slice(0, 3).join(", ") + ((profile?.preferred_regions?.length ?? 0) > 3 ? ` +${(profile!.preferred_regions!.length) - 3}` : "")} />
-            <FavRow icon={<Grape className="h-4 w-4 text-gold" />} label="Grape Varieties" value={topGrapes.length ? topGrapes.slice(0, 2).join(", ") + (topGrapes.length > 2 ? ` +${topGrapes.length - 2}` : "") : "—"} />
+            <FavRow
+              to="/taste"
+              hash="types"
+              icon={<Wine className="h-4 w-4 text-gold" />}
+              label={t("profile.wineTypes")}
+              value={
+                profile?.preferred_types?.length
+                  ? profile.preferred_types.join(", ")
+                  : t("profile.notSet")
+              }
+            />
+            <FavRow
+              to="/taste"
+              hash="profile"
+              icon={<BookmarkIcon className="h-4 w-4 text-gold" />}
+              label={t("profile.tasteProfile")}
+              value={tasteProfileSummary(profile) ?? t("profile.notSet")}
+            />
+            <FavRow
+              to="/taste"
+              hash="regions"
+              icon={<MapPin className="h-4 w-4 text-gold" />}
+              label={t("profile.regions")}
+              value={
+                profile?.preferred_regions?.length
+                  ? profile.preferred_regions.slice(0, 3).join(", ") +
+                    (profile.preferred_regions.length > 3
+                      ? ` +${profile.preferred_regions.length - 3}`
+                      : "")
+                  : t("profile.notSet")
+              }
+            />
+            <FavRow
+              to="/taste"
+              hash="grapes"
+              icon={<Grape className="h-4 w-4 text-gold" />}
+              label={t("profile.grapes")}
+              value={(() => {
+                const list = profile?.preferred_grapes?.length
+                  ? profile.preferred_grapes
+                  : topGrapes;
+                return list.length
+                  ? list.slice(0, 2).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "")
+                  : t("profile.notSet");
+              })()}
+            />
+            <FavRow
+              to="/wishlist"
+              icon={<Bookmark className="h-4 w-4 text-gold" />}
+              label={t("profile.wishlist")}
+              value={t("common.more")}
+            />
           </div>
         </section>
 
         {/* Recommended For You */}
         <section className="mt-7">
-          <h2 className="font-display text-lg text-gold">Recommended For You</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Customize how we personalize your recommendations.</p>
+          <h2 className="font-display text-lg text-gold">{t("profile.recommended")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("profile.recommendedDesc")}</p>
           <div className="mt-3 space-y-2.5 pb-4">
-            <ToggleRow title="Personalized Recommendations" desc="Get wines tailored to your taste" defaultOn />
-            <ToggleRow title="New Arrivals Alerts" desc="Be first to know about new releases" defaultOn />
-            <FavRow icon={null} label="Price Range" value="$20 – $200+" />
-            <ToggleRow title="Hide Wines I Dislike" desc="Improve results over time" defaultOn />
+            <FavRow
+              icon={null}
+              label={t("profile.priceRange")}
+              value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))}
+              onClick={() => editPriceRange(user?.id, profile, setProfile, lang)}
+            />
+          </div>
+        </section>
+
+        {/* Social */}
+        <section className="mt-7">
+          <h2 className="font-display text-lg text-gold">{t("profile.social")}</h2>
+          <div className="mt-3 space-y-2.5">
+            <Link
+              to="/friends"
+              className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
+            >
+              <Users className="h-4 w-4 text-gold" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground/90">{t("profile.friends")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("profile.friendsDesc")}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+            <ToggleRow
+              title={t("profile.publicProfile")}
+              desc={t("profile.publicProfileDesc")}
+              value={profile?.is_public ?? false}
+              onChange={(v) => updatePref(user?.id, { is_public: v }, setProfile)}
+            />
+            <TextRow
+              label={t("profile.username")}
+              placeholder={t("profile.usernamePh")}
+              value={profile?.username ?? ""}
+              onSave={async (v) => {
+                const clean = v.trim().replace(/^@/, "").toLowerCase();
+                await updatePref(user?.id, { username: clean || null }, setProfile);
+              }}
+            />
+            <TextRow
+              label={t("profile.bio")}
+              placeholder={t("profile.bioPh")}
+              value={profile?.bio ?? ""}
+              onSave={async (v) => {
+                await updatePref(user?.id, { bio: v.trim() || null }, setProfile);
+              }}
+              multiline
+            />
+          </div>
+        </section>
+
+        {/* Language */}
+        <section className="mt-2">
+          <h2 className="font-display text-lg text-gold">{t("profile.language")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("profile.languageDesc")}</p>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-card/40 p-1.5">
+            <Languages className="ml-2 h-4 w-4 text-gold" />
+            {(["en", "sv"] as Lang[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm transition-colors ${lang === l ? "bg-burgundy/40 text-cream" : "text-muted-foreground hover:bg-white/5"}`}
+              >
+                {l === "en" ? "English" : "Svenska"}
+              </button>
+            ))}
           </div>
         </section>
 
         {user && (
           <button
             onClick={() => supabase.auth.signOut()}
-            className="mb-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-sm text-muted-foreground hover:bg-white/5"
+            className="mt-6 mb-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-sm text-muted-foreground hover:bg-white/5"
           >
-            <LogOut className="h-4 w-4" /> Sign out
+            <LogOut className="h-4 w-4" /> {t("profile.signOut")}
           </button>
         )}
       </div>
     </AppShell>
   );
+}
+
+function tasteProfileSummary(
+  p: {
+    body?: number | null;
+    sweetness?: number | null;
+    oak?: number | null;
+    tannin?: number | null;
+    acidity?: number | null;
+  } | null,
+): string | null {
+  if (!p) return null;
+  const parts: string[] = [];
+  if (p.body != null) parts.push(p.body >= 7 ? "Bold" : p.body <= 4 ? "Light" : "Medium");
+  if (p.sweetness != null)
+    parts.push(p.sweetness <= 3 ? "Dry" : p.sweetness >= 7 ? "Sweet" : "Off-dry");
+  if (p.oak != null && p.oak >= 6) parts.push("Oaked");
+  if (p.tannin != null && p.tannin >= 7) parts.push("Tannic");
+  if (p.acidity != null && p.acidity >= 7) parts.push("Crisp");
+  return parts.length ? parts.slice(0, 3).join(" • ") : null;
 }
 
 function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
@@ -147,19 +326,55 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
   );
 }
 
-function FavRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <button className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70">
+function FavRow({
+  icon,
+  label,
+  value,
+  to,
+  hash,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  to?: string;
+  hash?: string;
+  onClick?: () => void;
+}) {
+  const className =
+    "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
+  const inner = (
+    <>
       {icon && <span className="shrink-0">{icon}</span>}
       <span className="text-sm text-foreground/90">{label}</span>
       <span className="ml-auto truncate text-right text-xs text-muted-foreground">{value}</span>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </>
+  );
+  if (to)
+    return (
+      <Link to={to} hash={hash} className={className}>
+        {inner}
+      </Link>
+    );
+  return (
+    <button onClick={onClick} className={className}>
+      {inner}
     </button>
   );
 }
 
-function ToggleRow({ title, desc, defaultOn = false }: { title: string; desc: string; defaultOn?: boolean }) {
-  const [on, setOn] = useState(defaultOn);
+function ToggleRow({
+  title,
+  desc,
+  value,
+  onChange,
+}: {
+  title: string;
+  desc: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
       <div className="min-w-0 flex-1">
@@ -167,11 +382,154 @@ function ToggleRow({ title, desc, defaultOn = false }: { title: string; desc: st
         <p className="text-[11px] text-muted-foreground">{desc}</p>
       </div>
       <button
-        onClick={() => setOn(!on)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-success" : "bg-white/15"}`}
+        onClick={() => onChange(!value)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${value ? "bg-success" : "bg-white/15"}`}
       >
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`} />
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`}
+        />
       </button>
     </div>
+  );
+}
+
+function TextRow({
+  label,
+  value,
+  placeholder,
+  onSave,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onSave: (v: string) => Promise<void> | void;
+  multiline?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
+      >
+        <span className="text-sm text-foreground/90">{label}</span>
+        <span className="ml-auto max-w-[55%] truncate text-right text-xs text-muted-foreground">
+          {value ? value : (placeholder ?? "—")}
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {multiline ? (
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          className="mt-1 w-full resize-none bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+        />
+      ) : (
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          className="mt-1 w-full bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+        />
+      )}
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          onClick={() => {
+            setDraft(value);
+            setEditing(false);
+          }}
+          className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/5"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            await onSave(draft);
+            setEditing(false);
+          }}
+          className="rounded-lg bg-burgundy px-3 py-1.5 text-xs text-cream"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function explorerTierKey(
+  bottles: number,
+): "tier.connoisseur" | "tier.enthusiast" | "tier.explorer" | "tier.novice" {
+  if (bottles >= 100) return "tier.connoisseur";
+  if (bottles >= 25) return "tier.enthusiast";
+  if (bottles >= 5) return "tier.explorer";
+  return "tier.novice";
+}
+
+function priceRangeLabel(min?: number | null, max?: number | null, notSet = "Not set"): string {
+  if (min == null && max == null) return notSet;
+  const lo = min ?? 0;
+  const hi = max ?? null;
+  return hi != null ? `$${lo} – $${hi}` : `$${lo}+`;
+}
+
+async function updatePref(
+  userId: string | undefined,
+  patch: Record<string, boolean | number | string | null>,
+  setProfile: React.Dispatch<React.SetStateAction<ProfileRow | null>>,
+) {
+  if (!userId) return;
+  setProfile((p) => ({ ...((p ?? {}) as ProfileRow), ...patch }) as ProfileRow);
+  await supabase
+    .from("profiles")
+    .update(patch as never)
+    .eq("id", userId);
+}
+
+async function editPriceRange(
+  userId: string | undefined,
+  profile: ProfileRow | null,
+  setProfile: React.Dispatch<React.SetStateAction<ProfileRow | null>>,
+  lang: Lang,
+) {
+  if (!userId) return;
+  const promptMin =
+    lang === "sv"
+      ? "Min-pris ($), lämna tomt för att rensa"
+      : "Min price ($), leave empty to clear";
+  const promptMax =
+    lang === "sv"
+      ? "Max-pris ($), lämna tomt för att rensa"
+      : "Max price ($), leave empty to clear";
+  const minStr = window.prompt(
+    promptMin,
+    profile?.price_min != null ? String(profile.price_min) : "",
+  );
+  if (minStr === null) return;
+  const maxStr = window.prompt(
+    promptMax,
+    profile?.price_max != null ? String(profile.price_max) : "",
+  );
+  if (maxStr === null) return;
+  const min = minStr.trim() === "" ? null : Number(minStr);
+  const max = maxStr.trim() === "" ? null : Number(maxStr);
+  await updatePref(
+    userId,
+    {
+      price_min: Number.isFinite(min as number) ? (min as number) : null,
+      price_max: Number.isFinite(max as number) ? (max as number) : null,
+    },
+    setProfile,
   );
 }

@@ -15,11 +15,7 @@ export function Logo({
   } as const;
   return (
     <span
-      className={cn(
-        "font-display font-medium tracking-wide text-gold",
-        sizes[size],
-        className,
-      )}
+      className={cn("font-display font-medium tracking-wide text-gold", sizes[size], className)}
     >
       WineSnap
     </span>

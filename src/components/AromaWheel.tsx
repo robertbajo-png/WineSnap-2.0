@@ -1,136 +1,454 @@
 import { cn } from "@/lib/utils";
 
-const WHEEL_SEGMENTS = [
-  { label: "Red fruit", color: "oklch(0.50 0.18 18)", accent: "oklch(0.72 0.15 24)" },
-  { label: "Black fruit", color: "oklch(0.38 0.16 350)", accent: "oklch(0.60 0.14 355)" },
-  { label: "Citrus", color: "oklch(0.74 0.13 78)", accent: "oklch(0.86 0.12 84)" },
-  { label: "Stone", color: "oklch(0.66 0.13 58)", accent: "oklch(0.82 0.11 62)" },
-  { label: "Floral", color: "oklch(0.56 0.12 325)", accent: "oklch(0.76 0.10 330)" },
-  { label: "Herbal", color: "oklch(0.42 0.10 142)", accent: "oklch(0.64 0.10 145)" },
-  { label: "Mineral", color: "oklch(0.42 0.05 220)", accent: "oklch(0.68 0.05 215)" },
-  { label: "Earth", color: "oklch(0.36 0.05 62)", accent: "oklch(0.58 0.06 66)" },
-  { label: "Oak", color: "oklch(0.46 0.09 48)", accent: "oklch(0.70 0.11 55)" },
-  { label: "Spice", color: "oklch(0.50 0.14 32)", accent: "oklch(0.72 0.13 38)" },
-  { label: "Sweet", color: "oklch(0.58 0.12 82)", accent: "oklch(0.78 0.11 88)" },
-  { label: "Roast", color: "oklch(0.35 0.07 38)", accent: "oklch(0.58 0.08 44)" },
+/**
+ * Aroma Wheel — 6 family sectors with sub-category and leaf rings.
+ * Inspired by the classic wine aroma wheel.
+ */
+
+type Family = {
+  name: string;
+  color: string; // base oklch
+  /** Subcategories with leaf aromas. Sum of weights = 1 within a family. */
+  subs: { name: string; weight: number; leaves: string[] }[];
+};
+
+const FAMILIES: Family[] = [
+  {
+    name: "Fruit",
+    color: "oklch(0.38 0.13 20)",
+    subs: [
+      { name: "Dark fruit", weight: 0.5, leaves: ["Black cherry", "Plum", "Blueberry"] },
+      { name: "Red fruit", weight: 0.5, leaves: ["Raspberry", "Red currant"] },
+    ],
+  },
+  {
+    name: "Floral",
+    color: "oklch(0.34 0.07 300)",
+    subs: [
+      { name: "Floral", weight: 1, leaves: ["Violet", "Rose", "Lavender", "Hibiscus", "Peony"] },
+    ],
+  },
+  {
+    name: "Spice",
+    color: "oklch(0.42 0.11 55)",
+    subs: [
+      { name: "Warm spice", weight: 0.6, leaves: ["Black pepper", "Clove", "Cinnamon"] },
+      { name: "Sweet spice", weight: 0.4, leaves: ["Nutmeg", "Anise"] },
+    ],
+  },
+  {
+    name: "Oak",
+    color: "oklch(0.5 0.12 80)",
+    subs: [{ name: "Oak", weight: 1, leaves: ["Cedar", "Vanilla", "Coconut", "Toanut"] }],
+  },
+  {
+    name: "Earth",
+    color: "oklch(0.38 0.07 130)",
+    subs: [
+      {
+        name: "Vegetal",
+        weight: 1,
+        leaves: ["Forest floor", "Truffle", "Mushroom", "Tobacco leaf"],
+      },
+    ],
+  },
+  {
+    name: "Mineral",
+    color: "oklch(0.34 0.04 230)",
+    subs: [
+      { name: "Stone", weight: 0.55, leaves: ["Wet stone", "Slate", "Gravel", "Talc"] },
+      { name: "Marine", weight: 0.45, leaves: ["Sea breeze"] },
+    ],
+  },
 ];
+
+function shift(color: string, dL: number, dC = 0): string {
+  return color.replace(/oklch\(([^)]+)\)/, (_, p) => {
+    const parts = p.trim().split(/\s+/);
+    const l = parseFloat(parts[0]);
+    const c = parseFloat(parts[1]);
+    const h = parts[2];
+    return `oklch(${(l + dL).toFixed(3)} ${(c + dC).toFixed(3)} ${h})`;
+  });
+}
+
+function polar(cx: number, cy: number, r: number, deg: number) {
+  const a = (deg - 90) * (Math.PI / 180);
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
+function arcPath(cx: number, cy: number, rA: number, rB: number, a0: number, a1: number) {
+  const p0 = polar(cx, cy, rB, a0);
+  const p1 = polar(cx, cy, rB, a1);
+  const p2 = polar(cx, cy, rA, a1);
+  const p3 = polar(cx, cy, rA, a0);
+  const large = a1 - a0 > 180 ? 1 : 0;
+  return `M${p0.x},${p0.y} A${rB},${rB} 0 ${large} 1 ${p1.x},${p1.y} L${p2.x},${p2.y} A${rA},${rA} 0 ${large} 0 ${p3.x},${p3.y} Z`;
+}
+
+/** Path along the centerline of an arc (for textPath). */
+function centerlineArc(cx: number, cy: number, r: number, a0: number, a1: number) {
+  const p0 = polar(cx, cy, r, a0);
+  const p1 = polar(cx, cy, r, a1);
+  const large = a1 - a0 > 180 ? 1 : 0;
+  return `M${p0.x},${p0.y} A${r},${r} 0 ${large} 1 ${p1.x},${p1.y}`;
+}
+
+export const AROMA_FAMILIES = FAMILIES.map((f) => f.name);
 
 export function AromaWheel({
   size = 220,
   className,
-  highlight = [],
+  showLabels,
+  selectedFamily,
+  onSelectFamily,
+  onSelectCenter,
+  centerActive,
+  simple = false,
 }: {
   size?: number;
   className?: string;
-  highlight?: number[];
+  showLabels?: boolean;
+  selectedFamily?: string | null;
+  onSelectFamily?: (family: string | null) => void;
+  onSelectCenter?: () => void;
+  centerActive?: boolean;
+  /** Simple mode: single family ring only — no sub/leaf rings or tick marks. */
+  simple?: boolean;
 }) {
   const cx = size / 2;
   const cy = size / 2;
-  const rOuter = size / 2 - 5;
-  const rMid = rOuter * 0.72;
-  const rInner = rOuter * 0.39;
-  const labelRadius = (rOuter + rMid) / 2;
+  const pad = Math.max(2, size * 0.018);
+  const rOuter = size / 2 - pad;
+  const rMid = rOuter * 0.7;
+  const rInner = rOuter * 0.42;
+  const rCore = rInner * 0.45;
 
-  const segmentPath = (i: number, rA: number, rB: number) => {
-    const step = 360 / WHEEL_SEGMENTS.length;
-    const a0 = (i * step - 90) * (Math.PI / 180);
-    const a1 = ((i + 1) * step - 90) * (Math.PI / 180);
-    const x0 = cx + rB * Math.cos(a0);
-    const y0 = cy + rB * Math.sin(a0);
-    const x1 = cx + rB * Math.cos(a1);
-    const y1 = cy + rB * Math.sin(a1);
-    const x2 = cx + rA * Math.cos(a1);
-    const y2 = cy + rA * Math.sin(a1);
-    const x3 = cx + rA * Math.cos(a0);
-    const y3 = cy + rA * Math.sin(a0);
-    return `M${x0},${y0} A${rB},${rB} 0 0 1 ${x1},${y1} L${x2},${y2} A${rA},${rA} 0 0 0 ${x3},${y3} Z`;
-  };
-
-  const labelPosition = (i: number) => {
-    const step = 360 / WHEEL_SEGMENTS.length;
-    const angle = (i * step + step / 2 - 90) * (Math.PI / 180);
-    return {
-      x: cx + labelRadius * Math.cos(angle),
-      y: cy + labelRadius * Math.sin(angle),
-      rotate: i * step + step / 2,
-    };
-  };
+  const labels = showLabels ?? size >= 320;
+  const stroke = "oklch(0.12 0.008 30)";
+  const goldRim = "oklch(0.78 0.13 75 / 0.55)";
+  const interactive = !!onSelectFamily;
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={cn("drop-shadow-[0_18px_38px_oklch(0_0_0/0.42)]", className)}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
       <defs>
-        <filter id="aroma-wheel-soft-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="5" result="blur" />
-          <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.75 0 1 0 0 0.38 0 0 1 0 0.16 0 0 0 0.35 0" />
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <radialGradient id="aroma-wheel-core" cx="50%" cy="38%" r="70%">
-          <stop offset="0%" stopColor="oklch(0.35 0.08 24)" />
-          <stop offset="56%" stopColor="oklch(0.20 0.02 30)" />
-          <stop offset="100%" stopColor="oklch(0.11 0.008 30)" />
+        <radialGradient id="aw-core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="oklch(0.22 0.02 30)" />
+          <stop offset="100%" stopColor="oklch(0.12 0.008 30)" />
+        </radialGradient>
+        <radialGradient id="aw-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="60%" stopColor="oklch(0.78 0.13 75 / 0)" />
+          <stop offset="100%" stopColor="oklch(0.78 0.13 75 / 0.18)" />
         </radialGradient>
       </defs>
 
-      <circle cx={cx} cy={cy} r={rOuter + 1} fill="oklch(0.08 0.006 30)" />
-      <circle cx={cx} cy={cy} r={rOuter + 0.5} fill="none" stroke="oklch(0.78 0.13 75 / 0.24)" strokeWidth="1" />
+      {/* outer glow halo */}
+      <circle cx={cx} cy={cy} r={rOuter} fill="url(#aw-glow)" />
 
-      {WHEEL_SEGMENTS.map((segment, i) => {
-        const active = highlight.length === 0 || highlight.includes(i);
+      {(() => {
+        const groups: React.ReactNode[] = [];
+        const textPaths: React.ReactNode[] = [];
+        FAMILIES.forEach((fam, fi) => {
+          const famStart = fi * 60;
+          const famEnd = famStart + 60;
+          const famElems: React.ReactNode[] = [];
+          const isSelected = selectedFamily === fam.name;
+          const dim = !!selectedFamily && !isSelected;
+
+          famElems.push(
+            <path
+              key={`fam-${fi}`}
+              d={
+                simple
+                  ? arcPath(cx, cy, rInner, rOuter, famStart, famEnd)
+                  : arcPath(cx, cy, rInner, rMid, famStart, famEnd)
+              }
+              fill={fam.color}
+              stroke={stroke}
+              strokeWidth={1}
+            />,
+          );
+
+          if (simple) {
+            if (labels || size >= 200) {
+              const mid = famStart + 30;
+              const r = (rInner + rOuter) / 2;
+              const p = polar(cx, cy, r, mid);
+              famElems.push(
+                <text
+                  key={`fname-${fi}`}
+                  x={p.x}
+                  y={p.y + size * 0.012}
+                  textAnchor="middle"
+                  fontSize={size * 0.042}
+                  className="fill-cream font-display pointer-events-none"
+                >
+                  {fam.name}
+                </text>,
+              );
+            }
+            if (isSelected) {
+              famElems.push(
+                <path
+                  key={`hl-${fi}`}
+                  d={arcPath(cx, cy, rInner - 1, rOuter + 1, famStart, famEnd)}
+                  fill="none"
+                  stroke="oklch(0.85 0.16 75)"
+                  strokeWidth={1.6}
+                  className="pointer-events-none"
+                />,
+              );
+            }
+            groups.push(
+              <g
+                key={`g-${fi}`}
+                onClick={
+                  interactive
+                    ? (e) => {
+                        e.stopPropagation();
+                        onSelectFamily?.(isSelected ? null : fam.name);
+                      }
+                    : undefined
+                }
+                style={{
+                  cursor: interactive ? "pointer" : undefined,
+                  opacity: dim ? 0.35 : 1,
+                  transition: "opacity 200ms ease",
+                }}
+              >
+                {famElems}
+              </g>,
+            );
+            return;
+          }
+
+          let subAngle = famStart;
+          fam.subs.forEach((sub, si) => {
+            const subEnd = subAngle + 60 * sub.weight;
+            const midColor = shift(fam.color, 0.06);
+            famElems.push(
+              <path
+                key={`sub-${fi}-${si}`}
+                d={arcPath(cx, cy, rMid, rOuter * 0.78, subAngle, subEnd)}
+                fill={midColor}
+                stroke={stroke}
+                strokeWidth={1}
+              />,
+            );
+
+            if (labels && sub.name && size >= 280) {
+              const r = (rMid + rOuter * 0.78) / 2;
+              const mid = (subAngle + subEnd) / 2;
+              const flip = mid > 90 && mid < 270;
+              const a0 = flip ? subEnd - 1 : subAngle + 1;
+              const a1 = flip ? subAngle + 1 : subEnd - 1;
+              const id = `sub-tp-${fi}-${si}`;
+              textPaths.push(
+                <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+              );
+              famElems.push(
+                <text
+                  key={`t-${id}`}
+                  fontSize={size * 0.028}
+                  className="fill-cream/95 font-display pointer-events-none"
+                >
+                  <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                    {sub.name}
+                  </textPath>
+                </text>,
+              );
+            }
+
+            const leafSpan = (subEnd - subAngle) / sub.leaves.length;
+            sub.leaves.forEach((leaf, li) => {
+              const lStart = subAngle + li * leafSpan;
+              const lEnd = lStart + leafSpan;
+              const leafColor = shift(fam.color, 0.12);
+              famElems.push(
+                <path
+                  key={`leaf-${fi}-${si}-${li}`}
+                  d={arcPath(cx, cy, rOuter * 0.78, rOuter, lStart, lEnd)}
+                  fill={leafColor}
+                  stroke={stroke}
+                  strokeWidth={0.8}
+                />,
+              );
+
+              if (labels && size >= 280) {
+                const r = (rOuter * 0.78 + rOuter) / 2;
+                const mid = (lStart + lEnd) / 2;
+                const flip = mid > 90 && mid < 270;
+                const a0 = flip ? lEnd - 0.5 : lStart + 0.5;
+                const a1 = flip ? lStart + 0.5 : lEnd - 0.5;
+                const id = `leaf-tp-${fi}-${si}-${li}`;
+                textPaths.push(
+                  <path key={`p-${id}`} id={id} d={centerlineArc(cx, cy, r, a0, a1)} fill="none" />,
+                );
+                famElems.push(
+                  <text
+                    key={`t-${id}`}
+                    fontSize={size * 0.024}
+                    className="fill-cream/90 font-display pointer-events-none"
+                  >
+                    <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+                      {leaf}
+                    </textPath>
+                  </text>,
+                );
+              }
+            });
+
+            subAngle = subEnd;
+          });
+
+          if (labels && size >= 220) {
+            const mid = famStart + 30;
+            const r = (rInner + rMid) / 2;
+            const p = polar(cx, cy, r, mid);
+            famElems.push(
+              <text
+                key={`fname-${fi}`}
+                x={p.x}
+                y={p.y + size * 0.012}
+                textAnchor="middle"
+                fontSize={size * 0.04}
+                className="fill-cream font-display pointer-events-none"
+              >
+                {fam.name}
+              </text>,
+            );
+          }
+
+          if (isSelected) {
+            famElems.push(
+              <path
+                key={`hl-${fi}`}
+                d={arcPath(cx, cy, rInner - 1, rOuter + 1, famStart, famEnd)}
+                fill="none"
+                stroke="oklch(0.85 0.16 75)"
+                strokeWidth={1.6}
+                className="pointer-events-none"
+              />,
+            );
+          }
+
+          groups.push(
+            <g
+              key={`g-${fi}`}
+              onClick={
+                interactive
+                  ? (e) => {
+                      e.stopPropagation();
+                      onSelectFamily?.(isSelected ? null : fam.name);
+                    }
+                  : undefined
+              }
+              style={{
+                cursor: interactive ? "pointer" : undefined,
+                opacity: dim ? 0.35 : 1,
+                transition: "opacity 200ms ease",
+              }}
+            >
+              {famElems}
+            </g>,
+          );
+        });
+
         return (
-          <g key={segment.label} opacity={active ? 1 : 0.34}>
-            <path
-              d={segmentPath(i, rMid, rOuter)}
-              fill={segment.color}
-              stroke="oklch(0.08 0.006 30)"
-              strokeWidth="1.4"
-            />
-            <path
-              d={segmentPath(i, rInner, rMid)}
-              fill={segment.accent}
-              stroke="oklch(0.08 0.006 30)"
-              strokeWidth="1.4"
-            />
-            <path
-              d={segmentPath(i, rOuter * 0.93, rOuter)}
-              fill="oklch(1 0 0 / 0.08)"
-            />
-          </g>
+          <>
+            <defs>{textPaths}</defs>
+            {groups}
+          </>
         );
-      })}
+      })()}
 
-      {WHEEL_SEGMENTS.map((segment, i) => {
-        const pos = labelPosition(i);
-        const rotate = pos.rotate > 90 && pos.rotate < 270 ? pos.rotate + 180 : pos.rotate;
-        return (
-          <text
-            key={`${segment.label}-label`}
-            x={pos.x}
-            y={pos.y}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            transform={`rotate(${rotate} ${pos.x} ${pos.y})`}
-            fontSize={size < 180 ? 5.5 : 7}
-            letterSpacing="0.08em"
-            fill="oklch(0.96 0.03 80 / 0.70)"
-            className="select-none uppercase"
-          >
-            {segment.label}
-          </text>
-        );
-      })}
+      {/* gold tick marks on outer rim */}
+      {!simple &&
+        Array.from({ length: 120 }).map((_, i) => {
+          const a = (i * 3 - 90) * (Math.PI / 180);
+          const r1 = rOuter + pad * 0.2;
+          const r2 = rOuter + pad * (i % 10 === 0 ? 0.9 : 0.5);
+          const x1 = cx + r1 * Math.cos(a);
+          const y1 = cy + r1 * Math.sin(a);
+          const x2 = cx + r2 * Math.cos(a);
+          const y2 = cy + r2 * Math.sin(a);
+          return (
+            <line
+              key={`tk-${i}`}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={goldRim}
+              strokeWidth={i % 10 === 0 ? 0.9 : 0.5}
+            />
+          );
+        })}
 
-      <circle cx={cx} cy={cy} r={rInner + 1} fill="oklch(0.08 0.006 30 / 0.72)" />
-      <circle cx={cx} cy={cy} r={rInner} fill="url(#aroma-wheel-core)" stroke="oklch(0.78 0.13 75 / 0.34)" strokeWidth="1" filter="url(#aroma-wheel-soft-glow)" />
-      <circle cx={cx} cy={cy} r={rInner * 0.56} fill="none" stroke="oklch(0.78 0.13 75 / 0.20)" strokeWidth="1" />
-      <text x={cx} y={cy - 2} textAnchor="middle" className="fill-cream font-display" fontSize={size < 180 ? 12 : 15}>
-        Aroma
-      </text>
-      <text x={cx} y={cy + 11} textAnchor="middle" fontSize={size < 180 ? 5.5 : 7} letterSpacing="0.18em" fill="oklch(0.78 0.13 75 / 0.72)">
-        WHEEL
-      </text>
+      {/* outer rim */}
+      <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={goldRim} strokeWidth="1" />
+
+      {/* core disc — click to show this wine's aromas */}
+      <g
+        onClick={
+          onSelectCenter
+            ? (e) => {
+                e.stopPropagation();
+                onSelectCenter();
+              }
+            : undefined
+        }
+        style={{ cursor: onSelectCenter ? "pointer" : undefined }}
+      >
+        <circle
+          cx={cx}
+          cy={cy}
+          r={rCore}
+          fill="url(#aw-core)"
+          stroke={centerActive ? "oklch(0.85 0.16 75)" : goldRim}
+          strokeWidth={centerActive ? 1.8 : 1}
+        />
+        {/* inner ring */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={rCore * 0.78}
+          fill="none"
+          stroke={goldRim}
+          strokeOpacity={0.5}
+          strokeWidth={0.6}
+        />
+        {/* monogram W */}
+        <text
+          x={cx}
+          y={cy + size * 0.022}
+          textAnchor="middle"
+          fontSize={size * 0.11}
+          className="fill-gold font-display pointer-events-none"
+          style={{ fontWeight: 400, letterSpacing: "0.02em" }}
+        >
+          W
+        </text>
+        {/* tiny serifs above + below */}
+        <line
+          x1={cx - rCore * 0.35}
+          x2={cx + rCore * 0.35}
+          y1={cy - rCore * 0.55}
+          y2={cy - rCore * 0.55}
+          stroke={goldRim}
+          strokeOpacity={0.7}
+          strokeWidth={0.7}
+        />
+        <line
+          x1={cx - rCore * 0.35}
+          x2={cx + rCore * 0.35}
+          y1={cy + rCore * 0.55}
+          y2={cy + rCore * 0.55}
+          stroke={goldRim}
+          strokeOpacity={0.7}
+          strokeWidth={0.7}
+        />
+      </g>
     </svg>
   );
 }
@@ -141,10 +459,7 @@ export function AromaSlider({ name, value }: { name: string; value: number }) {
       {[1, 2, 3, 4].map((i) => (
         <span
           key={i}
-          className={cn(
-            "h-1.5 w-1.5 rounded-full",
-            i <= value ? "bg-burgundy" : "bg-white/15",
-          )}
+          className={cn("h-1.5 w-1.5 rounded-full", i <= value ? "bg-burgundy" : "bg-white/15")}
         />
       ))}
       <span className="sr-only">{name}</span>

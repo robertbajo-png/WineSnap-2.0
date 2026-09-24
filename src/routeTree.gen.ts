@@ -9,22 +9,39 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as TasteRouteImport } from './routes/taste'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
+import { Route as RestaurantRouteImport } from './routes/restaurant'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as FriendsRouteImport } from './routes/friends'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForYouRouteImport } from './routes/for-you'
 import { Route as CellarRouteImport } from './routes/cellar'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
+import { Route as WShareIdRouteImport } from './routes/w.$shareId'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
+import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
+import { Route as ApiPublicHooksRefreshCellarValuesRouteImport } from './routes/api/public/hooks/refresh-cellar-values'
+import { Route as ApiPublicHooksMatchSystembolagetRouteImport } from './routes/api/public/hooks/match-systembolaget'
+import { Route as ApiPublicHooksCheckWishlistPricesRouteImport } from './routes/api/public/hooks/check-wishlist-prices'
 
+const WishlistRoute = WishlistRouteImport.update({
+  id: '/wishlist',
+  path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasteRoute = TasteRouteImport.update({
   id: '/taste',
   path: '/taste',
@@ -40,6 +57,21 @@ const ScanRoute = ScanRouteImport.update({
   path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RestaurantRoute = RestaurantRouteImport.update({
+  id: '/restaurant',
+  path: '/restaurant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MeRoute = MeRouteImport.update({
   id: '/me',
   path: '/me',
@@ -53,6 +85,16 @@ const LoginRoute = LoginRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForYouRoute = ForYouRouteImport.update({
@@ -85,6 +127,16 @@ const WineIdRoute = WineIdRouteImport.update({
   path: '/wine/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WShareIdRoute = WShareIdRouteImport.update({
+  id: '/w/$shareId',
+  path: '/w/$shareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CellarOverviewRoute = CellarOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -100,6 +152,29 @@ const WineIdNotesRoute = WineIdNotesRouteImport.update({
   path: '/notes',
   getParentRoute: () => WineIdRoute,
 } as any)
+const WineIdEditRoute = WineIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => WineIdRoute,
+} as any)
+const ApiPublicHooksRefreshCellarValuesRoute =
+  ApiPublicHooksRefreshCellarValuesRouteImport.update({
+    id: '/api/public/hooks/refresh-cellar-values',
+    path: '/api/public/hooks/refresh-cellar-values',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksMatchSystembolagetRoute =
+  ApiPublicHooksMatchSystembolagetRouteImport.update({
+    id: '/api/public/hooks/match-systembolaget',
+    path: '/api/public/hooks/match-systembolaget',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksCheckWishlistPricesRoute =
+  ApiPublicHooksCheckWishlistPricesRouteImport.update({
+    id: '/api/public/hooks/check-wishlist-prices',
+    path: '/api/public/hooks/check-wishlist-prices',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -107,16 +182,28 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
+  '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
+  '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
+  '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
+  '/api/public/hooks/refresh-cellar-values': typeof ApiPublicHooksRefreshCellarValuesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -124,16 +211,28 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
+  '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
+  '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
+  '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
+  '/api/public/hooks/refresh-cellar-values': typeof ApiPublicHooksRefreshCellarValuesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,16 +241,28 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cellar': typeof CellarRouteWithChildren
   '/for-you': typeof ForYouRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
+  '/wishlist': typeof WishlistRoute
   '/cellar/overview': typeof CellarOverviewRoute
+  '/u/$username': typeof UUsernameRoute
+  '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
+  '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
+  '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
+  '/api/public/hooks/refresh-cellar-values': typeof ApiPublicHooksRefreshCellarValuesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,16 +272,28 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/forgot-password'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
+    | '/onboarding'
+    | '/reset-password'
+    | '/restaurant'
     | '/scan'
     | '/search'
     | '/taste'
+    | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
+    | '/w/$shareId'
     | '/wine/$id'
+    | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
+    | '/api/public/hooks/check-wishlist-prices'
+    | '/api/public/hooks/match-systembolaget'
+    | '/api/public/hooks/refresh-cellar-values'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -178,16 +301,28 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/forgot-password'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
+    | '/onboarding'
+    | '/reset-password'
+    | '/restaurant'
     | '/scan'
     | '/search'
     | '/taste'
+    | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
+    | '/w/$shareId'
     | '/wine/$id'
+    | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
+    | '/api/public/hooks/check-wishlist-prices'
+    | '/api/public/hooks/match-systembolaget'
+    | '/api/public/hooks/refresh-cellar-values'
   id:
     | '__root__'
     | '/'
@@ -195,16 +330,28 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cellar'
     | '/for-you'
+    | '/forgot-password'
+    | '/friends'
     | '/history'
     | '/login'
     | '/me'
+    | '/onboarding'
+    | '/reset-password'
+    | '/restaurant'
     | '/scan'
     | '/search'
     | '/taste'
+    | '/wishlist'
     | '/cellar/overview'
+    | '/u/$username'
+    | '/w/$shareId'
     | '/wine/$id'
+    | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
+    | '/api/public/hooks/check-wishlist-prices'
+    | '/api/public/hooks/match-systembolaget'
+    | '/api/public/hooks/refresh-cellar-values'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -213,17 +360,35 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CellarRoute: typeof CellarRouteWithChildren
   ForYouRoute: typeof ForYouRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  FriendsRoute: typeof FriendsRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
+  OnboardingRoute: typeof OnboardingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  RestaurantRoute: typeof RestaurantRoute
   ScanRoute: typeof ScanRoute
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
+  WishlistRoute: typeof WishlistRoute
+  UUsernameRoute: typeof UUsernameRoute
+  WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
+  ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
+  ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
+  ApiPublicHooksRefreshCellarValuesRoute: typeof ApiPublicHooksRefreshCellarValuesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wishlist': {
+      id: '/wishlist'
+      path: '/wishlist'
+      fullPath: '/wishlist'
+      preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/taste': {
       id: '/taste'
       path: '/taste'
@@ -245,6 +410,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/restaurant': {
+      id: '/restaurant'
+      path: '/restaurant'
+      fullPath: '/restaurant'
+      preLoaderRoute: typeof RestaurantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/me': {
       id: '/me'
       path: '/me'
@@ -264,6 +450,20 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/for-you': {
@@ -308,6 +508,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/w/$shareId': {
+      id: '/w/$shareId'
+      path: '/w/$shareId'
+      fullPath: '/w/$shareId'
+      preLoaderRoute: typeof WShareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cellar/overview': {
       id: '/cellar/overview'
       path: '/overview'
@@ -329,6 +543,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdNotesRouteImport
       parentRoute: typeof WineIdRoute
     }
+    '/wine/$id/edit': {
+      id: '/wine/$id/edit'
+      path: '/edit'
+      fullPath: '/wine/$id/edit'
+      preLoaderRoute: typeof WineIdEditRouteImport
+      parentRoute: typeof WineIdRoute
+    }
+    '/api/public/hooks/refresh-cellar-values': {
+      id: '/api/public/hooks/refresh-cellar-values'
+      path: '/api/public/hooks/refresh-cellar-values'
+      fullPath: '/api/public/hooks/refresh-cellar-values'
+      preLoaderRoute: typeof ApiPublicHooksRefreshCellarValuesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/match-systembolaget': {
+      id: '/api/public/hooks/match-systembolaget'
+      path: '/api/public/hooks/match-systembolaget'
+      fullPath: '/api/public/hooks/match-systembolaget'
+      preLoaderRoute: typeof ApiPublicHooksMatchSystembolagetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/check-wishlist-prices': {
+      id: '/api/public/hooks/check-wishlist-prices'
+      path: '/api/public/hooks/check-wishlist-prices'
+      fullPath: '/api/public/hooks/check-wishlist-prices'
+      preLoaderRoute: typeof ApiPublicHooksCheckWishlistPricesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -344,11 +586,13 @@ const CellarRouteWithChildren =
   CellarRoute._addFileChildren(CellarRouteChildren)
 
 interface WineIdRouteChildren {
+  WineIdEditRoute: typeof WineIdEditRoute
   WineIdNotesRoute: typeof WineIdNotesRoute
   WineIdPairingsRoute: typeof WineIdPairingsRoute
 }
 
 const WineIdRouteChildren: WineIdRouteChildren = {
+  WineIdEditRoute: WineIdEditRoute,
   WineIdNotesRoute: WineIdNotesRoute,
   WineIdPairingsRoute: WineIdPairingsRoute,
 }
@@ -362,13 +606,26 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CellarRoute: CellarRouteWithChildren,
   ForYouRoute: ForYouRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  FriendsRoute: FriendsRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
+  OnboardingRoute: OnboardingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  RestaurantRoute: RestaurantRoute,
   ScanRoute: ScanRoute,
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
+  WishlistRoute: WishlistRoute,
+  UUsernameRoute: UUsernameRoute,
+  WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
+  ApiPublicHooksCheckWishlistPricesRoute:
+    ApiPublicHooksCheckWishlistPricesRoute,
+  ApiPublicHooksMatchSystembolagetRoute: ApiPublicHooksMatchSystembolagetRoute,
+  ApiPublicHooksRefreshCellarValuesRoute:
+    ApiPublicHooksRefreshCellarValuesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

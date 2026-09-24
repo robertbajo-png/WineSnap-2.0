@@ -14,15 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          properties: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          id?: string
+          properties?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          properties?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           acidity: number | null
           avatar_url: string | null
+          bio: string | null
           body: number | null
           created_at: string
           display_name: string | null
+          hide_disliked: boolean
           id: string
+          is_public: boolean
+          new_arrivals_alerts: boolean
           oak: number | null
+          onboarded_at: string | null
+          personalized_recs: boolean
           preferred_grapes: string[] | null
           preferred_regions: string[] | null
           preferred_types: string[] | null
@@ -36,11 +87,17 @@ export type Database = {
         Insert: {
           acidity?: number | null
           avatar_url?: string | null
+          bio?: string | null
           body?: number | null
           created_at?: string
           display_name?: string | null
+          hide_disliked?: boolean
           id: string
+          is_public?: boolean
+          new_arrivals_alerts?: boolean
           oak?: number | null
+          onboarded_at?: string | null
+          personalized_recs?: boolean
           preferred_grapes?: string[] | null
           preferred_regions?: string[] | null
           preferred_types?: string[] | null
@@ -54,11 +111,17 @@ export type Database = {
         Update: {
           acidity?: number | null
           avatar_url?: string | null
+          bio?: string | null
           body?: number | null
           created_at?: string
           display_name?: string | null
+          hide_disliked?: boolean
           id?: string
+          is_public?: boolean
+          new_arrivals_alerts?: boolean
           oak?: number | null
+          onboarded_at?: string | null
+          personalized_recs?: boolean
           preferred_grapes?: string[] | null
           preferred_regions?: string[] | null
           preferred_types?: string[] | null
@@ -68,6 +131,45 @@ export type Database = {
           tannin?: number | null
           updated_at?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      restaurant_scans: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          location: string | null
+          matches: Json
+          menu_text: string | null
+          notes: string | null
+          restaurant_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          matches?: Json
+          menu_text?: string | null
+          notes?: string | null
+          restaurant_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          matches?: Json
+          menu_text?: string | null
+          notes?: string | null
+          restaurant_name?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -116,6 +218,71 @@ export type Database = {
         }
         Relationships: []
       }
+      tasting_notes: {
+        Row: {
+          acidity: number | null
+          aroma_intensities: Json
+          aromas: string[] | null
+          body: number | null
+          created_at: string
+          finish: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          rating: number | null
+          sweetness: number | null
+          tannin: number | null
+          tasted_at: string
+          updated_at: string
+          user_id: string
+          wine_id: string
+        }
+        Insert: {
+          acidity?: number | null
+          aroma_intensities?: Json
+          aromas?: string[] | null
+          body?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          rating?: number | null
+          sweetness?: number | null
+          tannin?: number | null
+          tasted_at?: string
+          updated_at?: string
+          user_id: string
+          wine_id: string
+        }
+        Update: {
+          acidity?: number | null
+          aroma_intensities?: Json
+          aromas?: string[] | null
+          body?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          rating?: number | null
+          sweetness?: number | null
+          tannin?: number | null
+          tasted_at?: string
+          updated_at?: string
+          user_id?: string
+          wine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasting_notes_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -137,11 +304,53 @@ export type Database = {
         }
         Relationships: []
       }
+      wine_photos: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          sort_order: number
+          storage_path: string | null
+          url: string
+          user_id: string
+          wine_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          sort_order?: number
+          storage_path?: string | null
+          url: string
+          user_id: string
+          wine_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          sort_order?: number
+          storage_path?: string | null
+          url?: string
+          user_id?: string
+          wine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wine_photos_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wines: {
         Row: {
           acidity: number | null
           ai_raw: Json | null
           body: number | null
+          consumed_at: string | null
           country: string | null
           created_at: string
           decant: boolean | null
@@ -152,14 +361,26 @@ export type Database = {
           grape_varieties: string[] | null
           id: string
           image_url: string | null
+          is_public: boolean
+          market_price: number | null
+          market_price_checked_at: string | null
+          market_price_currency: string | null
+          market_price_source: string | null
           notes: string | null
           oak: number | null
           primary_notes: string[] | null
           producer: string | null
+          purchase_currency: string | null
+          purchase_price: number | null
+          purchased_at: string | null
+          quantity: number
           region: string | null
           secondary_notes: string[] | null
           serving_temp: string | null
+          share_id: string | null
           sweetness: number | null
+          systembolaget_id: string | null
+          systembolaget_url: string | null
           tannin: number | null
           tertiary_notes: string[] | null
           updated_at: string
@@ -173,6 +394,7 @@ export type Database = {
           acidity?: number | null
           ai_raw?: Json | null
           body?: number | null
+          consumed_at?: string | null
           country?: string | null
           created_at?: string
           decant?: boolean | null
@@ -183,14 +405,26 @@ export type Database = {
           grape_varieties?: string[] | null
           id?: string
           image_url?: string | null
+          is_public?: boolean
+          market_price?: number | null
+          market_price_checked_at?: string | null
+          market_price_currency?: string | null
+          market_price_source?: string | null
           notes?: string | null
           oak?: number | null
           primary_notes?: string[] | null
           producer?: string | null
+          purchase_currency?: string | null
+          purchase_price?: number | null
+          purchased_at?: string | null
+          quantity?: number
           region?: string | null
           secondary_notes?: string[] | null
           serving_temp?: string | null
+          share_id?: string | null
           sweetness?: number | null
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
           tannin?: number | null
           tertiary_notes?: string[] | null
           updated_at?: string
@@ -204,6 +438,7 @@ export type Database = {
           acidity?: number | null
           ai_raw?: Json | null
           body?: number | null
+          consumed_at?: string | null
           country?: string | null
           created_at?: string
           decant?: boolean | null
@@ -214,14 +449,26 @@ export type Database = {
           grape_varieties?: string[] | null
           id?: string
           image_url?: string | null
+          is_public?: boolean
+          market_price?: number | null
+          market_price_checked_at?: string | null
+          market_price_currency?: string | null
+          market_price_source?: string | null
           notes?: string | null
           oak?: number | null
           primary_notes?: string[] | null
           producer?: string | null
+          purchase_currency?: string | null
+          purchase_price?: number | null
+          purchased_at?: string | null
+          quantity?: number
           region?: string | null
           secondary_notes?: string[] | null
           serving_temp?: string | null
+          share_id?: string | null
           sweetness?: number | null
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
           tannin?: number | null
           tertiary_notes?: string[] | null
           updated_at?: string
@@ -232,6 +479,113 @@ export type Database = {
           wine_type?: Database["public"]["Enums"]["wine_type"] | null
         }
         Relationships: []
+      }
+      wishlist: {
+        Row: {
+          ai_data: Json | null
+          country: string | null
+          created_at: string
+          current_price: number | null
+          description: string | null
+          grape_varieties: string[] | null
+          id: string
+          image_url: string | null
+          last_checked_at: string | null
+          last_checked_price: number | null
+          last_price_check: string | null
+          notes: string | null
+          notify_on_drop: boolean
+          price_alert_seen_at: string | null
+          price_alert_triggered_at: string | null
+          price_currency: string | null
+          price_source: string | null
+          priority: number
+          producer: string | null
+          region: string | null
+          source: string
+          systembolaget_id: string | null
+          systembolaget_url: string | null
+          target_price: number | null
+          updated_at: string
+          user_id: string
+          vintage: number | null
+          wine_id: string | null
+          wine_name: string
+          wine_type: string | null
+        }
+        Insert: {
+          ai_data?: Json | null
+          country?: string | null
+          created_at?: string
+          current_price?: number | null
+          description?: string | null
+          grape_varieties?: string[] | null
+          id?: string
+          image_url?: string | null
+          last_checked_at?: string | null
+          last_checked_price?: number | null
+          last_price_check?: string | null
+          notes?: string | null
+          notify_on_drop?: boolean
+          price_alert_seen_at?: string | null
+          price_alert_triggered_at?: string | null
+          price_currency?: string | null
+          price_source?: string | null
+          priority?: number
+          producer?: string | null
+          region?: string | null
+          source?: string
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
+          target_price?: number | null
+          updated_at?: string
+          user_id: string
+          vintage?: number | null
+          wine_id?: string | null
+          wine_name: string
+          wine_type?: string | null
+        }
+        Update: {
+          ai_data?: Json | null
+          country?: string | null
+          created_at?: string
+          current_price?: number | null
+          description?: string | null
+          grape_varieties?: string[] | null
+          id?: string
+          image_url?: string | null
+          last_checked_at?: string | null
+          last_checked_price?: number | null
+          last_price_check?: string | null
+          notes?: string | null
+          notify_on_drop?: boolean
+          price_alert_seen_at?: string | null
+          price_alert_triggered_at?: string | null
+          price_currency?: string | null
+          price_source?: string | null
+          priority?: number
+          producer?: string | null
+          region?: string | null
+          source?: string
+          systembolaget_id?: string | null
+          systembolaget_url?: string | null
+          target_price?: number | null
+          updated_at?: string
+          user_id?: string
+          vintage?: number | null
+          wine_id?: string | null
+          wine_name?: string
+          wine_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -276,12 +630,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -305,11 +659,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -330,11 +684,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -355,11 +709,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -372,11 +726,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
