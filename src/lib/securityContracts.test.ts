@@ -13,6 +13,7 @@ describe("AI security contracts", () => {
       "restaurant-match",
       "taste-suggestions",
       "wine-suggestions",
+      "extract-preference-signals",
     ]) {
       expect(config).toMatch(
         new RegExp(`\\[functions\\.${name}\\]\\s+verify_jwt\\s*=\\s*true`, "m"),
@@ -26,6 +27,7 @@ describe("AI security contracts", () => {
       "restaurant-match",
       "taste-suggestions",
       "wine-suggestions",
+      "extract-preference-signals",
     ]) {
       const source = read(`supabase/functions/${name}/index.ts`);
       expect(source).toContain('from "../_shared/aiSecurity.ts"');

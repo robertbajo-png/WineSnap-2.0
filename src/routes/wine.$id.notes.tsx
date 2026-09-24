@@ -192,7 +192,15 @@ function NotesPage() {
       toast.error(t("notes.saveFailed"));
       return;
     }
-    setHistory((current) => [outcome.result?.data as unknown as HistoryRow, ...current]);
+    const savedNote = outcome.result.data as unknown as HistoryRow;
+    setHistory((current) => [savedNote, ...current]);
+    if (draft.summary.trim()) {
+      void supabase.functions
+        .invoke("extract-preference-signals", { body: { tastingNoteId: savedNote.id } })
+        .then(({ error }) => {
+          if (error) console.warn("Wine Memory extraction was deferred", error.message);
+        });
+    }
     const empty = EMPTY_TASTING_NOTE(today());
     // Preserve edits made while the submitted snapshot was being saved.
     setDraft((current) => draftAfterSave(current, draft, empty));

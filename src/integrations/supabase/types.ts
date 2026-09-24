@@ -38,6 +38,57 @@ export type Database = {
         }
         Relationships: []
       }
+      derived_preferences: {
+        Row: {
+          attribute: string
+          confidence: number
+          created_at: string
+          evidence_count: number
+          explanation: string
+          first_evidence_at: string
+          id: string
+          last_evidence_at: string
+          preference_key: string
+          preference_score: number
+          updated_at: string
+          user_id: string
+          value_number: number | null
+          value_text: string | null
+        }
+        Insert: {
+          attribute: string
+          confidence: number
+          created_at?: string
+          evidence_count: number
+          explanation: string
+          first_evidence_at: string
+          id?: string
+          last_evidence_at: string
+          preference_key: string
+          preference_score: number
+          updated_at?: string
+          user_id: string
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          attribute?: string
+          confidence?: number
+          created_at?: string
+          evidence_count?: number
+          explanation?: string
+          first_evidence_at?: string
+          id?: string
+          last_evidence_at?: string
+          preference_key?: string
+          preference_score?: number
+          updated_at?: string
+          user_id?: string
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
@@ -184,6 +235,9 @@ export type Database = {
           favorite_grapes: Json | null
           favorite_regions: Json | null
           favorite_types: Json | null
+          last_signal_at: string | null
+          memory_confidence: number
+          signal_count: number
           total_wines: number | null
           updated_at: string
           user_id: string
@@ -198,6 +252,9 @@ export type Database = {
           favorite_grapes?: Json | null
           favorite_regions?: Json | null
           favorite_types?: Json | null
+          last_signal_at?: string | null
+          memory_confidence?: number
+          signal_count?: number
           total_wines?: number | null
           updated_at?: string
           user_id: string
@@ -212,6 +269,9 @@ export type Database = {
           favorite_grapes?: Json | null
           favorite_regions?: Json | null
           favorite_types?: Json | null
+          last_signal_at?: string | null
+          memory_confidence?: number
+          signal_count?: number
           total_wines?: number | null
           updated_at?: string
           user_id?: string
@@ -276,6 +336,81 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tasting_notes_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      taste_signals: {
+        Row: {
+          attribute: string
+          confidence: number
+          context: Json
+          created_at: string
+          direction: string
+          evidence: string | null
+          id: string
+          observed_at: string
+          source: string
+          status: string
+          strength: number
+          tasting_note_id: string | null
+          updated_at: string
+          user_id: string
+          value_number: number | null
+          value_text: string | null
+          wine_id: string | null
+        }
+        Insert: {
+          attribute: string
+          confidence?: number
+          context?: Json
+          created_at?: string
+          direction: string
+          evidence?: string | null
+          id?: string
+          observed_at?: string
+          source: string
+          status?: string
+          strength?: number
+          tasting_note_id?: string | null
+          updated_at?: string
+          user_id: string
+          value_number?: number | null
+          value_text?: string | null
+          wine_id?: string | null
+        }
+        Update: {
+          attribute?: string
+          confidence?: number
+          context?: Json
+          created_at?: string
+          direction?: string
+          evidence?: string | null
+          id?: string
+          observed_at?: string
+          source?: string
+          status?: string
+          strength?: number
+          tasting_note_id?: string | null
+          updated_at?: string
+          user_id?: string
+          value_number?: number | null
+          value_text?: string | null
+          wine_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taste_signals_tasting_note_id_fkey"
+            columns: ["tasting_note_id"]
+            isOneToOne: false
+            referencedRelation: "tasting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "taste_signals_wine_id_fkey"
             columns: ["wine_id"]
             isOneToOne: false
             referencedRelation: "wines"
