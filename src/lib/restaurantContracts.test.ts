@@ -25,6 +25,16 @@ describe("restaurant menu contracts", () => {
     expect(edgeFunction).toContain("AbortSignal.timeout");
   });
 
+  it("does not trust client taste data or persist new menu photos", () => {
+    const route = source("src/routes/restaurant.tsx");
+
+    expect(route).not.toContain('.from("profiles")');
+    expect(route).not.toContain('.from("taste_profile")');
+    expect(route).toContain("image_url: null");
+    expect(route).toContain('recordRecommendationEvent(eventType, "restaurant"');
+    expect(route).toContain('source: "restaurant"');
+  });
+
   it("stores structured menu context behind the existing owner RLS", () => {
     const migration = source(
       "supabase/migrations/20260928090000_add_restaurant_menu_mode.sql",
