@@ -335,9 +335,12 @@ export type Database = {
       }
       restaurant_scans: {
         Row: {
+          constraints: Json
           created_at: string
+          extracted_wines: Json
           id: string
           image_url: string | null
+          language: string
           location: string | null
           matches: Json
           menu_text: string | null
@@ -347,9 +350,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          constraints?: Json
           created_at?: string
+          extracted_wines?: Json
           id?: string
           image_url?: string | null
+          language?: string
           location?: string | null
           matches?: Json
           menu_text?: string | null
@@ -359,9 +365,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          constraints?: Json
           created_at?: string
+          extracted_wines?: Json
           id?: string
           image_url?: string | null
+          language?: string
           location?: string | null
           matches?: Json
           menu_text?: string | null
