@@ -38,134 +38,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ai_conversations: {
-        Row: {
-          created_at: string
-          id: string
-          last_context: Json
-          last_message_at: string
-          summary: string | null
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          last_context?: Json
-          last_message_at?: string
-          summary?: string | null
-          title: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          last_context?: Json
-          last_message_at?: string
-          summary?: string | null
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      ai_messages: {
-        Row: {
-          content: string
-          context: Json
-          conversation_id: string
-          created_at: string
-          id: string
-          model: string | null
-          role: string
-          token_usage: Json | null
-          user_id: string
-        }
-        Insert: {
-          content: string
-          context?: Json
-          conversation_id: string
-          created_at?: string
-          id?: string
-          model?: string | null
-          role: string
-          token_usage?: Json | null
-          user_id: string
-        }
-        Update: {
-          content?: string
-          context?: Json
-          conversation_id?: string
-          created_at?: string
-          id?: string
-          model?: string | null
-          role?: string
-          token_usage?: Json | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "ai_conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      derived_preferences: {
-        Row: {
-          attribute: string
-          confidence: number
-          created_at: string
-          evidence_count: number
-          explanation: string
-          first_evidence_at: string
-          id: string
-          last_evidence_at: string
-          preference_key: string
-          preference_score: number
-          updated_at: string
-          user_id: string
-          value_number: number | null
-          value_text: string | null
-        }
-        Insert: {
-          attribute: string
-          confidence: number
-          created_at?: string
-          evidence_count: number
-          explanation: string
-          first_evidence_at: string
-          id?: string
-          last_evidence_at: string
-          preference_key: string
-          preference_score: number
-          updated_at?: string
-          user_id: string
-          value_number?: number | null
-          value_text?: string | null
-        }
-        Update: {
-          attribute?: string
-          confidence?: number
-          created_at?: string
-          evidence_count?: number
-          explanation?: string
-          first_evidence_at?: string
-          id?: string
-          last_evidence_at?: string
-          preference_key?: string
-          preference_score?: number
-          updated_at?: string
-          user_id?: string
-          value_number?: number | null
-          value_text?: string | null
-        }
-        Relationships: []
-      }
       follows: {
         Row: {
           created_at: string
@@ -312,9 +184,6 @@ export type Database = {
           favorite_grapes: Json | null
           favorite_regions: Json | null
           favorite_types: Json | null
-          last_signal_at: string | null
-          memory_confidence: number
-          signal_count: number
           total_wines: number | null
           updated_at: string
           user_id: string
@@ -329,9 +198,6 @@ export type Database = {
           favorite_grapes?: Json | null
           favorite_regions?: Json | null
           favorite_types?: Json | null
-          last_signal_at?: string | null
-          memory_confidence?: number
-          signal_count?: number
           total_wines?: number | null
           updated_at?: string
           user_id: string
@@ -346,9 +212,6 @@ export type Database = {
           favorite_grapes?: Json | null
           favorite_regions?: Json | null
           favorite_types?: Json | null
-          last_signal_at?: string | null
-          memory_confidence?: number
-          signal_count?: number
           total_wines?: number | null
           updated_at?: string
           user_id?: string
@@ -413,81 +276,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tasting_notes_wine_id_fkey"
-            columns: ["wine_id"]
-            isOneToOne: false
-            referencedRelation: "wines"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      taste_signals: {
-        Row: {
-          attribute: string
-          confidence: number
-          context: Json
-          created_at: string
-          direction: string
-          evidence: string | null
-          id: string
-          observed_at: string
-          source: string
-          status: string
-          strength: number
-          tasting_note_id: string | null
-          updated_at: string
-          user_id: string
-          value_number: number | null
-          value_text: string | null
-          wine_id: string | null
-        }
-        Insert: {
-          attribute: string
-          confidence?: number
-          context?: Json
-          created_at?: string
-          direction: string
-          evidence?: string | null
-          id?: string
-          observed_at?: string
-          source: string
-          status?: string
-          strength?: number
-          tasting_note_id?: string | null
-          updated_at?: string
-          user_id: string
-          value_number?: number | null
-          value_text?: string | null
-          wine_id?: string | null
-        }
-        Update: {
-          attribute?: string
-          confidence?: number
-          context?: Json
-          created_at?: string
-          direction?: string
-          evidence?: string | null
-          id?: string
-          observed_at?: string
-          source?: string
-          status?: string
-          strength?: number
-          tasting_note_id?: string | null
-          updated_at?: string
-          user_id?: string
-          value_number?: number | null
-          value_text?: string | null
-          wine_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "taste_signals_tasting_note_id_fkey"
-            columns: ["tasting_note_id"]
-            isOneToOne: false
-            referencedRelation: "tasting_notes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "taste_signals_wine_id_fkey"
             columns: ["wine_id"]
             isOneToOne: false
             referencedRelation: "wines"

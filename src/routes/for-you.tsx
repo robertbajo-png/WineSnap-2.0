@@ -6,6 +6,10 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
+
+// Tables pending migration; not yet in generated types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const untypedDb = supabase as any;
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import type { DerivedPreference } from "@/lib/wineMemory";
@@ -80,7 +84,7 @@ function ForYouPage() {
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
             .limit(30),
-          supabase
+          untypedDb
             .from("derived_preferences")
             .select("attribute,value_text,value_number,preference_score,confidence,evidence_count")
             .eq("user_id", user.id)
@@ -89,7 +93,7 @@ function ForYouPage() {
         ]);
 
       const { data, error: fnError } = await supabase.functions.invoke("taste-suggestions", {
-        body: { profile, taste, cellar, memory: (memory ?? []) as DerivedPreference[] },
+        body: { profile, taste, cellar, memory: (memory ?? []) as unknown as DerivedPreference[] },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
