@@ -494,6 +494,8 @@ const en = {
     "Paste the wine list or snap the menu — we'll rank the best matches for your taste.",
   "restaurant.history": "Scan history",
   "restaurant.historyEmpty": "No saved menu scans yet",
+  "restaurant.historySaveError":
+    "Your recommendations are ready, but the menu could not be saved to history.",
   "restaurant.photoMenu": "Photo menu",
   "restaurant.textMenu": "Text menu",
   "restaurant.historyPicks": "picks",
@@ -1070,6 +1072,8 @@ const sv: Record<keyof typeof en, string> = {
     "Klistra in vinlistan eller fota menyn — vi rankar bästa matchningarna för din smak.",
   "restaurant.history": "Skanningshistorik",
   "restaurant.historyEmpty": "Inga sparade menyskanningar än",
+  "restaurant.historySaveError":
+    "Dina rekommendationer är klara, men menyn kunde inte sparas i historiken.",
   "restaurant.photoMenu": "Fotograferad meny",
   "restaurant.textMenu": "Textmeny",
   "restaurant.historyPicks": "val",

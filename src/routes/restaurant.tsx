@@ -217,7 +217,7 @@ function RestaurantPage() {
       setPicks(nextPicks);
       setFeedback({});
       setColdStart(Boolean(data?.cold_start));
-      await supabase.from("restaurant_scans").insert({
+      const { error: saveError } = await supabase.from("restaurant_scans").insert({
         user_id: user.id,
         restaurant_name: restaurantName.trim() || null,
         image_url: null,
@@ -227,6 +227,10 @@ function RestaurantPage() {
         extracted_wines: (data?.extracted_wines ?? []) as Json,
         language: lang,
       });
+      if (saveError) {
+        console.error("Could not save restaurant scan", saveError);
+        toast.error(t("restaurant.historySaveError"));
+      }
       void loadHistory();
     } catch (generateError) {
       setError(generateError instanceof Error ? generateError.message : t("common.error"));
@@ -318,7 +322,14 @@ function RestaurantPage() {
         <HistorySection
           history={history}
           onDelete={async (id) => {
-            await supabase.from("restaurant_scans").delete().eq("id", id);
+            const { error: deleteError } = await supabase
+              .from("restaurant_scans")
+              .delete()
+              .eq("id", id);
+            if (deleteError) {
+              toast.error(t("common.error"));
+              return;
+            }
             void loadHistory();
           }}
           onReopen={reopenHistory}
@@ -575,23 +586,30 @@ function Results({
               <div className="mt-3 border-y border-white/8 py-3">
                 <RecommendationMatch
                   score={pick.match_score}
-                  confidence={pick.match_confidence}
+                  confidence={pick.match_confidence ?? "low"}
                   evidence={pick.match_evidence ?? []}
                 />
               </div>
 
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <StatusBadge
-                  tone={pick.budget_fit === "over_budget" ? "warn" : "neutral"}
-                  label={t(`restaurant.budget.${pick.budget_fit}`)}
-                />
+                {pick.budget_fit && (
+                  <StatusBadge
+                    tone={pick.budget_fit === "over_budget" ? "warn" : "neutral"}
+                    label={t(`restaurant.budget.${pick.budget_fit}`)}
+                  />
+                )}
                 {pick.dish_fit && (
                   <StatusBadge
                     tone={pick.dish_fit === "poor" ? "warn" : "positive"}
                     label={t(`restaurant.dishFit.${pick.dish_fit}`)}
                   />
                 )}
-                <StatusBadge tone="neutral" label={t(`restaurant.mode.${pick.selection_style}`)} />
+                {pick.selection_style && (
+                  <StatusBadge
+                    tone="neutral"
+                    label={t(`restaurant.mode.${pick.selection_style}`)}
+                  />
+                )}
               </div>
 
               {pick.reason && (

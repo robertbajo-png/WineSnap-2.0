@@ -75,6 +75,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function finiteNumber(value: unknown) {
+  if (value == null || value === "" || typeof value === "boolean") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }

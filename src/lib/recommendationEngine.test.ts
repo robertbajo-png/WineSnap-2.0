@@ -34,6 +34,24 @@ const memory: RecommendationPreference[] = [
 ];
 
 describe("personalized recommendation scoring", () => {
+  it("does not create structure evidence from missing values", () => {
+    expect(scorePersonalizedCandidate({ body: null, oak: null }, { body: 0, oak: 0 }, [])).toEqual({
+      score: 50,
+      confidence: "low",
+      evidence: [],
+    });
+    expect(scorePersonalizedCandidate({ body: 0, oak: 0 }, { body: null, oak: null }, [])).toEqual({
+      score: 50,
+      confidence: "low",
+      evidence: [],
+    });
+    expect(scoreWineSimilarity({ body: null }, { body: null })).toEqual({
+      score: 30,
+      confidence: "low",
+      evidence: [],
+    });
+  });
+
   it("ranks evidence-backed matches ahead of unsupported candidates", () => {
     const ranked = rankPersonalizedCandidates(
       [
