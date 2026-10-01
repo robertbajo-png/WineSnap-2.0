@@ -19,6 +19,7 @@ This is a deployment prerequisite, not a successful release.
    - `20260926090000_add_recommendation_feedback.sql`
    - `20260927090000_add_social_discovery.sql`
    - `20260928090000_add_restaurant_menu_mode.sql`
+   - `20261001090000_restrict_memory_table_grants.sql`
 3. Run the read-only invariant checks in `supabase/tests/step1_security.sql`
    through `step6_restaurant_menu.sql`. Test real JWT owner/non-owner access
    in the separate test environment.
@@ -32,6 +33,21 @@ This is a deployment prerequisite, not a successful release.
    restaurant text/photo analysis, and wishlist saves on the published app.
 
 ## Release evidence
+
+Local validation on 2026-10-01 passed: TypeScript, ESLint, production build,
+75 Vitest tests, and a PostgreSQL rehearsal of all 26 migrations and six
+invariant scripts. Owner/non-owner restaurant history, legacy share/image
+preservation, and restaurant feedback-to-memory checks also passed.
+The rehearsal found inherited platform grants on memory tables; migration
+`20261001090000_restrict_memory_table_grants.sql` fixes those grants.
+Hosted JWT, Storage HTTP, production backup, and deployment remain unverified.
+
+For a local PostgreSQL rehearsal, run `node scripts/rehearse-migrations.mjs`
+with a dependency directory containing `embedded-postgres` and `pg` as the
+optional first argument. This creates an isolated temporary database, applies
+all migrations, runs all six invariant scripts, and tests owner isolation,
+legacy shares/images, and restaurant feedback. It does not simulate hosted
+JWT verification or Storage HTTP and does not connect to production.
 
 Record the migration versions, deployed commit, Edge Function versions,
 published URL, and actual results of the authenticated checks. A passing

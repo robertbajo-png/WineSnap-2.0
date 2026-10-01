@@ -15,6 +15,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, useT } from "@/i18n";
 import { sanitizeAskContext, validateAskMessage, type AskWineSnapContext } from "@/lib/askWineSnap";
@@ -90,7 +91,7 @@ function AskWineSnapPage() {
       .order("last_message_at", { ascending: false })
       .limit(30);
     if (loadError) setError(t("ask.error.generic"));
-    else setConversations((data as Conversation[]) ?? []);
+    else setConversations((data as unknown as Conversation[]) ?? []);
   };
 
   useEffect(() => {
@@ -112,7 +113,10 @@ function AskWineSnapPage() {
       .eq("conversation_id", conversation.id)
       .order("created_at", { ascending: true });
     if (loadError) setError(t("ask.error.generic"));
-    else setMessages(((data as Message[]) ?? []).filter((message) => message.role !== undefined));
+    else
+      setMessages(
+        ((data as unknown as Message[]) ?? []).filter((message) => message.role !== undefined),
+      );
   };
 
   const startNew = () => {
