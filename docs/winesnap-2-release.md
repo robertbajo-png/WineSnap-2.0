@@ -40,7 +40,24 @@ invariant scripts. Owner/non-owner restaurant history, legacy share/image
 preservation, and restaurant feedback-to-memory checks also passed.
 The rehearsal found inherited platform grants on memory tables; migration
 `20261001090000_restrict_memory_table_grants.sql` fixes those grants.
-Hosted JWT, Storage HTTP, production backup, and deployment remain unverified.
+Hosted JWT, Storage HTTP, and deployment remain unverified.
+
+### Production backup check, 2026-10-01
+
+Direct inspection of WineSnap's Lovable Cloud Database > Backups showed a
+restore point dated 2026-10-01 02:26:27 UTC and earlier daily restore points.
+No restore was attempted; listing a restore point is not a restore rehearsal.
+A fresh export was requested in Cloud > Overview > Advanced settings >
+Export project data. The UI confirmed "Database export started" and said a
+temporary download link would be emailed when ready. Export completion,
+download integrity, and a restore rehearsal are still pending.
+
+The export dialog explicitly directs users to download Storage files
+separately. Do not treat the database export as a backup of bottle images.
+The signed-in Supabase organization showed WineSnap-test
+(`pzniyupmgwvlldvztzqh`) as paused; WineSnap production was inspected in
+Lovable Cloud, not in that test project's dashboard. No production migration,
+Edge Function deployment, or frontend publication was performed.
 
 For a local PostgreSQL rehearsal, run `node scripts/rehearse-migrations.mjs`
 with a dependency directory containing `embedded-postgres` and `pg` as the
