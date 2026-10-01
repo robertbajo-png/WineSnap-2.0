@@ -59,6 +59,24 @@ The signed-in Supabase organization showed WineSnap-test
 Lovable Cloud, not in that test project's dashboard. No production migration,
 Edge Function deployment, or frontend publication was performed.
 
+### Export download and test resume, 2026-10-01
+
+Cloud Storage showed private bucket `database_export_01_10_26` containing
+`wine-scene-snap_261001.backup` (372 KB). The export downloaded locally as
+`wine-scene-snap_261001.backup.zip` (381210 bytes). ZIP metadata was readable
+and its backup payload began with the PostgreSQL custom archive magic `PGDMP`.
+SHA256 of the downloaded ZIP:
+`8038E0BE791738337FF35CB3ABF0B162FBEA3CA3E1ED6367ABD1F7D442D029BB`.
+These checks establish a downloaded archive, not a successful restore.
+The archive contains production data and must stay outside version control.
+
+Resume was requested and confirmed for the named WineSnap-test project.
+Its dashboard then showed startup status "Checking..."; a subsequent
+unauthenticated Auth health request returned HTTP 401. This establishes
+gateway reachability, not successful JWT or database tests. Browser control
+disconnected before the remaining checks could run. No production migrations
+or publication were performed, and Storage image backup remains pending.
+
 For a local PostgreSQL rehearsal, run `node scripts/rehearse-migrations.mjs`
 with a dependency directory containing `embedded-postgres` and `pg` as the
 optional first argument. This creates an isolated temporary database, applies
