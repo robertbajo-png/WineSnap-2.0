@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { createConversationTitle, sanitizeAskContext, validateAskMessage } from "./askWineSnap";
+import {
+  askErrorKey,
+  createConversationTitle,
+  sanitizeAskContext,
+  validateAskMessage,
+} from "./askWineSnap";
 
 describe("Ask WineSnap contracts", () => {
+  it("maps HTTP failures to localized keys without exposing server errors", () => {
+    expect(askErrorKey({ context: new Response(null, { status: 429 }) })).toBe(
+      "ask.error.rateLimit",
+    );
+    expect(askErrorKey({ context: { status: 401 } })).toBe("ask.error.auth");
+    expect(askErrorKey({ context: { status: 403 } })).toBe("ask.error.auth");
+    expect(askErrorKey({ context: { status: 402 } })).toBe("ask.error.unavailable");
+    expect(askErrorKey(new Error("internal provider details"))).toBe("ask.error.generic");
+    expect(askErrorKey(null)).toBe("ask.error.generic");
+  });
   it("keeps only supported, bounded screen context", () => {
     expect(
       sanitizeAskContext({

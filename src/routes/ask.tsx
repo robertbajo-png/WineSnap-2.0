@@ -18,7 +18,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, useT } from "@/i18n";
-import { sanitizeAskContext, validateAskMessage, type AskWineSnapContext } from "@/lib/askWineSnap";
+import {
+  askErrorKey,
+  sanitizeAskContext,
+  validateAskMessage,
+  type AskWineSnapContext,
+} from "@/lib/askWineSnap";
 import { cn } from "@/lib/utils";
 
 type AskSearch = { wineId?: string; source?: AskWineSnapContext["source"] };
@@ -180,11 +185,7 @@ function AskWineSnapPage() {
     } catch (sendError) {
       setMessages((current) => current.filter((message) => message.id !== optimisticId));
       setInput(text);
-      setError(
-        sendError instanceof Error && sendError.message
-          ? sendError.message
-          : t("ask.error.generic"),
-      );
+      setError(t(askErrorKey(sendError)));
     } finally {
       setBusy(false);
     }

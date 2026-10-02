@@ -27,3 +27,19 @@ export function validateAskMessage(message: string) {
   if (value.length > 2000) return { valid: false as const, error: "too_long" as const };
   return { valid: true as const, value };
 }
+
+export function askErrorKey(error: unknown) {
+  const status =
+    error &&
+    typeof error === "object" &&
+    "context" in error &&
+    error.context &&
+    typeof error.context === "object" &&
+    "status" in error.context
+      ? error.context.status
+      : undefined;
+  if (status === 429) return "ask.error.rateLimit";
+  if (status === 401 || status === 403) return "ask.error.auth";
+  if (status === 402) return "ask.error.unavailable";
+  return "ask.error.generic";
+}

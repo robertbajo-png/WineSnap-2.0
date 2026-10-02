@@ -10,7 +10,7 @@ export function AppShell({
 }) {
   return (
     <div
-      className="relative min-h-screen overflow-hidden bg-background pb-28 text-foreground"
+      className="relative min-h-screen overflow-x-clip bg-background pb-28 text-foreground"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div

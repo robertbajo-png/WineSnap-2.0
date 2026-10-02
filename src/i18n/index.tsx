@@ -34,6 +34,9 @@ const en = {
   "ask.error.empty": "Write a question first.",
   "ask.error.long": "Keep the question under 2,000 characters.",
   "ask.error.generic": "WineSnap could not answer right now.",
+  "ask.error.rateLimit": "Too many questions. Please wait a few minutes and try again.",
+  "ask.error.auth": "Your session has expired. Sign in again to continue.",
+  "ask.error.unavailable": "The AI service is temporarily unavailable. Please try again later.",
   "ask.disclaimer": "AI can make mistakes. Check important wine and price details.",
 
   // Home
@@ -636,6 +639,9 @@ const sv: Record<keyof typeof en, string> = {
   "ask.error.empty": "Skriv en fråga först.",
   "ask.error.long": "Håll frågan under 2 000 tecken.",
   "ask.error.generic": "WineSnap kunde inte svara just nu.",
+  "ask.error.rateLimit": "För många frågor. Vänta några minuter och försök igen.",
+  "ask.error.auth": "Din session har gått ut. Logga in igen för att fortsätta.",
+  "ask.error.unavailable": "AI-tjänsten är tillfälligt otillgänglig. Försök igen senare.",
   "ask.disclaimer": "AI kan göra misstag. Kontrollera viktiga vin- och prisuppgifter.",
 
   "home.brand": "WineSnap",
