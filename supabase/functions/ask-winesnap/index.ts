@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
+import { completedAskAnswer } from "../_shared/askAnswer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -186,7 +187,7 @@ You may use the current wine and cellar as context, but you cannot purchase, res
       body: JSON.stringify({
         model: MODEL,
         temperature: 0.35,
-        max_tokens: 900,
+        max_tokens: 4096,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -211,9 +212,7 @@ You may use the current wine and cellar as context, but you cannot purchase, res
     }
 
     const payload = await aiResponse.json();
-    const answer = payload.choices?.[0]?.message?.content;
-    if (typeof answer !== "string" || !answer.trim())
-      throw new Error("AI returned an empty answer");
+    const answer = completedAskAnswer(payload);
 
     const usage = payload.usage && typeof payload.usage === "object" ? payload.usage : null;
     const { data: exchangeRows, error: exchangeError } = await admin.rpc("store_ai_exchange", {
