@@ -31,6 +31,10 @@ This is a deployment prerequisite, not a successful release.
    the matching frontend to `wine-scene-snap.lovable.app`.
 6. Test scan confirmation, tasting notes, Ask, recommendations, discovery,
    restaurant text/photo analysis, and wishlist saves on the published app.
+7. After the download-based frontend is live, apply
+   `20261002090000_disable_label_signing.sql`. This prevents new bearer image
+   tokens, not previously issued tokens; those remain valid until expiry.
+   Verify owner/shared downloads and denied signing via Storage HTTP.
 
 ## Release evidence
 
@@ -83,6 +87,39 @@ optional first argument. This creates an isolated temporary database, applies
 all migrations, runs all six invariant scripts, and tests owner isolation,
 legacy shares/images, and restaurant feedback. It does not simulate hosted
 JWT verification or Storage HTTP and does not connect to production.
+
+### Release checks, 2026-10-02
+
+The downloaded production archive was restored into isolated local PostgreSQL
+using `scripts/rehearse-backup.mjs`. All eight pending migrations and
+six invariant scripts passed. The 9 wines and 8 wine photos were restored;
+wine IDs, share IDs and image URLs were preserved. This is an application
+schema/data restore, not full Supabase platform recovery: Auth/Storage platform
+contracts were mocked, with synthetic Auth IDs derived from application rows.
+
+All 13 bottle images were downloaded separately as
+`bucket-wine-labels-files.zip` (1097027 bytes), SHA256
+`456AB95E1644EF126E363BC32BED655F7992BC4E12AAC23A60CB79F0D777E5AF`.
+The archive stays outside version control with the database export.
+
+WineSnap-test was resumed. Seven schema migrations dated September 23 through
+October 1 were applied atomically with migration history records; all six
+read-only invariant scripts passed against the hosted database. Its overview
+still reported Unhealthy, so successful SQL is not proof of Storage/Auth health.
+`scripts/check-hosted-security.mjs` subsequently passed 24 actual JWT/Storage
+checks, including owner isolation, legacy shares, single/batch signing denial,
+private follow relations, memory write denial and exactly 20 of 32 concurrent
+service quota calls. All synthetic fixtures were removed. Production rollout
+is not yet complete.
+
+The test project retains a restrictive image-signing policy from its previous
+release. WineImage now uses authenticated, uncached downloads and component-local
+blob URLs, clears them on Auth changes, and rechecks on focus. A fresh cache nonce
+is required on each download: no-store alone failed the hosted unshare test
+because an intermediary retained the prior successful anonymous response.
+New uploads set cacheControl to zero. Previously cached responses and signed
+tokens are not retroactively revoked by this change. The new signing
+policy must follow deployment of that frontend in production.
 
 Record the migration versions, deployed commit, Edge Function versions,
 published URL, and actual results of the authenticated checks. A passing
