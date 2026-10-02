@@ -58,7 +58,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
       const path = `${user.id}/${wineId}/${crypto.randomUUID()}.jpg`;
       const { error: upErr } = await supabase.storage
         .from("wine-labels")
-        .upload(path, blob, { contentType: "image/jpeg" });
+        .upload(path, blob, { contentType: "image/jpeg", cacheControl: "0" });
       if (upErr) throw upErr;
       const nextOrder = (photos?.[photos.length - 1]?.sort_order ?? 0) + 1;
       const { error: insErr } = await supabase.from("wine_photos").insert({

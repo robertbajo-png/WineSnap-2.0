@@ -38,6 +38,134 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_context: Json
+          last_message_at: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_context?: Json
+          last_message_at?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_context?: Json
+          last_message_at?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          context: Json
+          conversation_id: string
+          created_at: string
+          id: string
+          model: string | null
+          role: string
+          token_usage: Json | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          context?: Json
+          conversation_id: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role: string
+          token_usage?: Json | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          context?: Json
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          role?: string
+          token_usage?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      derived_preferences: {
+        Row: {
+          attribute: string
+          confidence: number
+          created_at: string
+          evidence_count: number
+          explanation: string
+          first_evidence_at: string
+          id: string
+          last_evidence_at: string
+          preference_key: string
+          preference_score: number
+          updated_at: string
+          user_id: string
+          value_number: number | null
+          value_text: string | null
+        }
+        Insert: {
+          attribute: string
+          confidence: number
+          created_at?: string
+          evidence_count: number
+          explanation: string
+          first_evidence_at: string
+          id?: string
+          last_evidence_at: string
+          preference_key: string
+          preference_score: number
+          updated_at?: string
+          user_id: string
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          attribute?: string
+          confidence?: number
+          created_at?: string
+          evidence_count?: number
+          explanation?: string
+          first_evidence_at?: string
+          id?: string
+          last_evidence_at?: string
+          preference_key?: string
+          preference_score?: number
+          updated_at?: string
+          user_id?: string
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
@@ -56,6 +184,33 @@ export type Database = {
           follower_id?: string
           following_id?: string
           id?: string
+        }
+        Relationships: []
+      }
+      user_taste_similarity: {
+        Row: {
+          calculated_at: string
+          confidence: number
+          peer_user_id: string
+          shared_preference_count: number
+          similarity_score: number
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          confidence: number
+          peer_user_id: string
+          shared_preference_count: number
+          similarity_score: number
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          confidence?: number
+          peer_user_id?: string
+          shared_preference_count?: number
+          similarity_score?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -134,11 +289,58 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_events: {
+        Row: {
+          candidate: Json
+          candidate_key: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          source: string
+          user_id: string
+          wine_id: string | null
+        }
+        Insert: {
+          candidate?: Json
+          candidate_key: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          source: string
+          user_id: string
+          wine_id?: string | null
+        }
+        Update: {
+          candidate?: Json
+          candidate_key?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          source?: string
+          user_id?: string
+          wine_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_events_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_scans: {
         Row: {
+          constraints: Json
           created_at: string
+          extracted_wines: Json
           id: string
           image_url: string | null
+          language: string
           location: string | null
           matches: Json
           menu_text: string | null
@@ -148,9 +350,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          constraints?: Json
           created_at?: string
+          extracted_wines?: Json
           id?: string
           image_url?: string | null
+          language?: string
           location?: string | null
           matches?: Json
           menu_text?: string | null
@@ -160,9 +365,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          constraints?: Json
           created_at?: string
+          extracted_wines?: Json
           id?: string
           image_url?: string | null
+          language?: string
           location?: string | null
           matches?: Json
           menu_text?: string | null
@@ -184,6 +392,9 @@ export type Database = {
           favorite_grapes: Json | null
           favorite_regions: Json | null
           favorite_types: Json | null
+          last_signal_at: string | null
+          memory_confidence: number
+          signal_count: number
           total_wines: number | null
           updated_at: string
           user_id: string
@@ -198,6 +409,9 @@ export type Database = {
           favorite_grapes?: Json | null
           favorite_regions?: Json | null
           favorite_types?: Json | null
+          last_signal_at?: string | null
+          memory_confidence?: number
+          signal_count?: number
           total_wines?: number | null
           updated_at?: string
           user_id: string
@@ -212,6 +426,9 @@ export type Database = {
           favorite_grapes?: Json | null
           favorite_regions?: Json | null
           favorite_types?: Json | null
+          last_signal_at?: string | null
+          memory_confidence?: number
+          signal_count?: number
           total_wines?: number | null
           updated_at?: string
           user_id?: string
@@ -276,6 +493,81 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tasting_notes_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      taste_signals: {
+        Row: {
+          attribute: string
+          confidence: number
+          context: Json
+          created_at: string
+          direction: string
+          evidence: string | null
+          id: string
+          observed_at: string
+          source: string
+          status: string
+          strength: number
+          tasting_note_id: string | null
+          updated_at: string
+          user_id: string
+          value_number: number | null
+          value_text: string | null
+          wine_id: string | null
+        }
+        Insert: {
+          attribute: string
+          confidence?: number
+          context?: Json
+          created_at?: string
+          direction: string
+          evidence?: string | null
+          id?: string
+          observed_at?: string
+          source: string
+          status?: string
+          strength?: number
+          tasting_note_id?: string | null
+          updated_at?: string
+          user_id: string
+          value_number?: number | null
+          value_text?: string | null
+          wine_id?: string | null
+        }
+        Update: {
+          attribute?: string
+          confidence?: number
+          context?: Json
+          created_at?: string
+          direction?: string
+          evidence?: string | null
+          id?: string
+          observed_at?: string
+          source?: string
+          status?: string
+          strength?: number
+          tasting_note_id?: string | null
+          updated_at?: string
+          user_id?: string
+          value_number?: number | null
+          value_text?: string | null
+          wine_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taste_signals_tasting_note_id_fkey"
+            columns: ["tasting_note_id"]
+            isOneToOne: false
+            referencedRelation: "tasting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "taste_signals_wine_id_fkey"
             columns: ["wine_id"]
             isOneToOne: false
             referencedRelation: "wines"
@@ -592,6 +884,45 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_social_discovery: {
+        Args: { _limit?: number }
+        Returns: {
+          avatar_url: string | null
+          bio: string | null
+          display_name: string | null
+          is_following: boolean
+          profile_id: string
+          recent_public_wines: number
+          shared_preference_count: number
+          similarity_confidence: number | null
+          similarity_score: number | null
+          username: string | null
+        }[]
+      }
+      get_social_wine_discovery: {
+        Args: { _limit?: number }
+        Returns: {
+          author_display_name: string | null
+          author_id: string
+          author_username: string | null
+          country: string | null
+          created_at: string
+          grape_varieties: string[] | null
+          image_url: string | null
+          is_following: boolean
+          producer: string | null
+          region: string | null
+          share_id: string | null
+          shared_preference_count: number
+          similarity_confidence: number | null
+          taste_similarity: number | null
+          user_rating: number | null
+          vintage: number | null
+          wine_id: string
+          wine_name: string | null
+          wine_type: Database["public"]["Enums"]["wine_type"] | null
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -602,6 +933,10 @@ export type Database = {
       recompute_taste_profile: {
         Args: { _user_id: string }
         Returns: undefined
+      }
+      refresh_my_taste_similarities: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
     }
     Enums: {

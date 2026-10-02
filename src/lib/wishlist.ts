@@ -16,7 +16,7 @@ type WineLike = {
   price_range?: string | null;
   target_price?: number | null;
   ai_data?: Record<string, unknown> | null;
-  source?: "manual" | "cellar" | "ai" | "restaurant";
+  source?: "manual" | "cellar" | "ai" | "restaurant" | "social";
 };
 
 /**

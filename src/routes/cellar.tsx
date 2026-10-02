@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Wine, ChevronRight, Star, Camera } from "lucide-react";
+import { Plus, Search, Wine, ChevronRight, Star, Camera, Scale } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { EmptyState } from "@/components/EmptyState";
 import { CellarRowSkeleton } from "@/components/Skeleton";
@@ -115,6 +115,14 @@ function CellarPage() {
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="relative flex items-center justify-center">
+          <Link
+            to="/compare"
+            aria-label={t("compare.title")}
+            title={t("compare.title")}
+            className="absolute left-0 flex h-8 w-8 items-center justify-center rounded-md border border-white/10 text-muted-foreground hover:text-gold"
+          >
+            <Scale className="h-3.5 w-3.5" />
+          </Link>
           <h1 className="font-display text-2xl text-gold">{t("cellar.title")}</h1>
           <Link
             to="/scan"

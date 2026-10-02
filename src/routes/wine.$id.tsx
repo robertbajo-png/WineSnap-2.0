@@ -12,6 +12,10 @@ import {
   Pencil,
   Clock,
   MessageCircleMore,
+  Scale,
+  Bookmark,
+  ThumbsDown,
+  ThumbsUp,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -27,6 +31,10 @@ import { computeDrinkingWindow } from "@/lib/drinkingWindow";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { WineImage } from "@/components/WineImage";
 import { normalizeIntensities } from "@/lib/tastingNotes";
+import { RecommendationMatch } from "@/components/RecommendationMatch";
+import type { MatchEvidence, RecommendationCandidate } from "@/lib/recommendationEngine";
+import { recommendationKey, recordRecommendationEvent } from "@/lib/recommendationEvents";
+import { addToWishlist } from "@/lib/wishlist";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -65,7 +73,7 @@ const TABS = ["Overview", "Aromas", "Tasting", "Food", "AI Picks"] as const;
 const TAB_KEYS = ["overview", "aromas", "tasting", "food", "ai"] as const;
 type Tab = (typeof TAB_KEYS)[number];
 
-type Suggestion = {
+type Suggestion = RecommendationCandidate & {
   producer: string;
   wine_name: string;
   region: string;
@@ -73,6 +81,8 @@ type Suggestion = {
   grape_varieties?: string[];
   price_range?: string;
   match_score: number;
+  match_confidence: "low" | "medium" | "high";
+  match_evidence: MatchEvidence[];
   reason: string;
 };
 
@@ -105,6 +115,7 @@ function WineDetailPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggestFeedback, setSuggestFeedback] = useState<Record<string, "like" | "dislike">>({});
   const [notes, setNotes] = useState<TastingNote[]>([]);
 
   const loadSuggestions = async () => {
@@ -112,7 +123,9 @@ function WineDetailPage() {
     setSuggestLoading(true);
     setSuggestError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("wine-suggestions", { body: w });
+      const { data, error } = await supabase.functions.invoke("wine-suggestions", {
+        body: { wineId: w.id, language: lang },
+      });
       if (error) throw error;
       const payload = data as { error?: string; suggestions?: Suggestion[] } | null;
       if (payload?.error) throw new Error(payload.error);
@@ -121,6 +134,43 @@ function WineDetailPage() {
       setSuggestError(e instanceof Error ? e.message : "Failed to load suggestions");
     } finally {
       setSuggestLoading(false);
+    }
+  };
+
+  const sendSuggestionFeedback = async (suggestion: Suggestion, event: "like" | "dislike") => {
+    if (suggestFeedback[recommendationKey(suggestion)] === event) return;
+    const saved = await recordRecommendationEvent(event, "similar", suggestion, {
+      reference_wine_id: w?.id,
+      match_score: suggestion.match_score,
+    });
+    if (!saved) {
+      toast.error(t("recommendation.feedbackError"));
+      return;
+    }
+    setSuggestFeedback((current) => ({
+      ...current,
+      [recommendationKey(suggestion)]: event,
+    }));
+    toast.success(t("recommendation.feedbackSaved"));
+  };
+
+  const saveSuggestion = async (suggestion: Suggestion) => {
+    const saved = await addToWishlist({
+      producer: suggestion.producer,
+      wine_name: suggestion.wine_name,
+      vintage: suggestion.vintage,
+      region: suggestion.region,
+      country: suggestion.country,
+      wine_type: suggestion.wine_type,
+      grape_varieties: suggestion.grape_varieties,
+      source: "ai",
+      ai_data: suggestion as never,
+    });
+    if (saved) {
+      await recordRecommendationEvent("save", "similar", suggestion, {
+        reference_wine_id: w?.id,
+        match_score: suggestion.match_score,
+      });
     }
   };
 
@@ -194,6 +244,15 @@ function WineDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-1">
+            <Link
+              to="/compare"
+              search={{ left: w.id }}
+              aria-label={t("compare.title")}
+              title={t("compare.title")}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            >
+              <Scale className="h-4 w-4" />
+            </Link>
             <Link
               to="/ask"
               search={{ wineId: w.id, source: "wine" }}
@@ -571,25 +630,65 @@ function WineDetailPage() {
               </p>
             )}
             {!suggestLoading &&
-              suggestions?.map((s, i) => (
-                <Card key={i} className="bg-card/50 p-4">
+              suggestions?.map((s) => (
+                <Card key={recommendationKey(s)} className="rounded-md bg-card/50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="font-display text-base text-cream truncate">{s.wine_name}</p>
+                      <p className="truncate font-display text-base text-cream">{s.wine_name}</p>
                       <p className="text-xs text-gold">{s.producer}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {[s.region, s.country].filter(Boolean).join(", ")}
                         {s.grape_varieties?.length ? ` • ${s.grape_varieties.join(", ")}` : ""}
                       </p>
                     </div>
-                    <span className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success shrink-0">
-                      {Math.round(s.match_score)}%
-                    </span>
+                  </div>
+                  <div className="mt-3 border-y border-white/8 py-3">
+                    <RecommendationMatch
+                      score={s.match_score}
+                      confidence={s.match_confidence}
+                      evidence={s.match_evidence ?? []}
+                    />
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
                   {s.price_range && (
                     <p className="mt-1.5 font-display text-xs text-cream">{s.price_range}</p>
                   )}
+                  <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => sendSuggestionFeedback(s, "like")}
+                        aria-label={t("recommendation.like")}
+                        title={t("recommendation.like")}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-md border",
+                          suggestFeedback[recommendationKey(s)] === "like"
+                            ? "border-success/40 bg-success/15 text-success"
+                            : "border-white/10 text-muted-foreground",
+                        )}
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => sendSuggestionFeedback(s, "dislike")}
+                        aria-label={t("recommendation.notForMe")}
+                        title={t("recommendation.notForMe")}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-md border",
+                          suggestFeedback[recommendationKey(s)] === "dislike"
+                            ? "border-destructive/40 bg-destructive/15 text-destructive"
+                            : "border-white/10 text-muted-foreground",
+                        )}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => saveSuggestion(s)}
+                      className="flex h-8 items-center gap-1.5 rounded-md border border-gold/30 px-2.5 text-[11px] text-gold"
+                    >
+                      <Bookmark className="h-3.5 w-3.5" /> {t("wishlist.saveBtn")}
+                    </button>
+                  </div>
                 </Card>
               ))}
             {!suggestLoading && suggestions && suggestions.length > 0 && (

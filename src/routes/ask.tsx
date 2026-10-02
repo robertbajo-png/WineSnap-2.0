@@ -16,9 +16,6 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
-// Tables pending migration; not yet in generated types.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const untypedDb = supabase as any;
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, useT } from "@/i18n";
 import { sanitizeAskContext, validateAskMessage, type AskWineSnapContext } from "@/lib/askWineSnap";
@@ -87,7 +84,7 @@ function AskWineSnapPage() {
 
   const loadConversations = async () => {
     if (!user) return;
-    const { data, error: loadError } = await untypedDb
+    const { data, error: loadError } = await supabase
       .from("ai_conversations")
       .select("id,title,last_message_at")
       .eq("user_id", user.id)
@@ -110,13 +107,16 @@ function AskWineSnapPage() {
     setActiveId(conversation.id);
     setHistoryOpen(false);
     setError(null);
-    const { data, error: loadError } = await untypedDb
+    const { data, error: loadError } = await supabase
       .from("ai_messages")
       .select("id,role,content,created_at")
       .eq("conversation_id", conversation.id)
       .order("created_at", { ascending: true });
     if (loadError) setError(t("ask.error.generic"));
-    else setMessages(((data as unknown as Message[]) ?? []).filter((message) => message.role !== undefined));
+    else
+      setMessages(
+        ((data as unknown as Message[]) ?? []).filter((message) => message.role !== undefined),
+      );
   };
 
   const startNew = () => {
@@ -129,7 +129,7 @@ function AskWineSnapPage() {
 
   const removeConversation = async (conversation: Conversation) => {
     if (!window.confirm(t("ask.deleteConfirm"))) return;
-    const { error: deleteError } = await untypedDb
+    const { error: deleteError } = await supabase
       .from("ai_conversations")
       .delete()
       .eq("id", conversation.id);

@@ -213,7 +213,7 @@ function ScanPage() {
       path = `${user.id}/${crypto.randomUUID()}.${extensionForMime(mimeType)}`;
       const { error: upErr } = await supabase.storage
         .from("wine-labels")
-        .upload(path, image, { contentType: mimeType });
+        .upload(path, image, { contentType: mimeType, cacheControl: "0" });
       if (!guard.isCurrent(attempt)) {
         await supabase.storage.from("wine-labels").remove([path]);
         return;

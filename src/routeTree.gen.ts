@@ -22,6 +22,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ForYouRouteImport } from './routes/for-you'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as CellarRouteImport } from './routes/cellar'
 import { Route as AskRouteImport } from './routes/ask'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -101,6 +102,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const ForYouRoute = ForYouRouteImport.update({
   id: '/for-you',
   path: '/for-you',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CellarRoute = CellarRouteImport.update({
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/ask': typeof AskRoute
   '/cellar': typeof CellarRouteWithChildren
+  '/compare': typeof CompareRoute
   '/for-you': typeof ForYouRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/ask': typeof AskRoute
   '/cellar': typeof CellarRouteWithChildren
+  '/compare': typeof CompareRoute
   '/for-you': typeof ForYouRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
@@ -249,6 +257,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/ask': typeof AskRoute
   '/cellar': typeof CellarRouteWithChildren
+  '/compare': typeof CompareRoute
   '/for-you': typeof ForYouRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ask'
     | '/cellar'
+    | '/compare'
     | '/for-you'
     | '/forgot-password'
     | '/friends'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ask'
     | '/cellar'
+    | '/compare'
     | '/for-you'
     | '/forgot-password'
     | '/friends'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ask'
     | '/cellar'
+    | '/compare'
     | '/for-you'
     | '/forgot-password'
     | '/friends'
@@ -372,6 +384,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AskRoute: typeof AskRoute
   CellarRoute: typeof CellarRouteWithChildren
+  CompareRoute: typeof CompareRoute
   ForYouRoute: typeof ForYouRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FriendsRoute: typeof FriendsRoute
@@ -484,6 +497,13 @@ declare module '@tanstack/react-router' {
       path: '/for-you'
       fullPath: '/for-you'
       preLoaderRoute: typeof ForYouRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cellar': {
@@ -626,6 +646,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AskRoute: AskRoute,
   CellarRoute: CellarRouteWithChildren,
+  CompareRoute: CompareRoute,
   ForYouRoute: ForYouRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   FriendsRoute: FriendsRoute,
