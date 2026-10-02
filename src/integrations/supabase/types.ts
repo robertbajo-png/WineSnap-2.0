@@ -14,30 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      analytics_events: {
-        Row: {
-          created_at: string
-          event_name: string
-          id: string
-          properties: Json
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          event_name: string
-          id?: string
-          properties?: Json
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          event_name?: string
-          id?: string
-          properties?: Json
-          user_id?: string
-        }
-        Relationships: []
-      }
       ai_conversations: {
         Row: {
           created_at: string
@@ -115,6 +91,54 @@ export type Database = {
           },
         ]
       }
+      ai_rate_limits: {
+        Row: {
+          function_name: string
+          request_count: number
+          updated_at: string
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          function_name: string
+          request_count?: number
+          updated_at?: string
+          user_id: string
+          window_started_at: string
+        }
+        Update: {
+          function_name?: string
+          request_count?: number
+          updated_at?: string
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          properties: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          id?: string
+          properties?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          properties?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       derived_preferences: {
         Row: {
           attribute: string
@@ -184,33 +208,6 @@ export type Database = {
           follower_id?: string
           following_id?: string
           id?: string
-        }
-        Relationships: []
-      }
-      user_taste_similarity: {
-        Row: {
-          calculated_at: string
-          confidence: number
-          peer_user_id: string
-          shared_preference_count: number
-          similarity_score: number
-          user_id: string
-        }
-        Insert: {
-          calculated_at?: string
-          confidence: number
-          peer_user_id: string
-          shared_preference_count: number
-          similarity_score: number
-          user_id: string
-        }
-        Update: {
-          calculated_at?: string
-          confidence?: number
-          peer_user_id?: string
-          shared_preference_count?: number
-          similarity_score?: number
-          user_id?: string
         }
         Relationships: []
       }
@@ -435,71 +432,6 @@ export type Database = {
         }
         Relationships: []
       }
-      tasting_notes: {
-        Row: {
-          acidity: number | null
-          aroma_intensities: Json
-          aromas: string[] | null
-          body: number | null
-          created_at: string
-          finish: string | null
-          id: string
-          location: string | null
-          notes: string | null
-          rating: number | null
-          sweetness: number | null
-          tannin: number | null
-          tasted_at: string
-          updated_at: string
-          user_id: string
-          wine_id: string
-        }
-        Insert: {
-          acidity?: number | null
-          aroma_intensities?: Json
-          aromas?: string[] | null
-          body?: number | null
-          created_at?: string
-          finish?: string | null
-          id?: string
-          location?: string | null
-          notes?: string | null
-          rating?: number | null
-          sweetness?: number | null
-          tannin?: number | null
-          tasted_at?: string
-          updated_at?: string
-          user_id: string
-          wine_id: string
-        }
-        Update: {
-          acidity?: number | null
-          aroma_intensities?: Json
-          aromas?: string[] | null
-          body?: number | null
-          created_at?: string
-          finish?: string | null
-          id?: string
-          location?: string | null
-          notes?: string | null
-          rating?: number | null
-          sweetness?: number | null
-          tannin?: number | null
-          tasted_at?: string
-          updated_at?: string
-          user_id?: string
-          wine_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tasting_notes_wine_id_fkey"
-            columns: ["wine_id"]
-            isOneToOne: false
-            referencedRelation: "wines"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       taste_signals: {
         Row: {
           attribute: string
@@ -575,6 +507,71 @@ export type Database = {
           },
         ]
       }
+      tasting_notes: {
+        Row: {
+          acidity: number | null
+          aroma_intensities: Json
+          aromas: string[] | null
+          body: number | null
+          created_at: string
+          finish: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          rating: number | null
+          sweetness: number | null
+          tannin: number | null
+          tasted_at: string
+          updated_at: string
+          user_id: string
+          wine_id: string
+        }
+        Insert: {
+          acidity?: number | null
+          aroma_intensities?: Json
+          aromas?: string[] | null
+          body?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          rating?: number | null
+          sweetness?: number | null
+          tannin?: number | null
+          tasted_at?: string
+          updated_at?: string
+          user_id: string
+          wine_id: string
+        }
+        Update: {
+          acidity?: number | null
+          aroma_intensities?: Json
+          aromas?: string[] | null
+          body?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          rating?: number | null
+          sweetness?: number | null
+          tannin?: number | null
+          tasted_at?: string
+          updated_at?: string
+          user_id?: string
+          wine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasting_notes_wine_id_fkey"
+            columns: ["wine_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -592,6 +589,33 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_taste_similarity: {
+        Row: {
+          calculated_at: string
+          confidence: number
+          peer_user_id: string
+          shared_preference_count: number
+          similarity_score: number
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          confidence: number
+          peer_user_id: string
+          shared_preference_count: number
+          similarity_score: number
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          confidence?: number
+          peer_user_id?: string
+          shared_preference_count?: number
+          similarity_score?: number
           user_id?: string
         }
         Relationships: []
@@ -884,43 +908,56 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_ai_quota: {
+        Args: {
+          _function_name: string
+          _limit: number
+          _user_id: string
+          _window_seconds: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          reset_at: string
+        }[]
+      }
       get_social_discovery: {
         Args: { _limit?: number }
         Returns: {
-          avatar_url: string | null
-          bio: string | null
-          display_name: string | null
+          avatar_url: string
+          bio: string
+          display_name: string
           is_following: boolean
           profile_id: string
           recent_public_wines: number
           shared_preference_count: number
-          similarity_confidence: number | null
-          similarity_score: number | null
-          username: string | null
+          similarity_confidence: number
+          similarity_score: number
+          username: string
         }[]
       }
       get_social_wine_discovery: {
         Args: { _limit?: number }
         Returns: {
-          author_display_name: string | null
+          author_display_name: string
           author_id: string
-          author_username: string | null
-          country: string | null
+          author_username: string
+          country: string
           created_at: string
-          grape_varieties: string[] | null
-          image_url: string | null
+          grape_varieties: string[]
+          image_url: string
           is_following: boolean
-          producer: string | null
-          region: string | null
-          share_id: string | null
+          producer: string
+          region: string
+          share_id: string
           shared_preference_count: number
-          similarity_confidence: number | null
-          taste_similarity: number | null
-          user_rating: number | null
-          vintage: number | null
+          similarity_confidence: number
+          taste_similarity: number
+          user_rating: number
+          vintage: number
           wine_id: string
-          wine_name: string | null
-          wine_type: Database["public"]["Enums"]["wine_type"] | null
+          wine_name: string
+          wine_type: Database["public"]["Enums"]["wine_type"]
         }[]
       }
       has_role: {
@@ -930,13 +967,49 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_public_wine_photo: {
+        Args: { _storage_path: string }
+        Returns: boolean
+      }
+      recompute_derived_preferences: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       recompute_taste_profile: {
         Args: { _user_id: string }
         Returns: undefined
       }
-      refresh_my_taste_similarities: {
-        Args: Record<PropertyKey, never>
-        Returns: number
+      refresh_my_taste_similarities: { Args: never; Returns: number }
+      replace_extracted_preference_signals: {
+        Args: { _signals: Json; _tasting_note_id: string; _user_id: string }
+        Returns: undefined
+      }
+      store_ai_exchange: {
+        Args: {
+          _assistant_content: string
+          _context: Json
+          _conversation_id: string
+          _model: string
+          _title: string
+          _token_usage: Json
+          _user_content: string
+          _user_id: string
+        }
+        Returns: {
+          assistant_created_at: string
+          assistant_message_id: string
+          conversation_id: string
+          user_created_at: string
+          user_message_id: string
+        }[]
+      }
+      sync_profile_preference_signals: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
+      sync_tasting_note_signals: {
+        Args: { _note_id: string }
+        Returns: undefined
       }
     }
     Enums: {
