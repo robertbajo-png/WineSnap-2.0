@@ -466,3 +466,37 @@ approval/account identifier. No new auth session was created. SW activation in
 previously open clients, broader accessibility review and platform-owned pg_net
 privilege hardening remain distinct open items; final signoff is not inferred
 from the successful publication or test suite alone.
+
+### Authenticated owner image test completed, 2026-10-03
+
+The user explicitly approved a temporary session for their own existing
+production account. Lovable received an Allow once approval, not persistent
+access. Its completed report confirms tests with a real owning user JWT against
+an existing private wine-label photo in production `mervdrbnwgreaifobasw`:
+
+| Operation | Actual result |
+| --- | --- |
+| Normal download with cache nonce | HTTP 200, image/jpeg, nonempty content |
+| object.sign | HTTP 400 not_found, no signed URL |
+| object.sign_many | HTTP 200 envelope; item access error and null URL |
+| render.image_sign with 100x100 cover resize | HTTP 400 not_found, no signed URL |
+
+This closes the previously pending owner-signing check. The batch HTTP 200 is
+not successful signing: its item was denied. No password, permissions, sharing,
+wine data, code, migration, cron or publication was changed; no account was
+created. No email, object path, token or secret is recorded in this document.
+The report was read in the Lovable UI; this is delegated production test
+evidence, distinct from Codex's direct published-page observations.
+
+Lovable reports local-scope logout returned 204, refreshing that temporary
+session then failed with 400, and its sandbox session file was removed. Other
+sessions were not logged out. The existing access JWT still passed an immediate
+user check after logout; its expiry was not measured. Therefore cleanup means
+refresh was revoked and the stored test credentials removed, not immediate
+invalidation of that already issued JWT or proof that every trace was erased.
+
+Screenshot evidence is outside Git as `WineSnap-owner-image-test-20261003.png`.
+All owner/anonymous image-signing checks now pass. Existing-client service-worker
+activation remains unverified; broader accessibility review and platform-owned
+pg_net grant hardening remain separate follow-up items. No universal release
+signoff or immediate token expiry is inferred from this successful test.
