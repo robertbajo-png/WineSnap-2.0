@@ -21,6 +21,10 @@ type WineLike = {
 
 const pendingSaves = new Map<string, Promise<boolean>>();
 
+function normalizeVintage(vintage: WineLike["vintage"]): number | null {
+  return typeof vintage === "string" ? Number.parseInt(vintage, 10) || null : (vintage ?? null);
+}
+
 /**
  * Insert a wine into the user's wishlist. If a wine_id is provided and already
  * exists in the wishlist, the row is left as-is. AI suggestions are checked by
@@ -38,7 +42,7 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
     input.id ?? null,
     input.producer ?? null,
     input.wine_name ?? "Untitled",
-    input.vintage ?? null,
+    normalizeVintage(input.vintage),
   ]);
   const pending = pendingSaves.get(key);
   if (pending) {
@@ -55,10 +59,7 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
 }
 
 async function insertWishlistWine(input: WineLike, userId: string): Promise<boolean> {
-  const vintage =
-    typeof input.vintage === "string"
-      ? Number.parseInt(input.vintage, 10) || null
-      : (input.vintage ?? null);
+  const vintage = normalizeVintage(input.vintage);
 
   const row = {
     user_id: userId,

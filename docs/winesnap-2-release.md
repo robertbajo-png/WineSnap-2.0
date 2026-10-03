@@ -230,3 +230,28 @@ Lovable's editor still failed to expose usable project controls. Wishlist UI
 duplicate protection, responsive checks, post-policy image/share verification
 and remaining authenticated release checks are still outstanding. Publication
 alone is not the final release signoff.
+
+### Responsive review and signing-policy approval, 2026-10-03
+
+The published restaurant form and saved results were visually checked at
+390 x 844 and 1440 x 900. Document width matched viewport width at both sizes;
+no horizontal overflow or obvious text collisions were observed in those
+views. The temporary viewport override was reset. This is a focused responsive
+check, not a complete accessibility audit of all routes.
+
+Lovable subsequently confirmed production project `mervdrbnwgreaifobasw` and
+that the signing policy did not yet exist. Its approval dialog showed the
+exact SQL from `20261002090000_disable_label_signing.sql`. An `Allow once`
+action was attempted, but browser control timed out before its result could
+be read. Successful execution and migration-history recording are still
+unconfirmed; do not infer either from the approval attempt or rerun blindly.
+
+### Wishlist normalization regression, 2026-10-03
+
+The local concurrent-save key now uses the same normalized vintage as the
+database row. Numeric `2023` and string `"2023"` therefore share one in-flight
+request, as do `"NV"` and a missing vintage, both stored as null. Different
+vintages remain distinct and a failed lookup does not block retries. Four
+new tests cover these cases; all eight wishlist tests pass. This change still
+does not provide cross-device database uniqueness and has not been confirmed
+in the published frontend. It requires the next frontend publication.

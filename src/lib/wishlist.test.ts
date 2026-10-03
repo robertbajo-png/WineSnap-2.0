@@ -53,6 +53,44 @@ describe("wishlist suggestion saves", () => {
     expect(mocks.insert).toHaveBeenCalledTimes(1);
   });
 
+  it("coalesces numeric and string representations of the same vintage", async () => {
+    const wine = { producer: "Maker", wine_name: "Wine" };
+    expect(
+      await Promise.all([
+        addToWishlist({ ...wine, vintage: 2023 }),
+        addToWishlist({ ...wine, vintage: "2023" }),
+      ]),
+    ).toEqual([true, false]);
+    expect(mocks.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("coalesces non-vintage and missing vintage when both are stored as null", async () => {
+    const wine = { producer: "Maker", wine_name: "Wine" };
+    expect(
+      await Promise.all([addToWishlist({ ...wine, vintage: "NV" }), addToWishlist(wine)]),
+    ).toEqual([true, false]);
+    expect(mocks.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps different vintages separate", async () => {
+    const wine = { producer: "Maker", wine_name: "Wine" };
+    expect(
+      await Promise.all([
+        addToWishlist({ ...wine, vintage: 2022 }),
+        addToWishlist({ ...wine, vintage: "2023" }),
+      ]),
+    ).toEqual([true, true]);
+    expect(mocks.insert).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows retry after a duplicate lookup failure", async () => {
+    const wine = { producer: "Maker", wine_name: "Wine", vintage: 2023 };
+    mocks.lookup.mockResolvedValueOnce({ data: null, error: { message: "offline" } });
+    expect(await addToWishlist(wine)).toBe(false);
+    expect(await addToWishlist(wine)).toBe(true);
+    expect(mocks.insert).toHaveBeenCalledTimes(1);
+  });
+
   it("does not insert when the duplicate check fails", async () => {
     mocks.lookup.mockResolvedValue({ data: null, error: { message: "offline" } });
     expect(await addToWishlist({ wine_name: "Wine" })).toBe(false);
