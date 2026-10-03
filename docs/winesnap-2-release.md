@@ -542,3 +542,25 @@ remain closed as above. Any platform-owner hardening must preserve the postgres
 price cron's schema/function/table/sequence rights first. No ineffective REVOKE,
 extension removal, cron change, role assignment or external support submission
 was performed. This platform follow-up is unresolved, not silently fixed.
+
+### Final frontend fixes pushed; publication verification blocked, 2026-10-03
+
+Application commit `aca61df` is pushed to main and the working branch. The
+complete local check on that final source, including the taste range label,
+24px hit area and visible parent focus ring, passed: typecheck, lint, 110 tests
+in 24 files and client/SSR/production build, exit 0. The four new tests passed
+independently too. No production database privileges were changed.
+
+Lovable received a request to build/publish this revision only after its build
+passes, verify live skip-link/focus/axe behavior, close only the two already
+resolved Ask reports, and attempt an isolated old-to-new worker lifecycle test.
+The message was visibly submitted and Lovable started working. Subsequent
+browser reads and screenshots repeatedly timed out; a fresh project view showed
+Reconnecting. Therefore no completed publication, issue closure, live focused
+UI result or old-to-new worker test result is claimed for this revision.
+
+The explicit approval question for the production admin-policy repair remains
+unanswered at this point. No migration or new auth session was created. The
+pg_net platform-owner follow-up remains unresolved as described above. This
+section records verified code completion and concrete external/approval
+blockers, not a completed universal release signoff.
