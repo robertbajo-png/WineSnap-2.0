@@ -12,14 +12,25 @@ describe("live camera view", () => {
     expect(html).not.toContain("object-contain");
   });
 
-  it("preserves the original four corner guides, hint and shutter styling", () => {
+  it("keeps four shorter gold corner guides aligned inside the preview frame", () => {
     const html = renderToStaticMarkup(<LiveCamera onCapture={vi.fn()} onGallery={vi.fn()} />);
     for (const corner of ["rounded-tl-2xl", "rounded-tr-2xl", "rounded-bl-2xl", "rounded-br-2xl"]) {
       expect(html).toContain(corner);
     }
-    expect(html).toContain("bottom-6 text-center text-xs text-cream/70");
+    expect(html.match(/border-gold\/70/g)).toHaveLength(4);
+    expect(html).toContain("ring-1 ring-inset ring-white/15");
+    expect(html).not.toContain("h-12 w-12 border-cream/85");
     expect(html).toContain("ring-2 ring-gold transition-transform");
     expect(html).not.toContain("inset-x-[15%]");
+  });
+
+  it("places the hint in normal flow below the preview and above the controls", () => {
+    const html = renderToStaticMarkup(<LiveCamera onCapture={vi.fn()} onGallery={vi.fn()} />);
+    expect(html).toContain('aria-describedby="scan-camera-hint"');
+    expect(html).toContain(
+      '</div><p id="scan-camera-hint" class="shrink-0 px-8 pb-1 text-center text-xs leading-relaxed text-cream/70">scan.align</p><div class="flex shrink-0',
+    );
+    expect(html).not.toContain("absolute inset-x-0 bottom-6");
   });
 
   it("keeps the original viewport and controls during analysis", () => {

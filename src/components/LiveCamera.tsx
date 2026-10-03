@@ -105,10 +105,20 @@ export function LiveCamera({
             muted
             playsInline
             aria-label={t("scan.cameraPreview")}
+            aria-describedby="scan-camera-hint"
             onLoadedData={() => setReady(true)}
             onPlaying={() => setReady(true)}
             className={`h-full w-full object-cover object-center ${ready && !error ? "" : "invisible"}`}
           />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/15"
+          >
+            <div className="absolute left-0 top-0 h-8 w-8 rounded-tl-2xl border-l-2 border-t-2 border-gold/70" />
+            <div className="absolute right-0 top-0 h-8 w-8 rounded-tr-2xl border-r-2 border-t-2 border-gold/70" />
+            <div className="absolute left-0 bottom-0 h-8 w-8 rounded-bl-2xl border-l-2 border-b-2 border-gold/70" />
+            <div className="absolute right-0 bottom-0 h-8 w-8 rounded-br-2xl border-r-2 border-b-2 border-gold/70" />
+          </div>
         </div>
         {analyzing ? (
           <div className="absolute inset-0 flex items-center justify-center" role="status">
@@ -141,17 +151,14 @@ export function LiveCamera({
             </div>
           )
         )}
-        <div aria-hidden className="pointer-events-none">
-          <div className="absolute h-12 w-12 border-cream/85 left-8 top-8 border-l-2 border-t-2 rounded-tl-2xl" />
-          <div className="absolute h-12 w-12 border-cream/85 right-8 top-8 border-r-2 border-t-2 rounded-tr-2xl" />
-          <div className="absolute h-12 w-12 border-cream/85 left-8 bottom-8 border-l-2 border-b-2 rounded-bl-2xl" />
-          <div className="absolute h-12 w-12 border-cream/85 right-8 bottom-8 border-r-2 border-b-2 rounded-br-2xl" />
-        </div>
-        <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">
-          {t("scan.align")}
-        </p>
       </div>
-      <div className="flex shrink-0 items-center justify-center gap-12 px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-6">
+      <p
+        id="scan-camera-hint"
+        className="shrink-0 px-8 pb-1 text-center text-xs leading-relaxed text-cream/70"
+      >
+        {t("scan.align")}
+      </p>
+      <div className="flex shrink-0 items-center justify-center gap-12 px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-4">
         <button
           onClick={onGallery}
           disabled={analyzing}

@@ -651,3 +651,13 @@ based on the displayed video's dimensions, so unseen sensor edges are not sent
 to the crop/review flow. Portrait and landscape crop tests, hidden-frame
 rejection and a rendering regression test cover this change. All 16 focused
 camera tests pass; physical-device preview alignment has not been verified.
+
+### Refine camera hint and edges, 2026-10-03
+
+Move the alignment hint into its own normal-flow row below the preview and
+above the shutter controls. It no longer overlaps the feed or its lower edge;
+the video references it with aria-describedby. Keep the preview inset and
+matching capture behavior, with a subtle continuous outline and shorter gold
+corner guides clipped inside the same frame. Focused camera tests pass (17),
+including hint placement and corner styling. No physical-camera visual test
+or Lovable publication was performed for this refinement.
