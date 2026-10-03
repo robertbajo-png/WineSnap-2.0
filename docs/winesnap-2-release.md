@@ -255,3 +255,34 @@ vintages remain distinct and a failed lookup does not block retries. Four
 new tests cover these cases; all eight wishlist tests pass. This change still
 does not provide cross-device database uniqueness and has not been confirmed
 in the published frontend. It requires the next frontend publication.
+
+### Production signing-policy confirmation, 2026-10-03
+
+Lovable's completed migration reply was read in the project UI. It reports
+successful execution in production `mervdrbnwgreaifobasw`, followed by SQL
+verification in `pg_policies` and `pg_policy`: the policy is RESTRICTIVE,
+SELECT, for `{anon, authenticated}`, with the exact operation-denial expression
+from the reviewed migration. The `wine-labels` bucket remains private.
+
+The Cloud tool registered the execution as version `20261003083028`, not the
+original filename's version `20261002090000`. Its generated migration file
+`20261003083028_3d137b11-ee61-411b-bc1a-60017229d20c.sql` was fetched and reviewed;
+its SQL matches the original idempotent policy. Both files are retained and
+the remote changes were merged without overwriting them. This supersedes the
+previous unconfirmed approval status; do not rerun the production migration
+merely because the original filename's version is absent from history.
+
+Local typecheck, lint and all 106 tests passed for the wishlist normalization
+change. The merged main `ceefd0b` passed all GitHub Quality steps, including
+production build, in run 37112341562. The redundant slow local build was stopped
+after the complete CI result was verified.
+
+Post-policy authenticated download/share checks and owner-signing denial
+still require direct verification against production. Publication of the
+latest wishlist normalization change is also still unconfirmed: browser
+control disconnected before the latest preview/publication workflow could
+be completed. SQL policy verification is not a substitute for those final
+application checks. Lovable also reported seven existing database-linter
+findings, including public-schema extensions and callable SECURITY DEFINER
+functions; their exact definitions and privilege requirements need review
+before classifying them as harmless or release-blocking.
