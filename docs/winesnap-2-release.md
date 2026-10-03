@@ -626,3 +626,18 @@ Verification: complete check exited 0 with 124 tests in 28 files and client,
 SSR and Nitro production builds. Final targeted lint and a fresh typecheck
 also exited 0 after the cleanup adjustment. Build tooling emits existing
 third-party bundle/config warnings; no build failure occurred.
+
+### Restore the existing camera layout, 2026-10-03
+
+At the user's request, restore the pre-inline-camera four corner guides,
+background, alignment hint position and shutter styling. Gallery and shutter
+remain in their original positions during analysis, disabled as before. The
+live preview, inline capture, permission handling and stream cleanup remain;
+analysis now explicitly suspends the stream without removing the controls.
+Two rendering regression tests protect the restored layout and analysis state.
+This is a source change, not confirmation of Lovable publication or a physical
+mobile camera test.
+
+Verification for the layout restoration: typecheck and lint passed, all 126
+tests in 28 files passed after correcting a test that mistook a CSS disabled
+variant for the actual disabled attribute, and production build exited 0.

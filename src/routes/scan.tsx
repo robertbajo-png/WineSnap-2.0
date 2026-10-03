@@ -411,8 +411,12 @@ function ScanPage() {
       </div>
 
       {mode === "camera" ? (
-        user && !loading && stage === "idle" ? (
-          <LiveCamera onCapture={setPendingFile} onGallery={() => fileRef.current?.click()} />
+        user && !loading ? (
+          <LiveCamera
+            onCapture={setPendingFile}
+            onGallery={() => fileRef.current?.click()}
+            analyzing={stage === "analyzing"}
+          />
         ) : (
           <div
             className="flex flex-1 flex-col items-center justify-center gap-3 text-gold"
