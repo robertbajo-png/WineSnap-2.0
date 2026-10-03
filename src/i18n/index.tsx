@@ -228,6 +228,17 @@ const en = {
   // Scan
   "scan.close": "Close",
   "scan.gallery": "Choose a label photo",
+  "scan.cameraPreview": "Live camera",
+  "scan.takePhoto": "Take photo",
+  "scan.cameraStarting": "Opening camera…",
+  "scan.cameraRetry": "Try again",
+  "scan.cameraDenied":
+    "Camera access was denied. Allow camera access in your browser, or choose a photo from your gallery.",
+  "scan.cameraMissing": "No camera was found. Choose a photo from your gallery instead.",
+  "scan.cameraFailed":
+    "The camera could not start or capture a photo. Close other apps using the camera and try again.",
+  "scan.cameraUnsupported":
+    "Live camera is unavailable in this browser. Choose a photo from your gallery instead.",
   "scan.positionLabel": "Position label in the frame",
   "scan.describeWine": "Describe the wine",
   "scan.scan": "Scan",
@@ -829,6 +840,17 @@ const sv: Record<keyof typeof en, string> = {
 
   "scan.close": "Stäng",
   "scan.gallery": "Välj en etikettbild",
+  "scan.cameraPreview": "Livekamera",
+  "scan.takePhoto": "Ta foto",
+  "scan.cameraStarting": "Öppnar kameran…",
+  "scan.cameraRetry": "Försök igen",
+  "scan.cameraDenied":
+    "Kameratillstånd saknas. Tillåt kameran i webbläsaren eller välj en bild från galleriet.",
+  "scan.cameraMissing": "Ingen kamera hittades. Välj en bild från galleriet i stället.",
+  "scan.cameraFailed":
+    "Kameran kunde inte starta eller ta en bild. Stäng andra appar som använder kameran och försök igen.",
+  "scan.cameraUnsupported":
+    "Livekamera stöds inte i den här webbläsaren. Välj en bild från galleriet i stället.",
   "scan.positionLabel": "Placera etiketten i ramen",
   "scan.describeWine": "Beskriv vinet",
   "scan.scan": "Skanna",

@@ -598,3 +598,31 @@ WineSnap-design-desktop-20261003.jpg. The local development server is left
 running for review. Authenticated aroma/cellar views were not visually tested
 with a new session; no session was created. This design change has not been
 published through Lovable in this turn and is not a new production signoff.
+
+### Inline scanning camera, 2026-10-03
+
+The scan route now opens a live video preview inside WineSnap for authenticated
+users instead of opening the native camera application through a capture input.
+It prefers the rear camera, requests no audio and enables an in-app shutter only
+after a frame is available. Captures are bounded JPEGs and use the existing
+crop, identity review, analysis and save flow. Gallery and text input remain
+available; denied, unavailable and busy cameras have translated retry states.
+
+Streams stop when the camera view unmounts (including cropping, analysis and
+text mode), when the page becomes hidden or when preview playback fails. Late
+permission grants are stopped without attaching an abandoned stream. No auth,
+storage policy or backend changes are included. Browser permission is still
+required the first time and live camera needs HTTPS or localhost.
+
+New tests exercise stream cleanup, late permission grants/rejections, error
+classification, blank-frame rejection, bounded capture and encoder failure.
+Server-rendered component tests check inline/muted preview semantics, disabled
+shutter readiness and gallery availability. These use simulated media/canvas,
+not a physical camera. Local browser navigation still correctly requires login;
+no session or device permission was created for this check. Physical mobile
+camera validation and Lovable publication remain unverified for this change.
+
+Verification: complete check exited 0 with 124 tests in 28 files and client,
+SSR and Nitro production builds. Final targeted lint and a fresh typecheck
+also exited 0 after the cleanup adjustment. Build tooling emits existing
+third-party bundle/config warnings; no build failure occurred.

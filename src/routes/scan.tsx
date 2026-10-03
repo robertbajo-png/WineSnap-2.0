@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { X, ImageIcon, Loader2, Wine, Check, Type, Camera, Sparkles } from "lucide-react";
+import { X, Loader2, Wine, Check, Type, Camera, Sparkles } from "lucide-react";
+import { LiveCamera } from "@/components/LiveCamera";
 import { Button } from "@/components/ui/button";
 import { WineImage } from "@/components/WineImage";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,7 +59,6 @@ function ScanPage() {
   const navigate = useNavigate();
   const t = useT();
   const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [scanned, setScanned] = useState<ScannedWine | null>(null);
   const [mode, setMode] = useState<"camera" | "text">("camera");
@@ -385,6 +385,7 @@ function ScanPage() {
         <div className="mx-auto flex w-full max-w-xs items-center rounded-full border border-white/10 bg-white/5 p-1">
           <button
             onClick={() => setMode("camera")}
+            aria-pressed={mode === "camera"}
             disabled={stage === "analyzing"}
             className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
               mode === "camera"
@@ -396,6 +397,7 @@ function ScanPage() {
           </button>
           <button
             onClick={() => setMode("text")}
+            aria-pressed={mode === "text"}
             disabled={stage === "analyzing"}
             className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
               mode === "text"
@@ -409,55 +411,17 @@ function ScanPage() {
       </div>
 
       {mode === "camera" ? (
-        <>
-          {/* Camera viewport */}
-          <div className="relative flex-1 overflow-hidden">
-            <div
-              aria-hidden
-              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,oklch(0.22_0.02_30)_0%,oklch(0.08_0.005_30)_70%)]"
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              {stage === "analyzing" ? (
-                <div className="flex flex-col items-center gap-3 text-gold">
-                  <Loader2 className="h-12 w-12 animate-spin" />
-                  <p className="font-display text-lg">{t("scan.analyzing")}</p>
-                </div>
-              ) : (
-                <Wine className="h-48 w-48 text-white/10" strokeWidth={0.5} />
-              )}
-            </div>
-            <ScanCorners />
-            <p className="absolute inset-x-0 bottom-6 text-center text-xs text-cream/70">
-              {t("scan.align")}
-            </p>
+        user && !loading && stage === "idle" ? (
+          <LiveCamera onCapture={setPendingFile} onGallery={() => fileRef.current?.click()} />
+        ) : (
+          <div
+            className="flex flex-1 flex-col items-center justify-center gap-3 text-gold"
+            role="status"
+          >
+            <Loader2 className="h-12 w-12 animate-spin" />
+            <p>{stage === "analyzing" ? t("scan.analyzing") : t("scan.cameraStarting")}</p>
           </div>
-
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-12 px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-6">
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={stage === "analyzing"}
-              aria-label={t("scan.gallery")}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-40"
-            >
-              <ImageIcon className="h-5 w-5" />
-            </button>
-
-            <button
-              onClick={() => cameraRef.current?.click()}
-              disabled={stage === "analyzing"}
-              aria-label={t("scan.scan")}
-              className="relative flex h-20 w-20 items-center justify-center rounded-full ring-2 ring-gold transition-transform active:scale-95 disabled:opacity-60"
-            >
-              <span className="absolute inset-1.5 rounded-full bg-cream" />
-              {stage === "analyzing" && (
-                <Loader2 className="absolute inset-0 m-auto h-8 w-8 animate-spin text-burgundy" />
-              )}
-            </button>
-
-            <span className="h-12 w-12" />
-          </div>
-        </>
+        )
       ) : (
         <div className="flex flex-1 flex-col px-5 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
           <div className="flex flex-1 flex-col">
@@ -499,18 +463,6 @@ function ScanPage() {
         </div>
       )}
 
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) setPendingFile(f);
-          e.target.value = "";
-        }}
-      />
       <input
         ref={fileRef}
         type="file"
@@ -626,18 +578,6 @@ function ConfirmMatch({
         </Button>
       </div>
     </div>
-  );
-}
-
-function ScanCorners() {
-  const cls = "absolute h-12 w-12 border-cream/85";
-  return (
-    <>
-      <div className={`${cls} left-8 top-8 border-l-2 border-t-2 rounded-tl-2xl`} />
-      <div className={`${cls} right-8 top-8 border-r-2 border-t-2 rounded-tr-2xl`} />
-      <div className={`${cls} left-8 bottom-8 border-l-2 border-b-2 rounded-bl-2xl`} />
-      <div className={`${cls} right-8 bottom-8 border-r-2 border-b-2 rounded-br-2xl`} />
-    </>
   );
 }
 
