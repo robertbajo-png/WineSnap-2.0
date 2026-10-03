@@ -444,3 +444,25 @@ attempted. User approval and the user's own account identifier have been
 requested for a temporary image-test session, to be ended afterward. Browser
 policy does not allow visiting Chrome's internal service-worker page; no
 workaround was attempted. Existing-client SW activation remains unverified.
+
+### Published language fix verified, 2026-10-03
+
+Application commit `cf431f2` passed the complete local check (typecheck, lint,
+106 tests and production build, exit 0) and GitHub Quality main run
+`37135855148`. It was pushed to main and the working branch. Lovable confirmed
+that revision, requested publication and received `Publish once` approval.
+
+In the actual published login page, the Swedish heading initially had HTML
+lang=en before this release. After publication and reload/client hydration,
+the heading is Swedish and `document.documentElement.lang` is sv. This directly
+verifies the language fix live; normal English SSR before hydration is not
+mistaken for a failed client-language update. Tab from the email field focuses
+the password field and document width does not exceed the viewport. Screenshot
+evidence is stored outside Git as `WineSnap-published-language-20261003.png`.
+
+This live behavior confirms the source fix is published without asserting an
+immutable deployment ID. Owner signing remains pending the requested human
+approval/account identifier. No new auth session was created. SW activation in
+previously open clients, broader accessibility review and platform-owned pg_net
+privilege hardening remain distinct open items; final signoff is not inferred
+from the successful publication or test suite alone.
