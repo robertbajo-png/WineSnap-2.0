@@ -286,3 +286,19 @@ application checks. Lovable also reported seven existing database-linter
 findings, including public-schema extensions and callable SECURITY DEFINER
 functions; their exact definitions and privilege requirements need review
 before classifying them as harmless or release-blocking.
+
+### Post-policy published image check, 2026-10-03
+
+The user reported another frontend publication. In the authenticated published
+app, eight AI recommendations were visible from the earlier generation.
+After navigating to the cellar with the production signing policy active,
+all nine image elements loaded successfully as blob URLs (9 of 9, with
+nonzero natural width). Screenshot evidence is stored outside Git as
+`WineSnap-post-policy-cellar-20261003.png` in the parent workspace.
+
+Browser control lost its debugger connection during the subsequent wishlist
+baseline check, before any wishlist save or preference feedback was performed.
+The published duplicate-save regression is therefore not yet verified. Nor
+does successful owner image display prove owner-signing denial or anonymous
+shared-image access; those remain separate production checks. The exact latest
+frontend commit was not independently identified in this pass.
