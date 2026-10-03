@@ -413,3 +413,34 @@ as dispatched or passed. Authenticated-owner signing, existing-client SW
 activation and the remaining keyboard/screen-reader/contrast review are still
 open. Final release signoff remains withheld. No production migration or
 user-data changes were made in this review.
+
+### GraphQL isolation and preview-build diagnosis, 2026-10-03
+
+The previously unsent follow-up was subsequently submitted and its completed
+Lovable report read. An actual anonymous request to `/graphql/v1` returned
+`pg_graphql extension is not enabled.` There was no introspection result or
+exposed net table/function. Together with the earlier REST schema denial,
+this closes the observed REST/GraphQL exposure check, not owner-level pg_net
+hardening or every possible future exposure path. Do not perform a cron-breaking
+REVOKE with the migration role or treat the platform's inherited grants as fixed.
+
+The Lovable UI subsequently displayed Build unsuccessful / Preview is out of
+date for docs-only `82cd7ee`. A requested diagnosis rebuilt exactly that revision
+successfully (`bun run build`, exit 0, 5.81 seconds) and passed `tsgo --noEmit`.
+It found no build-errors log and no reproducible source/build error. No repair
+or source modification was made by Lovable. Its later reply describes the
+previous publish as successful, but no immutable deployed revision was provided;
+the earlier tool-status limitation remains documented above.
+
+The language provider now updates the document's `lang` when the selected
+language changes, and initial language loading handles denied localStorage
+access instead of throwing. Local typecheck, lint and all 106 tests passed for
+this focused fix; the production build and live publication are tracked below.
+This is not a complete screen-reader/contrast audit.
+
+Owner-signing still needs an authenticated production session. Lovable's sandbox
+has none; no administrative impersonation/session creation was authorized or
+attempted. User approval and the user's own account identifier have been
+requested for a temporary image-test session, to be ended afterward. Browser
+policy does not allow visiting Chrome's internal service-worker page; no
+workaround was attempted. Existing-client SW activation remains unverified.

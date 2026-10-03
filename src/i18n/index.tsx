@@ -1204,9 +1204,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
 
   useEffect(() => {
-    const stored = (
-      typeof window !== "undefined" ? localStorage.getItem("lang") : null
-    ) as Lang | null;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem("lang");
+    } catch {
+      // Browser language still works when storage is unavailable.
+    }
     if (stored === "en" || stored === "sv") {
       setLangState(stored);
     } else if (
@@ -1216,6 +1219,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       setLangState("sv");
     }
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = (l: Lang) => {
     setLangState(l);
