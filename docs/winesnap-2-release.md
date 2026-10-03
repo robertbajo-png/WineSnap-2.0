@@ -127,3 +127,38 @@ local build or a successful push alone does not confirm a production release.
 
 If deployment fails, keep the previous frontend available and fix the failing
 dependency before retrying. Do not restore public image access as a workaround.
+
+### Production rollout and authenticated checks, 2026-10-03
+
+PR #2 was merged as `0892fe8`. The seven production schema migrations dated
+September 23 through October 1 were applied in a single transaction, with
+migration history and all six invariant scripts. The production result
+confirmed preservation of legacy wine fields: 9 wines and 9 wine photos after
+the expected image backfill; the image bucket remains private.
+
+Lovable reported deployment of all six AI functions from the merged code and
+verified OPTIONS 200 and unauthenticated 401 responses. `ask-winesnap` was
+subsequently redeployed from `53a255a` after a real authenticated answer ended
+mid-word. Its output budget is now 4096; token-limited responses are rejected
+before storage. An authenticated three-sentence answer completed and was read
+back intact from conversation history after a page reload.
+
+The original `54456874_400.webp` was uploaded through WineSnap's actual preview
+UI. The result identified ZEHN MORGEN, NAHE, CHARDONNAY and WEISSER BURGUNDER.
+It was discarded rather than stored as a duplicate. All 9 existing cellar
+images loaded as authenticated blob URLs. Comparison selection updated and
+the UI confirmed a saved comparison. Social discovery displayed its honest
+insufficient-evidence state without making the user's profile public.
+
+The real restaurant request initially failed with upstream HTTP 400 and
+application HTTP 502. Synthetic gateway probes reproduced the failure and
+confirmed that the full schema, including nullable union types and forced
+tool choice, succeeds when `additionalProperties`, `maxItems`, `minimum`
+and `maximum` are removed. The fix retains all menu properties and enforces
+the 40-wine cap and intensity bounds in application code. Missing or truncated
+tool responses fail instead of silently returning an empty successful result.
+Frontend failures are translated instead of exposing raw function errors.
+
+The October 2 signing policy was verified and recorded in WineSnap-test.
+Frontend publication, the final production signing policy and authenticated
+restaurant retest remain pending; these observations are not a release signoff.

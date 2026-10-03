@@ -25,6 +25,7 @@ import { useI18n, useT } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import type { MatchEvidence } from "@/lib/recommendationEngine";
+import { askErrorKey } from "@/lib/askWineSnap";
 import {
   recommendationKey,
   recordRecommendationEvent,
@@ -233,7 +234,8 @@ function RestaurantPage() {
       }
       void loadHistory();
     } catch (generateError) {
-      setError(generateError instanceof Error ? generateError.message : t("common.error"));
+      const key = askErrorKey(generateError);
+      setError(t(key === "ask.error.generic" ? "restaurant.error.generic" : key));
     } finally {
       setBusy(false);
     }

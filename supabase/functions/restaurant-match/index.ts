@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
 import {
   rankRestaurantCandidates,
+  sanitizeRestaurantIntensity,
   type DishFit,
   type RestaurantCandidate,
   type RestaurantMode,
@@ -34,7 +35,6 @@ const tool = {
       properties: {
         wines: {
           type: "array",
-          maxItems: 40,
           items: {
             type: "object",
             properties: {
@@ -49,12 +49,12 @@ const tool = {
               price_amount: { type: ["number", "null"] },
               price_currency: { type: ["string", "null"] },
               menu_line: { type: ["string", "null"] },
-              body: { type: ["number", "null"], minimum: 0, maximum: 10 },
-              tannin: { type: ["number", "null"], minimum: 0, maximum: 10 },
-              acidity: { type: ["number", "null"], minimum: 0, maximum: 10 },
-              sweetness: { type: ["number", "null"], minimum: 0, maximum: 10 },
-              oak: { type: ["number", "null"], minimum: 0, maximum: 10 },
-              fruit: { type: ["number", "null"], minimum: 0, maximum: 10 },
+              body: { type: ["number", "null"], description: "Intensity from 0 to 10" },
+              tannin: { type: ["number", "null"], description: "Intensity from 0 to 10" },
+              acidity: { type: ["number", "null"], description: "Intensity from 0 to 10" },
+              sweetness: { type: ["number", "null"], description: "Intensity from 0 to 10" },
+              oak: { type: ["number", "null"], description: "Intensity from 0 to 10" },
+              fruit: { type: ["number", "null"], description: "Intensity from 0 to 10" },
               dish_fit: {
                 type: ["string", "null"],
                 enum: ["excellent", "good", "neutral", "poor", null],
@@ -90,12 +90,10 @@ const tool = {
               "style_reason",
               "food_reason",
             ],
-            additionalProperties: false,
           },
         },
       },
       required: ["wines"],
-      additionalProperties: false,
     },
   },
 };
@@ -223,7 +221,13 @@ Deno.serve(async (req) => {
 
     const payload = await response.json();
     const argumentsJson = payload.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    const parsed = argumentsJson ? JSON.parse(argumentsJson) : { wines: [] };
+    if (payload.choices?.[0]?.finish_reason === "length" || !argumentsJson) {
+      throw new Error("AI returned an incomplete menu analysis");
+    }
+    const parsed = JSON.parse(argumentsJson);
+    if (!parsed || !Array.isArray(parsed.wines)) {
+      throw new Error("AI returned an invalid wine list");
+    }
     const candidates: RestaurantCandidate[] = Array.isArray(parsed.wines)
       ? parsed.wines
           .filter((wine: unknown) => {
@@ -235,6 +239,12 @@ Deno.serve(async (req) => {
             ...wine,
             wine_name: wine.wine_name.trim().slice(0, 200),
             dish_fit: sanitizeDishFit(wine.dish_fit),
+            body: sanitizeRestaurantIntensity(wine.body),
+            tannin: sanitizeRestaurantIntensity(wine.tannin),
+            acidity: sanitizeRestaurantIntensity(wine.acidity),
+            sweetness: sanitizeRestaurantIntensity(wine.sweetness),
+            oak: sanitizeRestaurantIntensity(wine.oak),
+            fruit: sanitizeRestaurantIntensity(wine.fruit),
           }))
       : [];
 

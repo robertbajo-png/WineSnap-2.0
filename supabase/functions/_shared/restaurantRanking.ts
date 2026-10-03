@@ -40,6 +40,12 @@ function finitePositiveNumber(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+export function sanitizeRestaurantIntensity(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 10
+    ? value
+    : null;
+}
+
 export function parseMenuPrice(value: unknown) {
   const raw = String(value ?? "").trim();
   if (!raw) return { amount: null, currency: null };
