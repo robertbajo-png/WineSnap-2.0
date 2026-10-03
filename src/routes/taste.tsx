@@ -437,7 +437,7 @@ function SliderRow({
     <div className="grid grid-cols-[64px_1fr] items-center gap-3">
       <span className="text-sm text-foreground/80">{label}</span>
       <div>
-        <div className="relative h-1.5 rounded-full bg-white/10">
+        <div className="relative h-1.5 rounded-full bg-white/10 focus-within:ring-2 focus-within:ring-gold focus-within:ring-offset-2 focus-within:ring-offset-background">
           <div
             className="pointer-events-none absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-burgundy to-copper"
             style={{ width: `${value}%` }}
@@ -448,12 +448,13 @@ function SliderRow({
           />
           <input
             type="range"
+            aria-label={label}
             min={0}
             max={100}
             step={10}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value))}
-            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+            className="absolute left-0 top-1/2 z-10 h-6 w-full -translate-y-1/2 cursor-pointer opacity-0"
           />
         </div>
         <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">

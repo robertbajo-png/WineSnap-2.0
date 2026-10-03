@@ -500,3 +500,45 @@ All owner/anonymous image-signing checks now pass. Existing-client service-worke
 activation remains unverified; broader accessibility review and platform-owned
 pg_net grant hardening remain separate follow-up items. No universal release
 signoff or immediate token expiry is inferred from this successful test.
+
+### Final accessibility and platform follow-up, 2026-10-03
+
+Lovable's fresh basic security scan reported no findings; this is not a deep
+code audit. Project monitoring still contained three older issues. The Ask
+composer scroll and raw error-message reports are superseded by existing
+overflow-x-clip/sticky layout and localized askErrorKey handling. The admin
+permission report is valid: user_roles policies still call has_role, whose
+EXECUTE is revoked from authenticated. A policy query can fail even for a user's
+own role row. Do not restore the unrestricted has_role RPC to clients.
+
+Local changes add an explicit retryable admin permission-check error instead of
+misreporting a query failure as lacking an admin role. Signed-out loading and
+stale responses are handled. Wine statistics describe accessible wines, not an
+unverified global total. Production policy repair needs separate approval and
+must preserve existing roles and restrict the helper to the caller's identity.
+
+Delegated live axe WCAG 2 A/AA checks returned zero violations on /login,
+/forgot-password, /reset-password, / and /about. Login/recovery keyboard order
+and field labels were checked. No new authenticated session was created, so
+this does not certify every signed-in screen or screen-reader workflow.
+
+Focused source fixes add a skip-to-content link, prominent focus-visible
+outlines, named cellar search, filter pressed states, active-page navigation
+and localized scan labels/hints. Slider accessible names and descriptions now
+reach the focusable thumb, rather than only the wrapper. Four new server-render
+regression tests cover thumb semantics and active navigation. Publication and
+live verification of these new changes are recorded after their build succeeds.
+
+Lovable's ordinary app-browser tools confirmed an active controlling /sw.js
+with VERSION 2026-10-03, only that version's WineSnap caches, and the same state
+after reload and after clearing/recreating caches. This was a clean browser:
+it proves current installation, not an old already-open client's upgrade.
+No Chrome internal-page restriction was bypassed. Existing cache cleanup also
+has local tests; neither observation is mislabeled as an old-client upgrade.
+
+pg_net remains owned by supabase_admin. Its default grants are only inferred to
+be platform defaults, not confirmed by support. REST and GraphQL exposure tests
+remain closed as above. Any platform-owner hardening must preserve the postgres
+price cron's schema/function/table/sequence rights first. No ineffective REVOKE,
+extension removal, cron change, role assignment or external support submission
+was performed. This platform follow-up is unresolved, not silently fixed.

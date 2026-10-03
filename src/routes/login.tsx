@@ -72,6 +72,7 @@ function LoginPage() {
               <Label htmlFor="name">{t("login.name")}</Label>
               <Input
                 id="name"
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("login.namePh")}
@@ -82,6 +83,7 @@ function LoginPage() {
             <Label htmlFor="email">{t("login.email")}</Label>
             <Input
               id="email"
+              autoComplete="email"
               type="email"
               required
               value={email}
@@ -92,6 +94,7 @@ function LoginPage() {
             <Label htmlFor="password">{t("login.password")}</Label>
             <Input
               id="password"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               type="password"
               required
               minLength={6}

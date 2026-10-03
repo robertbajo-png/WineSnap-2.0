@@ -146,6 +146,11 @@
     color: var(--color-foreground);
   }
 
+  :is(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-gold) !important;
+    outline-offset: 3px;
+  }
+
   h1,
   h2,
   h3,

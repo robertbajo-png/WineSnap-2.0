@@ -437,7 +437,7 @@ function ScanPage() {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={stage === "analyzing"}
-              aria-label="Gallery"
+              aria-label={t("scan.gallery")}
               className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-40"
             >
               <ImageIcon className="h-5 w-5" />
@@ -446,7 +446,7 @@ function ScanPage() {
             <button
               onClick={() => cameraRef.current?.click()}
               disabled={stage === "analyzing"}
-              aria-label="Scan label"
+              aria-label={t("scan.scan")}
               className="relative flex h-20 w-20 items-center justify-center rounded-full ring-2 ring-gold transition-transform active:scale-95 disabled:opacity-60"
             >
               <span className="absolute inset-1.5 rounded-full bg-cream" />
@@ -465,7 +465,7 @@ function ScanPage() {
               htmlFor="scan-description"
               className="mb-2 text-xs uppercase tracking-wider text-cream/60"
             >
-              Wine description
+              {t("scan.descLabel")}
             </label>
             <Textarea
               id="scan-description"
@@ -473,11 +473,11 @@ function ScanPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={stage === "analyzing"}
-              placeholder="e.g. Château Margaux 2015, or 'a bold Italian red from Tuscany with cherry and leather notes'"
+              placeholder={t("scan.descPh")}
               className="min-h-[180px] resize-none border-white/10 bg-white/5 text-base text-cream placeholder:text-cream/40 focus-visible:ring-gold/40"
             />
             <p id="scan-description-hint" className="mt-2 text-xs text-cream/50">
-              Producer, vintage, region, grape — anything you know helps.
+              {t("scan.descHint")}
             </p>
           </div>
 

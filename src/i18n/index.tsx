@@ -10,6 +10,8 @@ const en = {
   "nav.cellar": "Cellar",
   "nav.profile": "Profile",
   "nav.scan": "Scan",
+  "admin.checkFailed": "We could not check your permissions. Please try again.",
+  "admin.visibleWines": "Wines you can access",
 
   // Ask WineSnap
   "ask.title": "Ask WineSnap",
@@ -80,6 +82,7 @@ const en = {
 
   // Common
   "common.back": "Back",
+  "common.skipToContent": "Skip to content",
   "common.cancel": "Cancel",
   "common.save": "Save",
   "common.saved": "Saved",
@@ -224,6 +227,7 @@ const en = {
 
   // Scan
   "scan.close": "Close",
+  "scan.gallery": "Choose a label photo",
   "scan.positionLabel": "Position label in the frame",
   "scan.describeWine": "Describe the wine",
   "scan.scan": "Scan",
@@ -618,6 +622,8 @@ const sv: Record<keyof typeof en, string> = {
   "nav.cellar": "Källare",
   "nav.profile": "Profil",
   "nav.scan": "Skanna",
+  "admin.checkFailed": "Vi kunde inte kontrollera din behörighet. Försök igen.",
+  "admin.visibleWines": "Viner du har tillgång till",
 
   "ask.title": "Fråga WineSnap",
   "ask.subtitle": "Din personliga sommelier, grundad i din smak",
@@ -684,6 +690,7 @@ const sv: Record<keyof typeof en, string> = {
   "tier.novice": "Vinnybörjare",
 
   "common.back": "Tillbaka",
+  "common.skipToContent": "Hoppa till innehållet",
   "common.cancel": "Avbryt",
   "common.save": "Spara",
   "common.saved": "Sparat",
@@ -821,6 +828,7 @@ const sv: Record<keyof typeof en, string> = {
   "overview.growth": "Källartillväxt",
 
   "scan.close": "Stäng",
+  "scan.gallery": "Välj en etikettbild",
   "scan.positionLabel": "Placera etiketten i ramen",
   "scan.describeWine": "Beskriv vinet",
   "scan.scan": "Skanna",

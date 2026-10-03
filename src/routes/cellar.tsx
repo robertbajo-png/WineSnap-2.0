@@ -136,6 +136,8 @@ function CellarPage() {
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
+              type="search"
+              aria-label={t("cellar.searchPh")}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("cellar.searchPh")}
@@ -148,6 +150,8 @@ function CellarPage() {
           {FILTERS.map((f) => (
             <button
               key={f}
+              type="button"
+              aria-pressed={filter === f}
               onClick={() => setFilter(f)}
               className={cn(
                 "h-8 shrink-0 rounded-full border px-3.5 text-xs transition-colors",

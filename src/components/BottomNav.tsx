@@ -17,7 +17,7 @@ export function BottomNav() {
   const scanActive = pathname === "/scan";
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40">
+    <nav aria-label="WineSnap" className="fixed bottom-0 left-0 right-0 z-40">
       <div className="border-t border-white/10 bg-background/90 shadow-elegant backdrop-blur-xl">
         <ul className="mx-auto grid max-w-md grid-cols-5 items-end px-4 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2">
           {left.map((it) => (
@@ -27,7 +27,8 @@ export function BottomNav() {
           <li className="-mt-7 flex justify-center">
             <Link
               to="/scan"
-              aria-label="Scan"
+              aria-label={t("nav.scan")}
+              aria-current={scanActive ? "page" : undefined}
               className={cn(
                 "relative flex h-[64px] w-[64px] items-center justify-center rounded-full border-2 border-gold bg-background ring-4 ring-background transition-transform",
                 scanActive ? "scale-105 shadow-gold-ring" : "shadow-soft hover:scale-105",
@@ -61,6 +62,7 @@ function NavItem({
     <li className="flex justify-center">
       <Link
         to={to}
+        aria-current={active ? "page" : undefined}
         className={cn(
           "flex flex-col items-center gap-1 px-2 py-1.5 transition-colors",
           active ? "text-gold" : "text-muted-foreground hover:text-foreground",
