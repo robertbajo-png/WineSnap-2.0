@@ -338,3 +338,10 @@ seven live database-linter findings, authenticated signing denial, anonymous
 access to intentionally shared images and existing-client service-worker
 activation remain unverified. The earlier 106-test CI pass remains evidence
 for the previous application revision, not for these new accessibility edits.
+
+GitHub Quality subsequently passed all steps for application commit `3286908`
+on main (run `37121844333`): typecheck, lint, tests and production build. The
+local targeted lint also passed after normalizing working-copy line endings;
+that normalization produces no tracked diff. This supersedes the preceding
+test-evidence limitation for the accessibility changes, but does not confirm
+their publication or remove the outstanding production release gates.
