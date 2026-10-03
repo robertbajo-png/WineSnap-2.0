@@ -19,9 +19,12 @@ type WineLike = {
   source?: "manual" | "cellar" | "ai" | "restaurant" | "social";
 };
 
+const pendingSaves = new Map<string, Promise<boolean>>();
+
 /**
  * Insert a wine into the user's wishlist. If a wine_id is provided and already
- * exists in the wishlist, the row is left as-is (idempotent).
+ * exists in the wishlist, the row is left as-is. AI suggestions are checked by
+ * producer, name and vintage. Concurrent calls in this client share one request.
  */
 export async function addToWishlist(input: WineLike): Promise<boolean> {
   const { data: userData } = await supabase.auth.getUser();
@@ -30,13 +33,35 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
     toast.error("Sign in to save to wishlist");
     return false;
   }
+  const key = JSON.stringify([
+    user.id,
+    input.id ?? null,
+    input.producer ?? null,
+    input.wine_name ?? "Untitled",
+    input.vintage ?? null,
+  ]);
+  const pending = pendingSaves.get(key);
+  if (pending) {
+    await pending;
+    return false;
+  }
+  const request = insertWishlistWine(input, user.id);
+  pendingSaves.set(key, request);
+  try {
+    return await request;
+  } finally {
+    pendingSaves.delete(key);
+  }
+}
+
+async function insertWishlistWine(input: WineLike, userId: string): Promise<boolean> {
   const vintage =
     typeof input.vintage === "string"
       ? Number.parseInt(input.vintage, 10) || null
       : (input.vintage ?? null);
 
   const row = {
-    user_id: user.id,
+    user_id: userId,
     wine_id: input.id ?? null,
     producer: input.producer ?? null,
     wine_name: input.wine_name ?? "Untitled",
@@ -51,6 +76,26 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
     source: input.source ?? "manual",
     ai_data: (input.ai_data ?? null) as never,
   };
+
+  if (!row.wine_id) {
+    let query = supabase
+      .from("wishlist")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("wine_name", row.wine_name)
+      .limit(1);
+    query = row.producer === null ? query.is("producer", null) : query.eq("producer", row.producer);
+    query = row.vintage === null ? query.is("vintage", null) : query.eq("vintage", row.vintage);
+    const { data: existing, error: lookupError } = await query;
+    if (lookupError) {
+      toast.error("Could not check your wishlist. Please try again.");
+      return false;
+    }
+    if (existing?.length) {
+      toast.info("Already in your wishlist");
+      return false;
+    }
+  }
 
   const { data: inserted, error } = await supabase
     .from("wishlist")

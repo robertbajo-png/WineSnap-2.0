@@ -1,5 +1,5 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "v1";
+const VERSION = "2026-10-03";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -15,7 +15,9 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k !== ASSET_CACHE && k !== PAGE_CACHE).map((k) => caches.delete(k)),
+          keys
+            .filter((k) => k.startsWith("winesnap-") && k !== ASSET_CACHE && k !== PAGE_CACHE)
+            .map((k) => caches.delete(k)),
         ),
       ),
   );

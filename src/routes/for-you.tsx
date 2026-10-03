@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bookmark, Loader2, RefreshCw, Sparkles, ThumbsDown, ThumbsUp, Wine } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/recommendationEvents";
 import { addToWishlist } from "@/lib/wishlist";
 import { cn } from "@/lib/utils";
+import { askErrorKey } from "@/lib/askWineSnap";
 
 export const Route = createFileRoute("/for-you")({
   head: () => ({
@@ -53,6 +54,8 @@ function ForYouPage() {
   const t = useT();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [feedback, setFeedback] = useState<FeedbackState>({});
+  const savingKeys = useRef(new Set<string>());
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<number | null>(null);
@@ -61,6 +64,7 @@ function ForYouPage() {
 
   useEffect(() => {
     setSuggestions([]);
+    setSavedKeys(new Set());
     setGeneratedAt(null);
     setColdStart(false);
     if (!cacheKey) return;
@@ -100,7 +104,8 @@ function ForYouPage() {
         JSON.stringify({ suggestions: list, generatedAt: timestamp, coldStart: isColdStart }),
       );
     } catch (generateError) {
-      setError(generateError instanceof Error ? generateError.message : t("common.error"));
+      const key = askErrorKey(generateError);
+      setError(t(key === "ask.error.generic" ? "common.error" : key));
     } finally {
       setBusy(false);
     }
@@ -123,21 +128,29 @@ function ForYouPage() {
   };
 
   const saveSuggestion = async (suggestion: Suggestion) => {
-    const saved = await addToWishlist({
-      producer: suggestion.producer,
-      wine_name: suggestion.wine_name,
-      vintage: suggestion.vintage,
-      region: suggestion.region,
-      country: suggestion.country,
-      wine_type: suggestion.wine_type,
-      grape_varieties: suggestion.grape_varieties,
-      source: "ai",
-      ai_data: suggestion as never,
-    });
-    if (saved) {
-      await recordRecommendationEvent("save", "for_you", suggestion, {
-        match_score: suggestion.match_score,
+    const key = recommendationKey(suggestion);
+    if (savingKeys.current.has(key) || savedKeys.has(key)) return;
+    savingKeys.current.add(key);
+    try {
+      const saved = await addToWishlist({
+        producer: suggestion.producer,
+        wine_name: suggestion.wine_name,
+        vintage: suggestion.vintage,
+        region: suggestion.region,
+        country: suggestion.country,
+        wine_type: suggestion.wine_type,
+        grape_varieties: suggestion.grape_varieties,
+        source: "ai",
+        ai_data: suggestion as never,
       });
+      if (saved) {
+        setSavedKeys((current) => new Set([...current, key]));
+        await recordRecommendationEvent("save", "for_you", suggestion, {
+          match_score: suggestion.match_score,
+        });
+      }
+    } finally {
+      savingKeys.current.delete(key);
     }
   };
 
@@ -278,9 +291,11 @@ function ForYouPage() {
                     </div>
                     <button
                       onClick={() => saveSuggestion(suggestion)}
+                      disabled={savedKeys.has(key)}
                       className="flex h-8 items-center gap-1.5 rounded-md border border-gold/30 bg-background/40 px-2.5 text-[11px] text-gold hover:bg-background/70"
                     >
-                      <Bookmark className="h-3.5 w-3.5" /> {t("wishlist.saveBtn")}
+                      <Bookmark className="h-3.5 w-3.5" />{" "}
+                      {t(savedKeys.has(key) ? "common.saved" : "wishlist.saveBtn")}
                     </button>
                   </div>
                 </article>

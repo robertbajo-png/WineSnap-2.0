@@ -162,3 +162,20 @@ Frontend failures are translated instead of exposing raw function errors.
 The October 2 signing policy was verified and recorded in WineSnap-test.
 Frontend publication, the final production signing policy and authenticated
 restaurant retest remain pending; these observations are not a release signoff.
+
+The authenticated recommendation request returned eight ranked wines. A repeated
+save revealed missing duplicate protection for suggestions without a cellar ID;
+the two test wishlist entries were not deleted. The client now checks existing
+producer/name/vintage, coalesces concurrent saves and disables successful saves.
+This is not a database uniqueness guarantee for simultaneous independent clients.
+The release service-worker cache version is `2026-10-03`; activation only removes
+WineSnap caches and registration also handles hydration after the load event.
+
+Restaurant fix `7414919` was pushed to main and passed GitHub Quality runs
+37087362475 and 37087362476. The subsequent deploy instruction could not be
+confirmed: browser control timed out, then Chrome disconnected entirely.
+No successful restaurant redeployment or frontend publication is claimed.
+Resume with the latest main, deploy restaurant-match, repeat the authenticated
+menu test, publish the frontend, then apply the October 2 signing policy and
+verify the published app. Do not apply the signing policy ahead of the frontend.
+Temporary hosted-test credentials were removed from the local filesystem.

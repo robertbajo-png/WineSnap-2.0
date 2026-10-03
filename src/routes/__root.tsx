@@ -117,7 +117,8 @@ function RootComponent() {
           /* service worker is a progressive enhancement */
         });
     };
-    window.addEventListener("load", register);
+    if (document.readyState === "complete") register();
+    else window.addEventListener("load", register, { once: true });
     return () => window.removeEventListener("load", register);
   }, []);
 
