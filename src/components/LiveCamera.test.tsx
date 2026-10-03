@@ -5,6 +5,13 @@ import { LiveCamera } from "./LiveCamera";
 vi.mock("@/i18n", () => ({ useT: () => (key: string) => key }));
 
 describe("live camera view", () => {
+  it("clips the live feed to the same inset as the corner guides without stretching", () => {
+    const html = renderToStaticMarkup(<LiveCamera onCapture={vi.fn()} onGallery={vi.fn()} />);
+    expect(html).toContain('class="absolute inset-8 overflow-hidden rounded-2xl"><video');
+    expect(html).toContain("object-cover object-center");
+    expect(html).not.toContain("object-contain");
+  });
+
   it("preserves the original four corner guides, hint and shutter styling", () => {
     const html = renderToStaticMarkup(<LiveCamera onCapture={vi.fn()} onGallery={vi.fn()} />);
     for (const corner of ["rounded-tl-2xl", "rounded-tr-2xl", "rounded-bl-2xl", "rounded-br-2xl"]) {

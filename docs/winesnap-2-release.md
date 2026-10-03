@@ -641,3 +641,13 @@ mobile camera test.
 Verification for the layout restoration: typecheck and lint passed, all 126
 tests in 28 files passed after correcting a test that mistook a CSS disabled
 variant for the actual disabled attribute, and production build exited 0.
+
+### Match camera preview to the guide frame, 2026-10-03
+
+The live video now sits inside the same 32px inset as the four existing corner
+guides. Centered object-cover fills this frame without stretching; overflow is
+clipped to its rounded corners. Capture uses the matching centered source crop
+based on the displayed video's dimensions, so unseen sensor edges are not sent
+to the crop/review flow. Portrait and landscape crop tests, hidden-frame
+rejection and a rendering regression test cover this change. All 16 focused
+camera tests pass; physical-device preview alignment has not been verified.

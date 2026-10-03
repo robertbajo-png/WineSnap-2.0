@@ -98,16 +98,18 @@ export function LiveCamera({
           aria-hidden
           className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,oklch(0.22_0.02_30)_0%,oklch(0.08_0.005_30)_70%)]"
         />
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          aria-label={t("scan.cameraPreview")}
-          onLoadedData={() => setReady(true)}
-          onPlaying={() => setReady(true)}
-          className={`absolute inset-0 h-full w-full object-contain ${ready && !error ? "" : "invisible"}`}
-        />
+        <div className="absolute inset-8 overflow-hidden rounded-2xl">
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            aria-label={t("scan.cameraPreview")}
+            onLoadedData={() => setReady(true)}
+            onPlaying={() => setReady(true)}
+            className={`h-full w-full object-cover object-center ${ready && !error ? "" : "invisible"}`}
+          />
+        </div>
         {analyzing ? (
           <div className="absolute inset-0 flex items-center justify-center" role="status">
             <div className="flex flex-col items-center gap-3 text-gold">

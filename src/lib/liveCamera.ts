@@ -37,16 +37,38 @@ export function requestCamera(
 }
 
 export async function captureCamera(video: HTMLVideoElement): Promise<File> {
-  if (!video.videoWidth || !video.videoHeight || video.readyState < 2) {
+  if (
+    !video.videoWidth ||
+    !video.videoHeight ||
+    !video.clientWidth ||
+    !video.clientHeight ||
+    video.readyState < 2
+  ) {
     throw new Error("Camera frame is not ready");
   }
   const canvas = document.createElement("canvas");
-  const scale = Math.min(1, 2048 / Math.max(video.videoWidth, video.videoHeight));
-  canvas.width = Math.round(video.videoWidth * scale);
-  canvas.height = Math.round(video.videoHeight * scale);
+  // Match the centered object-cover preview, not the unseen camera edges.
+  const frameRatio = video.clientWidth / video.clientHeight;
+  const sourceWidth = Math.min(video.videoWidth, video.videoHeight * frameRatio);
+  const sourceHeight = Math.min(video.videoHeight, video.videoWidth / frameRatio);
+  const sourceX = (video.videoWidth - sourceWidth) / 2;
+  const sourceY = (video.videoHeight - sourceHeight) / 2;
+  const scale = Math.min(1, 2048 / Math.max(sourceWidth, sourceHeight));
+  canvas.width = Math.round(sourceWidth * scale);
+  canvas.height = Math.round(sourceHeight * scale);
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Camera capture is unavailable");
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  context.drawImage(
+    video,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (result) => (result ? resolve(result) : reject(new Error("Camera capture failed"))),
