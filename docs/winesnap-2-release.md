@@ -179,3 +179,32 @@ Resume with the latest main, deploy restaurant-match, repeat the authenticated
 menu test, publish the frontend, then apply the October 2 signing policy and
 verify the published app. Do not apply the signing policy ahead of the frontend.
 Temporary hosted-test credentials were removed from the local filesystem.
+
+### Authenticated restaurant retest, 2026-10-03
+
+The deployment instruction for `restaurant-match` and preview commit `6d632e3`
+was accepted by Lovable. Its final deployment/build reply could not be read
+because editor tabs repeatedly lost their browser debugging connection. No
+specific deployed function version or frontend commit is inferred from this.
+
+The actual authenticated WineSnap preview restaurant flow now succeeds with
+the same three-wine menu that previously failed. For grilled salmon and a
+650 SEK budget, Louis Jadot Bourgogne Pinot Noir (2022, 590 SEK) ranked first
+at 75%, followed by Zehn Morgen Chardonnay & Weisser Burgunder (2023, 490 SEK)
+at 59%. Vietti Barolo Castiglione (2021, 990 SEK) appeared last, explicitly
+marked over budget and weak for the dish. All names, vintages and prices
+matched the supplied menu. These are application estimates, not independently
+validated sensory ratings.
+
+The scan named `Releasekontroll` appeared in history, survived a page reload
+and reopened with the same three results and input values. No preference
+feedback, wishlist save or deletion was performed in this retest. Captured
+browser warning/error logs were empty. Screenshot evidence is stored outside
+Git as `WineSnap-restaurant-release-20261003.png` in the parent workspace.
+
+Both GitHub Quality runs for `6d632e3` (37088164292 and 37088164478) completed
+successfully. Remaining release gates are confirmation of the latest preview
+build, wishlist duplicate-guard UI verification, responsive checks, frontend
+publication, the production October 2 signing policy after publication, and
+authenticated checks on the published origin. Do not report release completion
+or apply the signing policy before the compatible frontend is published.
