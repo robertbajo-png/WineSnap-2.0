@@ -208,3 +208,25 @@ build, wishlist duplicate-guard UI verification, responsive checks, frontend
 publication, the production October 2 signing policy after publication, and
 authenticated checks on the published origin. Do not report release completion
 or apply the signing policy before the compatible frontend is published.
+
+### Published frontend verification, 2026-10-03
+
+The user published the frontend in Lovable. The public origin
+`https://wine-scene-snap.lovable.app/sw.js` returned HTTP 200 with JavaScript
+and cache version `2026-10-03`, replacing the previously observed `v1`.
+This confirms the updated service worker is served, not an exact frontend
+commit identifier or successful activation in every existing client.
+
+In an authenticated browser session on the published origin, the cellar
+contained all 9 wines and all 9 image elements loaded successfully from blob
+URLs. The production restaurant history displayed the saved `Releasekontroll`
+scan with three choices and the 75% Bourgogne Pinot Noir recommendation.
+Captured browser warning/error logs were empty. Evidence is stored outside
+Git as `WineSnap-published-history-20261003.png` in the parent workspace.
+
+The compatible download-based frontend is now demonstrably live. The October 2
+production signing policy remains unverified and was not applied in this pass:
+Lovable's editor still failed to expose usable project controls. Wishlist UI
+duplicate protection, responsive checks, post-policy image/share verification
+and remaining authenticated release checks are still outstanding. Publication
+alone is not the final release signoff.
