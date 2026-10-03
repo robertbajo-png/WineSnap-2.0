@@ -302,3 +302,23 @@ The published duplicate-save regression is therefore not yet verified. Nor
 does successful owner image display prove owner-signing denial or anonymous
 shared-image access; those remain separate production checks. The exact latest
 frontend commit was not independently identified in this pass.
+
+### Published wishlist duplicate regression, 2026-10-03
+
+The authenticated published wishlist contained five entries before the test.
+Saving the existing recommendation `Grant Burge - Hillcot Merlot 2021`
+succeeded; its button displayed `Sparat` and was disabled. After a full page
+reload, the same recommendation was saved again through the normal UI.
+The wishlist then contained six entries in total and exactly one Grant Burge
+entry. This verifies the published sequential duplicate guard across reloads,
+not simultaneous independent-device uniqueness or the mixed-type vintage
+case covered by unit tests. No preference feedback or deletions were performed.
+The single new test wishlist entry remains; the five prior entries are intact.
+Evidence is stored outside Git as `WineSnap-wishlist-regression-20261003.png`.
+
+A preliminary local review found that social-discovery SECURITY DEFINER
+functions are intentionally granted to authenticated users, reject a null
+`auth.uid()` and filter discoveries to public profiles. This does not resolve
+the complete production linter report: exact live definitions and privileges
+still need checking. Browser access to Lovable failed before the remaining
+production signing/shared-image and linter checks could be completed.
