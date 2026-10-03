@@ -103,11 +103,7 @@ function ForgotPasswordPage() {
                 {error}
               </p>
             )}
-            <Button
-              type="submit"
-              disabled={busy}
-              className="h-11 w-full bg-gradient-gold text-background"
-            >
+            <Button type="submit" disabled={busy} className="h-11 w-full">
               {busy ? t("login.wait") : t("reset.sendLink")}
             </Button>
           </form>

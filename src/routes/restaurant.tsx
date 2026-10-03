@@ -295,7 +295,7 @@ function RestaurantPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-5 pb-24 pt-6">
+    <div className="mx-auto min-h-screen w-full max-w-md bg-background px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:max-w-[720px]">
       <header className="flex items-center justify-between">
         <button
           onClick={() => navigate({ to: "/" })}
@@ -306,7 +306,7 @@ function RestaurantPage() {
         </button>
         <div className="text-center">
           <h1 className="font-display text-2xl text-gold">{t("restaurant.title")}</h1>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{t("restaurant.subtitle")}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("restaurant.subtitle")}</p>
         </div>
         <button
           onClick={() => setShowHistory((current) => !current)}
@@ -339,7 +339,7 @@ function RestaurantPage() {
       ) : (
         <main>
           <section className="mt-5 border-y border-white/8 py-4">
-            <label className="block text-[11px] uppercase text-muted-foreground">
+            <label className="block text-xs uppercase text-muted-foreground">
               {t("restaurant.name")}
               <input
                 value={restaurantName}
@@ -350,7 +350,7 @@ function RestaurantPage() {
             </label>
 
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <label className="block text-[11px] uppercase text-muted-foreground">
+              <label className="block text-xs uppercase text-muted-foreground">
                 {t("restaurant.dish")}
                 <div className="relative mt-1.5">
                   <Utensils className="absolute left-3 top-2.5 h-4 w-4 text-gold" />
@@ -362,7 +362,7 @@ function RestaurantPage() {
                   />
                 </div>
               </label>
-              <label className="block text-[11px] uppercase text-muted-foreground">
+              <label className="block text-xs uppercase text-muted-foreground">
                 {t("restaurant.maxPrice")}
                 <input
                   type="number"
@@ -377,7 +377,7 @@ function RestaurantPage() {
             </div>
 
             <fieldset className="mt-4">
-              <legend className="text-[11px] uppercase text-muted-foreground">
+              <legend className="text-xs uppercase text-muted-foreground">
                 {t("restaurant.style")}
               </legend>
               <div className="mt-1.5 grid grid-cols-3 rounded-md border border-white/10 bg-card/40 p-1">
@@ -442,7 +442,7 @@ function RestaurantPage() {
                 placeholder={t("restaurant.textPh")}
                 className="min-h-[180px] resize-none border-white/10 bg-card/50 text-sm"
               />
-              <p id="restaurant-menu-hint" className="mt-2 text-[11px] text-muted-foreground">
+              <p id="restaurant-menu-hint" className="mt-2 text-xs text-muted-foreground">
                 {t("restaurant.textHint")}
               </p>
             </div>

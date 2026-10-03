@@ -41,9 +41,9 @@ function HomePage() {
   ] as const;
   return (
     <AppShell>
-      <div className="-mx-5 -mt-6 flex min-h-[calc(100vh-7rem)] flex-col">
+      <div className="-mx-5 -mt-6 flex flex-col">
         {/* Hero image with overlay */}
-        <div className="relative h-[58vh] min-h-[420px] w-full overflow-hidden">
+        <div className="relative h-[38svh] min-h-[280px] max-h-[360px] w-full overflow-hidden">
           <img
             src={heroBottle}
             alt="Bordeaux wine bottle and glass in a dark cellar"
@@ -53,47 +53,34 @@ function HomePage() {
 
           {/* Brand */}
           <div className="absolute inset-x-0 top-0 flex justify-center pt-6">
-            <h1 className="font-display text-2xl text-gold">WineSnap</h1>
+            <h1 className="font-display text-3xl text-gold">WineSnap</h1>
           </div>
 
           {/* Hero copy */}
           <div className="absolute inset-x-0 bottom-6 px-6 text-center">
-            <h2 className="font-display text-[34px] leading-tight text-cream">{t("home.title")}</h2>
+            <h2 className="font-display text-[28px] leading-tight text-cream">{t("home.title")}</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/75">
               {t("home.subtitle")}
             </p>
           </div>
         </div>
 
-        {/* Feature cards */}
-        <div className="px-5 pt-5">
-          <div className="grid grid-cols-3 gap-2.5">
+        <div className="px-5 pt-4">
+          <ul className="grid grid-cols-3 gap-3 border-y border-white/10 py-4">
             {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="flex flex-col items-center rounded-2xl border border-white/10 bg-card/50 p-3 text-center"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-gold/40 bg-background/60">
+              <li key={title} className="flex min-w-0 flex-col items-center text-center">
+                <div className="flex h-8 w-8 items-center justify-center">
                   <Icon className="h-5 w-5 text-gold" strokeWidth={1.6} />
                 </div>
-                <p className="mt-2 font-display text-[13px] leading-tight text-cream">{title}</p>
-                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{desc}</p>
-              </div>
+                <p className="mt-1 text-xs font-medium leading-snug text-cream">{title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
+              </li>
             ))}
-          </div>
-
-          {/* CTA */}
-
-          <Link
-            to="/scan"
-            className="mt-5 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-lg text-cream shadow-elegant ring-1 ring-burgundy/40"
-          >
-            {t("home.cta.start")}
-          </Link>
+          </ul>
 
           <Link
             to="/restaurant"
-            className="mt-3 flex h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-card/40 font-display text-sm text-gold"
+            className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-gold/40 bg-card/40 px-4 py-3 text-sm font-medium text-gold transition-colors hover:bg-card"
           >
             <UtensilsCrossed className="h-4 w-4" />
             {t("home.cta.restaurant")}

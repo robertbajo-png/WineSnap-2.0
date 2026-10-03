@@ -107,14 +107,11 @@ export function AromaRows({
           )}
           <AromaIcon name={aroma.name} size={48} />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-base leading-tight text-cream">{aroma.name}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
-            {readOnly && aroma.intensity != null && (
-              <p className="mt-1 text-xs text-gold">{aroma.intensity}/5</p>
-            )}
+            <p className="font-display text-lg leading-tight text-cream">{aroma.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
             {!readOnly && (
               <div className="mt-2">
-                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                   <span>{t("notes.weak")}</span>
                   <span>
                     {aroma.intensity == null ? t("notes.notSet") : `${aroma.intensity}/5`}
@@ -146,6 +143,15 @@ export function AromaRows({
               </div>
             )}
           </div>
+          {readOnly && aroma.intensity != null && (
+            <span
+              aria-label={`${t("notes.intensityFor").replace("{name}", aroma.name)}: ${aroma.intensity}/5`}
+              className="shrink-0 text-sm font-medium tabular-nums text-gold"
+            >
+              {aroma.intensity}
+              <span className="text-xs text-muted-foreground">/5</span>
+            </span>
+          )}
         </li>
       ))}
     </ul>

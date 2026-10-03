@@ -12,7 +12,7 @@ export function AppShell({
   const t = useT();
   return (
     <div
-      className="relative min-h-screen overflow-x-clip bg-background pb-28 text-foreground"
+      className="relative min-h-screen overflow-x-clip bg-background pb-[calc(7rem+env(safe-area-inset-bottom))] text-foreground"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <a
@@ -28,7 +28,7 @@ export function AppShell({
       <main
         id="winesnap-content"
         tabIndex={-1}
-        className="relative z-10 mx-auto w-full max-w-md px-5 pt-6"
+        className={`relative z-10 mx-auto w-full max-w-md px-5 pt-6 ${hideNav ? "" : "md:max-w-[720px]"}`}
       >
         {children}
       </main>

@@ -102,11 +102,7 @@ function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button
-            type="submit"
-            disabled={busy}
-            className="h-11 w-full bg-gradient-gold text-background"
-          >
+          <Button type="submit" disabled={busy} className="h-11 w-full">
             {busy
               ? t("login.wait")
               : mode === "signin"

@@ -564,3 +564,37 @@ unanswered at this point. No migration or new auth session was created. The
 pg_net platform-owner follow-up remains unresolved as described above. This
 section records verified code completion and concrete external/approval
 blockers, not a completed universal release signoff.
+
+### Design refinements approved and implemented, 2026-10-03
+
+The user approved all six design refinements and removing the redundant home
+Start scanning button. Scanning remains available through the labelled camera
+link in bottom navigation; the restaurant action remains on the home page.
+The hero is compact, feature descriptions use an unframed band, navigation is
+more readable and content clears its safe-area footprint. Shared app content
+widens to 720px on desktop; authentication forms retain their compact width.
+
+Primary Button controls now use burgundy with cream text; login and recovery
+no longer override this with a gold gradient. Gold remains an accent. Muted
+text and field borders are clearer, with larger supporting text in the main
+reviewed views. Read-only personal aroma intensities sit to the right; editable
+controls remain intact and AI aromas without intensity do not invent values.
+No backend, permissions, role or stored-data changes were made.
+
+The complete final local check passed: typecheck, lint, 114 tests in 26 files
+and production build, exit 0. New tests cover the single home scanning entry
+and read-only/editable aroma semantics. The home test reads source; the aroma
+tests server-render real components, not authenticated browser workflows.
+
+The real local app at http://127.0.0.1:5174/ was visually checked at 1440x900,
+390x844 and 320x640. No horizontal overflow was observed. Home has one scan
+link and its restaurant action clears navigation, including on the small phone
+(action bottom about 532px; nav top about 563px). Hero imagery loads. Clicking
+the camera correctly reaches the existing login requirement for a signed-out
+visitor. The updated burgundy login button was also visually inspected.
+
+Screenshots outside Git: WineSnap-design-mobile-20261003.jpg and
+WineSnap-design-desktop-20261003.jpg. The local development server is left
+running for review. Authenticated aroma/cellar views were not visually tested
+with a new session; no session was created. This design change has not been
+published through Lovable in this turn and is not a new production signoff.

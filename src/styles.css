@@ -62,7 +62,7 @@
 }
 
 :root {
-  --radius: 0.875rem;
+  --radius: 0.5rem;
 
   /* Mörk lyx — djupt svart med varm underton */
   --background: oklch(0.13 0.008 30);
@@ -82,7 +82,7 @@
   --secondary-foreground: oklch(0.92 0.012 75);
 
   --muted: oklch(0.2 0.012 30);
-  --muted-foreground: oklch(0.62 0.015 60);
+  --muted-foreground: oklch(0.7 0.015 60);
 
   --accent: oklch(0.26 0.02 30);
   --accent-foreground: oklch(0.96 0.012 75);
@@ -90,8 +90,8 @@
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.26 0.012 30);
-  --input: oklch(0.22 0.015 30);
+  --border: oklch(0.3 0.012 30);
+  --input: oklch(0.3 0.015 30);
   --ring: oklch(0.74 0.13 65);
 
   /* WineSnap-specifika tokens */

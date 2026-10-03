@@ -123,7 +123,7 @@ function ResetPasswordPage() {
         {state === "invalid" && (
           <div className="mt-3 space-y-4">
             <p className="text-sm text-muted-foreground">{t("reset.invalidLink")}</p>
-            <Button asChild className="h-11 w-full bg-gradient-gold text-background">
+            <Button asChild className="h-11 w-full">
               <Link to="/forgot-password">{t("reset.requestNew")}</Link>
             </Button>
             <Link
@@ -174,11 +174,7 @@ function ResetPasswordPage() {
                   {error}
                 </p>
               )}
-              <Button
-                type="submit"
-                disabled={busy}
-                className="h-11 w-full bg-gradient-gold text-background"
-              >
+              <Button type="submit" disabled={busy} className="h-11 w-full">
                 {busy ? t("login.wait") : t("reset.savePassword")}
               </Button>
             </form>

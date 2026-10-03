@@ -226,7 +226,7 @@ function CellarPage() {
                   <Link
                     to="/wine/$id"
                     params={{ id: w.id }}
-                    className="flex items-center gap-3 rounded-xl border border-white/8 bg-card/50 p-3 transition-colors hover:bg-card/70"
+                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-card/50 p-3 transition-colors hover:bg-card/70"
                   >
                     <div className="flex h-[72px] w-[54px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
                       {w.image_url ? (
@@ -240,15 +240,15 @@ function CellarPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-display text-base leading-tight text-cream">
+                      <p className="truncate font-display text-lg leading-tight text-cream">
                         {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
                       </p>
                       <p className="truncate text-xs text-gold">
                         {[w.region, w.country].filter(Boolean).join(", ")}
                       </p>
-                      <div className="mt-1 flex items-center gap-2 text-[11px]">
+                      <div className="mt-1 flex items-center gap-2 text-xs">
                         {w.vintage && (
-                          <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] tracking-wider text-muted-foreground">
+                          <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-xs text-muted-foreground">
                             {w.vintage}
                           </span>
                         )}
