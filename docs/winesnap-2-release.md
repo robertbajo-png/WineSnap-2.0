@@ -345,3 +345,71 @@ local targeted lint also passed after normalizing working-copy line endings;
 that normalization produces no tracked diff. This supersedes the preceding
 test-evidence limitation for the accessibility changes, but does not confirm
 their publication or remove the outstanding production release gates.
+
+### Live privilege review and anonymous Storage HTTP tests, 2026-10-03
+
+Lovable's completed read-only production review was read in its project UI.
+The signing policy remains restrictive and the bucket private. Its linter
+returned types/counts, not per-object identifiers; the following object mapping
+is inferred from live definitions and grants, not exact linter object output:
+
+- RLS-without-policy on `ai_rate_limits`: intentional client denial.
+- Anonymous SECURITY DEFINER access to `is_public_wine_photo(text)`:
+  intentional boolean-only shared-photo helper.
+- Authenticated SECURITY DEFINER access to that helper and the three social
+  discovery functions: intentional, with authenticated identity checks,
+  public-only discovery and bounded results.
+- Extension-in-public: live `pg_net` 0.20.0, not evidence that moving the
+  historical UUID extension would resolve this particular finding.
+
+Live schema checks report no CREATE privilege on `public` for the client roles.
+Sensitive AI/memory/trigger functions are not executable by PUBLIC, anon or
+authenticated. This does not justify dismissing the extension finding: the
+follow-up found platform-owned `net` functions, tables and queue sequence with
+PUBLIC privileges. Queue/response contents were not read or printed.
+
+Actual anonymous production HTTP tests used one already-public shared image
+(four shared photos were available), without creating or sharing anything:
+
+- Download with cache nonce: HTTP 200, image/jpeg, 40,222 bytes.
+- Public bucket URL: HTTP 400, consistent with a private bucket.
+- Single signing and image-resize signing: HTTP 400, object not found.
+- Batch signing: HTTP 200 envelope, but item-level access error and null
+  signedURL. This is a denied signing request, not a successful bearer URL.
+
+These results verify anonymous shared download and signing denial. They do
+not prove authenticated-owner signing denial. No JWTs, keys or image paths
+are included in this report.
+
+### Platform-owned pg_net follow-up and remaining signoff, 2026-10-03
+
+The follow-up reports 12 pg_net-owned SECURITY INVOKER functions owned by
+`supabase_admin`, with default PUBLIC EXECUTE. The `net` queue/response tables
+and queue sequence also have PUBLIC privileges. The sole active price-check
+job runs as `postgres`; removing inherited rights without preserving explicit
+schema/function/table/sequence rights would break the job. No application
+wrapper calling `net.*` was found.
+
+Actual anonymous REST requests for both net tables returned HTTP 406 PGRST106:
+only `public` and `graphql_public` are exposed. This limits observed exposure,
+but is not a GraphQL test or a complete proof of isolation. The migration role
+is neither superuser nor a member of the platform owner. No ineffective REVOKE,
+extension removal, cron modification or security weakening was attempted.
+Owner-level privilege hardening needs platform support, or an explicitly
+reviewed risk decision; it is not recorded as fixed.
+
+Publishing main `19326f1` was approved with `Publish once`, not persistent
+approval. The updated Wine list label was observed in the published restaurant
+SSR view before the unauthenticated client redirected to login. This is live
+evidence of the label fix, not an exact deployed commit identifier or a
+completed authenticated accessibility check. Lovable confirmed the source
+revision and no source/data changes, but did not supply a definitive completed
+deployment revision.
+
+A subsequent request to verify GraphQL exposure, publication completion and
+whether an existing owner session was usable remained in the chat input;
+connection failures prevented confirmed submission. Do not treat those checks
+as dispatched or passed. Authenticated-owner signing, existing-client SW
+activation and the remaining keyboard/screen-reader/contrast review are still
+open. Final release signoff remains withheld. No production migration or
+user-data changes were made in this review.
