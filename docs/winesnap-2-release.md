@@ -322,3 +322,19 @@ functions are intentionally granted to authenticated users, reject a null
 the complete production linter report: exact live definitions and privileges
 still need checking. Browser access to Lovable failed before the remaining
 production signing/shared-image and linter checks could be completed.
+
+### Final-pass accessibility fixes and remaining gates, 2026-10-03
+
+The scan-description label now targets its textarea and its hint is connected
+with `aria-describedby`. The restaurant menu textarea now has an explicit,
+localized accessible name (Wine list / Vinlista) and a connected hint. These
+are focused source fixes, not a completed keyboard, screen-reader or contrast
+audit, and require frontend publication before they can be verified live.
+
+The release signoff is still withheld. A fresh Lovable project tab displayed
+`Reconnecting` and subsequent read attempts failed. No new production SQL,
+permission changes or signing requests were executed in this pass. The exact
+seven live database-linter findings, authenticated signing denial, anonymous
+access to intentionally shared images and existing-client service-worker
+activation remain unverified. The earlier 106-test CI pass remains evidence
+for the previous application revision, not for these new accessibility edits.

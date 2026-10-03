@@ -461,17 +461,22 @@ function ScanPage() {
       ) : (
         <div className="flex flex-1 flex-col px-5 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
           <div className="flex flex-1 flex-col">
-            <label className="mb-2 text-xs uppercase tracking-wider text-cream/60">
+            <label
+              htmlFor="scan-description"
+              className="mb-2 text-xs uppercase tracking-wider text-cream/60"
+            >
               Wine description
             </label>
             <Textarea
+              id="scan-description"
+              aria-describedby="scan-description-hint"
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={stage === "analyzing"}
               placeholder="e.g. Château Margaux 2015, or 'a bold Italian red from Tuscany with cherry and leather notes'"
               className="min-h-[180px] resize-none border-white/10 bg-white/5 text-base text-cream placeholder:text-cream/40 focus-visible:ring-gold/40"
             />
-            <p className="mt-2 text-xs text-cream/50">
+            <p id="scan-description-hint" className="mt-2 text-xs text-cream/50">
               Producer, vintage, region, grape — anything you know helps.
             </p>
           </div>

@@ -475,6 +475,7 @@ const en = {
   "restaurant.mode.balanced": "Balanced",
   "restaurant.mode.adventurous": "Explore",
   "restaurant.type": "Paste list",
+  "restaurant.menuLabel": "Wine list",
   "restaurant.snap": "Snap menu",
   "restaurant.textPh":
     "Paste the wine list here — one wine per line if possible. E.g.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",
@@ -1057,6 +1058,7 @@ const sv: Record<keyof typeof en, string> = {
   "restaurant.mode.balanced": "Balanserat",
   "restaurant.mode.adventurous": "Utforska",
   "restaurant.type": "Klistra in",
+  "restaurant.menuLabel": "Vinlista",
   "restaurant.snap": "Fota meny",
   "restaurant.textPh":
     "Klistra in vinlistan här — helst ett vin per rad. T.ex.\n2019 Barolo, Vietti\nSancerre Blanc, Domaine Vacheron 2021\nChâteau Talbot 2015",

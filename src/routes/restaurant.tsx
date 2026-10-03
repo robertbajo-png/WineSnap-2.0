@@ -428,7 +428,12 @@ function RestaurantPage() {
 
           {inputMode === "text" ? (
             <div className="mt-4">
+              <label htmlFor="restaurant-menu" className="sr-only">
+                {t("restaurant.menuLabel")}
+              </label>
               <Textarea
+                id="restaurant-menu"
+                aria-describedby="restaurant-menu-hint"
                 value={text}
                 onChange={(event) => {
                   setText(event.target.value);
@@ -437,7 +442,9 @@ function RestaurantPage() {
                 placeholder={t("restaurant.textPh")}
                 className="min-h-[180px] resize-none border-white/10 bg-card/50 text-sm"
               />
-              <p className="mt-2 text-[11px] text-muted-foreground">{t("restaurant.textHint")}</p>
+              <p id="restaurant-menu-hint" className="mt-2 text-[11px] text-muted-foreground">
+                {t("restaurant.textHint")}
+              </p>
             </div>
           ) : (
             <div className="mt-4">
