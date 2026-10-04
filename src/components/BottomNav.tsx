@@ -18,8 +18,8 @@ export function BottomNav() {
 
   return (
     <nav aria-label="WineSnap" className="fixed bottom-0 left-0 right-0 z-40">
-      <div className="border-t border-white/10 bg-background/90 shadow-elegant backdrop-blur-xl">
-        <ul className="mx-auto grid max-w-md grid-cols-5 items-end px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 md:max-w-[720px]">
+      <div className="h-[var(--bottom-nav-height)] border-t border-white/10 bg-background/90 shadow-elegant backdrop-blur-xl">
+        <ul className="mx-auto grid h-full max-w-md grid-cols-5 items-end px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 md:max-w-[720px]">
           {left.map((it) => (
             <NavItem key={it.to} {...it} active={pathname === it.to} />
           ))}
@@ -64,12 +64,12 @@ function NavItem({
         to={to}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex min-h-11 flex-col items-center justify-center gap-1 px-2 py-1.5 transition-colors",
+          "flex min-h-12 min-w-11 flex-col items-center justify-center gap-1 px-1 py-1 transition-colors",
           active ? "text-gold" : "text-muted-foreground hover:text-foreground",
         )}
       >
         <Icon className="h-5 w-5" strokeWidth={1.8} />
-        <span className="text-xs font-medium">{label}</span>
+        <span className="text-[13px] font-medium leading-tight">{label}</span>
       </Link>
     </li>
   );

@@ -12,7 +12,7 @@ export function AppShell({
   const t = useT();
   return (
     <div
-      className="relative min-h-screen overflow-x-clip bg-background pb-[calc(7rem+env(safe-area-inset-bottom))] text-foreground"
+      className="relative min-h-screen overflow-x-clip bg-background pb-[calc(var(--bottom-nav-height)+1rem)] text-foreground"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <a
