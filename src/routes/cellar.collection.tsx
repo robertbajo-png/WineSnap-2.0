@@ -16,6 +16,10 @@ import {
   type CollectorLot,
 } from "@/lib/collectorLots";
 
+// collector_lots is not yet in the generated Database types (table pending in prod).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const collectorLots = () => (supabase as any).from("collector_lots");
+
 export const Route = createFileRoute("/cellar/collection")({
   head: () => ({ meta: [{ title: "Collector Cellar - WineSnap" }] }),
   component: CollectorPage,
