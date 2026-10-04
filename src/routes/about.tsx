@@ -20,9 +20,9 @@ function AboutPage() {
     <AppShell>
       <Link
         to="/me"
-        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="mb-4 flex items-center gap-1 text-base text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> {t("about.back")}
+        <ArrowLeft className="h-5 w-5" /> {t("about.back")}
       </Link>
       <Logo size="lg" />
       <h1 className="mt-6 text-center font-display text-2xl text-gold">{t("about.title")}</h1>

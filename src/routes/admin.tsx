@@ -76,7 +76,7 @@ function AdminPage() {
           <p role="alert" className="text-muted-foreground">
             {t("admin.checkFailed")}
           </p>
-          <Button className="mt-4" onClick={() => setRetry((value) => value + 1)}>
+          <Button className="mt-4 min-h-11" onClick={() => setRetry((value) => value + 1)}>
             {t("common.retry")}
           </Button>
         </div>
@@ -89,7 +89,7 @@ function AdminPage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">Du har inte adminbehörighet.</p>
           <Link to="/me">
-            <Button className="mt-4">Tillbaka</Button>
+            <Button className="mt-4 min-h-11">Tillbaka</Button>
           </Link>
         </div>
       </AppShell>
@@ -100,20 +100,20 @@ function AdminPage() {
     <AppShell>
       <Link
         to="/me"
-        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="mb-4 flex items-center gap-1 text-base text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Tillbaka
+        <ArrowLeft className="h-5 w-5" /> Tillbaka
       </Link>
       <h1 className="font-display text-3xl">Admin</h1>
 
       <Card className="mt-6 p-5">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        <p className="text-sm uppercase tracking-wider text-muted-foreground">
           {t("admin.visibleWines")}
         </p>
         <p className="mt-1 font-display text-4xl text-gold">{stats?.wines ?? "—"}</p>
       </Card>
 
-      <p className="mt-6 text-sm text-muted-foreground">
+      <p className="mt-6 text-base text-muted-foreground">
         Roller hanteras direkt i databasen via tabellen{" "}
         <code className="rounded bg-muted px-1 py-0.5">user_roles</code>.
       </p>

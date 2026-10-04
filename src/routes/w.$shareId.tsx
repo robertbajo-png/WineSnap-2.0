@@ -76,15 +76,15 @@ function PublicWinePage() {
         <Wine className="h-10 w-10 text-gold" />
         <div>
           <h1 className="font-display text-xl text-cream">Not available</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-base text-muted-foreground">
             This share link is invalid or the wine is no longer public.
           </p>
         </div>
         <Link
           to="/"
-          className="mt-2 inline-flex items-center gap-2 rounded-full bg-gradient-burgundy px-4 py-2 text-sm text-cream shadow-elegant"
+          className="mt-2 inline-flex items-center gap-2 rounded-full bg-gradient-burgundy px-4 py-2 text-base text-cream shadow-elegant"
         >
-          Explore WineSnap <ArrowRight className="h-4 w-4" />
+          Explore WineSnap <ArrowRight className="h-5 w-5" />
         </Link>
       </div>
     );
@@ -103,12 +103,12 @@ function PublicWinePage() {
     <div className="min-h-screen bg-background px-5 pt-6 pb-16">
       <header className="mx-auto flex max-w-md items-center justify-between">
         <Link to="/" className="flex items-center gap-2 font-display text-lg text-gold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/40 text-sm">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/40 text-base">
             W
           </span>
           WineSnap
         </Link>
-        <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Shared</span>
+        <span className="text-sm uppercase tracking-widest text-muted-foreground">Shared</span>
       </header>
 
       <div className="mx-auto mt-6 max-w-md">
@@ -124,35 +124,35 @@ function PublicWinePage() {
 
         <div className="mt-5 text-center">
           {w.producer && (
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">{w.producer}</p>
+            <p className="text-sm uppercase tracking-widest text-muted-foreground">{w.producer}</p>
           )}
           <h1 className="mt-1 font-display text-2xl text-cream">
             {w.wine_name ?? "Untitled"} {w.vintage ?? ""}
           </h1>
-          <p className="mt-1 text-xs text-foreground/70">
+          <p className="mt-1 text-sm text-foreground/70">
             {[w.region, w.country].filter(Boolean).join(" · ")}
           </p>
           {w.wine_type && (
-            <span className="mt-3 inline-block rounded-full border border-white/10 bg-card/60 px-3 py-1 text-[11px] uppercase tracking-wider text-gold">
+            <span className="mt-3 inline-block rounded-full border border-white/10 bg-card/60 px-3 py-1 text-sm uppercase tracking-wider text-gold">
               {w.wine_type}
             </span>
           )}
         </div>
 
         {w.description && (
-          <p className="mt-5 text-center text-sm leading-relaxed text-foreground/80">
+          <p className="mt-5 text-center text-base leading-relaxed text-foreground/80">
             {w.description}
           </p>
         )}
 
         {meters.some(([, v]) => v != null) && (
           <div className="mt-6 rounded-2xl border border-white/10 bg-card/40 p-4">
-            <h2 className="text-center font-display text-sm uppercase tracking-widest text-gold">
+            <h2 className="text-center font-display text-base uppercase tracking-widest text-gold">
               Profile
             </h2>
             <div className="mt-3 space-y-2">
               {meters.map(([label, val]) => (
-                <div key={label} className="flex items-center gap-3 text-xs">
+                <div key={label} className="flex items-center gap-3 text-sm">
                   <span className="w-20 text-muted-foreground">{label}</span>
                   <div className="relative h-1.5 flex-1 rounded-full bg-white/10">
                     <div
@@ -169,7 +169,7 @@ function PublicWinePage() {
 
         {(w.primary_notes?.length || w.secondary_notes?.length) && (
           <div className="mt-6">
-            <h2 className="text-center font-display text-sm uppercase tracking-widest text-gold">
+            <h2 className="text-center font-display text-base uppercase tracking-widest text-gold">
               Aromas
             </h2>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -182,7 +182,7 @@ function PublicWinePage() {
                 .map((a) => (
                   <span
                     key={a}
-                    className="rounded-full border border-white/10 bg-card/60 px-3 py-1 text-xs text-foreground/85"
+                    className="rounded-full border border-white/10 bg-card/60 px-3 py-1 text-sm text-foreground/85"
                   >
                     {a}
                   </span>
@@ -193,14 +193,14 @@ function PublicWinePage() {
 
         <div className="mt-10 rounded-2xl border border-gold/20 bg-gradient-to-br from-burgundy/20 to-transparent p-5 text-center">
           <p className="font-display text-cream">Build your own cellar</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             Scan wines, track tastings, and get AI picks tuned to you.
           </p>
           <Link
             to="/"
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-burgundy px-4 py-2 text-sm text-cream shadow-elegant"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-burgundy px-4 py-2 text-base text-cream shadow-elegant"
           >
-            Open WineSnap <ArrowRight className="h-4 w-4" />
+            Open WineSnap <ArrowRight className="h-5 w-5" />
           </Link>
         </div>
       </div>

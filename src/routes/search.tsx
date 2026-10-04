@@ -81,14 +81,14 @@ function SearchPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("search.ph")}
-              className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+              className="min-h-12 w-full rounded-md border border-white/10 bg-card/60 pl-10 pr-14 text-base text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
             />
             {q && (
               <button
                 onClick={() => setQ("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             )}
           </div>
@@ -96,7 +96,7 @@ function SearchPage() {
 
         <div className="mt-5 flex items-baseline justify-between">
           <h2 className="font-display text-xl">{t("search.discover")}</h2>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             {filtered.length} {t("search.results")}
           </span>
         </div>
@@ -122,8 +122,8 @@ function SearchPage() {
                 action={
                   wines.length === 0 ? (
                     <Link to="/scan">
-                      <Button className="bg-gradient-burgundy text-cream">
-                        <Camera className="h-4 w-4" /> {t("nav.scan")}
+                      <Button className="bg-gradient-burgundy text-cream min-h-11">
+                        <Camera className="h-5 w-5" /> {t("nav.scan")}
                       </Button>
                     </Link>
                   ) : undefined
@@ -156,17 +156,17 @@ function ResultCard({ w }: { w: WineRow }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-base leading-tight text-cream">
+          <p className="line-clamp-2 break-words font-display text-xl leading-tight text-cream">
             {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
           </p>
-          <p className="truncate text-xs text-gold">
+          <p className="mt-1 break-words text-sm text-gold">
             {[w.region, w.country].filter(Boolean).join(", ")}
           </p>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="break-words text-sm text-muted-foreground">
             {w.grape_varieties?.join(", ") || "—"}
           </p>
-          <div className="mt-1 flex items-center gap-1.5 text-xs">
-            <Star className="h-3 w-3 fill-gold text-gold" />
+          <div className="mt-1 flex items-center gap-1.5 text-sm">
+            <Star className="h-5 w-5 fill-gold text-gold" />
             <span className="font-medium">{rating.toFixed(1)}</span>
           </div>
         </div>

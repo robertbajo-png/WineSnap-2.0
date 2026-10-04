@@ -6,26 +6,34 @@ function worker() {
   const listeners = new Map<string, (event: unknown) => void>();
   const remove = vi.fn().mockResolvedValue(true);
   const claim = vi.fn();
-  runInNewContext(readFileSync(new URL("../../public/sw.js", import.meta.url), "utf8"), {
-    self: {
-      addEventListener: (name: string, listener: (event: unknown) => void) =>
-        listeners.set(name, listener),
-      clients: { claim },
-      skipWaiting: vi.fn(),
-      location: { origin: "https://wine.example" },
-    },
-    caches: {
-      keys: async () => [
-        "winesnap-assets-v1",
-        "winesnap-pages-v1",
-        "unrelated-cache",
-        "winesnap-assets-2026-10-03",
-        "winesnap-pages-2026-10-03",
-      ],
-      delete: remove,
-    },
-    URL,
-  });
+  const currentCaches: string[] = [];
+  currentCaches.push(
+    ...runInNewContext(
+      readFileSync(new URL("../../public/sw.js", import.meta.url), "utf8") +
+        "\n[ASSET_CACHE, PAGE_CACHE]",
+      {
+        self: {
+          addEventListener: (name: string, listener: (event: unknown) => void) =>
+            listeners.set(name, listener),
+          clients: { claim },
+          skipWaiting: vi.fn(),
+          location: { origin: "https://wine.example" },
+        },
+        caches: {
+          keys: async () => [
+            "winesnap-assets-v1",
+            "winesnap-pages-v1",
+            "unrelated-cache",
+            "winesnap-assets-2026-10-03",
+            "winesnap-pages-2026-10-03",
+            ...currentCaches,
+          ],
+          delete: remove,
+        },
+        URL,
+      },
+    ),
+  );
   return { listeners, remove, claim };
 }
 
@@ -42,6 +50,8 @@ describe("release service worker", () => {
     expect(remove.mock.calls.map(([key]) => key)).toEqual([
       "winesnap-assets-v1",
       "winesnap-pages-v1",
+      "winesnap-assets-2026-10-03",
+      "winesnap-pages-2026-10-03",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });

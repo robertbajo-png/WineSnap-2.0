@@ -299,19 +299,19 @@ function RestaurantPage() {
       <header className="flex items-center justify-between">
         <button
           onClick={() => navigate({ to: "/" })}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 min-h-11 min-w-11"
           aria-label={t("common.back")}
         >
           <ArrowLeft className="h-5 w-5 text-cream" />
         </button>
         <div className="text-center">
           <h1 className="font-display text-2xl text-gold">{t("restaurant.title")}</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t("restaurant.subtitle")}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("restaurant.subtitle")}</p>
         </div>
         <button
           onClick={() => setShowHistory((current) => !current)}
           className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full border",
+            "flex h-10 w-10 items-center justify-center rounded-full border min-h-11 min-w-11",
             showHistory ? "border-gold/50 bg-gold/10 text-gold" : "border-white/10 text-cream",
           )}
           aria-label={t("restaurant.history")}
@@ -339,18 +339,18 @@ function RestaurantPage() {
       ) : (
         <main>
           <section className="mt-5 border-y border-white/8 py-4">
-            <label className="block text-xs uppercase text-muted-foreground">
+            <label className="block text-sm uppercase text-muted-foreground">
               {t("restaurant.name")}
               <input
                 value={restaurantName}
                 onChange={(event) => setRestaurantName(event.target.value)}
                 placeholder={t("restaurant.namePh")}
-                className="mt-1.5 w-full rounded-md border border-white/10 bg-card/50 px-3 py-2.5 text-sm normal-case text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+                className="mt-1.5 w-full rounded-md border border-white/10 bg-card/50 px-3 py-2.5 text-base normal-case text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none min-h-12"
               />
             </label>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <label className="block text-xs uppercase text-muted-foreground">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block text-sm uppercase text-muted-foreground">
                 {t("restaurant.dish")}
                 <div className="relative mt-1.5">
                   <Utensils className="absolute left-3 top-2.5 h-4 w-4 text-gold" />
@@ -358,11 +358,11 @@ function RestaurantPage() {
                     value={dish}
                     onChange={(event) => setDish(event.target.value)}
                     placeholder={t("restaurant.dishPh")}
-                    className="w-full rounded-md border border-white/10 bg-card/50 py-2.5 pl-9 pr-3 text-sm normal-case text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+                    className="w-full rounded-md border border-white/10 bg-card/50 py-2.5 pl-9 pr-3 text-base normal-case text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none min-h-12"
                   />
                 </div>
               </label>
-              <label className="block text-xs uppercase text-muted-foreground">
+              <label className="block text-sm uppercase text-muted-foreground">
                 {t("restaurant.maxPrice")}
                 <input
                   type="number"
@@ -371,13 +371,13 @@ function RestaurantPage() {
                   value={maxPrice}
                   onChange={(event) => setMaxPrice(event.target.value)}
                   placeholder={t("restaurant.maxPricePh")}
-                  className="mt-1.5 w-full rounded-md border border-white/10 bg-card/50 px-3 py-2.5 text-sm normal-case text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+                  className="mt-1.5 w-full rounded-md border border-white/10 bg-card/50 px-3 py-2.5 text-base normal-case text-cream placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none min-h-12"
                 />
               </label>
             </div>
 
             <fieldset className="mt-4">
-              <legend className="text-xs uppercase text-muted-foreground">
+              <legend className="text-sm uppercase text-muted-foreground">
                 {t("restaurant.style")}
               </legend>
               <div className="mt-1.5 grid grid-cols-3 rounded-md border border-white/10 bg-card/40 p-1">
@@ -387,7 +387,7 @@ function RestaurantPage() {
                     type="button"
                     onClick={() => setRecommendationMode(mode)}
                     className={cn(
-                      "min-h-9 rounded px-2 text-xs transition-colors",
+                      "min-h-11 rounded px-2 text-sm transition-colors min-w-11",
                       recommendationMode === mode
                         ? "bg-burgundy text-cream"
                         : "text-muted-foreground hover:text-foreground",
@@ -406,23 +406,23 @@ function RestaurantPage() {
               type="button"
               onClick={() => setInputMode("text")}
               className={cn(
-                "flex min-h-10 items-center justify-center gap-2 rounded text-sm",
+                "flex min-h-10 items-center justify-center gap-2 rounded text-base min-h-11 min-w-11",
                 inputMode === "text" ? "bg-burgundy text-cream" : "text-muted-foreground",
               )}
               aria-pressed={inputMode === "text"}
             >
-              <Type className="h-4 w-4" /> {t("restaurant.type")}
+              <Type className="h-5 w-5" /> {t("restaurant.type")}
             </button>
             <button
               type="button"
               onClick={() => setInputMode("camera")}
               className={cn(
-                "flex min-h-10 items-center justify-center gap-2 rounded text-sm",
+                "flex min-h-10 items-center justify-center gap-2 rounded text-base min-h-11 min-w-11",
                 inputMode === "camera" ? "bg-burgundy text-cream" : "text-muted-foreground",
               )}
               aria-pressed={inputMode === "camera"}
             >
-              <Camera className="h-4 w-4" /> {t("restaurant.snap")}
+              <Camera className="h-5 w-5" /> {t("restaurant.snap")}
             </button>
           </div>
 
@@ -440,9 +440,9 @@ function RestaurantPage() {
                   setPicks([]);
                 }}
                 placeholder={t("restaurant.textPh")}
-                className="min-h-[180px] resize-none border-white/10 bg-card/50 text-sm"
+                className="min-h-[180px] resize-none border-white/10 bg-card/50 text-base"
               />
-              <p id="restaurant-menu-hint" className="mt-2 text-xs text-muted-foreground">
+              <p id="restaurant-menu-hint" className="mt-2 text-sm text-muted-foreground">
                 {t("restaurant.textHint")}
               </p>
             </div>
@@ -469,7 +469,7 @@ function RestaurantPage() {
                   <button
                     type="button"
                     onClick={() => setImage(null)}
-                    className="absolute right-2 top-2 rounded-md bg-background/90 px-3 py-1.5 text-xs text-cream"
+                    className="absolute right-2 top-2 rounded-md bg-background/90 px-3 py-1.5 text-sm text-cream min-h-11 min-w-11"
                   >
                     {t("common.clear")}
                   </button>
@@ -478,10 +478,10 @@ function RestaurantPage() {
                 <button
                   type="button"
                   onClick={() => cameraRef.current?.click()}
-                  className="flex h-[180px] w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-white/15 bg-card/30 text-muted-foreground"
+                  className="flex h-[180px] w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-white/15 bg-card/30 text-muted-foreground min-h-11 min-w-11"
                 >
                   <Camera className="h-8 w-8 text-gold" />
-                  <span className="mt-2 text-sm">{t("restaurant.snapCta")}</span>
+                  <span className="mt-2 text-base">{t("restaurant.snapCta")}</span>
                 </button>
               )}
             </div>
@@ -490,27 +490,27 @@ function RestaurantPage() {
           <Button
             onClick={generate}
             disabled={busy}
-            className="mt-5 h-12 w-full rounded-md bg-gradient-burgundy font-display text-cream shadow-elegant"
+            className="mt-5 h-12 w-full rounded-md bg-gradient-burgundy font-display text-cream shadow-elegant min-h-11"
           >
             {busy ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("restaurant.working")}
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t("restaurant.working")}
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-4 w-4" />
+                <Sparkles className="mr-2 h-5 w-5" />
                 {picks.length ? t("restaurant.rerank") : t("restaurant.findBest")}
               </>
             )}
           </Button>
 
           {error && (
-            <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-base text-destructive">
               {error}
             </div>
           )}
           {coldStart && picks.length > 0 && (
-            <div className="mt-4 border-l-2 border-gold/50 bg-gold/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            <div className="mt-4 border-l-2 border-gold/50 bg-gold/5 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
               {t("recommendation.coldStart")}
             </div>
           )}
@@ -565,10 +565,10 @@ function Results({
         <button
           type="button"
           onClick={onRefresh}
-          className="flex items-center gap-1 text-xs text-gold"
+          className="flex items-center gap-1 text-sm text-gold min-h-11 min-w-11"
           disabled={busy}
         >
-          <RefreshCw className="h-3.5 w-3.5" /> {t("foryou.refresh")}
+          <RefreshCw className="h-5 w-5" /> {t("foryou.refresh")}
         </button>
       </div>
       <div className="mt-3 space-y-3">
@@ -578,18 +578,18 @@ function Results({
           return (
             <article key={key} className="rounded-md border border-white/10 bg-card/50 p-4">
               <div className="flex items-start gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-semibold text-gold">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/15 text-sm font-semibold text-gold">
                   {index + 1}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-display leading-tight text-cream">
                     {[pick.producer, pick.wine_name].filter(Boolean).join(" — ")}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {[pick.vintage, pick.region, pick.country].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                {pick.price && <span className="shrink-0 text-sm text-gold">{pick.price}</span>}
+                {pick.price && <span className="shrink-0 text-base text-gold">{pick.price}</span>}
               </div>
 
               <div className="mt-3 border-y border-white/8 py-3">
@@ -622,49 +622,49 @@ function Results({
               </div>
 
               {pick.reason && (
-                <p className="mt-3 text-sm leading-relaxed text-foreground/80">{pick.reason}</p>
+                <p className="mt-3 text-base leading-relaxed text-foreground/80">{pick.reason}</p>
               )}
               {pick.grape_varieties?.length ? (
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-sm text-muted-foreground">
                   {pick.grape_varieties.join(", ")}
                 </p>
               ) : null}
 
-              <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-3">
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => onFeedback(pick, "like")}
                     aria-label={t("recommendation.like")}
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-md border",
+                      "flex h-11 w-11 items-center justify-center rounded-md border min-h-11 min-w-11",
                       selectedFeedback === "like"
                         ? "border-success/40 bg-success/15 text-success"
                         : "border-white/10 text-muted-foreground",
                     )}
                   >
-                    <ThumbsUp className="h-3.5 w-3.5" />
+                    <ThumbsUp className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onFeedback(pick, "dislike")}
                     aria-label={t("recommendation.notForMe")}
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-md border",
+                      "flex h-11 w-11 items-center justify-center rounded-md border min-h-11 min-w-11",
                       selectedFeedback === "dislike"
                         ? "border-destructive/40 bg-destructive/15 text-destructive"
                         : "border-white/10 text-muted-foreground",
                     )}
                   >
-                    <ThumbsDown className="h-3.5 w-3.5" />
+                    <ThumbsDown className="h-5 w-5" />
                   </button>
                 </div>
                 <button
                   type="button"
                   onClick={() => onSave(pick)}
-                  className="flex h-8 items-center gap-1.5 rounded-md border border-gold/30 px-2.5 text-[11px] text-gold"
+                  className="flex h-11 items-center gap-1.5 rounded-md border border-gold/30 px-2.5 text-sm text-gold min-h-11 min-w-11"
                 >
-                  <Bookmark className="h-3.5 w-3.5" /> {t("wishlist.saveBtn")}
+                  <Bookmark className="h-5 w-5" /> {t("wishlist.saveBtn")}
                 </button>
               </div>
             </article>
@@ -679,7 +679,7 @@ function StatusBadge({ label, tone }: { label: string; tone: "positive" | "warn"
   return (
     <span
       className={cn(
-        "rounded-md border px-2 py-1 text-[10px] uppercase",
+        "rounded-md border px-2 py-1 text-xs uppercase",
         tone === "positive" && "border-success/25 bg-success/8 text-foreground/80",
         tone === "warn" && "border-destructive/25 bg-destructive/8 text-foreground/75",
         tone === "neutral" && "border-white/10 text-muted-foreground",
@@ -706,7 +706,7 @@ function HistorySection({
 
   return (
     <section className="mt-6 space-y-3">
-      <h2 className="text-[11px] uppercase text-muted-foreground">{t("restaurant.history")}</h2>
+      <h2 className="text-sm uppercase text-muted-foreground">{t("restaurant.history")}</h2>
       {history.map((row) => {
         const top = row.matches[0];
         return (
@@ -715,20 +715,20 @@ function HistorySection({
               <button
                 type="button"
                 onClick={() => onReopen(row)}
-                className="min-w-0 flex-1 text-left"
+                className="min-w-0 flex-1 text-left min-h-11 min-w-11"
               >
-                <p className="truncate font-display text-cream">
+                <p className="line-clamp-2 break-words font-display text-lg text-cream">
                   {row.restaurant_name ||
                     (row.constraints?.source === "camera"
                       ? t("restaurant.photoMenu")
                       : t("restaurant.textMenu"))}
                 </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   {new Date(row.created_at).toLocaleString()} · {row.matches.length}{" "}
                   {t("restaurant.historyPicks")}
                 </p>
                 {top && (
-                  <p className="mt-2 truncate text-xs text-foreground/80">
+                  <p className="mt-2 break-words text-sm text-foreground/80">
                     <span className="text-gold">{Math.round(top.match_score)}%</span>{" "}
                     {top.wine_name}
                   </p>
@@ -737,10 +737,10 @@ function HistorySection({
               <button
                 type="button"
                 onClick={() => onDelete(row.id)}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-white/5 hover:text-destructive"
+                className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-white/5 hover:text-destructive min-h-11 min-w-11"
                 aria-label={t("restaurant.deleteHistory")}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-5 w-5" />
               </button>
             </div>
           </article>

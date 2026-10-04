@@ -30,7 +30,7 @@ export function AromaProfileTabs({
   const t = useT();
   return (
     <Tabs defaultValue="mine">
-      <TabsList className="grid h-11 w-full grid-cols-2 rounded-md border border-border bg-card/60 p-1">
+      <TabsList className="grid min-h-14 w-full grid-cols-2 rounded-md border border-border bg-card/60 p-1">
         <TabsTrigger value="ai" className="rounded-sm">
           {t("notes.tab.ai")}
         </TabsTrigger>
@@ -49,7 +49,7 @@ export function AromaProfileTabs({
         ) : (
           <EmptyAromas text={t("notes.aiEmpty")} />
         )}
-        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           {t("notes.aiDisclaimer")}
         </p>
       </TabsContent>
@@ -76,7 +76,7 @@ export function AromaProfileTabs({
 }
 
 function EmptyAromas({ text }: { text: string }) {
-  return <p className="border-y border-border py-5 text-sm text-muted-foreground">{text}</p>;
+  return <p className="border-y border-border py-5 text-base text-muted-foreground">{text}</p>;
 }
 
 export function AromaRows({
@@ -108,10 +108,10 @@ export function AromaRows({
           <AromaIcon name={aroma.name} size={48} />
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg leading-tight text-cream">{aroma.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
             {!readOnly && (
               <div className="mt-2">
-                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                <div className="mb-1 flex justify-between text-sm text-muted-foreground">
                   <span>{t("notes.weak")}</span>
                   <span>
                     {aroma.intensity == null ? t("notes.notSet") : `${aroma.intensity}/5`}
@@ -125,7 +125,7 @@ export function AromaRows({
                     size="sm"
                     disabled={!aroma.active}
                     onClick={() => onIntensity?.(index, 1)}
-                    className="w-full"
+                    className="w-full min-h-11"
                   >
                     {t("notes.chooseIntensity")}
                   </Button>
@@ -146,10 +146,10 @@ export function AromaRows({
           {readOnly && aroma.intensity != null && (
             <span
               aria-label={`${t("notes.intensityFor").replace("{name}", aroma.name)}: ${aroma.intensity}/5`}
-              className="shrink-0 text-sm font-medium tabular-nums text-gold"
+              className="shrink-0 text-base font-medium tabular-nums text-gold"
             >
               {aroma.intensity}
-              <span className="text-xs text-muted-foreground">/5</span>
+              <span className="text-sm text-muted-foreground">/5</span>
             </span>
           )}
         </li>

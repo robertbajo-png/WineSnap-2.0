@@ -92,9 +92,9 @@ function UserProfilePage() {
     <AppShell>
       <Link
         to="/friends"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="mb-4 inline-flex items-center gap-1 text-base text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> {t("common.back")}
+        <ArrowLeft className="h-5 w-5" /> {t("common.back")}
       </Link>
 
       {profile === undefined ? (
@@ -112,7 +112,7 @@ function UserProfilePage() {
                 {profile.display_name ?? profile.username}
               </p>
               {profile.username && (
-                <p className="text-xs text-muted-foreground">@{profile.username}</p>
+                <p className="text-sm text-muted-foreground">@{profile.username}</p>
               )}
               {user && user.id !== profile.id && (
                 <TasteOverlap profile={profile} label={t("friends.similarity.label")} />
@@ -122,23 +122,19 @@ function UserProfilePage() {
               <button
                 onClick={toggle}
                 disabled={busy}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs transition-colors ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm transition-colors  min-h-11 min-w-11 ${
                   following
-                    ? "border border-white/15 text-muted-foreground hover:bg-white/5"
+                    ? "border border-white/15 text-muted-foreground hover:bg-white/5 min-h-11 min-w-11"
                     : "bg-burgundy text-cream"
                 }`}
               >
-                {following ? (
-                  <UserCheck className="h-3.5 w-3.5" />
-                ) : (
-                  <UserPlus className="h-3.5 w-3.5" />
-                )}
+                {following ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
                 {following ? t("friends.following") : t("friends.follow")}
               </button>
             )}
           </header>
 
-          {profile.bio && <p className="mt-3 text-sm text-foreground/85">{profile.bio}</p>}
+          {profile.bio && <p className="mt-3 text-base text-foreground/85">{profile.bio}</p>}
 
           <div className="mt-4 grid grid-cols-3 gap-2">
             <Stat label={t("cellar.bottles")} value={String(wines.length)} />
@@ -149,7 +145,7 @@ function UserProfilePage() {
           <section className="mt-7">
             <h2 className="font-display text-lg text-gold">{t("friends.publicWines")}</h2>
             {wines.length === 0 ? (
-              <p className="mt-3 py-8 text-center text-sm text-muted-foreground">
+              <p className="mt-3 py-8 text-center text-base text-muted-foreground">
                 {t("friends.noPublicWines")}
               </p>
             ) : (
@@ -173,13 +169,13 @@ function UserProfilePage() {
                           ) : null}
                         </div>
                         <div className="p-2.5">
-                          <p className="truncate text-[11px] text-muted-foreground">
+                          <p className="truncate text-sm text-muted-foreground">
                             {w.producer ?? ""}
                           </p>
-                          <p className="truncate text-sm text-cream">{w.wine_name ?? "—"}</p>
+                          <p className="truncate text-base text-cream">{w.wine_name ?? "—"}</p>
                           {w.user_rating != null && (
-                            <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-gold">
-                              <Star className="h-3 w-3 fill-gold" /> {w.user_rating.toFixed(1)}
+                            <p className="mt-0.5 inline-flex items-center gap-1 text-sm text-gold">
+                              <Star className="h-5 w-5 fill-gold" /> {w.user_rating.toFixed(1)}
                             </p>
                           )}
                         </div>
@@ -200,7 +196,7 @@ function TasteOverlap({ profile, label }: { profile: PublicProfile; label: strin
   const { t } = useI18n();
   const level = tasteSimilarityLevel(profile);
   return (
-    <p className="mt-1.5 text-[11px] text-muted-foreground">
+    <p className="mt-1.5 text-sm text-muted-foreground">
       {label}: <span className="text-foreground/80">{t(`friends.similarity.${level}`)}</span>
       {profile.shared_preference_count > 0 && (
         <span>
@@ -220,7 +216,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-center rounded-md border border-white/10 bg-card/50 px-2 py-3 text-center">
       <p className="font-display text-xl text-cream">{value}</p>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );
 }

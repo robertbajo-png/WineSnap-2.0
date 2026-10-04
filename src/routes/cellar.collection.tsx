@@ -4,6 +4,8 @@ import { ArrowLeft, Plus, Pencil, Save, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { MobileDetails } from "@/components/MobileDetails";
+import { revealInvalidField } from "@/lib/mobileForms";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,7 +54,7 @@ const emptyForm = () => ({
 });
 type Form = ReturnType<typeof emptyForm>;
 const inputClass =
-  "h-10 w-full min-w-0 rounded-md border border-white/15 bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50";
+  "h-12 min-h-12 w-full min-w-0 rounded-md border border-white/15 bg-card px-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50";
 function money(value: number, currency: string) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
@@ -200,7 +202,7 @@ function CollectorPage() {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   function field(key: keyof Form, label: string, type = "text", required = false) {
     return (
-      <label className="grid min-w-0 gap-1 text-xs text-muted-foreground">
+      <label className="grid min-w-0 gap-1 text-sm text-muted-foreground">
         <span>{label}</span>
         <input
           className={inputClass}
@@ -223,7 +225,7 @@ function CollectorPage() {
   }
   function currencySelect(key: "currency" | "estimate_currency") {
     return (
-      <label className="grid gap-1 text-xs text-muted-foreground">
+      <label className="grid gap-1 text-sm text-muted-foreground">
         <span>{t("collector.currency")}</span>
         <select
           className={inputClass}
@@ -244,7 +246,7 @@ function CollectorPage() {
         <Link
           to="/cellar"
           aria-label={t("common.back")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center"
+          className="flex h-11 w-11 shrink-0 items-center justify-center min-h-11"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -261,7 +263,7 @@ function CollectorPage() {
               setForm(emptyForm());
             }}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-5 w-5" />
           </Button>
         )}
       </header>
@@ -276,8 +278,12 @@ function CollectorPage() {
       ) : error ? (
         <section className="py-6">
           <p role="alert">{t(error)}</p>
-          <Button variant="outline" className="mt-3" onClick={() => setRevision((n) => n + 1)}>
-            <RefreshCw className="mr-2 h-4 w-4" />
+          <Button
+            variant="outline"
+            className="mt-3 min-h-11"
+            onClick={() => setRevision((n) => n + 1)}
+          >
+            <RefreshCw className="mr-2 h-5 w-5" />
             {t("collector.retry")}
           </Button>
         </section>
@@ -293,7 +299,7 @@ function CollectorPage() {
                 key={purpose}
                 aria-pressed={filter === purpose}
                 onClick={() => setFilter(purpose)}
-                className={`rounded-md border px-3 py-2 text-xs ${filter === purpose ? "border-gold text-gold" : "border-white/15 text-muted-foreground"}`}
+                className={`rounded-md border px-3 py-2 text-sm  min-h-11 min-w-11 ${filter === purpose ? "border-gold text-gold min-h-11 min-w-11" : "border-white/15 text-muted-foreground"}`}
               >
                 {t(`collector.${purpose}` as "collector.all")}
               </button>
@@ -301,39 +307,43 @@ function CollectorPage() {
           </div>
           {totals.length > 0 && (
             <section className="mb-5 border-y border-white/10 py-4">
-              <h2 className="text-sm text-cream">{t("collector.cost")}</h2>
+              <h2 className="text-base text-cream">{t("collector.cost")}</h2>
               {totals
                 .filter((g) => g.bottles > 0)
                 .map((g) => (
                   <p key={g.currency} className="mt-1 break-words font-display text-xl">
                     {money(g.cost, g.currency)}{" "}
-                    <span className="font-sans text-xs text-muted-foreground">
+                    <span className="font-sans text-sm text-muted-foreground">
                       {g.bottles} {t("overview.bottles")}
                     </span>
                   </p>
                 ))}
-              <h2 className="mt-4 text-sm text-cream">{t("collector.estimates")}</h2>
+              <h2 className="mt-4 text-base text-cream">{t("collector.estimates")}</h2>
               {totals.some((g) => g.valued) ? (
                 totals
                   .filter((g) => g.valued > 0)
                   .map((g) => (
                     <p key={g.currency} className="mt-1 break-words font-display text-xl">
                       {money(g.estimate, g.currency)}{" "}
-                      <span className="font-sans text-xs text-muted-foreground">
+                      <span className="font-sans text-sm text-muted-foreground">
                         {g.valued} {t("overview.bottles")}
                       </span>
                     </p>
                   ))
               ) : (
-                <p className="mt-1 text-sm text-muted-foreground">{t("collector.noEstimate")}</p>
+                <p className="mt-1 text-base text-muted-foreground">{t("collector.noEstimate")}</p>
               )}
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {t("collector.manualDisclaimer")}
               </p>
             </section>
           )}
           {form && (
-            <form onSubmit={save} className="mb-6 border-y border-gold/30 py-5">
+            <form
+              onSubmit={save}
+              onInvalidCapture={(event) => revealInvalidField(event.target)}
+              className="mb-6 border-y border-gold/30 py-5"
+            >
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-display text-lg">
                   {t(editing ? "collector.edit" : "collector.add")}
@@ -346,11 +356,11 @@ function CollectorPage() {
                   disabled={saving}
                   onClick={() => setForm(null)}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
               <fieldset disabled={saving} className="grid min-w-0 gap-3 sm:grid-cols-2">
-                <label className="grid gap-1 text-xs text-muted-foreground sm:col-span-2">
+                <label className="grid gap-1 text-sm text-muted-foreground sm:col-span-2">
                   <span>{t("collector.wine")}</span>
                   <select
                     className={inputClass}
@@ -369,7 +379,7 @@ function CollectorPage() {
                       ))}
                   </select>
                 </label>
-                <label className="grid gap-1 text-xs text-muted-foreground">
+                <label className="grid gap-1 text-sm text-muted-foreground">
                   <span>{t("collector.purpose")}</span>
                   <select
                     className={inputClass}
@@ -389,61 +399,68 @@ function CollectorPage() {
                 {field("bottle_ml", t("collector.volume"), "number", true)}
                 {currencySelect("currency")}
                 {field("unit_cost", t("collector.unitCost"), "number", true)}
-                {field("additional_cost", t("collector.fees"), "number")}
-                {field("condition", t("collector.condition"))}
-                {field("provenance", t("collector.provenance"))}
-                {field("storage", t("collector.storage"))}
               </fieldset>
-              <fieldset
-                disabled={saving}
-                className="mt-5 grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2"
+              <MobileDetails title={t("collector.details")} className="mt-4">
+                <fieldset disabled={saving} className="grid min-w-0 gap-3 sm:grid-cols-2">
+                  {field("additional_cost", t("collector.fees"), "number")}
+                  {field("condition", t("collector.condition"))}
+                  {field("provenance", t("collector.provenance"))}
+                  {field("storage", t("collector.storage"))}
+                </fieldset>
+              </MobileDetails>
+              <MobileDetails
+                title={t("collector.estimateOptional")}
+                defaultOpen={!!form.estimate_price}
+                className="mt-4"
               >
-                <legend className="text-sm text-gold">{t("collector.estimateOptional")}</legend>
-                {field("estimate_price", t("collector.estimateUnit"), "number")}
-                {currencySelect("estimate_currency")}
-                {field(
-                  "estimate_date",
-                  t("collector.estimateDate"),
-                  "date",
-                  form.estimate_price !== "",
-                )}
-                {field(
-                  "estimate_source",
-                  t("collector.source"),
-                  "text",
-                  form.estimate_price !== "",
-                )}
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                  <span>{t("collector.confidence")}</span>
-                  <select
-                    className={inputClass}
-                    value={form.estimate_confidence}
-                    onChange={(e) => update("estimate_confidence", e.target.value)}
-                  >
-                    {["low", "medium", "high"].map((c) => (
-                      <option key={c} value={c}>
-                        {t(`collector.${c}` as "collector.low")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </fieldset>
-              <Button type="submit" disabled={saving} className="mt-4">
-                <Save className="mr-2 h-4 w-4" />
+                <fieldset disabled={saving} className="grid min-w-0 gap-3 sm:grid-cols-2">
+                  {field("estimate_price", t("collector.estimateUnit"), "number")}
+                  {currencySelect("estimate_currency")}
+                  {field(
+                    "estimate_date",
+                    t("collector.estimateDate"),
+                    "date",
+                    form.estimate_price !== "",
+                  )}
+                  {field(
+                    "estimate_source",
+                    t("collector.source"),
+                    "text",
+                    form.estimate_price !== "",
+                  )}
+                  <label className="grid gap-1 text-sm text-muted-foreground">
+                    <span>{t("collector.confidence")}</span>
+                    <select
+                      className={inputClass}
+                      value={form.estimate_confidence}
+                      onChange={(e) => update("estimate_confidence", e.target.value)}
+                    >
+                      {["low", "medium", "high"].map((c) => (
+                        <option key={c} value={c}>
+                          {t(`collector.${c}` as "collector.low")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </fieldset>
+              </MobileDetails>
+              <Button type="submit" disabled={saving} className="mt-4 min-h-11">
+                <Save className="mr-2 h-5 w-5" />
                 {t(saving ? "common.loading" : "common.save")}
               </Button>
             </form>
           )}
-          <label className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+          <label className="mb-3 flex min-h-11 items-center gap-3 text-base text-muted-foreground">
             <input
               type="checkbox"
+              className="h-5 w-5 shrink-0 accent-gold"
               checked={showClosed}
               onChange={(e) => setShowClosed(e.target.checked)}
             />
             {t("collector.showClosed")}
           </label>
           {!visible.length && (
-            <p className="py-6 text-sm text-muted-foreground">{t("collector.empty")}</p>
+            <p className="py-6 text-base text-muted-foreground">{t("collector.empty")}</p>
           )}
           <ul className="divide-y divide-white/10">
             {visible.map((lot) => (
@@ -457,7 +474,7 @@ function CollectorPage() {
                     >
                       {wineName(wines.find((w) => w.id === lot.wine_id))}
                     </Link>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {t(`collector.${lot.purpose}` as "collector.drink")} · {lot.remaining}/
                       {lot.quantity} · {lot.bottle_ml} ml · {lot.purchased_at}
                     </p>
@@ -470,36 +487,38 @@ function CollectorPage() {
                     aria-label={t("collector.edit")}
                     onClick={() => edit(lot)}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-5 w-5" />
                   </Button>
                 </div>
-                <p className="mt-2 text-sm">
+                <p className="mt-2 text-base">
                   {t("collector.unitCost")}: {money(lot.unit_cost, lot.currency)}
                 </p>
                 {lot.additional_cost > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {t("collector.fees")}: {money(lot.additional_cost, lot.currency)}
                   </p>
                 )}
                 {[lot.condition, lot.provenance, lot.storage].some(Boolean) && (
-                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-                    {(["condition", "provenance", "storage"] as const).map((key) =>
-                      lot[key] ? (
-                        <div key={key} className="contents">
-                          <dt className="text-muted-foreground">{t(`collector.${key}`)}</dt>
-                          <dd className="break-words">{lot[key]}</dd>
-                        </div>
-                      ) : null,
-                    )}
-                  </dl>
+                  <MobileDetails title={t("collector.details")} className="mt-3">
+                    <dl className="grid gap-2 text-sm">
+                      {(["condition", "provenance", "storage"] as const).map((key) =>
+                        lot[key] ? (
+                          <div key={key}>
+                            <dt className="text-muted-foreground">{t(`collector.${key}`)}</dt>
+                            <dd className="break-words">{lot[key]}</dd>
+                          </div>
+                        ) : null,
+                      )}
+                    </dl>
+                  </MobileDetails>
                 )}
                 {lot.estimate_price !== null && lot.estimate_currency && (
                   <div className="mt-3 border-l-2 border-gold/40 pl-3">
-                    <p className="text-sm">
+                    <p className="text-base">
                       {t("collector.estimateUnit")}:{" "}
                       {money(lot.estimate_price, lot.estimate_currency)}
                     </p>
-                    <p className="break-words text-xs text-muted-foreground">
+                    <p className="break-words text-sm text-muted-foreground">
                       {lot.estimate_date} · {lot.estimate_source} ·{" "}
                       {lot.estimate_confidence && t(`collector.${lot.estimate_confidence}`)}
                     </p>

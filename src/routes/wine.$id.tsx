@@ -16,10 +16,17 @@ import {
   Bookmark,
   ThumbsDown,
   ThumbsUp,
+  MoreHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { WineDetailSkeleton } from "@/components/Skeleton";
 import { AromaProfileTabs } from "@/components/AromaProfileTabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -218,7 +225,7 @@ function WineDetailPage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">{t("wine.notFound")}</p>
           <Link to="/cellar">
-            <Button className="mt-4">{t("wine.backToCellar")}</Button>
+            <Button className="mt-4 min-h-11">{t("wine.backToCellar")}</Button>
           </Link>
         </div>
       </AppShell>
@@ -239,91 +246,115 @@ function WineDetailPage() {
           <button
             onClick={() => window.history.back()}
             aria-label="Back"
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11 min-w-11"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-1">
             <Link
-              to="/compare"
-              search={{ left: w.id }}
-              aria-label={t("compare.title")}
-              title={t("compare.title")}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
-            >
-              <Scale className="h-4 w-4" />
-            </Link>
-            <Link
               to="/ask"
               search={{ wineId: w.id, source: "wine" }}
               aria-label={t("ask.title")}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+              title={t("ask.title")}
+              className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5"
             >
-              <MessageCircleMore className="h-4 w-4" />
+              <MessageCircleMore className="h-5 w-5" />
             </Link>
-            <button
-              onClick={async () => {
-                // Ensure the wine is public and has a share_id, then share the public /w/:shareId link
-                const { data: row } = await supabase
-                  .from("wines")
-                  .select("share_id,is_public")
-                  .eq("id", w.id)
-                  .maybeSingle();
-                let shareId = row?.share_id as string | null | undefined;
-                if (!row?.is_public || !shareId) {
-                  const { data: upd } = await supabase
-                    .from("wines")
-                    .update({ is_public: true })
-                    .eq("id", w.id)
-                    .select("share_id")
-                    .maybeSingle();
-                  shareId = upd?.share_id ?? shareId;
-                }
-                if (!shareId) {
-                  toast.error(t("common.error"));
-                  return;
-                }
-                const url = `${window.location.origin}/w/${encodeURIComponent(shareId)}`;
-                const shareData = {
-                  title: `${w.wine_name ?? ""} ${w.vintage ?? ""}`.trim(),
-                  text: t("wine.shareText"),
-                  url,
-                };
-                const copyLink = async () => {
-                  try {
-                    await navigator.clipboard.writeText(url);
-                    toast.success(t("wine.linkCopied"));
-                    return true;
-                  } catch {
-                    return false;
-                  }
-                };
-                if (navigator.share) {
-                  try {
-                    await navigator.share(shareData);
-                    return;
-                  } catch (err) {
-                    // User cancelled -> do nothing. Blocked (e.g. inside an iframe) -> copy instead.
-                    if (err instanceof DOMException && err.name === "AbortError") return;
-                  }
-                }
-                if (!(await copyLink())) {
-                  window.prompt(t("wine.share"), url);
-                }
-              }}
-              aria-label={t("wine.share")}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
-            >
-              <Share2 className="h-4 w-4" />
-            </button>
-            <Link
-              to="/wine/$id/edit"
-              params={{ id: w.id }}
-              aria-label={t("wine.edit")}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
-            >
-              <Pencil className="h-4 w-4" />
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t("common.more")}
+                  title={t("common.more")}
+                >
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-52">
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/compare"
+                    search={{ left: w.id }}
+                    aria-label={t("compare.title")}
+                    title={t("compare.title")}
+                    className="flex min-h-11 w-full items-center gap-3 text-base"
+                  >
+                    <Scale className="h-5 w-5" />
+                    {t("compare.title")}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <button
+                    onClick={async () => {
+                      // Ensure the wine is public and has a share_id, then share the public /w/:shareId link
+                      const { data: row } = await supabase
+                        .from("wines")
+                        .select("share_id,is_public")
+                        .eq("id", w.id)
+                        .maybeSingle();
+                      let shareId = row?.share_id as string | null | undefined;
+                      if (!row?.is_public || !shareId) {
+                        const { data: upd } = await supabase
+                          .from("wines")
+                          .update({ is_public: true })
+                          .eq("id", w.id)
+                          .select("share_id")
+                          .maybeSingle();
+                        shareId = upd?.share_id ?? shareId;
+                      }
+                      if (!shareId) {
+                        toast.error(t("common.error"));
+                        return;
+                      }
+                      const url = `${window.location.origin}/w/${encodeURIComponent(shareId)}`;
+                      const shareData = {
+                        title: `${w.wine_name ?? ""} ${w.vintage ?? ""}`.trim(),
+                        text: t("wine.shareText"),
+                        url,
+                      };
+                      const copyLink = async () => {
+                        try {
+                          await navigator.clipboard.writeText(url);
+                          toast.success(t("wine.linkCopied"));
+                          return true;
+                        } catch {
+                          return false;
+                        }
+                      };
+                      if (navigator.share) {
+                        try {
+                          await navigator.share(shareData);
+                          return;
+                        } catch (err) {
+                          // User cancelled -> do nothing. Blocked (e.g. inside an iframe) -> copy instead.
+                          if (err instanceof DOMException && err.name === "AbortError") return;
+                        }
+                      }
+                      if (!(await copyLink())) {
+                        window.prompt(t("wine.share"), url);
+                      }
+                    }}
+                    aria-label={t("wine.share")}
+                    className="flex min-h-11 w-full items-center gap-3 text-base"
+                  >
+                    <Share2 className="h-5 w-5" />
+                    {t("wine.share")}
+                  </button>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/wine/$id/edit"
+                    params={{ id: w.id }}
+                    aria-label={t("wine.edit")}
+                    className="flex min-h-11 w-full items-center gap-3 text-base"
+                  >
+                    <Pencil className="h-5 w-5" />
+                    {t("wine.edit")}
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -341,12 +372,12 @@ function WineDetailPage() {
               {w.wine_name ?? "Unknown"}
               {w.vintage ? ` ${w.vintage}` : ""}
             </h1>
-            <p className="mt-1 text-sm text-gold">
+            <p className="mt-1 text-base text-gold">
               {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
             </p>
-            <p className="text-xs text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
+            <p className="text-sm text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <span className="flex items-center gap-1 text-xs">
+              <span className="flex items-center gap-1 text-sm">
                 <Star className="h-3.5 w-3.5 fill-gold text-gold" />
                 <span className="font-medium">{rating.toFixed(1)}</span>
               </span>
@@ -355,18 +386,19 @@ function WineDetailPage() {
         </section>
 
         {/* Tabs */}
-        <div className="mt-5 flex gap-5 overflow-x-auto border-b border-white/8 text-sm">
+        <div className="mt-5 grid grid-cols-3 gap-1 border-b border-white/8 text-sm sm:grid-cols-5">
           {TAB_KEYS.map((k) => (
             <button
               key={k}
+              aria-pressed={tab === k}
               onClick={() => setTab(k)}
               className={cn(
-                "relative -mb-px shrink-0 py-2.5 transition-colors",
-                tab === k ? "text-burgundy" : "text-muted-foreground hover:text-foreground",
+                "relative -mb-px min-h-11 px-2 py-2.5 transition-colors",
+                tab === k ? "text-gold" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {t(`wine.tab.${k}` as TKey)}
-              {tab === k && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-burgundy" />}
+              {tab === k && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-gold" />}
             </button>
           ))}
         </div>
@@ -378,9 +410,9 @@ function WineDetailPage() {
                 aiAromas={aromas}
                 personalAromas={latestPersonalAromas(notes)}
                 mineAfter={
-                  <Button asChild variant="outline" className="mt-5 w-full">
+                  <Button asChild variant="outline" className="mt-5 w-full min-h-11">
                     <Link to="/wine/$id/notes" params={{ id: w.id }}>
-                      <Plus className="h-4 w-4" /> {t("wine.notesAdd")}
+                      <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
                     </Link>
                   </Button>
                 }
@@ -453,11 +485,11 @@ function WineDetailPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-gold" />
-                      <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                      <span className="text-sm uppercase tracking-wider text-muted-foreground">
                         {t("wine.window")}
                       </span>
                     </div>
-                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-cream">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-cream">
                       <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
                       {t(statusKey as TKey)}
                     </span>
@@ -472,7 +504,7 @@ function WineDetailPage() {
                       style={{ left: `${pct}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     {t("wine.window.range")
                       .replace("{start}", String(win.start))
                       .replace("{end}", String(win.end))
@@ -494,13 +526,13 @@ function WineDetailPage() {
             <Section title={t("wine.notesSection")}>
               {notes.length === 0 ? (
                 <Card className="bg-card/50 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">{t("wine.notesEmpty")}</p>
+                  <p className="text-base text-muted-foreground">{t("wine.notesEmpty")}</p>
                   <Link
                     to="/wine/$id/notes"
                     params={{ id: w.id }}
-                    className="mt-3 inline-flex items-center gap-1 text-xs text-burgundy hover:underline"
+                    className="mt-3 inline-flex items-center gap-1 text-sm text-burgundy hover:underline"
                   >
-                    <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
+                    <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
                   </Link>
                 </Card>
               ) : (
@@ -512,13 +544,13 @@ function WineDetailPage() {
                           {n.rating != null && (
                             <>
                               <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-                              <span className="font-display text-sm text-cream">
+                              <span className="font-display text-base text-cream">
                                 {n.rating.toFixed(1)}
                               </span>
                             </>
                           )}
                         </div>
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <span className="text-xs uppercase tracking-wider text-muted-foreground">
                           {new Date(n.tasted_at).toLocaleDateString(
                             lang === "sv" ? "sv-SE" : "en-US",
                             { month: "short", day: "numeric", year: "numeric" },
@@ -527,21 +559,21 @@ function WineDetailPage() {
                         </span>
                       </div>
                       {n.notes && (
-                        <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">
+                        <p className="mt-1.5 text-sm leading-relaxed text-foreground/80">
                           {n.notes}
                         </p>
                       )}
                       {n.aromas && n.aromas.length > 0 && (
-                        <p className="mt-1.5 text-[11px] text-gold">{n.aromas.join(" • ")}</p>
+                        <p className="mt-1.5 text-sm text-gold">{n.aromas.join(" • ")}</p>
                       )}
                     </Card>
                   ))}
                   <Link
                     to="/wine/$id/notes"
                     params={{ id: w.id }}
-                    className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-xs text-gold hover:bg-gold/5"
+                    className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-sm text-gold hover:bg-gold/5"
                   >
-                    <Plus className="h-3 w-3" /> {t("wine.notesAdd")}
+                    <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
                   </Link>
                 </div>
               )}
@@ -597,11 +629,11 @@ function WineDetailPage() {
             {(w.food_pairings ?? []).map((p, i) => (
               <Card key={i} className="bg-card/50 p-4">
                 <p className="font-display text-base text-cream">{p.dish}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{p.reason}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{p.reason}</p>
               </Card>
             ))}
             {(!w.food_pairings || w.food_pairings.length === 0) && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
+              <p className="py-6 text-center text-base text-muted-foreground">
                 {t("wine.noPairings")}
               </p>
             )}
@@ -613,19 +645,24 @@ function WineDetailPage() {
             {suggestLoading && (
               <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">{t("wine.finding")}</span>
+                <span className="text-base">{t("wine.finding")}</span>
               </div>
             )}
             {suggestError && !suggestLoading && (
-              <Card className="bg-card/50 p-4 text-center text-sm text-destructive">
+              <Card className="bg-card/50 p-4 text-center text-base text-destructive">
                 {suggestError}
-                <Button variant="ghost" size="sm" onClick={loadSuggestions} className="mt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadSuggestions}
+                  className="mt-2 min-h-11"
+                >
                   {t("common.retry")}
                 </Button>
               </Card>
             )}
             {!suggestLoading && !suggestError && suggestions && suggestions.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
+              <p className="py-6 text-center text-base text-muted-foreground">
                 {t("wine.noSuggestions")}
               </p>
             )}
@@ -635,8 +672,8 @@ function WineDetailPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-display text-base text-cream">{s.wine_name}</p>
-                      <p className="text-xs text-gold">{s.producer}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      <p className="text-sm text-gold">{s.producer}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
                         {[s.region, s.country].filter(Boolean).join(", ")}
                         {s.grape_varieties?.length ? ` • ${s.grape_varieties.join(", ")}` : ""}
                       </p>
@@ -649,9 +686,9 @@ function WineDetailPage() {
                       evidence={s.match_evidence ?? []}
                     />
                   </div>
-                  <p className="mt-2 text-xs leading-relaxed text-foreground/80">{s.reason}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-foreground/80">{s.reason}</p>
                   {s.price_range && (
-                    <p className="mt-1.5 font-display text-xs text-cream">{s.price_range}</p>
+                    <p className="mt-1.5 font-display text-sm text-cream">{s.price_range}</p>
                   )}
                   <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
                     <div className="flex gap-1">
@@ -660,33 +697,33 @@ function WineDetailPage() {
                         aria-label={t("recommendation.like")}
                         title={t("recommendation.like")}
                         className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-md border",
+                          "flex h-11 w-11 items-center justify-center rounded-md border min-h-11 min-w-11",
                           suggestFeedback[recommendationKey(s)] === "like"
                             ? "border-success/40 bg-success/15 text-success"
                             : "border-white/10 text-muted-foreground",
                         )}
                       >
-                        <ThumbsUp className="h-3.5 w-3.5" />
+                        <ThumbsUp className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => sendSuggestionFeedback(s, "dislike")}
                         aria-label={t("recommendation.notForMe")}
                         title={t("recommendation.notForMe")}
                         className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-md border",
+                          "flex h-11 w-11 items-center justify-center rounded-md border min-h-11 min-w-11",
                           suggestFeedback[recommendationKey(s)] === "dislike"
                             ? "border-destructive/40 bg-destructive/15 text-destructive"
                             : "border-white/10 text-muted-foreground",
                         )}
                       >
-                        <ThumbsDown className="h-3.5 w-3.5" />
+                        <ThumbsDown className="h-5 w-5" />
                       </button>
                     </div>
                     <button
                       onClick={() => saveSuggestion(s)}
-                      className="flex h-8 items-center gap-1.5 rounded-md border border-gold/30 px-2.5 text-[11px] text-gold"
+                      className="flex h-11 items-center gap-1.5 rounded-md border border-gold/30 px-2.5 text-sm text-gold min-h-11 min-w-11"
                     >
-                      <Bookmark className="h-3.5 w-3.5" /> {t("wishlist.saveBtn")}
+                      <Bookmark className="h-5 w-5" /> {t("wishlist.saveBtn")}
                     </button>
                   </div>
                 </Card>
@@ -699,9 +736,9 @@ function WineDetailPage() {
                   setSuggestions(null);
                   loadSuggestions();
                 }}
-                className="w-full"
+                className="w-full min-h-11"
               >
-                <Sparkles className="h-4 w-4" /> {t("wine.regenerate")}
+                <Sparkles className="h-5 w-5" /> {t("wine.regenerate")}
               </Button>
             )}
           </div>
@@ -710,9 +747,9 @@ function WineDetailPage() {
         <Button
           variant="ghost"
           onClick={remove}
-          className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive min-h-11"
         >
-          <Trash2 className="h-4 w-4" /> {t("wine.delete")}
+          <Trash2 className="h-5 w-5" /> {t("wine.delete")}
         </Button>
       </div>
     </AppShell>
@@ -731,8 +768,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function KV({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between border-b border-white/8 pb-2.5">
-      <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-right font-display text-sm text-cream">{value}</span>
+      <span className="text-sm uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-right font-display text-base text-cream">{value}</span>
     </div>
   );
 }
@@ -750,8 +787,8 @@ function SliderRow({
 }) {
   return (
     <div className="grid grid-cols-[64px_36px_1fr_36px] items-center gap-2 py-2">
-      <span className="text-xs text-foreground/80">{label}</span>
-      <span className="text-[10px] text-muted-foreground">{leftLabel}</span>
+      <span className="text-sm text-foreground/80">{label}</span>
+      <span className="text-xs text-muted-foreground">{leftLabel}</span>
       <div className="relative h-1 rounded-full bg-white/10">
         <div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper"
@@ -762,7 +799,7 @@ function SliderRow({
           style={{ left: `${value}%` }}
         />
       </div>
-      <span className="text-right text-[10px] text-muted-foreground">{rightLabel}</span>
+      <span className="text-right text-xs text-muted-foreground">{rightLabel}</span>
     </div>
   );
 }

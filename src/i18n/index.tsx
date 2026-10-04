@@ -38,6 +38,7 @@ const en = {
   "collector.cost": "Cost of allocated bottles, including acquisition fees",
   "collector.estimates": "Manual estimates of allocated bottles",
   "collector.estimateOptional": "Manual estimate (optional)",
+  "collector.details": "Bottle details",
   "collector.estimateUnit": "Estimated resale price per bottle",
   "collector.estimateDate": "Valuation date",
   "collector.source": "Valuation source",
@@ -251,6 +252,7 @@ const en = {
 
   // Cellar overview
   "overview.title": "Cellar Overview",
+  "overview.moreDetails": "More statistics",
   "overview.bottles": "Bottles",
   "overview.regions": "Regions",
   "overview.countries": "Countries",
@@ -724,6 +726,7 @@ const sv: Record<keyof typeof en, string> = {
   "collector.cost": "Kostnad för tilldelade flaskor, inklusive inköpsavgifter",
   "collector.estimates": "Manuella värderingar av tilldelade flaskor",
   "collector.estimateOptional": "Manuell värdering (valfri)",
+  "collector.details": "Flaskdetaljer",
   "collector.estimateUnit": "Uppskattat andrahandspris per flaska",
   "collector.estimateDate": "Värderingsdatum",
   "collector.source": "Värderingskälla",
@@ -926,6 +929,7 @@ const sv: Record<keyof typeof en, string> = {
   "cellar.emptyCta": "Skanna en flaska",
 
   "overview.title": "Källaröversikt",
+  "overview.moreDetails": "Fler detaljer",
   "overview.bottles": "Flaskor",
   "overview.regions": "Regioner",
   "overview.countries": "Länder",

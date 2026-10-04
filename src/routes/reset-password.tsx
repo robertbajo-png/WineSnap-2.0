@@ -115,20 +115,20 @@ function ResetPasswordPage() {
         <h1 className="font-display text-2xl">{t("reset.newTitle")}</h1>
 
         {state === "checking" && (
-          <p className="mt-3 text-sm text-muted-foreground" role="status" aria-live="polite">
+          <p className="mt-3 text-base text-muted-foreground" role="status" aria-live="polite">
             {t("reset.checking")}
           </p>
         )}
 
         {state === "invalid" && (
           <div className="mt-3 space-y-4">
-            <p className="text-sm text-muted-foreground">{t("reset.invalidLink")}</p>
-            <Button asChild className="h-11 w-full">
+            <p className="text-base text-muted-foreground">{t("reset.invalidLink")}</p>
+            <Button asChild className="min-h-11 w-full min-h-11">
               <Link to="/forgot-password">{t("reset.requestNew")}</Link>
             </Button>
             <Link
               to="/login"
-              className="block text-center text-sm text-muted-foreground hover:text-foreground"
+              className="block text-center text-base text-muted-foreground hover:text-foreground"
             >
               {t("reset.backToLogin")}
             </Link>
@@ -137,7 +137,7 @@ function ResetPasswordPage() {
 
         {state === "ready" && (
           <>
-            <p className="mt-1 text-sm text-muted-foreground">{t("reset.newSub")}</p>
+            <p className="mt-1 text-base text-muted-foreground">{t("reset.newSub")}</p>
             <form onSubmit={submit} className="mt-5 space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="new-password">{t("reset.newPassword")}</Label>
@@ -170,11 +170,11 @@ function ResetPasswordPage() {
                 />
               </div>
               {error && (
-                <p id="reset-error" role="alert" className="text-sm text-destructive">
+                <p id="reset-error" role="alert" className="text-base text-destructive">
                   {error}
                 </p>
               )}
-              <Button type="submit" disabled={busy} className="h-11 w-full">
+              <Button type="submit" disabled={busy} className="min-h-11 w-full min-h-11">
                 {busy ? t("login.wait") : t("reset.savePassword")}
               </Button>
             </form>

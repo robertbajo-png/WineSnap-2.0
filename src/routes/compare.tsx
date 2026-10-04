@@ -130,7 +130,9 @@ function ComparePage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">{t("compare.signIn")}</p>
           <Link to="/login">
-            <Button className="mt-4 bg-gradient-burgundy text-cream">{t("login.signIn")}</Button>
+            <Button className="mt-4 bg-gradient-burgundy text-cream min-h-11">
+              {t("login.signIn")}
+            </Button>
           </Link>
         </div>
       </AppShell>
@@ -140,17 +142,17 @@ function ComparePage() {
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
-        <header className="grid grid-cols-[36px_1fr_36px] items-center">
+        <header className="grid grid-cols-[44px_1fr_44px] items-center gap-2">
           <Link
             to="/cellar"
             aria-label={t("common.back")}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="text-center">
             <h1 className="font-display text-2xl text-gold">{t("compare.title")}</h1>
-            <p className="mt-1 text-[11px] text-muted-foreground">{t("compare.subtitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("compare.subtitle")}</p>
           </div>
           <Scale className="mx-auto h-4 w-4 text-gold/70" />
         </header>
@@ -168,7 +170,7 @@ function ComparePage() {
           />
         ) : (
           <>
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <WinePicker
                 label={t("compare.first")}
                 value={leftId}
@@ -191,7 +193,7 @@ function ComparePage() {
               <div className="pb-5">
                 <div className="mt-5 border-y border-white/10 py-4 text-center">
                   <p className="font-display text-3xl text-gold">{similarity.score}%</p>
-                  <p className="mt-1 text-[10px] uppercase text-muted-foreground">
+                  <p className="mt-1 text-xs uppercase text-muted-foreground">
                     {t("compare.similarity")}
                   </p>
                 </div>
@@ -218,9 +220,9 @@ function ComparePage() {
                 <Button
                   onClick={saveComparison}
                   disabled={logged}
-                  className="mt-6 w-full bg-gradient-burgundy text-cream"
+                  className="mt-6 w-full bg-gradient-burgundy text-cream min-h-11"
                 >
-                  {logged ? <Check className="h-4 w-4" /> : <Scale className="h-4 w-4" />}
+                  {logged ? <Check className="h-5 w-5" /> : <Scale className="h-5 w-5" />}
                   {logged ? t("compare.logged") : t("compare.log")}
                 </Button>
               </div>
@@ -248,12 +250,12 @@ function WinePicker({
   placeholder: string;
 }) {
   return (
-    <label className="min-w-0 text-[11px] text-muted-foreground">
+    <label className="min-w-0 text-sm text-muted-foreground">
       {label}
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1.5 h-11 w-full min-w-0 rounded-md border border-white/10 bg-card px-2 text-xs text-foreground focus:border-gold/50 focus:outline-none"
+        className="mt-1.5 h-11 w-full min-w-0 rounded-md border border-white/10 bg-card px-2 text-base text-foreground focus:border-gold/50 focus:outline-none min-h-12"
       >
         <option value="">{placeholder}</option>
         {wines.map((wine) => (
@@ -276,10 +278,10 @@ function WineSummary({
   return (
     <div className="min-w-0 px-3 py-4 first:pl-0 last:pr-0">
       <Link to="/wine/$id" params={{ id: wine.id }} className="block min-w-0">
-        <p className="truncate font-display text-sm text-cream">
+        <p className="line-clamp-2 break-words font-display text-lg text-cream">
           {wine.wine_name ?? wine.producer}
         </p>
-        <p className="mt-0.5 truncate text-[11px] text-gold">
+        <p className="mt-1 break-words text-sm text-gold">
           {[wine.region, wine.country].filter(Boolean).join(", ")}
         </p>
       </Link>
@@ -307,14 +309,14 @@ function StructureRow({
   const leftValue = Math.max(0, Math.min(10, Number(left) || 0));
   const rightValue = Math.max(0, Math.min(10, Number(right) || 0));
   return (
-    <div className="grid grid-cols-[1fr_70px_1fr] items-center gap-2">
+    <div className="grid grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] items-center gap-2">
       <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
         <div
           className="ml-auto h-full rounded-full bg-burgundy"
           style={{ width: `${leftValue * 10}%` }}
         />
       </div>
-      <p className="text-center text-[10px] uppercase text-muted-foreground">{label}</p>
+      <p className="break-words text-center text-sm text-muted-foreground">{label}</p>
       <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
         <div className="h-full rounded-full bg-gold" style={{ width: `${rightValue * 10}%` }} />
       </div>

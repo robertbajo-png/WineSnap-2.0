@@ -149,7 +149,9 @@ function WishlistPage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">{t("wishlist.signIn")}</p>
           <Link to="/login">
-            <Button className="mt-4 bg-gradient-burgundy text-cream">{t("login.signIn")}</Button>
+            <Button className="mt-4 bg-gradient-burgundy text-cream min-h-11">
+              {t("login.signIn")}
+            </Button>
           </Link>
         </div>
       </AppShell>
@@ -161,24 +163,24 @@ function WishlistPage() {
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <Header title={t("wishlist.title")} />
         <div className="mt-1 flex items-start justify-between gap-3">
-          <p className="text-xs text-muted-foreground">{t("wishlist.subtitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("wishlist.subtitle")}</p>
           {rows?.length ? (
             <button
               onClick={checkNow}
               disabled={checking}
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-[11px] text-gold disabled:opacity-50"
+              className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-gold/40 bg-background/60 px-3 text-sm text-gold disabled:opacity-50 min-h-11 min-w-11"
             >
               {checking ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <RefreshCw className="h-3 w-3" />
+                <RefreshCw className="h-5 w-5" />
               )}
               {checking ? t("wishlist.checking") : t("wishlist.checkNow")}
             </button>
           ) : null}
         </div>
         {rows?.length ? (
-          <p className="mt-1 text-[10px] text-muted-foreground/70">{t("wishlist.autoNote")}</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">{t("wishlist.autoNote")}</p>
         ) : null}
 
         {!rows?.length ? (
@@ -188,8 +190,8 @@ function WishlistPage() {
             description={t("wishlist.emptyDesc")}
             action={
               <Link to="/for-you">
-                <Button className="bg-gradient-burgundy text-cream">
-                  <Plus className="h-4 w-4" /> {t("wishlist.discover")}
+                <Button className="bg-gradient-burgundy text-cream min-h-11">
+                  <Plus className="h-5 w-5" /> {t("wishlist.discover")}
                 </Button>
               </Link>
             }
@@ -207,7 +209,7 @@ function WishlistPage() {
                 }`}
               >
                 {r.price_alert_triggered_at && !r.price_alert_seen_at && (
-                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-success/15 px-2 py-1 text-[11px] font-medium text-success">
+                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-success/15 px-2 py-1 text-sm font-medium text-success">
                     <TrendingDown className="h-3 w-3" />
                     {t("wishlist.priceDropped")}
                     {r.last_checked_price != null && r.target_price != null && (
@@ -226,25 +228,25 @@ function WishlistPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-display text-[15px] leading-tight text-cream">
+                    <p className="line-clamp-2 break-words font-display text-xl leading-tight text-cream">
                       {r.producer ? `${r.producer} — ` : ""}
                       {r.wine_name} {r.vintage ?? ""}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-gold">
+                    <p className="mt-0.5 text-sm text-gold">
                       {[r.region, r.country].filter(Boolean).join(", ")}
                       {r.wine_type ? ` • ${r.wine_type}` : ""}
                     </p>
                     {r.grape_varieties?.length ? (
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      <p className="mt-0.5 break-words text-sm text-muted-foreground">
                         {r.grape_varieties.join(", ")}
                       </p>
                     ) : null}
                     {r.last_checked_price != null && (
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      <p className="mt-1 text-base text-cream">
                         {t("wishlist.currentPrice")}: {r.price_currency ?? "kr"}{" "}
                         {r.last_checked_price}
                         {r.last_checked_at && (
-                          <span className="opacity-60">
+                          <span className="block text-sm text-muted-foreground">
                             {" "}
                             · {new Date(r.last_checked_at).toLocaleDateString()}
                           </span>
@@ -257,9 +259,9 @@ function WishlistPage() {
                           e.stopPropagation();
                           setTargetPrice(r);
                         }}
-                        className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-[11px] text-gold hover:bg-background/70"
+                        className="flex items-center gap-1 rounded-md border border-gold/30 bg-background/40 px-2 py-1 text-sm text-gold hover:bg-background/70 min-h-11 min-w-11"
                       >
-                        <Tag className="h-3 w-3" />
+                        <Tag className="h-5 w-5" />
                         {r.target_price != null
                           ? `${r.price_currency ?? "kr"} ${r.target_price}`
                           : t("wishlist.setTarget")}
@@ -269,16 +271,16 @@ function WishlistPage() {
                           e.stopPropagation();
                           toggleNotify(r);
                         }}
-                        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] ${
+                        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-sm  min-h-11 min-w-11 ${
                           r.notify_on_drop
-                            ? "border-success/40 bg-success/10 text-success"
+                            ? "border-success/40 bg-success/10 text-success min-h-11 min-w-11"
                             : "border-white/10 bg-background/40 text-muted-foreground"
                         }`}
                       >
                         {r.notify_on_drop ? (
-                          <Bell className="h-3 w-3" />
+                          <Bell className="h-5 w-5" />
                         ) : (
-                          <BellOff className="h-3 w-3" />
+                          <BellOff className="h-5 w-5" />
                         )}
                         {r.notify_on_drop ? t("wishlist.alertOn") : t("wishlist.alertOff")}
                       </button>
@@ -288,7 +290,7 @@ function WishlistPage() {
                           target="_blank"
                           rel="noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-[11px] text-burgundy hover:underline"
+                          className="inline-flex min-h-11 items-center text-sm text-gold hover:underline"
                         >
                           {t("wishlist.viewAtSb")}
                         </a>
@@ -297,7 +299,7 @@ function WishlistPage() {
                         <Link
                           to="/wine/$id"
                           params={{ id: r.wine_id }}
-                          className="text-[11px] text-burgundy hover:underline"
+                          className="inline-flex min-h-11 items-center text-sm text-gold hover:underline"
                         >
                           {t("wishlist.view")}
                         </Link>
@@ -310,9 +312,9 @@ function WishlistPage() {
                       remove(r.id);
                     }}
                     aria-label={t("common.delete")}
-                    className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-white/5 hover:text-destructive"
+                    className="h-11 w-11 shrink-0 rounded-full text-muted-foreground hover:bg-white/5 hover:text-destructive min-h-11 min-w-11"
                   >
-                    <Trash2 className="mx-auto h-4 w-4" />
+                    <Trash2 className="mx-auto h-5 w-5" />
                   </button>
                 </div>
               </article>

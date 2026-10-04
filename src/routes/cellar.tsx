@@ -128,39 +128,41 @@ function CellarListPage() {
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
-        <header className="relative flex items-center justify-center">
+        <header className="grid grid-cols-[44px_1fr_auto] items-center gap-3">
           <Link
             to="/compare"
             aria-label={t("compare.title")}
             title={t("compare.title")}
-            className="absolute left-0 flex h-8 w-8 items-center justify-center rounded-md border border-white/10 text-muted-foreground hover:text-gold"
+            className="flex h-11 w-11 items-center justify-center rounded-md border border-white/10 text-muted-foreground hover:text-gold"
           >
-            <Scale className="h-3.5 w-3.5" />
+            <Scale className="h-5 w-5" />
           </Link>
-          <h1 className="font-display text-2xl text-gold">{t("cellar.title")}</h1>
+          <h1 className="min-w-0 break-words text-center font-display text-2xl text-gold">
+            {t("cellar.title")}
+          </h1>
           <Link
             to="/scan"
-            className="absolute right-0 flex h-8 items-center gap-1 rounded-full bg-gradient-burgundy px-2.5 text-xs font-medium text-cream"
+            className="flex min-h-11 items-center gap-1 rounded-md bg-gradient-burgundy px-3 text-sm font-medium text-cream"
           >
-            <Plus className="h-3 w-3" /> {t("cellar.add")}
+            <Plus className="h-5 w-5" /> {t("cellar.add")}
           </Link>
         </header>
 
         <Link
           to="/cellar/overview"
-          className="mt-4 flex items-center gap-2 border-b border-white/10 py-3 text-sm text-gold"
+          className="mt-4 flex items-center gap-2 border-b border-white/10 py-3 text-base text-gold"
         >
-          <ChartNoAxesCombined className="h-4 w-4" />
+          <ChartNoAxesCombined className="h-5 w-5" />
           <span className="flex-1">{t("overview.title")}</span>
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5" />
         </Link>
         <Link
           to="/cellar/collection"
-          className="flex items-center gap-2 border-b border-white/10 py-3 text-sm text-gold"
+          className="flex items-center gap-2 border-b border-white/10 py-3 text-base text-gold"
         >
-          <Wine className="h-4 w-4" />
+          <Wine className="h-5 w-5" />
           <span className="flex-1">{t("collector.title")}</span>
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5" />
         </Link>
 
         <div className="mt-4">
@@ -172,12 +174,12 @@ function CellarListPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("cellar.searchPh")}
-              className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-white/10 bg-card/60 pl-10 pr-3 text-base placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none min-h-12"
             />
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -185,7 +187,7 @@ function CellarListPage() {
               aria-pressed={filter === f}
               onClick={() => setFilter(f)}
               className={cn(
-                "h-8 shrink-0 rounded-full border px-3.5 text-xs transition-colors",
+                "h-11 shrink-0 rounded-full border px-3.5 text-sm transition-colors min-h-11 min-w-11",
                 filter === f
                   ? "border-burgundy bg-burgundy text-cream"
                   : "border-white/10 bg-card/40 text-foreground/80",
@@ -196,15 +198,15 @@ function CellarListPage() {
           ))}
         </div>
 
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <h2 className="text-sm">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base">
             <span className="font-display text-lg text-cream">{filtered.length}</span>{" "}
             <span className="text-muted-foreground">{t("cellar.bottles")}</span>
           </h2>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            className="h-8 rounded-full border border-white/10 bg-card/40 px-3 text-xs text-foreground/80 focus:border-gold/40 focus:outline-none"
+            className="h-11 rounded-full border border-white/10 bg-card/40 px-3 text-base text-foreground/80 focus:border-gold/40 focus:outline-none min-h-12"
             aria-label={t("cellar.sort")}
           >
             {SORTS.map((s) => (
@@ -237,14 +239,14 @@ function CellarListPage() {
                   description={t("cellar.emptyDesc")}
                   action={
                     <Link to="/scan">
-                      <Button className="bg-gradient-burgundy text-cream">
-                        <Camera className="h-4 w-4" /> {t("cellar.emptyCta")}
+                      <Button className="bg-gradient-burgundy text-cream min-h-11">
+                        <Camera className="h-5 w-5" /> {t("cellar.emptyCta")}
                       </Button>
                     </Link>
                   }
                 />
               ) : (
-                <div className="rounded-xl border border-white/8 bg-card/40 p-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-white/8 bg-card/40 p-8 text-center text-base text-muted-foreground">
                   {t("cellar.noMatch")}
                 </div>
               )}
@@ -271,25 +273,25 @@ function CellarListPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-display text-lg leading-tight text-cream">
+                      <p className="line-clamp-2 break-words font-display text-xl leading-tight text-cream">
                         {w.wine_name ?? w.producer ?? "Unknown"} {w.vintage ?? ""}
                       </p>
-                      <p className="truncate text-xs text-gold">
+                      <p className="mt-1 break-words text-sm text-gold">
                         {[w.region, w.country].filter(Boolean).join(", ")}
                       </p>
-                      <div className="mt-1 flex items-center gap-2 text-xs">
+                      <div className="mt-1 flex items-center gap-2 text-sm">
                         {w.vintage && (
-                          <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-xs text-muted-foreground">
+                          <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-sm text-muted-foreground">
                             {w.vintage}
                           </span>
                         )}
                         <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-gold text-gold" />
+                          <Star className="h-5 w-5 fill-gold text-gold" />
                           <span>{rating.toFixed(1)}</span>
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
                   </Link>
                 </li>
               );

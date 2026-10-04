@@ -16,7 +16,7 @@ export function CellarOrigins({ points }: { points: WineOrigin[] }) {
     <section className="mt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="font-display text-base text-cream">{t("origins.title")}</h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {bottles} {t(bottles === 1 ? "map.bottle" : "map.bottles")} · {countries}{" "}
           {t(countries === 1 ? "origins.countrySingular" : "origins.countries")}
         </p>
@@ -25,7 +25,7 @@ export function CellarOrigins({ points }: { points: WineOrigin[] }) {
         points={groups.flatMap((group) => group.points)}
         selectedCountry={selected?.key ?? null}
       />
-      <table className="mt-2 w-full table-fixed border-collapse text-sm">
+      <table className="mt-2 w-full table-fixed border-collapse text-base">
         <caption className="sr-only">{t("origins.title")}</caption>
         <colgroup>
           <col />
@@ -33,7 +33,7 @@ export function CellarOrigins({ points }: { points: WineOrigin[] }) {
           <col className="w-16" />
         </colgroup>
         <thead>
-          <tr className="border-b border-gold/30 text-xs text-muted-foreground">
+          <tr className="border-b border-gold/30 text-sm text-muted-foreground">
             <th scope="col" className="pb-2 text-left font-normal">
               {t("origins.country")}
             </th>
@@ -75,11 +75,11 @@ export function CellarOrigins({ points }: { points: WineOrigin[] }) {
                   <tr key={region.key}>
                     <th
                       scope="row"
-                      className="break-words py-2 pl-6 text-left text-xs font-normal text-muted-foreground"
+                      className="break-words py-2 pl-6 text-left text-sm font-normal text-muted-foreground"
                     >
                       {region.name ?? t("origins.unknownRegion")}
                     </th>
-                    <td className="py-2 text-right text-xs tabular-nums text-muted-foreground">
+                    <td className="py-2 text-right text-sm tabular-nums text-muted-foreground">
                       {region.count}
                     </td>
                     <td />

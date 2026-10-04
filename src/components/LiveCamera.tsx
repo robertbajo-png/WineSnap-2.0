@@ -138,11 +138,11 @@ export function LiveCamera({
               ) : (
                 <Loader2 className="h-9 w-9 animate-spin text-gold" />
               )}
-              <p className="max-w-sm text-sm text-cream">{t(error ?? "scan.cameraStarting")}</p>
+              <p className="max-w-sm text-base text-cream">{t(error ?? "scan.cameraStarting")}</p>
               {error && (
                 <button
                   onClick={() => setAttempt((value) => value + 1)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gold"
+                  className="flex min-h-11 items-center gap-2 px-4 py-2 text-base text-gold"
                 >
                   <RotateCcw className="h-4 w-4" />
                   {t("scan.cameraRetry")}
@@ -154,7 +154,7 @@ export function LiveCamera({
       </div>
       <p
         id="scan-camera-hint"
-        className="shrink-0 px-8 pb-1 text-center text-xs leading-relaxed text-cream/70"
+        className="shrink-0 px-8 pb-1 text-center text-sm leading-relaxed text-cream/90"
       >
         {t("scan.align")}
       </p>

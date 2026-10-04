@@ -5,14 +5,16 @@ import { useT } from "@/i18n";
 export function AppShell({
   children,
   hideNav = false,
+  fillViewport = false,
 }: {
   children: ReactNode;
   hideNav?: boolean;
+  fillViewport?: boolean;
 }) {
   const t = useT();
   return (
     <div
-      className="relative min-h-screen overflow-x-clip bg-background pb-[calc(var(--bottom-nav-height)+1rem)] text-foreground"
+      className={`relative min-h-screen overflow-x-clip bg-background text-foreground ${fillViewport ? "" : "pb-[calc(var(--bottom-nav-height)+1rem)]"}`}
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <a
@@ -28,7 +30,7 @@ export function AppShell({
       <main
         id="winesnap-content"
         tabIndex={-1}
-        className={`relative z-10 mx-auto w-full max-w-md px-5 pt-6 ${hideNav ? "" : "md:max-w-[720px]"}`}
+        className={`relative z-10 mx-auto w-full max-w-md px-5 pt-6 ${hideNav && !fillViewport ? "" : "md:max-w-[720px]"}`}
       >
         {children}
       </main>

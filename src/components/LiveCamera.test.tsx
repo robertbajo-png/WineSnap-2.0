@@ -28,7 +28,7 @@ describe("live camera view", () => {
     const html = renderToStaticMarkup(<LiveCamera onCapture={vi.fn()} onGallery={vi.fn()} />);
     expect(html).toContain('aria-describedby="scan-camera-hint"');
     expect(html).toContain(
-      '</div><p id="scan-camera-hint" class="shrink-0 px-8 pb-1 text-center text-xs leading-relaxed text-cream/70">scan.align</p><div class="flex shrink-0',
+      '</div><p id="scan-camera-hint" class="shrink-0 px-8 pb-1 text-center text-sm leading-relaxed text-cream/90">scan.align</p><div class="flex shrink-0',
     );
     expect(html).not.toContain("absolute inset-x-0 bottom-6");
   });

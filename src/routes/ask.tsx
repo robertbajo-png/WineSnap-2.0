@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ChatMessageContent } from "@/components/ChatMessageContent";
+import { ChatViewport } from "@/components/ChatViewport";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -75,6 +76,7 @@ function AskWineSnapPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -198,7 +200,7 @@ function AskWineSnapPage() {
         <div className="mt-20 text-center">
           <MessageCircleMore className="mx-auto h-9 w-9 text-gold" />
           <p className="mt-4 text-muted-foreground">{t("ask.signIn")}</p>
-          <Button asChild className="mt-4 bg-gradient-burgundy text-cream">
+          <Button asChild className="mt-4 bg-gradient-burgundy text-cream min-h-11">
             <Link to="/login">{t("login.signIn")}</Link>
           </Button>
         </div>
@@ -207,12 +209,12 @@ function AskWineSnapPage() {
   }
 
   return (
-    <AppShell>
-      <div className="-mx-5 -mt-6 flex min-h-[calc(100vh-7rem)] flex-col px-5 pt-3">
-        <header className="flex items-start justify-between gap-3 border-b border-white/8 pb-4">
+    <AppShell fillViewport hideNav={keyboardOpen}>
+      <ChatViewport onKeyboardChange={setKeyboardOpen}>
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-white/8 pb-3">
           <div className="min-w-0">
             <h1 className="font-display text-2xl text-gold">{t("ask.title")}</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t("ask.subtitle")}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{t("ask.subtitle")}</p>
           </div>
           <div className="flex shrink-0 gap-1">
             <Button
@@ -237,17 +239,20 @@ function AskWineSnapPage() {
         </header>
 
         {historyOpen && (
-          <section aria-label={t("ask.history")} className="border-b border-white/8 py-3">
+          <section
+            aria-label={t("ask.history")}
+            className="max-h-[35%] shrink-0 overflow-y-auto border-b border-white/8 py-3"
+          >
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-cream">{t("ask.history")}</h2>
-              <Button asChild variant="ghost" size="sm" className="h-8 text-gold">
+              <h2 className="text-base font-medium text-cream">{t("ask.history")}</h2>
+              <Button asChild variant="ghost" size="sm" className="min-h-11 text-gold min-h-11">
                 <Link to="/for-you">
-                  <Sparkles className="h-4 w-4" /> {t("ask.recommendations")}
+                  <Sparkles className="h-5 w-5" /> {t("ask.recommendations")}
                 </Link>
               </Button>
             </div>
             {!conversations.length ? (
-              <p className="py-3 text-xs text-muted-foreground">{t("ask.noHistory")}</p>
+              <p className="py-3 text-sm text-muted-foreground">{t("ask.noHistory")}</p>
             ) : (
               <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
                 {conversations.map((conversation) => (
@@ -261,13 +266,13 @@ function AskWineSnapPage() {
                     <button
                       type="button"
                       onClick={() => void openConversation(conversation)}
-                      className="min-w-0 flex-1 text-left"
+                      className="min-w-0 flex-1 text-left min-h-11 min-w-11"
                     >
-                      <span className="block truncate text-sm text-foreground">
+                      <span className="block truncate text-base text-foreground">
                         {conversation.title}
                       </span>
-                      <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Clock3 className="h-3 w-3" />
+                      <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock3 className="h-5 w-5" />
                         {new Date(conversation.last_message_at).toLocaleDateString()}
                       </span>
                     </button>
@@ -276,10 +281,10 @@ function AskWineSnapPage() {
                       size="icon"
                       variant="ghost"
                       aria-label={t("ask.delete")}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      className="h-11 w-11 text-muted-foreground hover:text-destructive min-h-11"
                       onClick={() => void removeConversation(conversation)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5" />
                     </Button>
                   </div>
                 ))}
@@ -288,9 +293,14 @@ function AskWineSnapPage() {
           </section>
         )}
 
-        <div className="flex-1 py-5">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label={t("ask.title")}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4"
+        >
           {context.wineId && (
-            <div className="mb-4 flex items-center gap-2 rounded-md border border-gold/25 bg-gold/5 px-3 py-2 text-xs text-gold">
+            <div className="mb-4 flex items-center gap-2 rounded-md border border-gold/25 bg-gold/5 px-3 py-2 text-sm text-gold">
               <Wine className="h-4 w-4" />
               <span className="flex-1">{t("ask.contextWine")}</span>
               <Link
@@ -307,7 +317,7 @@ function AskWineSnapPage() {
             <div className="mx-auto mt-8 max-w-sm text-center">
               <MessageCircleMore className="mx-auto h-10 w-10 text-gold" strokeWidth={1.5} />
               <h2 className="mt-4 font-display text-xl text-cream">{t("ask.emptyTitle")}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-1 text-base leading-relaxed text-muted-foreground">
                 {t("ask.emptyDesc")}
               </p>
               <div className="mt-5 space-y-2 text-left">
@@ -317,14 +327,14 @@ function AskWineSnapPage() {
                       key={prompt}
                       type="button"
                       onClick={() => setInput(prompt)}
-                      className="w-full rounded-md border border-white/10 bg-card/40 px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:border-gold/30 hover:bg-card/70"
+                      className="w-full rounded-md border border-white/10 bg-card/40 px-3 py-2.5 text-left text-base text-foreground transition-colors hover:border-gold/30 hover:bg-card/70 min-h-11 min-w-11"
                     >
                       {prompt}
                     </button>
                   ),
                 )}
               </div>
-              <p className="mt-5 text-[11px] text-muted-foreground">{t("ask.contextMemory")}</p>
+              <p className="mt-5 text-sm text-muted-foreground">{t("ask.contextMemory")}</p>
             </div>
           ) : (
             <div className="space-y-4" aria-live="polite">
@@ -332,7 +342,7 @@ function AskWineSnapPage() {
                 <article
                   key={message.id}
                   className={cn(
-                    "min-w-0 rounded-md px-3.5 py-3 text-sm leading-relaxed",
+                    "min-w-0 rounded-md px-3.5 py-3 text-base leading-relaxed",
                     message.role === "user"
                       ? "ml-auto max-w-[88%] bg-burgundy text-cream"
                       : "w-full border border-white/8 bg-card/55 text-foreground",
@@ -342,7 +352,7 @@ function AskWineSnapPage() {
                 </article>
               ))}
               {busy && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin text-gold" /> {t("ask.thinking")}
                 </div>
               )}
@@ -351,11 +361,11 @@ function AskWineSnapPage() {
           )}
         </div>
 
-        <div className="sticky bottom-24 -mx-1 bg-background/95 px-1 pb-2 pt-3 backdrop-blur-lg">
+        <div className="shrink-0 border-t border-white/10 bg-background/95 pb-3 pt-3">
           {error && (
             <div
               role="alert"
-              className="mb-2 rounded-md border border-destructive/35 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="mb-2 rounded-md border border-destructive/35 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
               {error}
             </div>
@@ -378,23 +388,21 @@ function AskWineSnapPage() {
                 }
               }}
               placeholder={t("ask.placeholder")}
-              className="min-h-12 flex-1 resize-none rounded-md border border-white/12 bg-card/70 px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/60 disabled:opacity-60"
+              className="min-h-12 min-w-0 flex-1 resize-none rounded-md border border-white/12 bg-card/70 px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/60 disabled:opacity-60"
             />
             <Button
               type="submit"
               size="icon"
               disabled={busy || !input.trim()}
               aria-label={t("ask.send")}
-              className="h-12 w-12 shrink-0 bg-burgundy text-cream hover:bg-burgundy/90"
+              className="h-12 w-12 shrink-0 bg-burgundy text-cream hover:bg-burgundy/90 min-h-11"
             >
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </Button>
           </form>
-          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-            {t("ask.disclaimer")}
-          </p>
+          <p className="mt-1.5 text-center text-xs text-muted-foreground">{t("ask.disclaimer")}</p>
         </div>
-      </div>
+      </ChatViewport>
     </AppShell>
   );
 }

@@ -73,12 +73,12 @@ function ForgotPasswordPage() {
       </header>
       <Card className="p-6 shadow-elegant">
         <h1 className="font-display text-2xl">{t("reset.forgotTitle")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("reset.forgotSub")}</p>
+        <p className="mt-1 text-base text-muted-foreground">{t("reset.forgotSub")}</p>
 
         {sent ? (
           <div className="mt-5 space-y-4" role="status" aria-live="polite">
-            <p className="text-sm text-foreground">{t("reset.sentNeutral")}</p>
-            <Button asChild variant="outline" className="h-11 w-full">
+            <p className="text-base text-foreground">{t("reset.sentNeutral")}</p>
+            <Button asChild variant="outline" className="min-h-11 w-full min-h-11">
               <Link to="/login">{t("reset.backToLogin")}</Link>
             </Button>
           </div>
@@ -99,18 +99,18 @@ function ForgotPasswordPage() {
               />
             </div>
             {error && (
-              <p id="reset-error" role="alert" className="text-sm text-destructive">
+              <p id="reset-error" role="alert" className="text-base text-destructive">
                 {error}
               </p>
             )}
-            <Button type="submit" disabled={busy} className="h-11 w-full">
+            <Button type="submit" disabled={busy} className="min-h-11 w-full min-h-11">
               {busy ? t("login.wait") : t("reset.sendLink")}
             </Button>
           </form>
         )}
 
         <div className="mt-4 text-center">
-          <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/login" className="text-base text-muted-foreground hover:text-foreground">
             {t("reset.backToLogin")}
           </Link>
         </div>

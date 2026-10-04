@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { MobileDetails } from "@/components/MobileDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
@@ -219,7 +220,7 @@ function CellarOverviewPage() {
       <AppShell>
         <p
           role={loadError ? "alert" : "status"}
-          className="py-8 text-center text-sm text-muted-foreground"
+          className="py-8 text-center text-base text-muted-foreground"
         >
           {t(loadError ? "common.error" : "common.loading")}
         </p>
@@ -235,7 +236,7 @@ function CellarOverviewPage() {
             to="/cellar"
             aria-label={t("cellar.title")}
             title={t("cellar.title")}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -250,44 +251,46 @@ function CellarOverviewPage() {
         </section>
 
         {(active.length > 0 || bottlesConsumed > 0) && (
-          <section className="mt-4 grid grid-cols-2 gap-2">
-            <BigStat
-              value={
-                purchase.groups.length
-                  ? purchase.groups.map((g) => formatMoney(g.total, g.currency)).join(" / ")
-                  : "—"
-              }
-              label={t("overview.totalValue")}
-              sub={
-                purchase.excluded
-                  ? `${purchase.excluded} ${t("overview.missingPrice")}`
-                  : `${purchase.groups.reduce((sum, g) => sum + g.bottles, 0)} ${t("overview.priced")}`
-              }
-            />
-            <BigStat
-              value={
-                purchase.groups.length
-                  ? purchase.groups
-                      .map((g) => formatMoney(g.total / g.bottles, g.currency))
-                      .join(" / ")
-                  : "—"
-              }
-              label={t("overview.avgBottle")}
-            />
-            <BigStat value={String(bottlesConsumed)} label={t("overview.consumed")} />
-            <BigStat
-              value={ratingStats.rated ? ratingStats.avg.toFixed(1) : "—"}
-              label={t("overview.avgRating")}
-              sub={ratingStats.rated ? `${ratingStats.rated} ${t("overview.rated")}` : ""}
-            />
-          </section>
+          <MobileDetails title={t("overview.totalValue")} className="mt-4">
+            <section className="mt-4 grid grid-cols-2 gap-2">
+              <BigStat
+                value={
+                  purchase.groups.length
+                    ? purchase.groups.map((g) => formatMoney(g.total, g.currency)).join(" / ")
+                    : "—"
+                }
+                label={t("overview.totalValue")}
+                sub={
+                  purchase.excluded
+                    ? `${purchase.excluded} ${t("overview.missingPrice")}`
+                    : `${purchase.groups.reduce((sum, g) => sum + g.bottles, 0)} ${t("overview.priced")}`
+                }
+              />
+              <BigStat
+                value={
+                  purchase.groups.length
+                    ? purchase.groups
+                        .map((g) => formatMoney(g.total / g.bottles, g.currency))
+                        .join(" / ")
+                    : "—"
+                }
+                label={t("overview.avgBottle")}
+              />
+              <BigStat value={String(bottlesConsumed)} label={t("overview.consumed")} />
+              <BigStat
+                value={ratingStats.rated ? ratingStats.avg.toFixed(1) : "—"}
+                label={t("overview.avgRating")}
+                sub={ratingStats.rated ? `${ratingStats.rated} ${t("overview.rated")}` : ""}
+              />
+            </section>
+          </MobileDetails>
         )}
 
         {active.length > 0 && (
           <section className="mt-4 border-y border-gold/20 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                <p className="text-sm uppercase tracking-wider text-muted-foreground">
                   {t("overview.marketValue")}
                 </p>
                 {retail.groups.length ? (
@@ -306,13 +309,13 @@ function CellarOverviewPage() {
               <button
                 onClick={refreshValues}
                 disabled={refreshing}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gold/30 bg-card/50 px-3 py-1.5 text-[11px] text-gold disabled:opacity-60"
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gold/30 bg-card/50 px-3 py-1.5 text-sm text-gold disabled:opacity-60 min-h-11 min-w-11"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
                 {refreshing ? t("overview.updating") : t("overview.updateValues")}
               </button>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               {retail.groups.length
                 ? `${retail.groups.reduce((sum, g) => sum + g.bottles, 0)} ${t("overview.valued")} · ${t("overview.marketValueDesc")}${
                     lastChecked
@@ -322,7 +325,7 @@ function CellarOverviewPage() {
                 : t("overview.marketValueEmpty")}
             </p>
             {retail.excluded > 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {retail.excluded} {t("overview.missingPrice")}
               </p>
             )}
@@ -344,7 +347,7 @@ function CellarOverviewPage() {
                 />
               ))}
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {typeStats.map((s) => (
                 <span key={s.type} className="inline-flex items-center gap-1.5">
                   <span
@@ -369,17 +372,10 @@ function CellarOverviewPage() {
           />
         )}
 
-        {vintageStats.length > 0 && (
-          <section className="mt-7">
-            <h2 className="font-display text-base text-cream">{t("overview.vintages")}</h2>
-            <Histogram data={vintageStats} />
-          </section>
-        )}
-
         {bottles > 0 && (
           <section className="mt-7">
             <h2 className="font-display text-base text-cream">{t("overview.window")}</h2>
-            <div className="mt-3 grid grid-cols-3 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 min-[380px]:grid-cols-3">
               <WindowCard
                 value={pastPeak}
                 title={t("overview.pastPeak")}
@@ -403,58 +399,73 @@ function CellarOverviewPage() {
           </section>
         )}
 
-        {ratingStats.rated > 0 && (
-          <section className="mt-7">
-            <h2 className="font-display text-base text-cream">{t("overview.ratings")}</h2>
-            <div className="mt-3 space-y-1.5">
-              {ratingStats.buckets.map((count, i) => {
-                const max = Math.max(...ratingStats.buckets, 1);
-                return (
-                  <div key={i} className="flex items-center gap-3 text-xs">
-                    <span className="w-6 text-muted-foreground">{i + 1}★</span>
-                    <div className="relative h-2 flex-1 rounded-full bg-white/8">
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper"
-                        style={{ width: `${(count / max) * 100}%` }}
-                      />
-                    </div>
-                    <span className="w-8 text-right text-cream">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {growthStats.length > 1 && (
-          <section className="mt-7">
-            <h2 className="font-display text-base text-cream">{t("overview.growth")}</h2>
-            <Sparkline data={growthStats} />
-          </section>
-        )}
-
-        {varietalStats.length > 0 && (
-          <section className="mt-7 mb-4">
-            <h2 className="font-display text-base text-cream">{t("overview.topVarietals")}</h2>
-            <div className="mt-3 space-y-2.5">
-              {varietalStats.map((v) => (
-                <div key={v.name} className="flex items-center gap-3 text-xs">
-                  <span className="w-40 shrink-0 truncate text-foreground/85">{v.name}</span>
-                  <div className="relative h-1.5 flex-1 rounded-full bg-white/8">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper"
-                      style={{ width: `${Math.min(100, v.pct * 2)}%` }}
-                    />
-                  </div>
-                  <span className="w-8 text-right text-muted-foreground">{v.pct}%</span>
+        {(vintageStats.length > 0 ||
+          ratingStats.rated > 0 ||
+          growthStats.length > 1 ||
+          varietalStats.length > 0) && (
+          <MobileDetails title={t("overview.moreDetails")} className="mt-6">
+            {vintageStats.length > 0 && (
+              <section className="mt-3">
+                <h2 className="font-display text-lg text-cream">{t("overview.vintages")}</h2>
+                <Histogram data={vintageStats} />
+              </section>
+            )}
+            {ratingStats.rated > 0 && (
+              <section className="mt-7">
+                <h2 className="font-display text-base text-cream">{t("overview.ratings")}</h2>
+                <div className="mt-3 space-y-1.5">
+                  {ratingStats.buckets.map((count, i) => {
+                    const max = Math.max(...ratingStats.buckets, 1);
+                    return (
+                      <div key={i} className="flex items-center gap-3 text-sm">
+                        <span className="w-6 text-muted-foreground">{i + 1}★</span>
+                        <div className="relative h-2 flex-1 rounded-full bg-white/8">
+                          <div
+                            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper"
+                            style={{ width: `${(count / max) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-8 text-right text-cream">{count}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          </section>
+              </section>
+            )}
+
+            {growthStats.length > 1 && (
+              <section className="mt-7">
+                <h2 className="font-display text-base text-cream">{t("overview.growth")}</h2>
+                <Sparkline data={growthStats} />
+              </section>
+            )}
+
+            {varietalStats.length > 0 && (
+              <section className="mt-7 mb-4">
+                <h2 className="font-display text-base text-cream">{t("overview.topVarietals")}</h2>
+                <div className="mt-3 space-y-2.5">
+                  {varietalStats.map((v) => (
+                    <div key={v.name} className="flex items-center gap-3 text-sm">
+                      <span className="w-[45%] shrink-0 break-words text-foreground/85">
+                        {v.name}
+                      </span>
+                      <div className="relative h-1.5 flex-1 rounded-full bg-white/8">
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gold/80 to-copper"
+                          style={{ width: `${Math.min(100, v.pct * 2)}%` }}
+                        />
+                      </div>
+                      <span className="w-8 text-right text-muted-foreground">{v.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </MobileDetails>
         )}
 
         {bottles === 0 && wines.length === 0 && (
-          <p className="mt-10 text-center text-sm text-muted-foreground">{t("overview.empty")}</p>
+          <p className="mt-10 text-center text-base text-muted-foreground">{t("overview.empty")}</p>
         )}
       </div>
     </AppShell>
@@ -476,8 +487,8 @@ function formatMoney(n: number, currency: string) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-card/40 px-2 py-3 text-center">
-      <p className="font-display text-base leading-none text-cream">{value}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="font-display text-2xl leading-none text-cream">{value}</p>
+      <p className="mt-1 break-words text-sm text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -486,8 +497,8 @@ function BigStat({ value, label, sub }: { value: string; label: string; sub?: st
   return (
     <div className="rounded-xl border border-white/10 bg-card/40 px-3 py-3">
       <p className="break-words font-display text-lg text-cream">{value}</p>
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      {sub ? <p className="mt-0.5 text-[10px] text-muted-foreground/80">{sub}</p> : null}
+      <p className="text-sm uppercase tracking-wider text-muted-foreground">{label}</p>
+      {sub ? <p className="mt-0.5 text-xs text-muted-foreground/80">{sub}</p> : null}
     </div>
   );
 }
@@ -510,8 +521,8 @@ function WindowCard({
       className={`rounded-xl border ${highlight ? "border-success/30 bg-success/5" : "border-white/10 bg-card/40"} p-3 text-center`}
     >
       <p className="font-display text-2xl text-cream">{value}</p>
-      <p className="mt-0.5 text-[11px] text-foreground/80">{title}</p>
-      <p className="text-[10px] text-muted-foreground">{sub}</p>
+      <p className="mt-0.5 text-sm text-foreground/80">{title}</p>
+      <p className="text-xs text-muted-foreground">{sub}</p>
       <div className="mt-2 h-1 rounded-full" style={{ background: barColor, opacity: 0.7 }} />
     </div>
   );
@@ -525,7 +536,7 @@ function Histogram({ data }: { data: { year: number; count: number }[] }) {
         {data.map((d) => (
           <div
             key={d.year}
-            className="flex flex-1 flex-col items-center gap-1"
+            className="flex h-full min-w-0 flex-1 flex-col justify-end gap-1"
             title={`${d.year}: ${d.count}`}
           >
             <div
@@ -535,7 +546,7 @@ function Histogram({ data }: { data: { year: number; count: number }[] }) {
           </div>
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-xs text-muted-foreground">
         <span>{data[0]?.year}</span>
         {data.length > 2 ? <span>{data[Math.floor(data.length / 2)]?.year}</span> : null}
         <span>{data[data.length - 1]?.year}</span>
@@ -579,7 +590,7 @@ function Sparkline({ data }: { data: { label: string; total: number }[] }) {
           <circle key={i} cx={x} cy={y} r={1.8} fill="oklch(0.85 0.1 80)" />
         ))}
       </svg>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-xs text-muted-foreground">
         {data.map((d) => (
           <span key={d.label}>{d.label}</span>
         ))}

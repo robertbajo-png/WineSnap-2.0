@@ -16,7 +16,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useI18n, type Lang } from "@/i18n";
+import { useI18n, useT, type Lang } from "@/i18n";
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -124,8 +124,8 @@ function MePage() {
             <p className="font-display text-2xl text-cream">
               {profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}
             </p>
-            <p className="text-xs text-gold">{t(explorerTierKey(bottles))}</p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-sm text-gold">{t(explorerTierKey(bottles))}</p>
+            <p className="text-sm text-muted-foreground">
               {t("profile.memberSince")} {memberSince}
             </p>
           </div>
@@ -212,7 +212,7 @@ function MePage() {
         {/* Recommended For You */}
         <section className="mt-7">
           <h2 className="font-display text-lg text-gold">{t("profile.recommended")}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{t("profile.recommendedDesc")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("profile.recommendedDesc")}</p>
           <div className="mt-3 space-y-2.5 pb-4">
             <FavRow
               icon={null}
@@ -231,12 +231,12 @@ function MePage() {
               to="/friends"
               className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
             >
-              <Users className="h-4 w-4 text-gold" />
+              <Users className="h-5 w-5 text-gold" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground/90">{t("profile.friends")}</p>
-                <p className="text-[11px] text-muted-foreground">{t("profile.friendsDesc")}</p>
+                <p className="text-base text-foreground/90">{t("profile.friends")}</p>
+                <p className="text-sm text-muted-foreground">{t("profile.friendsDesc")}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </Link>
             <ToggleRow
               title={t("profile.publicProfile")}
@@ -268,14 +268,14 @@ function MePage() {
         {/* Language */}
         <section className="mt-2">
           <h2 className="font-display text-lg text-gold">{t("profile.language")}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{t("profile.languageDesc")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("profile.languageDesc")}</p>
           <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-card/40 p-1.5">
             <Languages className="ml-2 h-4 w-4 text-gold" />
             {(["en", "sv"] as Lang[]).map((l) => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm transition-colors ${lang === l ? "bg-burgundy/40 text-cream" : "text-muted-foreground hover:bg-white/5"}`}
+                className={`flex-1 rounded-lg px-3 py-2 text-base transition-colors  min-h-11 min-w-11 ${lang === l ? "bg-burgundy/40 text-cream min-h-11 min-w-11" : "text-muted-foreground hover:bg-white/5"}`}
               >
                 {l === "en" ? "English" : "Svenska"}
               </button>
@@ -286,9 +286,9 @@ function MePage() {
         {user && (
           <button
             onClick={() => supabase.auth.signOut()}
-            className="mt-6 mb-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-sm text-muted-foreground hover:bg-white/5"
+            className="mt-6 mb-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-base text-muted-foreground hover:bg-white/5 min-h-11 min-w-11"
           >
-            <LogOut className="h-4 w-4" /> {t("profile.signOut")}
+            <LogOut className="h-5 w-5" /> {t("profile.signOut")}
           </button>
         )}
       </div>
@@ -321,7 +321,7 @@ function StatBox({ icon, value, label }: { icon: React.ReactNode; value: string;
     <div className="flex flex-col items-center rounded-xl border border-white/10 bg-card/50 px-2 py-3 text-center">
       <div className="mb-1">{icon}</div>
       <p className="font-display text-xl text-cream">{value}</p>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="break-words text-sm text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -342,13 +342,15 @@ function FavRow({
   onClick?: () => void;
 }) {
   const className =
-    "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
+    "flex min-h-14 w-full items-center gap-3 rounded-lg border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70";
   const inner = (
     <>
       {icon && <span className="shrink-0">{icon}</span>}
-      <span className="text-sm text-foreground/90">{label}</span>
-      <span className="ml-auto truncate text-right text-xs text-muted-foreground">{value}</span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-base text-foreground/90">{label}</span>
+        <span className="mt-1 block break-words text-sm text-muted-foreground">{value}</span>
+      </span>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
     </>
   );
   if (to)
@@ -378,16 +380,24 @@ function ToggleRow({
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-foreground/90">{title}</p>
-        <p className="text-[11px] text-muted-foreground">{desc}</p>
+        <p className="text-base text-foreground/90">{title}</p>
+        <p className="text-sm text-muted-foreground">{desc}</p>
       </div>
       <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        aria-label={title}
         onClick={() => onChange(!value)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${value ? "bg-success" : "bg-white/15"}`}
+        className="flex min-h-11 w-14 shrink-0 items-center justify-center rounded-md"
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`}
-        />
+          className={`relative block h-6 w-11 rounded-full transition-colors ${value ? "bg-success" : "bg-muted-foreground/60"}`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${value ? "left-[calc(100%-1.375rem)]" : "left-0.5"}`}
+          />
+        </span>
       </button>
     </div>
   );
@@ -406,6 +416,7 @@ function TextRow({
   onSave: (v: string) => Promise<void> | void;
   multiline?: boolean;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   useEffect(() => {
@@ -415,33 +426,35 @@ function TextRow({
     return (
       <button
         onClick={() => setEditing(true)}
-        className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
+        className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70 min-h-11 min-w-11"
       >
-        <span className="text-sm text-foreground/90">{label}</span>
-        <span className="ml-auto max-w-[55%] truncate text-right text-xs text-muted-foreground">
-          {value ? value : (placeholder ?? "—")}
+        <span className="min-w-0 flex-1">
+          <span className="block text-base text-foreground/90">{label}</span>
+          <span className="mt-1 block break-words text-sm text-muted-foreground">
+            {value ? value : (placeholder ?? "—")}
+          </span>
         </span>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
       </button>
     );
   }
   return (
     <div className="rounded-xl border border-white/10 bg-card/40 px-3.5 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
       {multiline ? (
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="mt-1 w-full resize-none bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+          className="mt-1 w-full resize-none bg-transparent text-base text-cream placeholder:text-muted-foreground focus:outline-none"
         />
       ) : (
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={placeholder}
-          className="mt-1 w-full bg-transparent text-sm text-cream placeholder:text-muted-foreground focus:outline-none"
+          className="mt-1 w-full bg-transparent text-base text-cream placeholder:text-muted-foreground focus:outline-none min-h-12"
         />
       )}
       <div className="mt-2 flex justify-end gap-2">
@@ -450,18 +463,18 @@ function TextRow({
             setDraft(value);
             setEditing(false);
           }}
-          className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/5"
+          className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-white/5 min-h-11 min-w-11"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           onClick={async () => {
             await onSave(draft);
             setEditing(false);
           }}
-          className="rounded-lg bg-burgundy px-3 py-1.5 text-xs text-cream"
+          className="rounded-lg bg-burgundy px-3 py-1.5 text-sm text-cream min-h-11 min-w-11"
         >
-          Save
+          {t("common.save")}
         </button>
       </div>
     </div>

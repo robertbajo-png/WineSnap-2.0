@@ -63,7 +63,7 @@ function LoginPage() {
         <h1 className="font-display text-2xl">
           {mode === "signin" ? t("login.welcome") : t("login.createAccount")}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-base text-muted-foreground">
           {mode === "signin" ? t("login.signInSub") : t("login.createSub")}
         </p>
         <form onSubmit={submit} className="mt-5 space-y-4">
@@ -102,7 +102,7 @@ function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" disabled={busy} className="h-11 w-full">
+          <Button type="submit" disabled={busy} className="min-h-11 w-full min-h-11">
             {busy
               ? t("login.wait")
               : mode === "signin"
@@ -114,7 +114,7 @@ function LoginPage() {
           <div className="mt-3 text-center">
             <Link
               to="/forgot-password"
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-base text-muted-foreground hover:text-foreground"
             >
               {t("login.forgot")}
             </Link>
@@ -123,7 +123,7 @@ function LoginPage() {
         <button
           type="button"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-          className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+          className="mt-4 w-full text-center text-base text-muted-foreground hover:text-foreground min-h-11 min-w-11"
         >
           {mode === "signin" ? t("login.noAccount") : t("login.hasAccount")}
         </button>

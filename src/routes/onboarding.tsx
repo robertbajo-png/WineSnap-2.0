@@ -54,7 +54,7 @@ function OnboardingPage() {
         <span className="font-display text-lg text-gold">WineSnap</span>
         <button
           onClick={() => finish("/scan")}
-          className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          className="text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground min-h-11 min-w-11"
         >
           {t("onboard.skip")}
         </button>
@@ -65,7 +65,7 @@ function OnboardingPage() {
           <Icon className="h-10 w-10 text-gold" strokeWidth={1.4} />
         </div>
         <h1 className="font-display text-3xl leading-tight text-cream">{current.title}</h1>
-        <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-4 max-w-sm text-base leading-relaxed text-muted-foreground">
           {current.desc}
         </p>
       </div>
@@ -86,7 +86,7 @@ function OnboardingPage() {
         {!isLast ? (
           <Button
             onClick={() => setStep((s) => s + 1)}
-            className="h-12 rounded-2xl bg-gradient-burgundy font-display text-base text-cream"
+            className="h-12 rounded-2xl bg-gradient-burgundy font-display text-base text-cream min-h-11"
           >
             {t("onboard.next")}
           </Button>
@@ -94,14 +94,14 @@ function OnboardingPage() {
           <>
             <Button
               onClick={() => finish("/taste")}
-              className="h-12 rounded-2xl bg-gradient-burgundy font-display text-base text-cream"
+              className="h-12 rounded-2xl bg-gradient-burgundy font-display text-base text-cream min-h-11"
             >
               {t("onboard.finish")}
             </Button>
             <Button
               variant="ghost"
               onClick={() => finish("/scan")}
-              className="h-11 font-display text-sm text-gold"
+              className="min-h-11 font-display text-base text-gold min-h-11"
             >
               {t("home.cta.start")}
             </Button>
@@ -110,7 +110,7 @@ function OnboardingPage() {
         {step > 0 && !isLast && (
           <button
             onClick={() => setStep((s) => s - 1)}
-            className="mt-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            className="mt-1 text-sm uppercase tracking-wider text-muted-foreground hover:text-foreground min-h-11 min-w-11"
           >
             {t("onboard.back")}
           </button>

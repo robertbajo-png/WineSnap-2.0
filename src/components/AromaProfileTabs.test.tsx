@@ -9,7 +9,7 @@ describe("aroma profile layout", () => {
       <AromaRows readOnly aromas={[{ name: "Cherry", active: true, intensity: 4 }]} />,
     );
     expect(html).toContain('aria-label="notes.intensityFor: 4/5"');
-    expect(html).toContain("shrink-0 text-sm font-medium tabular-nums");
+    expect(html).toContain("shrink-0 text-base font-medium tabular-nums");
     expect(html).not.toContain('role="slider"');
   });
 

@@ -211,14 +211,14 @@ function NotesPage() {
   if (loading || authLoading)
     return (
       <AppShell>
-        <p className="mt-20 text-center text-sm text-muted-foreground">{t("common.loading")}</p>
+        <p className="mt-20 text-center text-base text-muted-foreground">{t("common.loading")}</p>
       </AppShell>
     );
 
   if (!wine)
     return (
       <AppShell>
-        <p className="mt-20 text-center text-sm text-muted-foreground">{t("wine.notFound")}</p>
+        <p className="mt-20 text-center text-base text-muted-foreground">{t("wine.notFound")}</p>
       </AppShell>
     );
 
@@ -226,7 +226,7 @@ function NotesPage() {
     <AppShell hideNav>
       <div className="-mx-5 -mt-6 min-h-screen px-5 pb-8 pt-3">
         <header className="grid grid-cols-[72px_1fr_72px] items-center">
-          <Button variant="ghost" size="sm" onClick={leave} className="justify-start px-0">
+          <Button variant="ghost" size="sm" onClick={leave} className="justify-start px-0 min-h-11">
             {t("common.cancel")}
           </Button>
           <h1 className="text-center font-display text-2xl text-gold">{t("notes.title")}</h1>
@@ -245,14 +245,14 @@ function NotesPage() {
             <p className="font-display text-lg leading-tight text-cream">
               {wine.wine_name ?? t("wine.unknown")} {wine.vintage ?? ""}
             </p>
-            <p className="mt-1 text-xs text-gold">
+            <p className="mt-1 text-sm text-gold">
               {[wine.region, wine.country].filter(Boolean).join(", ") || "—"}
             </p>
           </div>
         </section>
 
         <Tabs defaultValue="mine" className="mt-5">
-          <TabsList className="grid h-11 w-full grid-cols-2 rounded-md border border-border bg-card/60 p-1">
+          <TabsList className="grid min-h-14 w-full grid-cols-2 rounded-md border border-border bg-card/60 p-1">
             <TabsTrigger value="ai" className="rounded-sm">
               {t("notes.tab.ai")}
             </TabsTrigger>
@@ -269,11 +269,11 @@ function NotesPage() {
                 readOnly
               />
             ) : (
-              <p className="border-y border-border py-5 text-sm text-muted-foreground">
+              <p className="border-y border-border py-5 text-base text-muted-foreground">
                 {t("notes.aiEmpty")}
               </p>
             )}
-            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               {t("notes.aiDisclaimer")}
             </p>
           </TabsContent>
@@ -305,7 +305,7 @@ function NotesPage() {
                   }
                 />
               ) : (
-                <p className="border-y border-border py-5 text-sm text-muted-foreground">
+                <p className="border-y border-border py-5 text-base text-muted-foreground">
                   {t("notes.aromasEmpty")}
                 </p>
               )}
@@ -387,24 +387,24 @@ function NotesPage() {
             </section>
 
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-xs">
+              <label className="flex min-h-12 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-sm">
                 <Calendar className="h-4 w-4 text-gold" />
                 <span className="sr-only">{t("notes.date")}</span>
                 <input
                   type="date"
                   value={draft.tastedAt}
                   onChange={(e) => setField("tastedAt", e.target.value)}
-                  className="min-w-0 flex-1 bg-transparent focus:outline-none"
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none min-h-12 text-base"
                 />
               </label>
-              <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-xs">
+              <label className="flex min-h-12 items-center gap-2 rounded-md border border-input bg-card/40 px-3 text-sm">
                 <MapPin className="h-4 w-4 text-gold" />
                 <span className="sr-only">{t("notes.location")}</span>
                 <input
                   value={draft.location}
                   onChange={(e) => setField("location", e.target.value)}
                   placeholder={t("notes.locationPh")}
-                  className="min-w-0 flex-1 bg-transparent focus:outline-none"
+                  className="min-w-0 flex-1 bg-transparent focus:outline-none min-h-12 text-base"
                 />
               </label>
             </section>
@@ -420,7 +420,7 @@ function NotesPage() {
             <Button
               onClick={save}
               disabled={saving || !dirty}
-              className="h-11 w-full bg-burgundy text-cream hover:bg-burgundy/90"
+              className="min-h-11 w-full bg-burgundy text-cream hover:bg-burgundy/90 min-h-11"
             >
               {saving ? t("login.wait") : t("notes.saveMine")}
             </Button>
@@ -499,7 +499,7 @@ function OptionalTasteSlider({
   const t = useT();
   return (
     <div>
-      <div className="mb-2 flex justify-between text-xs">
+      <div className="mb-2 flex justify-between text-sm">
         <span>{label}</span>
         <span className="text-muted-foreground">
           {value == null ? t("notes.notSet") : `${value}/10`}
@@ -511,7 +511,7 @@ function OptionalTasteSlider({
           variant="outline"
           size="sm"
           onClick={() => onChange(1)}
-          className="w-full"
+          className="w-full min-h-11"
         >
           {t("notes.chooseValue")}
         </Button>
@@ -536,7 +536,7 @@ function Expandable({ title, children }: { title: string; children: React.ReactN
         <Button
           type="button"
           variant="ghost"
-          className="w-full justify-between border-y border-border px-0 font-display text-base text-gold"
+          className="w-full justify-between border-y border-border px-0 font-display text-base text-gold min-h-11"
         >
           {title}
           <ChevronDown />
@@ -560,7 +560,7 @@ function ComparisonSection({
   const active = draft.aromas.filter((aroma) => aroma.active).map((aroma) => aroma.name);
   return (
     <Expandable title={t("notes.compareAi")}>
-      <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="grid grid-cols-2 gap-4 text-base">
         <div>
           <p className="mb-2 font-medium text-gold">{t("notes.tab.ai")}</p>
           <p className="leading-relaxed text-muted-foreground">{aiAromas.join(", ") || "—"}</p>
@@ -585,7 +585,7 @@ function TasteValues({
 }) {
   const t = useT();
   return (
-    <dl className="mt-3 space-y-1 text-xs text-muted-foreground">
+    <dl className="mt-3 space-y-1 text-sm text-muted-foreground">
       {(["body", "tannin", "acidity", "sweetness"] as const).map((key) => (
         <div key={key} className="flex justify-between gap-2">
           <dt>{t(`taste.${key}` as TKey)}</dt>
@@ -620,17 +620,17 @@ function HistorySection({
   return (
     <Expandable title={t("notes.previous")}>
       {history.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("notes.previousEmpty")}</p>
+        <p className="text-base text-muted-foreground">{t("notes.previousEmpty")}</p>
       ) : (
         <ul className="divide-y divide-border border-y border-border">
           {history.map((note) => (
             <li key={note.id} className="py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs text-gold">
+                  <p className="text-sm text-gold">
                     {new Date(note.tasted_at).toLocaleDateString(lang === "sv" ? "sv-SE" : "en-US")}
                   </p>
-                  <p className="mt-1 text-sm leading-relaxed text-foreground/80">
+                  <p className="mt-1 text-base leading-relaxed text-foreground/80">
                     {note.notes || note.aromas?.join(", ") || "—"}
                   </p>
                 </div>

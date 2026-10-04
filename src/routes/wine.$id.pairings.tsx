@@ -97,7 +97,7 @@ function PairingsPage() {
         <header className="flex items-center justify-between">
           <button
             onClick={() => window.history.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11 min-w-11"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -117,10 +117,10 @@ function PairingsPage() {
             <p className="truncate font-display text-base text-cream">
               {w.wine_name ?? "Unknown"} {w.vintage ?? ""}
             </p>
-            <p className="truncate text-xs text-gold">
+            <p className="truncate text-sm text-gold">
               {[w.region, w.country].filter(Boolean).join(", ")}
             </p>
-            <div className="mt-1 flex items-center gap-1 text-xs">
+            <div className="mt-1 flex items-center gap-1 text-sm">
               <Star className="h-3 w-3 fill-gold text-gold" />
               <span>{rating.toFixed(1)}</span>
             </div>
@@ -133,7 +133,7 @@ function PairingsPage() {
               key={c}
               onClick={() => setCat(c)}
               className={cn(
-                "h-8 shrink-0 rounded-full border px-3.5 text-xs transition-colors",
+                "h-11 shrink-0 rounded-full border px-3.5 text-sm transition-colors min-h-11 min-w-11",
                 cat === c
                   ? "border-burgundy bg-burgundy text-cream"
                   : "border-white/10 bg-card/40 text-foreground/80",
@@ -157,7 +157,7 @@ function PairingsPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-display text-base leading-tight text-cream">{p.dish}</p>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{p.reason}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.reason}</p>
                   </div>
                   <div className="flex shrink-0 flex-col items-center justify-center">
                     <span className="font-display text-base leading-none text-cream">{match}</span>
@@ -173,7 +173,7 @@ function PairingsPage() {
 
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-gold/20 bg-gold/5 p-3.5">
           <Thermometer className="h-5 w-5 shrink-0 text-gold" />
-          <div className="min-w-0 flex-1 text-xs">
+          <div className="min-w-0 flex-1 text-sm">
             <p className="font-medium text-gold">{t("pairings.servingTip")}</p>
             <p className="mt-0.5 text-foreground/80">
               {w.serving_temp ?? t("pairings.servingDefault")}

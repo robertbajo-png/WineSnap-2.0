@@ -370,11 +370,11 @@ function ScanPage() {
         <button
           onClick={() => navigate({ to: "/" })}
           aria-label={t("scan.close")}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 min-h-11 min-w-11"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
-        <p className="text-sm text-cream/85">
+        <p className="text-base text-cream/85">
           {mode === "camera" ? t("scan.positionLabel") : t("scan.describeWine")}
         </p>
         <span className="h-9 w-9" />
@@ -387,25 +387,25 @@ function ScanPage() {
             onClick={() => setMode("camera")}
             aria-pressed={mode === "camera"}
             disabled={stage === "analyzing"}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-base transition  min-h-11 min-w-11 ${
               mode === "camera"
                 ? "bg-gradient-burgundy text-cream shadow-soft"
                 : "text-cream/70 hover:text-cream"
             }`}
           >
-            <Camera className="h-4 w-4" /> {t("scan.scan")}
+            <Camera className="h-5 w-5" /> {t("scan.scan")}
           </button>
           <button
             onClick={() => setMode("text")}
             aria-pressed={mode === "text"}
             disabled={stage === "analyzing"}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-base transition  min-h-11 min-w-11 ${
               mode === "text"
                 ? "bg-gradient-burgundy text-cream shadow-soft"
                 : "text-cream/70 hover:text-cream"
             }`}
           >
-            <Type className="h-4 w-4" /> {t("scan.type")}
+            <Type className="h-5 w-5" /> {t("scan.type")}
           </button>
         </div>
       </div>
@@ -431,7 +431,7 @@ function ScanPage() {
           <div className="flex flex-1 flex-col">
             <label
               htmlFor="scan-description"
-              className="mb-2 text-xs uppercase tracking-wider text-cream/60"
+              className="mb-2 text-sm uppercase tracking-wider text-cream/90"
             >
               {t("scan.descLabel")}
             </label>
@@ -442,9 +442,9 @@ function ScanPage() {
               onChange={(e) => setText(e.target.value)}
               disabled={stage === "analyzing"}
               placeholder={t("scan.descPh")}
-              className="min-h-[180px] resize-none border-white/10 bg-white/5 text-base text-cream placeholder:text-cream/40 focus-visible:ring-gold/40"
+              className="min-h-[180px] resize-none border-white/10 bg-white/5 text-base text-cream placeholder:text-cream/80 focus-visible:ring-gold/40"
             />
-            <p id="scan-description-hint" className="mt-2 text-xs text-cream/50">
+            <p id="scan-description-hint" className="mt-2 text-sm text-cream/80">
               {t("scan.descHint")}
             </p>
           </div>
@@ -452,15 +452,15 @@ function ScanPage() {
           <Button
             onClick={handleText}
             disabled={stage === "analyzing" || text.trim().length < 3}
-            className="mt-6 h-14 bg-gradient-burgundy text-cream shadow-soft"
+            className="mt-6 h-14 bg-gradient-burgundy text-cream shadow-soft min-h-11"
           >
             {stage === "analyzing" ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
+                <Loader2 className="h-5 w-5 animate-spin" /> Analyzing…
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" /> Identify wine
+                <Sparkles className="h-5 w-5" /> Identify wine
               </>
             )}
           </Button>
@@ -524,7 +524,7 @@ function ConfirmMatch({
 
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 py-6">
         <h1 className="text-center font-display text-2xl text-gold">{t("scan.reviewTitle")}</h1>
-        <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
+        <p className="mt-2 max-w-sm text-center text-base text-muted-foreground">
           {t("scan.reviewDesc")}
           {mode === "camera" && ` ${t("scan.reviewCheckLabel")}`}
         </p>
@@ -544,22 +544,22 @@ function ConfirmMatch({
 
           <dl className="mt-4 space-y-1.5">
             {rows.map(([label, value]) => (
-              <div key={label} className="flex items-baseline justify-between gap-3 text-sm">
-                <dt className="shrink-0 text-xs uppercase tracking-wider text-cream/50">{label}</dt>
+              <div key={label} className="flex items-baseline justify-between gap-3 text-base">
+                <dt className="text-sm text-cream/80">{label}</dt>
                 <dd className="min-w-0 break-words text-right text-cream">{value}</dd>
               </div>
             ))}
           </dl>
 
-          <p className="mt-3 text-xs text-cream/40">{t("scan.unknownFields")}</p>
-          <p className="mt-1 text-xs text-cream/40">{t("scan.tasteEstimate")}</p>
+          <p className="mt-3 text-sm text-cream/80">{t("scan.unknownFields")}</p>
+          <p className="mt-1 text-sm text-cream/80">{t("scan.tasteEstimate")}</p>
 
           {labelText.trim() && (
             <details className="mt-3">
-              <summary className="cursor-pointer text-xs uppercase tracking-wider text-cream/50">
+              <summary className="flex min-h-11 cursor-pointer items-center text-sm text-cream/80">
                 {t("scan.labelRead")}
               </summary>
-              <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-cream/70">
+              <pre className="mt-2 whitespace-pre-wrap break-words text-sm text-cream/70">
                 {labelText.trim()}
               </pre>
             </details>
@@ -572,12 +572,16 @@ function ConfirmMatch({
           variant="outline"
           onClick={onDiscard}
           disabled={busy}
-          className="h-12 border-white/15 bg-transparent"
+          className="h-12 border-white/15 bg-transparent min-h-11"
         >
           {t("scan.discard")}
         </Button>
-        <Button onClick={onSave} disabled={busy} className="h-12 bg-gradient-burgundy text-cream">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{" "}
+        <Button
+          onClick={onSave}
+          disabled={busy}
+          className="h-12 bg-gradient-burgundy text-cream min-h-11"
+        >
+          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}{" "}
           {t("scan.save")}
         </Button>
       </div>
@@ -603,9 +607,9 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
         <button
           onClick={onBack}
           aria-label={t("common.back")}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 min-h-11 min-w-11"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
         <p className="font-display text-base">{t("scan.result")}</p>
         <span className="h-9 w-9" />
@@ -620,7 +624,7 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
         </div>
 
         <h1 className="mt-6 font-display text-3xl">{t("scan.matchFound")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("scan.matchDesc")}</p>
+        <p className="mt-1 text-base text-muted-foreground">{t("scan.matchDesc")}</p>
 
         <div className="mt-8 flex w-full items-start gap-3 rounded-2xl border border-white/8 bg-card/60 p-4 shadow-soft">
           <div className="flex h-24 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
@@ -634,14 +638,14 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
             <p className="truncate font-display text-lg leading-tight text-cream">
               {wine.wine_name ?? "Unknown"} {wine.vintage ?? ""}
             </p>
-            <p className="mt-0.5 truncate text-sm text-gold">
+            <p className="mt-0.5 truncate text-base text-gold">
               {[wine.region, wine.country].filter(Boolean).join(", ")}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               {flag && <span className="mr-1">{flag}</span>}
               {wineTypeLabel}
             </p>
-            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-sm font-medium text-success">
               <Check className="h-3 w-3" /> {t("scan.savedToCellar")}
             </div>
           </div>
@@ -652,15 +656,15 @@ function MatchFound({ wine, onBack }: { wine: ScannedWine; onBack: () => void })
         <Button
           variant="outline"
           onClick={() => navigate({ to: "/wine/$id", params: { id: wine.id } })}
-          className="h-12 border-white/15 bg-transparent"
+          className="h-12 border-white/15 bg-transparent min-h-11"
         >
           {t("scan.viewDetails")}
         </Button>
         <Button
           onClick={() => navigate({ to: "/cellar" })}
-          className="h-12 bg-gradient-burgundy text-cream"
+          className="h-12 bg-gradient-burgundy text-cream min-h-11"
         >
-          <Wine className="h-4 w-4" /> {t("scan.saveToCellar")}
+          <Wine className="h-5 w-5" /> {t("scan.saveToCellar")}
         </Button>
       </div>
     </div>

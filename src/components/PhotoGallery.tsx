@@ -120,7 +120,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
             <button
               type="button"
               onClick={() => setLightbox({ url: c.url, storagePath: c.storagePath })}
-              className="absolute inset-0"
+              className="absolute inset-0 min-h-11 min-w-11"
             >
               <WineImage
                 src={c.url}
@@ -130,7 +130,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
                 loading="lazy"
               />
             </button>
-            <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-display uppercase tracking-wide text-cream/85">
+            <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 py-0.5 text-xs font-display uppercase tracking-wide text-cream/85">
               {t(`photos.kind.${c.kind}` as never) || c.kind}
             </span>
             {c.photo && (
@@ -138,9 +138,9 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
                 type="button"
                 onClick={() => remove(c.photo!)}
                 aria-label={t("photos.delete")}
-                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-5 w-5" />
               </button>
             )}
           </div>
@@ -149,7 +149,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 bg-white/[0.02] text-xs text-cream/60 hover:border-gold/40 hover:text-gold disabled:opacity-50"
+          className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 bg-white/[0.02] text-sm text-cream/90 hover:border-gold/40 hover:text-gold disabled:opacity-50 min-h-11 min-w-11"
         >
           {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
           <span>{uploading ? t("photos.uploading") : t("photos.add")}</span>
@@ -157,7 +157,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
       </div>
 
       {combined.length === 0 && !uploading && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
           <Wine className="h-3.5 w-3.5" /> {t("photos.empty")}
         </div>
       )}
@@ -196,7 +196,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
         >
           <button
             aria-label="Close"
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-cream hover:bg-white/20"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-cream hover:bg-white/20 min-h-11 min-w-11"
             onClick={() => setLightbox(null)}
           >
             <X className="h-5 w-5" />

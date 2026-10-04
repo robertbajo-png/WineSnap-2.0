@@ -99,7 +99,9 @@ function FriendsPage() {
         <div className="mt-20 text-center">
           <p className="text-muted-foreground">{t("friends.signIn")}</p>
           <Link to="/login">
-            <Button className="mt-4 bg-gradient-burgundy text-cream">{t("login.signIn")}</Button>
+            <Button className="mt-4 bg-gradient-burgundy text-cream min-h-11">
+              {t("login.signIn")}
+            </Button>
           </Link>
         </div>
       </AppShell>
@@ -112,7 +114,7 @@ function FriendsPage() {
         <span className="h-9 w-9" />
         <div className="text-center">
           <h1 className="font-display text-2xl text-gold">{t("friends.title")}</h1>
-          <p className="text-[11px] text-muted-foreground">{t("friends.subtitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("friends.subtitle")}</p>
         </div>
         <span className="h-9 w-9" />
       </header>
@@ -139,8 +141,11 @@ function FriendsPage() {
             title={t("friends.empty.title")}
             description={t("friends.empty.desc")}
             action={
-              <Button onClick={() => setTab("discover")} className="bg-burgundy text-cream">
-                <Compass className="h-4 w-4" /> {t("friends.empty.cta")}
+              <Button
+                onClick={() => setTab("discover")}
+                className="bg-burgundy text-cream min-h-11"
+              >
+                <Compass className="h-5 w-5" /> {t("friends.empty.cta")}
               </Button>
             }
           />
@@ -160,7 +165,7 @@ function FriendsPage() {
               onChange={(event) => setQ(event.target.value)}
               placeholder={t("friends.search.ph")}
               aria-label={t("friends.search.ph")}
-              className="w-full rounded-md border border-white/10 bg-card/50 py-3 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold focus:outline-none"
+              className="w-full rounded-md border border-white/10 bg-card/50 py-3 pl-9 pr-3 text-base text-foreground placeholder:text-muted-foreground focus:border-gold focus:outline-none min-h-12"
             />
           </label>
 
@@ -169,7 +174,7 @@ function FriendsPage() {
               {loadingSearch ? (
                 <Skeleton className="h-14 w-full" />
               ) : results.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
+                <p className="py-8 text-center text-base text-muted-foreground">
                   {t("friends.search.none")}
                 </p>
               ) : (
@@ -177,7 +182,7 @@ function FriendsPage() {
               )}
             </div>
           ) : loadingDiscover ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center gap-2 py-16 text-base text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-gold" />
               {t("friends.discover.loading")}
             </div>
@@ -203,7 +208,7 @@ function TabButton({
     <button
       onClick={onClick}
       className={cn(
-        "flex-1 rounded-md px-3 py-2 text-sm transition-colors",
+        "flex-1 rounded-md px-3 py-2 text-base transition-colors min-h-11 min-w-11",
         active ? "bg-burgundy/40 text-cream" : "text-muted-foreground hover:bg-white/5",
       )}
     >
@@ -229,9 +234,7 @@ function DiscoverySections({
       <section className="mt-6">
         <div>
           <h2 className="font-display text-lg text-cream">{t("friends.discover.people")}</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {t("friends.discover.peopleDesc")}
-          </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("friends.discover.peopleDesc")}</p>
         </div>
         <div className="mt-3 space-y-2">
           {meaningfulProfiles.length ? (
@@ -239,7 +242,7 @@ function DiscoverySections({
               .slice(0, 6)
               .map((profile) => <UserRow key={profile.id} profile={profile} />)
           ) : (
-            <p className="border-l-2 border-gold/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            <p className="border-l-2 border-gold/40 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
               {t("friends.discover.learning")}
             </p>
           )}
@@ -249,9 +252,7 @@ function DiscoverySections({
       <section className="mt-7">
         <div>
           <h2 className="font-display text-lg text-cream">{t("friends.discover.wines")}</h2>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {t("friends.discover.winesDesc")}
-          </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("friends.discover.winesDesc")}</p>
         </div>
         {wines.length ? (
           <div className="mt-3 space-y-3">
@@ -260,7 +261,7 @@ function DiscoverySections({
             ))}
           </div>
         ) : (
-          <p className="mt-3 py-6 text-center text-xs text-muted-foreground">
+          <p className="mt-3 py-6 text-center text-sm text-muted-foreground">
             {t("friends.discover.noWines")}
           </p>
         )}
@@ -289,7 +290,7 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-[11px] uppercase text-muted-foreground">
+          <p className="min-w-0 truncate text-sm uppercase text-muted-foreground">
             {item.author?.username ? `@${item.author.username}` : authorName}
             <span className="mx-1.5 text-white/20">•</span>
             {when}
@@ -299,11 +300,11 @@ function FeedRow({ item, lang }: { item: FeedItem; lang: "en" | "sv" }) {
         <p className="mt-0.5 truncate font-display text-lg text-cream">
           {item.producer ?? item.wine_name ?? "—"}
         </p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-sm text-muted-foreground">
           {[item.wine_name, item.vintage, item.region].filter(Boolean).join(" • ")}
         </p>
         {item.user_rating != null && (
-          <p className="mt-1 inline-flex items-center gap-1 text-xs text-gold">
+          <p className="mt-1 inline-flex items-center gap-1 text-sm text-gold">
             <Star className="h-3.5 w-3.5 fill-gold" /> {item.user_rating.toFixed(1)}
           </p>
         )}
@@ -343,10 +344,10 @@ function UserRow({ profile }: { profile: PublicProfile }) {
         {(profile.display_name ?? profile.username ?? "?")[0]?.toUpperCase()}
       </div>
       <div className="min-w-0">
-        <p className="truncate text-sm text-cream">{profile.display_name ?? profile.username}</p>
+        <p className="truncate text-base text-cream">{profile.display_name ?? profile.username}</p>
         <div className="mt-0.5 flex items-center gap-2">
           {profile.username && (
-            <p className="truncate text-[11px] text-muted-foreground">@{profile.username}</p>
+            <p className="truncate text-sm text-muted-foreground">@{profile.username}</p>
           )}
           <SimilarityBadge similarity={profile} compact />
         </div>
@@ -373,13 +374,13 @@ function UserRow({ profile }: { profile: PublicProfile }) {
         aria-label={following ? t("friends.following") : t("friends.follow")}
         title={following ? t("friends.following") : t("friends.follow")}
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors disabled:opacity-40",
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border transition-colors disabled:opacity-40 min-h-11 min-w-11",
           following
             ? "border-white/15 text-muted-foreground hover:bg-white/5"
             : "border-burgundy bg-burgundy text-cream hover:bg-burgundy/90",
         )}
       >
-        {following ? <UserCheck className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+        {following ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
       </button>
     </article>
   );
@@ -444,10 +445,10 @@ function SocialWineRow({ wine }: { wine: SocialWine }) {
             <p className="truncate font-display text-base text-cream">
               {wine.wine_name ?? wine.producer ?? "—"} {wine.vintage ?? ""}
             </p>
-            <p className="truncate text-xs text-gold">
+            <p className="truncate text-sm text-gold">
               {[wine.producer, wine.region].filter(Boolean).join(" • ")}
             </p>
-            <p className="mt-1 truncate text-[11px] text-muted-foreground">
+            <p className="mt-1 truncate text-sm text-muted-foreground">
               {wine.author_username
                 ? `@${wine.author_username}`
                 : (wine.author_display_name ?? "—")}
@@ -455,8 +456,8 @@ function SocialWineRow({ wine }: { wine: SocialWine }) {
             <div className="mt-1.5 flex items-center gap-2">
               <SimilarityBadge similarity={similarity} />
               {wine.user_rating != null && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-gold">
-                  <Star className="h-3 w-3 fill-gold" /> {wine.user_rating.toFixed(1)}
+                <span className="inline-flex items-center gap-1 text-sm text-gold">
+                  <Star className="h-5 w-5 fill-gold" /> {wine.user_rating.toFixed(1)}
                 </span>
               )}
             </div>
@@ -467,13 +468,9 @@ function SocialWineRow({ wine }: { wine: SocialWine }) {
           disabled={saving}
           aria-label={t("wishlist.saveBtn")}
           title={t("wishlist.saveBtn")}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gold/30 text-gold disabled:opacity-40"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-gold/30 text-gold disabled:opacity-40 min-h-11 min-w-11"
         >
-          {saving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Bookmark className="h-3.5 w-3.5" />
-          )}
+          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bookmark className="h-5 w-5" />}
         </button>
       </div>
     </article>
@@ -493,7 +490,7 @@ function SimilarityBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10px]",
+        "inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-xs",
         level === "strong" && "border-success/30 bg-success/10 text-success",
         level === "some" && "border-gold/30 bg-gold/8 text-gold",
         level === "low" && "border-white/10 text-muted-foreground",

@@ -20,7 +20,7 @@ export function MeterRow({
   const v = value ?? max / 2;
   const pct = Math.max(2, Math.min(98, (v / max) * 100));
   return (
-    <div className={cn("flex items-center gap-3 text-xs", className)}>
+    <div className={cn("flex items-center gap-3 text-sm", className)}>
       <span className="w-14 shrink-0 text-muted-foreground">{left}</span>
       <div className="relative h-[2px] flex-1 rounded-full bg-white/10">
         <div
@@ -48,8 +48,8 @@ export function BarMeter({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <span className="text-sm text-foreground">{label}</span>
-        <span className="font-display text-sm tabular-nums text-gold">
+        <span className="text-base text-foreground">{label}</span>
+        <span className="font-display text-base tabular-nums text-gold">
           {value == null ? "—" : v.toFixed(1)}
         </span>
       </div>

@@ -141,7 +141,7 @@ function EditPage() {
   if (loading)
     return (
       <AppShell>
-        <p className="mt-10 text-center text-sm text-muted-foreground">{t("common.loading")}</p>
+        <p className="mt-10 text-center text-base text-muted-foreground">{t("common.loading")}</p>
       </AppShell>
     );
 
@@ -153,7 +153,7 @@ function EditPage() {
             to="/wine/$id"
             params={{ id }}
             aria-label={t("common.back")}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -172,13 +172,13 @@ function EditPage() {
               inputMode="numeric"
             />
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              <label className="text-sm uppercase tracking-wider text-muted-foreground">
                 {t("edit.type")}
               </label>
               <select
                 value={form.wine_type}
                 onChange={upd("wine_type")}
-                className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-sm focus:border-gold/40 focus:outline-none"
+                className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-base focus:border-gold/40 focus:outline-none min-h-12"
               >
                 {TYPES.map((tp) => (
                   <option key={tp} value={tp}>
@@ -199,14 +199,14 @@ function EditPage() {
             placeholder={t("edit.grapesPh")}
           />
           <div>
-            <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <label className="text-sm uppercase tracking-wider text-muted-foreground">
               {t("edit.description")}
             </label>
             <textarea
               value={form.description}
               onChange={upd("description")}
               rows={4}
-              className="mt-1 w-full rounded-lg border border-white/10 bg-background/60 p-3 text-sm focus:border-gold/40 focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-white/10 bg-background/60 p-3 text-base focus:border-gold/40 focus:outline-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -220,7 +220,7 @@ function EditPage() {
           </div>
 
           <div className="mt-4 border-t border-white/5 pt-4">
-            <p className="mb-3 text-[11px] uppercase tracking-wider text-gold/80">
+            <p className="mb-3 text-sm uppercase tracking-wider text-gold/80">
               {t("edit.purchase")}
             </p>
             <div className="grid grid-cols-3 gap-3">
@@ -263,9 +263,9 @@ function EditPage() {
         <Button
           onClick={save}
           disabled={saving}
-          className="mt-5 w-full bg-gradient-burgundy text-cream"
+          className="mt-5 w-full bg-gradient-burgundy text-cream min-h-11"
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{" "}
+          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}{" "}
           {t("edit.save")}
         </Button>
       </div>
@@ -288,13 +288,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</label>
+      <label className="text-sm uppercase tracking-wider text-muted-foreground">{label}</label>
       <input
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         inputMode={inputMode}
-        className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-sm focus:border-gold/40 focus:outline-none"
+        className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-base focus:border-gold/40 focus:outline-none min-h-12"
       />
     </div>
   );
@@ -311,12 +311,12 @@ function DateField({
 }) {
   return (
     <div>
-      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</label>
+      <label className="text-sm uppercase tracking-wider text-muted-foreground">{label}</label>
       <input
         type="date"
         value={value}
         onChange={onChange}
-        className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-sm text-foreground/90 focus:border-gold/40 focus:outline-none"
+        className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-background/60 px-3 text-base text-foreground/90 focus:border-gold/40 focus:outline-none min-h-12"
       />
     </div>
   );

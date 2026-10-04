@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { RotateCw, RotateCcw, X, Check, Loader2, Maximize2 } from "lucide-react";
 import { useT } from "@/i18n";
 
@@ -64,12 +65,12 @@ export function LabelCropper({ file, onCancel, onConfirm, onError, busy }: Props
         <button
           onClick={onCancel}
           aria-label={t("crop.retake")}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
-        <p className="text-sm text-cream/80">{t("crop.adjust")}</p>
-        <span className="h-9 w-9" />
+        <p className="min-w-0 px-2 text-center text-base text-cream/90">{t("crop.adjust")}</p>
+        <span className="h-11 w-11 shrink-0" />
       </header>
 
       <div className="relative flex-1">
@@ -93,24 +94,25 @@ export function LabelCropper({ file, onCancel, onConfirm, onError, busy }: Props
         <button
           onClick={() => setRotation((r) => (r - 90 + 360) % 360)}
           aria-label="Rotate left"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
         >
           <RotateCcw className="h-5 w-5" />
         </button>
-        <input
-          type="range"
+        <Slider
           min={1}
           max={4}
           step={0.01}
-          value={zoom}
-          onChange={(e) => setZoom(Number(e.target.value))}
-          className="h-1.5 flex-1 max-w-xs accent-gold"
+          value={[zoom]}
+          onValueChange={([value]) => {
+            if (value != null) setZoom(value);
+          }}
+          className="min-w-0 flex-1 max-w-xs"
           aria-label="Zoom"
         />
         <button
           onClick={() => setRotation((r) => (r + 90) % 360)}
           aria-label="Rotate right"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
         >
           <RotateCw className="h-5 w-5" />
         </button>
@@ -119,7 +121,7 @@ export function LabelCropper({ file, onCancel, onConfirm, onError, busy }: Props
       <button
         onClick={handleUseOriginal}
         disabled={busy}
-        className="mx-auto mt-4 flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-cream/85 hover:bg-white/10 disabled:opacity-50"
+        className="mx-auto mt-4 flex min-h-11 items-center gap-2 rounded-md border border-white/15 px-4 py-2 text-base text-cream/90 hover:bg-white/10 disabled:opacity-50"
       >
         <Maximize2 className="h-4 w-4" /> {t("crop.useOriginal")}
       </button>

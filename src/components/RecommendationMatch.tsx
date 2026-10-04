@@ -20,15 +20,20 @@ export function RecommendationMatch({
   const visibleEvidence = evidence.slice(0, compact ? 2 : 3);
 
   return (
-    <div className={cn("flex gap-3", compact ? "items-center" : "items-start")}>
+    <div
+      className={cn(
+        "grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3",
+        compact ? "items-center" : "items-start",
+      )}
+    >
       <div className="shrink-0 text-right">
         <p className="font-display text-lg leading-none text-gold">{Math.round(score)}%</p>
-        <p className="mt-1 text-[10px] uppercase text-muted-foreground">
+        <p className="mt-1 break-words text-sm text-muted-foreground">
           {t("recommendation.tasteMatch")}
         </p>
       </div>
       <div className="min-w-0 flex-1 border-l border-white/10 pl-3">
-        <p className="text-[10px] uppercase text-muted-foreground">
+        <p className="break-words text-sm text-muted-foreground">
           {t(`recommendation.confidence.${confidence}`)}
         </p>
         {!compact && visibleEvidence.length > 0 && (
@@ -39,21 +44,21 @@ export function RecommendationMatch({
                 <span
                   key={`${item.attribute}-${item.value}-${index}`}
                   className={cn(
-                    "inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-1 text-[10px]",
+                    "inline-flex max-w-full items-start gap-1 rounded-md border px-2 py-1 text-sm",
                     item.direction === "positive"
                       ? "border-success/25 bg-success/8 text-foreground/80"
                       : "border-destructive/25 bg-destructive/8 text-foreground/70",
                   )}
                 >
-                  <Icon className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{item.value}</span>
+                  <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="min-w-0 break-words">{item.value}</span>
                 </span>
               );
             })}
           </div>
         )}
         {!compact && visibleEvidence.length === 0 && (
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             {t("recommendation.coldStart")}
           </p>
         )}

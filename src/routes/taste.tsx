@@ -186,13 +186,13 @@ function TastePage() {
         <header className="flex items-center justify-between">
           <button
             onClick={() => window.history.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11 min-w-11"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="text-center">
             <h1 className="font-display text-2xl text-gold">{t("taste.title")}</h1>
-            <p className="text-[11px] text-muted-foreground">{t("taste.subtitle")}</p>
+            <p className="text-sm text-muted-foreground">{t("taste.subtitle")}</p>
           </div>
           <span className="h-9 w-9" />
         </header>
@@ -207,14 +207,14 @@ function TastePage() {
                   key={ty}
                   onClick={() => toggle(types, setTypes, ty)}
                   className={cn(
-                    "flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-sm transition-colors",
+                    "flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border text-base transition-colors min-h-11 min-w-11",
                     active
                       ? "border-burgundy bg-burgundy text-cream"
                       : "border-white/15 bg-card/40 text-foreground/80",
                   )}
                 >
                   {typeLabel(ty)}
-                  {active && <Check className="h-4 w-4" />}
+                  {active && <Check className="h-5 w-5" />}
                 </button>
               );
             })}
@@ -223,7 +223,7 @@ function TastePage() {
 
         <section id="profile" className="mt-6 scroll-mt-20">
           <h2 className="font-display text-base text-gold">{t("taste.profileHeading")}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t("taste.profileSub")}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("taste.profileSub")}</p>
           <div className="mt-4 space-y-4">
             <SliderRow
               label={t("taste.body")}
@@ -265,7 +265,7 @@ function TastePage() {
 
         <section id="regions" className="mt-7 scroll-mt-20">
           <h2 className="font-display text-base text-gold">{t("taste.regions")}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t("taste.regionsSub")}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("taste.regionsSub")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               ...POPULAR_REGIONS,
@@ -278,21 +278,21 @@ function TastePage() {
                   key={r}
                   onClick={() => toggle(regions, setRegions, r)}
                   className={cn(
-                    "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition-colors",
+                    "flex h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm transition-colors min-h-11 min-w-11",
                     active
                       ? "border-burgundy bg-burgundy text-cream"
                       : "border-white/15 bg-card/40 text-foreground/80",
                   )}
                 >
                   {r}
-                  {active && <Check className="h-3 w-3" />}
+                  {active && <Check className="h-5 w-5" />}
                 </button>
               );
             })}
             <button
               type="button"
               onClick={() => setShowMoreRegions((v) => !v)}
-              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
+              className="flex h-11 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-sm text-gold/90 transition-colors hover:bg-white/5 min-h-11 min-w-11"
             >
               {showMoreLabel(showMoreRegions)}
             </button>
@@ -307,7 +307,7 @@ function TastePage() {
 
         <section id="grapes" className="mt-7 scroll-mt-20">
           <h2 className="font-display text-base text-gold">{t("taste.grapes")}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t("taste.grapesSub")}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("taste.grapesSub")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               ...POPULAR_GRAPES,
@@ -320,21 +320,21 @@ function TastePage() {
                   key={g}
                   onClick={() => toggle(grapes, setGrapes, g)}
                   className={cn(
-                    "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition-colors",
+                    "flex h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm transition-colors min-h-11 min-w-11",
                     active
                       ? "border-burgundy bg-burgundy text-cream"
                       : "border-white/15 bg-card/40 text-foreground/80",
                   )}
                 >
                   {g}
-                  {active && <Check className="h-3 w-3" />}
+                  {active && <Check className="h-5 w-5" />}
                 </button>
               );
             })}
             <button
               type="button"
               onClick={() => setShowMoreGrapes((v) => !v)}
-              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-gold/90 transition-colors hover:bg-white/5"
+              className="flex h-11 items-center gap-1.5 rounded-full border border-white/15 bg-card/40 px-3.5 text-sm text-gold/90 transition-colors hover:bg-white/5 min-h-11 min-w-11"
             >
               {showMoreLabel(showMoreGrapes)}
             </button>
@@ -349,7 +349,7 @@ function TastePage() {
 
         <button
           onClick={save}
-          className="mt-8 mb-4 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-base text-cream shadow-elegant ring-1 ring-burgundy/40"
+          className="mt-8 mb-4 flex h-[52px] w-full items-center justify-center rounded-2xl bg-gradient-burgundy font-display text-base text-cream shadow-elegant ring-1 ring-burgundy/40 min-h-11 min-w-11"
         >
           {t("taste.save")}
         </button>
@@ -385,7 +385,7 @@ function AddOwn({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-2 text-xs text-gold/90 underline underline-offset-4"
+        className="mt-2 text-sm text-gold/90 underline underline-offset-4 min-h-11 min-w-11"
       >
         {openLabel}
       </button>
@@ -407,12 +407,12 @@ function AddOwn({
         }}
         placeholder={placeholder}
         maxLength={60}
-        className="h-9 flex-1 rounded-full border border-white/15 bg-card/40 px-3.5 text-xs text-foreground outline-none focus:border-gold/50"
+        className="h-11 flex-1 rounded-full border border-white/15 bg-card/40 px-3.5 text-base text-foreground outline-none focus:border-gold/50 min-h-12"
       />
       <button
         type="button"
         onClick={submit}
-        className="h-9 rounded-full border border-burgundy bg-burgundy px-4 text-xs text-cream"
+        className="h-11 rounded-full border border-burgundy bg-burgundy px-4 text-sm text-cream min-h-11 min-w-11"
       >
         {addLabel}
       </button>
@@ -434,18 +434,20 @@ function SliderRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="grid grid-cols-[64px_1fr] items-center gap-3">
-      <span className="text-sm text-foreground/80">{label}</span>
+    <div className="grid grid-cols-1 gap-1 min-[380px]:grid-cols-[80px_1fr] min-[380px]:gap-3">
+      <span className="text-base text-foreground/80">{label}</span>
       <div>
-        <div className="relative h-1.5 rounded-full bg-white/10 focus-within:ring-2 focus-within:ring-gold focus-within:ring-offset-2 focus-within:ring-offset-background">
-          <div
-            className="pointer-events-none absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-burgundy to-copper"
-            style={{ width: `${value}%` }}
-          />
-          <span
-            className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 border-cream bg-burgundy shadow"
-            style={{ left: `${value}%` }}
-          />
+        <div className="relative flex h-12 items-center rounded-md focus-within:ring-2 focus-within:ring-gold focus-within:ring-offset-2 focus-within:ring-offset-background">
+          <div className="relative h-1.5 w-full rounded-full bg-white/10">
+            <div
+              className="pointer-events-none absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-burgundy to-copper"
+              style={{ width: `${value}%` }}
+            />
+            <span
+              className="pointer-events-none absolute top-1/2 h-6 w-6 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 border-cream bg-burgundy shadow"
+              style={{ left: `${value}%` }}
+            />
+          </div>
           <input
             type="range"
             aria-label={label}
@@ -454,10 +456,10 @@ function SliderRow({
             step={10}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value))}
-            className="absolute left-0 top-1/2 z-10 h-6 w-full -translate-y-1/2 cursor-pointer opacity-0"
+            className="absolute inset-0 z-10 h-12 w-full cursor-pointer opacity-0"
           />
         </div>
-        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
           <span>{leftLabel}</span>
           <span>{rightLabel}</span>
         </div>
