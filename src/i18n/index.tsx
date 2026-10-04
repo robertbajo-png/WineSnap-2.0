@@ -98,6 +98,7 @@ const en = {
   "ask.error.auth": "Your session has expired. Sign in again to continue.",
   "ask.error.unavailable": "The AI service is temporarily unavailable. Please try again later.",
   "ask.disclaimer": "AI can make mistakes. Check important wine and price details.",
+  "ask.answerTable": "Table in AI answer",
 
   // Home
   "home.brand": "WineSnap",
@@ -760,6 +761,7 @@ const sv: Record<keyof typeof en, string> = {
   "ask.new": "Ny konversation",
   "ask.history": "Konversationer",
   "ask.noHistory": "Inga tidigare konversationer ännu.",
+  "ask.answerTable": "Tabell i AI-svaret",
   "ask.placeholder": "Fråga om ett vin, matparning, en region eller din källare…",
   "ask.send": "Skicka",
   "ask.thinking": "Väger in din smak…",

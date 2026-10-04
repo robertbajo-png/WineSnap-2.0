@@ -238,6 +238,119 @@
   .copper-rule {
     background: linear-gradient(90deg, transparent, oklch(0.68 0.14 50 / 0.6), transparent);
   }
+
+  .chat-answer {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.7;
+  }
+
+  .chat-answer p,
+  .chat-answer ul,
+  .chat-answer ol,
+  .chat-answer blockquote,
+  .chat-answer pre,
+  .chat-answer table {
+    margin-block: 0.75rem;
+  }
+
+  .chat-answer :is(h1, h2, h3, h4, h5, h6) {
+    margin-block: 1.25rem 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  .chat-answer strong {
+    color: var(--color-cream);
+    font-weight: 600;
+  }
+
+  .chat-answer ul,
+  .chat-answer ol {
+    padding-left: 1.25rem;
+  }
+
+  .chat-answer ul {
+    list-style-type: disc;
+  }
+
+  .chat-answer ol {
+    list-style-type: decimal;
+  }
+
+  .chat-answer li + li {
+    margin-top: 0.75rem;
+  }
+
+  .chat-answer li::marker {
+    color: var(--color-gold);
+  }
+
+  .chat-answer li > p {
+    margin-block: 0.5rem;
+  }
+
+  .chat-answer a {
+    color: var(--color-gold);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .chat-answer blockquote {
+    border-left: 2px solid var(--color-gold);
+    padding-left: 0.75rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .chat-answer code {
+    border-radius: 3px;
+    background: oklch(1 0 0 / 0.06);
+    padding: 0.125rem 0.25rem;
+    font-size: 0.8125rem;
+  }
+
+  .chat-answer pre {
+    max-width: 100%;
+    overflow-x: auto;
+    border-radius: 4px;
+    background: oklch(0 0 0 / 0.2);
+    padding: 0.75rem;
+    white-space: pre-wrap;
+  }
+
+  .chat-answer pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  .chat-answer table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+
+  .chat-answer th,
+  .chat-answer td {
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .chat-answer th {
+    color: var(--color-cream);
+    font-weight: 600;
+  }
+
+  .chat-answer > :first-child {
+    margin-top: 0;
+  }
+
+  .chat-answer > :last-child {
+    margin-bottom: 0;
+  }
 }
 
 /* Hide scrollbars while keeping scroll functionality */

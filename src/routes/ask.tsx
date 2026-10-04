@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ChatMessageContent } from "@/components/ChatMessageContent";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -331,13 +332,13 @@ function AskWineSnapPage() {
                 <article
                   key={message.id}
                   className={cn(
-                    "max-w-[88%] rounded-md px-3.5 py-3 text-sm leading-relaxed",
+                    "min-w-0 rounded-md px-3.5 py-3 text-sm leading-relaxed",
                     message.role === "user"
-                      ? "ml-auto bg-burgundy text-cream"
-                      : "border border-white/8 bg-card/55 text-foreground",
+                      ? "ml-auto max-w-[88%] bg-burgundy text-cream"
+                      : "w-full border border-white/8 bg-card/55 text-foreground",
                   )}
                 >
-                  <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                  <ChatMessageContent role={message.role} content={message.content} />
                 </article>
               ))}
               {busy && (
