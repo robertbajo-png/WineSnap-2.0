@@ -686,10 +686,14 @@ concurrent allocation. This is not hosted JWT or Storage verification.
 
 Local signed-out browser checks confirmed navigation, the sign-in requirement
 and no horizontal overflow on the sign-in view at 390px and 1440px. The
-signed-in acquisition form remains unverified. On 2026-10-04 the collector
-migration and invariants passed in hosted WineSnap-test, and 15 real JWT/API
-checks passed, including actual acquisition/estimate saves, owner isolation
-and concurrent allocation. This does not verify the browser form or Storage.
-Production deployment and Lovable publication are still pending. No production
-database changes or publication were performed. See `docs/investment-cellar.md`
-for rollout and the reusable hosted verification script.
+signed-in form was then tested in Lovable's isolated copy against WineSnap-test
+on revision 8f12462: real creation, a changed cost value, estimates and reload
+persistence passed, alongside filters, closed acquisitions and validation.
+Mobile overflow was measured; desktop screenshots were inspected. All 15 hosted
+JWT/API checks also passed. The collector migration is deployed in production,
+with version 20261004090000 recorded and its RLS/FK/stock triggers verified by
+read-only checks. No real user rows were changed or backfilled. Types were
+regenerated automatically. Test accounts, temporary credentials and isolated
+test copies were removed. This is not Storage verification. Frontend publication
+is still pending. See `docs/investment-cellar.md` for precise scope, platform-role
+and copy caveats, rollout and the reusable hosted verification script.

@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 import {
   COLLECTOR_CURRENCIES,
   COLLECTOR_PURPOSES,
@@ -16,29 +14,9 @@ import {
   collectorLotRowSchema,
   collectorTotals,
   type CollectorLot,
-  type CollectorLotInput,
 } from "@/lib/collectorLots";
 
-// Keep the migration contract typed until hosted schema generation includes it.
-type CollectorDatabase = Omit<Database, "public"> & {
-  public: Omit<Database["public"], "Tables"> & {
-    Tables: Database["public"]["Tables"] & {
-      collector_lots: {
-        Row: CollectorLot;
-        Insert: CollectorLotInput & {
-          user_id: string;
-          id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<CollectorLotInput>;
-        Relationships: [];
-      };
-    };
-  };
-};
-const collectorLots = () =>
-  (supabase as unknown as SupabaseClient<CollectorDatabase>).from("collector_lots");
+const collectorLots = () => supabase.from("collector_lots");
 
 export const Route = createFileRoute("/cellar/collection")({
   head: () => ({ meta: [{ title: "Collector Cellar - WineSnap" }] }),
