@@ -474,12 +474,12 @@ production account. Lovable received an Allow once approval, not persistent
 access. Its completed report confirms tests with a real owning user JWT against
 an existing private wine-label photo in production `mervdrbnwgreaifobasw`:
 
-| Operation | Actual result |
-| --- | --- |
-| Normal download with cache nonce | HTTP 200, image/jpeg, nonempty content |
-| object.sign | HTTP 400 not_found, no signed URL |
-| object.sign_many | HTTP 200 envelope; item access error and null URL |
-| render.image_sign with 100x100 cover resize | HTTP 400 not_found, no signed URL |
+| Operation                                   | Actual result                                     |
+| ------------------------------------------- | ------------------------------------------------- |
+| Normal download with cache nonce            | HTTP 200, image/jpeg, nonempty content            |
+| object.sign                                 | HTTP 400 not_found, no signed URL                 |
+| object.sign_many                            | HTTP 200 envelope; item access error and null URL |
+| render.image_sign with 100x100 cover resize | HTTP 400 not_found, no signed URL                 |
 
 This closes the previously pending owner-signing check. The batch HTTP 200 is
 not successful signing: its item was denied. No password, permissions, sharing,
@@ -686,7 +686,10 @@ concurrent allocation. This is not hosted JWT or Storage verification.
 
 Local signed-out browser checks confirmed navigation, the sign-in requirement
 and no horizontal overflow on the sign-in view at 390px and 1440px. The
-signed-in acquisition form and actual saving remain unverified in a hosted
-test environment. Deploy and verify the migration in WineSnap-test before
-production deployment or Lovable publication. No production database changes
-or publication were performed. See `docs/investment-cellar.md` for rollout.
+signed-in acquisition form remains unverified. On 2026-10-04 the collector
+migration and invariants passed in hosted WineSnap-test, and 15 real JWT/API
+checks passed, including actual acquisition/estimate saves, owner isolation
+and concurrent allocation. This does not verify the browser form or Storage.
+Production deployment and Lovable publication are still pending. No production
+database changes or publication were performed. See `docs/investment-cellar.md`
+for rollout and the reusable hosted verification script.
