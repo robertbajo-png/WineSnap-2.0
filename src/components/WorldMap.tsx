@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { geoNaturalEarth1, geoPath } from "d3-geo";
 import { feature, mesh } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
@@ -7,7 +6,7 @@ import { useT } from "@/i18n";
 import { lookup } from "@/lib/wineOriginCoordinates";
 
 const world = atlas as unknown as Topology<{
-  countries: GeometryCollection;
+  countries: GeometryCollection<{ name: string }>;
   land: GeometryCollection;
 }>;
 const countries = feature(world, world.objects.countries);
@@ -27,12 +26,25 @@ const path = geoPath(projection);
 const landPath = path(wineWorld) ?? "";
 const borderPath = path(mesh(world, world.objects.countries, (a, b) => a !== b)) ?? "";
 
-export type MapPoint = { region: string | null; country: string | null; count: number };
+export type MapPoint = {
+  region: string | null;
+  country: string | null;
+  count: number;
+  countryKey?: string;
+};
 
-export function WorldMap({ points }: { points: MapPoint[] }) {
+export function WorldMap({
+  points,
+  selectedCountry = null,
+}: {
+  points: MapPoint[];
+  selectedCountry?: string | null;
+}) {
   const t = useT();
-  const [selected, setSelected] = useState<string | null>(null);
-  const groups = new Map<string, { x: number; y: number; count: number; labels: Set<string> }>();
+  const groups = new Map<
+    string,
+    { x: number; y: number; count: number; labels: Set<string>; countries: Set<string> }
+  >();
   let unmapped = 0;
   for (const point of points) {
     if (!Number.isFinite(point.count) || point.count <= 0) continue;
@@ -52,38 +64,46 @@ export function WorldMap({ points }: { points: MapPoint[] }) {
     if (existing) {
       existing.count += point.count;
       existing.labels.add(label);
+      if (point.countryKey) existing.countries.add(point.countryKey);
     } else
       groups.set(key, {
         x: position[0],
         y: position[1],
         count: point.count,
         labels: new Set([label]),
+        countries: new Set(point.countryKey ? [point.countryKey] : []),
       });
   }
   const dots = [...groups.entries()]
     .map(([key, dot]) => [key, { ...dot, label: [...dot.labels].join(", ") }] as const)
     .sort((a, b) => b[1].count - a[1].count);
   const maxCount = Math.max(...dots.map(([, d]) => d.count), 1);
+  const selectedShape = wineWorld.features.find(
+    (country) => String(country.properties?.name).toLowerCase() === selectedCountry,
+  );
 
   return (
     <div className="mt-2 overflow-hidden bg-[#10090b]">
       <svg
         viewBox="0 0 1000 450"
-        className="block h-[160px] w-full sm:h-[200px]"
+        className="block h-[145px] w-full sm:h-[185px]"
         role="img"
         aria-label={t("map.title")}
       >
         <path d={landPath} fill="#35151c" stroke="#9b7950" strokeWidth="0.85" />
+        {selectedShape && (
+          <path d={path(selectedShape) ?? ""} fill="#b28c55" stroke="#e9b85e" strokeWidth="1" />
+        )}
         <path d={borderPath} fill="none" stroke="#9b7950" strokeOpacity="0.65" strokeWidth="0.65" />
         {dots.map(([key, d]) => {
           const r = 5 + Math.sqrt(d.count / maxCount) * 5;
           return (
-            <g key={key} opacity={selected && selected !== key ? 0.4 : 1}>
+            <g key={key} opacity={selectedCountry && !d.countries.has(selectedCountry) ? 0.4 : 1}>
               <circle
                 cx={d.x}
                 cy={d.y}
                 r={r}
-                fill={selected === key ? "#fff0c0" : "#e9b85e"}
+                fill={selectedCountry && d.countries.has(selectedCountry) ? "#fff0c0" : "#e9b85e"}
                 stroke="#10090b"
                 strokeWidth="2"
               >
@@ -93,42 +113,20 @@ export function WorldMap({ points }: { points: MapPoint[] }) {
           );
         })}
       </svg>
-      <div className="border-t border-gold/15">
-        <ul
-          aria-label={t("map.title")}
-          className="flex overflow-x-auto divide-x divide-gold/20 py-1"
-        >
-          {dots.map(([key, d]) => (
-            <li key={key} className="max-w-full shrink-0 px-3 first:pl-0">
-              <button
-                type="button"
-                aria-pressed={selected === key}
-                onClick={() => setSelected(selected === key ? null : key)}
-                className="flex min-h-11 max-w-full items-center gap-2 rounded px-1 text-xs text-cream aria-pressed:text-gold focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-gold"
-              >
-                <span className="min-w-0 break-words">{d.label}</span>
-                <span className="shrink-0 font-medium tabular-nums text-gold">{d.count}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        {dots.length === 0 && (
-          <p className="py-2 text-xs text-muted-foreground">{t("map.empty")}</p>
-        )}
-        {unmapped > 0 && (
-          <p className="py-2 text-xs text-muted-foreground">
-            {t("map.unmapped")}: {unmapped} {t("map.bottles")}
-          </p>
-        )}
-        <a
-          href="https://www.naturalearthdata.com/"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-block py-1 text-[10px] text-muted-foreground underline underline-offset-2"
-        >
-          Natural Earth
-        </a>
-      </div>
+      {dots.length === 0 && <p className="py-2 text-xs text-muted-foreground">{t("map.empty")}</p>}
+      {unmapped > 0 && (
+        <p className="text-[10px] text-muted-foreground">
+          {t("map.unmapped")}: {unmapped} {t("map.bottles")}
+        </p>
+      )}
+      <a
+        href="https://www.naturalearthdata.com/"
+        target="_blank"
+        rel="noreferrer"
+        className="inline-block py-1 text-[10px] text-muted-foreground underline underline-offset-2"
+      >
+        Natural Earth
+      </a>
     </div>
   );
 }

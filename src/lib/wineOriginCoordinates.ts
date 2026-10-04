@@ -43,6 +43,9 @@ const COUNTRY_COORDS: Record<string, [number, number]> = {
 
 // Region hints for common wine regions when country is missing.
 const REGION_COORDS: Record<string, [number, number]> = {
+  california: [-119.5, 36.5],
+  oregon: [-120.5, 44],
+  washington: [-120.5, 47.5],
   bordeaux: [-0.6, 44.8],
   burgundy: [4.8, 47],
   bourgogne: [4.8, 47],

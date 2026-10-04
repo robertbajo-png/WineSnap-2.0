@@ -3,6 +3,13 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export type Lang = "en" | "sv";
 
 const en = {
+  "origins.title": "Origins",
+  "origins.country": "Country",
+  "origins.countrySingular": "country",
+  "origins.countries": "countries",
+  "origins.share": "Share",
+  "origins.unknownCountry": "Unknown country",
+  "origins.unknownRegion": "Region not recorded",
   "map.title": "Wine origins",
   "map.bottles": "bottles",
   "map.bottle": "bottle",
@@ -681,6 +688,13 @@ const en = {
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
+  "origins.title": "Ursprung",
+  "origins.country": "Land",
+  "origins.countrySingular": "land",
+  "origins.countries": "länder",
+  "origins.share": "Andel",
+  "origins.unknownCountry": "Okänt land",
+  "origins.unknownRegion": "Region saknas",
   "map.title": "Vinernas ursprung",
   "map.bottles": "flaskor",
   "map.bottle": "flaska",

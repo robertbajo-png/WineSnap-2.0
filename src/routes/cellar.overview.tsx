@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
-import { WorldMap } from "@/components/WorldMap";
+import { CellarOrigins } from "@/components/CellarOrigins";
 import { summarizeCellarPrices } from "@/lib/cellarValue";
 
 export const Route = createFileRoute("/cellar/overview")({
@@ -39,14 +39,6 @@ type WineRow = {
   market_price_currency: string | null;
   market_price_checked_at: string | null;
 };
-
-const PALETTE = [
-  "oklch(0.5 0.18 18)",
-  "oklch(0.4 0.16 30)",
-  "oklch(0.62 0.14 50)",
-  "oklch(0.45 0.1 130)",
-  "oklch(0.32 0.04 200)",
-];
 
 const TYPE_COLORS: Record<string, string> = {
   red: "oklch(0.42 0.16 20)",
@@ -143,24 +135,6 @@ function CellarOverviewPage() {
   const cellarWorthy = active
     .filter((w) => w.vintage && w.vintage >= now)
     .reduce((s, w) => s + (w.quantity ?? 1), 0);
-
-  const regionStats = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const w of active) {
-      const key = w.region || w.country;
-      if (!key) continue;
-      m.set(key, (m.get(key) ?? 0) + (w.quantity ?? 1));
-    }
-    const arr = [...m.entries()].sort((a, b) => b[1] - a[1]);
-    const top = arr.slice(0, 4);
-    const otherCount = arr.slice(4).reduce((acc, [, c]) => acc + c, 0);
-    if (otherCount > 0) top.push(["Others", otherCount]);
-    return top.map(([label, count]) => ({
-      label,
-      count,
-      pct: bottles ? Math.round((count / bottles) * 100) : 0,
-    }));
-  }, [active, bottles]);
 
   const varietalStats = useMemo(() => {
     const m = new Map<string, number>();
@@ -385,39 +359,14 @@ function CellarOverviewPage() {
           </section>
         )}
 
-        {regionStats.length > 0 && (
-          <section className="mt-6">
-            <h2 className="font-display text-base text-cream">{t("overview.byRegion")}</h2>
-            <div className="mt-3 flex items-center gap-4">
-              <DonutChart segments={regionStats.map((r) => r.pct)} colors={PALETTE} size={130} />
-              <div className="flex-1 space-y-2 text-xs">
-                {regionStats.map((r, i) => (
-                  <div key={r.label} className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: PALETTE[i % PALETTE.length] }}
-                    />
-                    <span className="flex-1 truncate text-foreground/85">{r.label}</span>
-                    <span className="text-muted-foreground">{r.pct}%</span>
-                    <span className="w-10 text-right font-display text-cream">{r.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
         {active.length > 0 && (
-          <section className="mt-7">
-            <h2 className="font-display text-base text-cream">{t("map.title")}</h2>
-            <WorldMap
-              points={active.map((w) => ({
-                region: w.region,
-                country: w.country,
-                count: w.quantity ?? 1,
-              }))}
-            />
-          </section>
+          <CellarOrigins
+            points={active.map((wine) => ({
+              region: wine.region,
+              country: wine.country,
+              count: wine.quantity ?? 1,
+            }))}
+          />
         )}
 
         {vintageStats.length > 0 && (
@@ -565,50 +514,6 @@ function WindowCard({
       <p className="text-[10px] text-muted-foreground">{sub}</p>
       <div className="mt-2 h-1 rounded-full" style={{ background: barColor, opacity: 0.7 }} />
     </div>
-  );
-}
-
-function DonutChart({
-  segments,
-  colors,
-  size,
-}: {
-  segments: number[];
-  colors: string[];
-  size: number;
-}) {
-  const cx = size / 2,
-    cy = size / 2;
-  const r = size / 2 - 4;
-  const inner = r * 0.62;
-  let acc = 0;
-  const total = segments.reduce((a, b) => a + b, 0) || 1;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
-      {segments.map((v, i) => {
-        const a0 = (acc / total) * Math.PI * 2 - Math.PI / 2;
-        acc += v;
-        const a1 = (acc / total) * Math.PI * 2 - Math.PI / 2;
-        const large = a1 - a0 > Math.PI ? 1 : 0;
-        const x0 = cx + r * Math.cos(a0),
-          y0 = cy + r * Math.sin(a0);
-        const x1 = cx + r * Math.cos(a1),
-          y1 = cy + r * Math.sin(a1);
-        const xi1 = cx + inner * Math.cos(a1),
-          yi1 = cy + inner * Math.sin(a1);
-        const xi0 = cx + inner * Math.cos(a0),
-          yi0 = cy + inner * Math.sin(a0);
-        return (
-          <path
-            key={i}
-            d={`M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} L${xi1},${yi1} A${inner},${inner} 0 ${large} 0 ${xi0},${yi0} Z`}
-            fill={colors[i % colors.length]}
-            stroke="oklch(0.13 0.008 30)"
-            strokeWidth="1.5"
-          />
-        );
-      })}
-    </svg>
   );
 }
 

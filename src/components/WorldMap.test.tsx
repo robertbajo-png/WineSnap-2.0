@@ -31,7 +31,7 @@ describe("wine origin map", () => {
     expect(html).toContain("Unknown location");
     expect(html).not.toContain("dotGlow");
     expect(html).toContain("Natural Earth");
-    expect(html).toContain('aria-pressed="false"');
+    expect(html).not.toContain("<ul");
   });
   it("renders an honest empty state", () => {
     expect(renderToStaticMarkup(<WorldMap points={[]} />)).toContain("No mapped origins yet");
@@ -41,13 +41,13 @@ describe("wine origin map", () => {
     expect(html.length).toBeGreaterThan(10000);
     expect(html).toContain('viewBox="0 0 1000 450"');
   });
-  it("keeps the approved palette and compact height with a single scrollable legend", () => {
+  it("keeps the approved palette and compact height without a duplicate legend", () => {
     const html = renderToStaticMarkup(<WorldMap points={[]} />);
-    expect(html).toContain("h-[160px]");
-    expect(html).toContain("sm:h-[200px]");
+    expect(html).toContain("h-[145px]");
+    expect(html).toContain("sm:h-[185px]");
     expect(html).toContain('fill="#35151c"');
     expect(html).toContain('stroke="#9b7950"');
-    expect(html).toContain("overflow-x-auto");
+    expect(html).not.toContain("<ul");
     expect(html).not.toContain("flex-wrap");
     expect(html).not.toContain("#344a46");
   });
