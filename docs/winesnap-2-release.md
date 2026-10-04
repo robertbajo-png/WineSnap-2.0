@@ -694,6 +694,11 @@ JWT/API checks also passed. The collector migration is deployed in production,
 with version 20261004090000 recorded and its RLS/FK/stock triggers verified by
 read-only checks. No real user rows were changed or backfilled. Types were
 regenerated automatically. Test accounts, temporary credentials and isolated
-test copies were removed. This is not Storage verification. Frontend publication
-is still pending. See `docs/investment-cellar.md` for precise scope, platform-role
-and copy caveats, rollout and the reusable hosted verification script.
+test copies were removed. This is not Storage verification. Publication was
+requested once for d6ed94a; Codex independently observed the new collector view
+and localized sign-in guard on the public URL after reload. The exact served
+revision was not independently fingerprinted, and signed-in production writes
+and older-client service-worker upgrades were not tested. See
+`docs/investment-cellar.md` for precise scope, platform-role and copy caveats,
+rollout and the reusable hosted verification script. Later documentation-only
+commits do not change the verified collector client bundle.
