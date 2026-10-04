@@ -94,8 +94,7 @@ function CollectorPage() {
     setLoading(Boolean(userId));
     if (!userId) return;
     Promise.all([
-      supabase
-        .from("collector_lots")
+      collectorLots()
         .select("*")
         .eq("user_id", userId)
         .order("purchased_at", { ascending: false }),
@@ -167,15 +166,13 @@ function CollectorPage() {
     setSaving(true);
     try {
       const result = editing
-        ? await supabase
-            .from("collector_lots")
+        ? await collectorLots()
             .update(parsed.data)
             .eq("id", editing)
             .eq("user_id", user.id)
             .select("id")
             .single()
-        : await supabase
-            .from("collector_lots")
+        : await collectorLots()
             .insert({ ...parsed.data, user_id: user.id })
             .select("id")
             .single();
