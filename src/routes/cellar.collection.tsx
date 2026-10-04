@@ -109,7 +109,7 @@ function CollectorPage() {
           const code = lotResult.error?.code;
           setError(code === "42P01" || code === "PGRST205" ? "collector.pending" : "common.error");
         } else {
-          setLots((lotResult.data ?? []).map((row) => collectorLotRowSchema.parse(row)));
+          setLots((lotResult.data ?? []).map((row: unknown) => collectorLotRowSchema.parse(row)));
           setWines(wineResult.data ?? []);
         }
         setLoading(false);
