@@ -16,6 +16,10 @@ import {
   type CollectorLot,
 } from "@/lib/collectorLots";
 
+// collector_lots is not yet in the generated Database types (table pending in prod).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const collectorLots = () => (supabase as any).from("collector_lots");
+
 export const Route = createFileRoute("/cellar/collection")({
   head: () => ({ meta: [{ title: "Collector Cellar - WineSnap" }] }),
   component: CollectorPage,
@@ -90,11 +94,7 @@ function CollectorPage() {
     setLoading(Boolean(userId));
     if (!userId) return;
     Promise.all([
-      supabase
-        .from("collector_lots")
-        .select("*")
-        .eq("user_id", userId)
-        .order("purchased_at", { ascending: false }),
+      collectorLots().select("*").eq("user_id", userId).order("purchased_at", { ascending: false }),
       supabase
         .from("wines")
         .select("id,producer,wine_name,vintage,quantity,consumed_at")
@@ -106,7 +106,7 @@ function CollectorPage() {
           const code = lotResult.error?.code;
           setError(code === "42P01" || code === "PGRST205" ? "collector.pending" : "common.error");
         } else {
-          setLots((lotResult.data ?? []).map((row) => collectorLotRowSchema.parse(row)));
+          setLots((lotResult.data ?? []).map((row: unknown) => collectorLotRowSchema.parse(row)));
           setWines(wineResult.data ?? []);
         }
         setLoading(false);
@@ -163,15 +163,13 @@ function CollectorPage() {
     setSaving(true);
     try {
       const result = editing
-        ? await supabase
-            .from("collector_lots")
+        ? await collectorLots()
             .update(parsed.data)
             .eq("id", editing)
             .eq("user_id", user.id)
             .select("id")
             .single()
-        : await supabase
-            .from("collector_lots")
+        : await collectorLots()
             .insert({ ...parsed.data, user_id: user.id })
             .select("id")
             .single();

@@ -1,5 +1,3 @@
-import type { CollectorLot, CollectorLotInput } from "@/lib/collectorLots";
-
 export type Json =
   | string
   | number
@@ -16,18 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      collector_lots: {
-        Row: CollectorLot
-        Insert: CollectorLotInput & { user_id: string; id?: string; created_at?: string; updated_at?: string }
-        Update: Partial<CollectorLotInput>
-        Relationships: [{
-          foreignKeyName: "collector_lots_wine_id_user_id_fkey"
-          columns: ["wine_id", "user_id"]
-          isOneToOne: false
-          referencedRelation: "wines"
-          referencedColumns: ["id", "user_id"]
-        }]
-      }
       ai_conversations: {
         Row: {
           created_at: string
