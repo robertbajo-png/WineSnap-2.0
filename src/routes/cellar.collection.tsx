@@ -94,10 +94,7 @@ function CollectorPage() {
     setLoading(Boolean(userId));
     if (!userId) return;
     Promise.all([
-      collectorLots()
-        .select("*")
-        .eq("user_id", userId)
-        .order("purchased_at", { ascending: false }),
+      collectorLots().select("*").eq("user_id", userId).order("purchased_at", { ascending: false }),
       supabase
         .from("wines")
         .select("id,producer,wine_name,vintage,quantity,consumed_at")
