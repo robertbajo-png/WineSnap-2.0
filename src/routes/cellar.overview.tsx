@@ -1,12 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import { WorldMap } from "@/components/WorldMap";
+import { summarizeCellarPrices } from "@/lib/cellarValue";
 
 export const Route = createFileRoute("/cellar/overview")({
   head: () => ({
@@ -61,17 +62,31 @@ function CellarOverviewPage() {
   const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const SELECT_COLS =
     "region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at,market_price,market_price_currency,market_price_checked_at";
 
   useEffect(() => {
+    let cancelled = false;
+    setWines([]);
+    setLoadError(false);
+    setLoading(Boolean(user));
     if (!user) return;
     supabase
       .from("wines")
       .select(SELECT_COLS)
       .eq("user_id", user.id)
-      .then(({ data }) => setWines((data as unknown as WineRow[]) ?? []));
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLoadError(Boolean(error));
+        setWines(error ? [] : ((data as unknown as WineRow[]) ?? []));
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   async function refreshValues() {
@@ -85,11 +100,16 @@ function CellarOverviewPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const json = (await res.json()) as { updated?: number; error?: string };
+      const json = (await res.json()) as { updated?: number; failed?: number; error?: string };
       if (!res.ok) throw new Error(json.error ?? "Request failed");
-      const { data } = await supabase.from("wines").select(SELECT_COLS).eq("user_id", user.id);
+      const { data, error } = await supabase
+        .from("wines")
+        .select(SELECT_COLS)
+        .eq("user_id", user.id);
+      if (error) throw error;
       setWines((data as unknown as WineRow[]) ?? []);
-      toast.success(`${t("overview.valuesUpdated")} (${json.updated ?? 0})`);
+      if (json.failed) toast.error(`${t("overview.valuesFailed")} (${json.failed})`);
+      else toast.success(`${t("overview.valuesUpdated")} (${json.updated ?? 0})`);
     } catch {
       toast.error(t("overview.valuesFailed"));
     } finally {
@@ -104,35 +124,9 @@ function CellarOverviewPage() {
   const regions = new Set(wines.map((w) => w.region).filter(Boolean)).size;
   const countries = new Set(wines.map((w) => w.country).filter(Boolean)).size;
 
-  const priced = active.filter((w) => w.purchase_price != null);
-  const totalValue = priced.reduce(
-    (s, w) => s + Number(w.purchase_price ?? 0) * (w.quantity ?? 1),
-    0,
-  );
-  const avgBottle = priced.length
-    ? totalValue / priced.reduce((s, w) => s + (w.quantity ?? 1), 0)
-    : 0;
-  const currency =
-    priced.find((w) => w.purchase_currency)?.purchase_currency?.toUpperCase() ?? "SEK";
-
+  const purchase = summarizeCellarPrices(wines, "purchase");
+  const retail = summarizeCellarPrices(wines, "retail");
   const valued = active.filter((w) => w.market_price != null);
-  const marketValue = valued.reduce(
-    (s, w) => s + Number(w.market_price ?? 0) * (w.quantity ?? 1),
-    0,
-  );
-  const marketCurrency =
-    valued.find((w) => w.market_price_currency)?.market_price_currency?.toUpperCase() ?? "SEK";
-  const comparable = valued.filter((w) => w.purchase_price != null);
-  const comparableCost = comparable.reduce(
-    (s, w) => s + Number(w.purchase_price ?? 0) * (w.quantity ?? 1),
-    0,
-  );
-  const comparableMarket = comparable.reduce(
-    (s, w) => s + Number(w.market_price ?? 0) * (w.quantity ?? 1),
-    0,
-  );
-  const delta = comparableMarket - comparableCost;
-  const deltaPct = comparableCost > 0 ? (delta / comparableCost) * 100 : 0;
   const lastChecked = valued
     .map((w) => w.market_price_checked_at)
     .filter(Boolean)
@@ -246,16 +240,31 @@ function CellarOverviewPage() {
     });
   }, [wines]);
 
+  if (loading || loadError) {
+    return (
+      <AppShell>
+        <p
+          role={loadError ? "alert" : "status"}
+          className="py-8 text-center text-sm text-muted-foreground"
+        >
+          {t(loadError ? "common.error" : "common.loading")}
+        </p>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
-          <button
-            onClick={() => window.history.back()}
+          <Link
+            to="/cellar"
+            aria-label={t("cellar.title")}
+            title={t("cellar.title")}
             className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/5"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
+          </Link>
           <h1 className="font-display text-2xl text-gold">{t("overview.title")}</h1>
           <span className="h-9 w-9" />
         </header>
@@ -266,17 +275,29 @@ function CellarOverviewPage() {
           <Stat value={String(countries)} label={t("overview.countries")} />
         </section>
 
-        {(priced.length > 0 || bottlesConsumed > 0) && (
+        {(active.length > 0 || bottlesConsumed > 0) && (
           <section className="mt-4 grid grid-cols-2 gap-2">
             <BigStat
-              value={priced.length ? formatMoney(totalValue, currency) : "—"}
+              value={
+                purchase.groups.length
+                  ? purchase.groups.map((g) => formatMoney(g.total, g.currency)).join(" / ")
+                  : "—"
+              }
               label={t("overview.totalValue")}
               sub={
-                priced.length ? `${priced.length} ${t("overview.priced")}` : t("overview.addPrices")
+                purchase.excluded
+                  ? `${purchase.excluded} ${t("overview.missingPrice")}`
+                  : `${purchase.groups.reduce((sum, g) => sum + g.bottles, 0)} ${t("overview.priced")}`
               }
             />
             <BigStat
-              value={priced.length ? formatMoney(avgBottle, currency) : "—"}
+              value={
+                purchase.groups.length
+                  ? purchase.groups
+                      .map((g) => formatMoney(g.total / g.bottles, g.currency))
+                      .join(" / ")
+                  : "—"
+              }
               label={t("overview.avgBottle")}
             />
             <BigStat value={String(bottlesConsumed)} label={t("overview.consumed")} />
@@ -289,30 +310,23 @@ function CellarOverviewPage() {
         )}
 
         {active.length > 0 && (
-          <section className="mt-4 rounded-2xl border border-gold/20 bg-gradient-to-b from-gold/[0.06] to-transparent p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+          <section className="mt-4 border-y border-gold/20 py-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
                   {t("overview.marketValue")}
                 </p>
-                <p className="mt-1 font-display text-3xl text-cream">
-                  {valued.length ? formatMoney(marketValue, marketCurrency) : "—"}
-                </p>
-                {valued.length > 0 && comparable.length > 0 && (
-                  <p
-                    className={`mt-1 inline-flex items-center gap-1 text-xs ${
-                      delta >= 0 ? "text-success" : "text-destructive"
-                    }`}
-                  >
-                    {delta >= 0 ? (
-                      <TrendingUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <TrendingDown className="h-3.5 w-3.5" />
-                    )}
-                    {delta >= 0 ? "+" : "−"}
-                    {formatMoney(Math.abs(delta), marketCurrency)} ({Math.abs(deltaPct).toFixed(0)}
-                    %) <span className="text-muted-foreground">{t("overview.vsPurchase")}</span>
-                  </p>
+                {retail.groups.length ? (
+                  retail.groups.map((g) => (
+                    <p
+                      key={g.currency}
+                      className="mt-1 break-words font-display text-2xl text-cream"
+                    >
+                      {formatMoney(g.total, g.currency)}
+                    </p>
+                  ))
+                ) : (
+                  <p className="mt-1 font-display text-2xl text-cream">—</p>
                 )}
               </div>
               <button
@@ -325,14 +339,19 @@ function CellarOverviewPage() {
               </button>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              {valued.length
-                ? `${valued.length} ${t("overview.valued")} · ${t("overview.marketValueDesc")}${
+              {retail.groups.length
+                ? `${retail.groups.reduce((sum, g) => sum + g.bottles, 0)} ${t("overview.valued")} · ${t("overview.marketValueDesc")}${
                     lastChecked
                       ? ` · ${t("overview.lastChecked")} ${new Date(lastChecked).toLocaleDateString()}`
                       : ""
                   }`
                 : t("overview.marketValueEmpty")}
             </p>
+            {retail.excluded > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {retail.excluded} {t("overview.missingPrice")}
+              </p>
+            )}
           </section>
         )}
 
@@ -517,7 +536,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 function BigStat({ value, label, sub }: { value: string; label: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-card/40 px-3 py-3">
-      <p className="font-display text-xl text-cream">{value}</p>
+      <p className="break-words font-display text-lg text-cream">{value}</p>
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
       {sub ? <p className="mt-0.5 text-[10px] text-muted-foreground/80">{sub}</p> : null}
     </div>

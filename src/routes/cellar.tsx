@@ -1,6 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Wine, ChevronRight, Star, Camera, Scale } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Wine,
+  ChevronRight,
+  Star,
+  Camera,
+  Scale,
+  ChartNoAxesCombined,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { EmptyState } from "@/components/EmptyState";
 import { CellarRowSkeleton } from "@/components/Skeleton";
@@ -50,6 +59,11 @@ type WineRow = {
 };
 
 function CellarPage() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  return pathname.replace(/\/$/, "") === "/cellar" ? <CellarListPage /> : <Outlet />;
+}
+
+function CellarListPage() {
   const { user } = useAuth();
   const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
@@ -131,6 +145,15 @@ function CellarPage() {
             <Plus className="h-3 w-3" /> {t("cellar.add")}
           </Link>
         </header>
+
+        <Link
+          to="/cellar/overview"
+          className="mt-4 flex items-center gap-2 border-b border-white/10 py-3 text-sm text-gold"
+        >
+          <ChartNoAxesCombined className="h-4 w-4" />
+          <span className="flex-1">{t("overview.title")}</span>
+          <ChevronRight className="h-4 w-4" />
+        </Link>
 
         <div className="mt-4">
           <div className="relative">

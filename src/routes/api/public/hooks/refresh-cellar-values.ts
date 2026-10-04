@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
  *
  * Fetches the current retail price for the signed-in user's un-consumed wines
  * from the Systembolaget catalog (community bolaget.io mirror) and stores it as
- * an estimated market value on each wine.
+ * a retail reference in the legacy market_price fields, not a resale valuation.
  *
  * Requires a Supabase bearer token; only the caller's own wines are touched.
  */
@@ -79,7 +79,7 @@ export const Route = createFileRoute("/api/public/hooks/refresh-cellar-values")(
               .update({
                 market_price: hit.price,
                 market_price_currency: "SEK",
-                market_price_source: "systembolaget",
+                market_price_source: "bolaget.io",
                 market_price_checked_at: new Date().toISOString(),
                 systembolaget_id: hit.productNumber ?? row.systembolaget_id ?? null,
                 systembolaget_url: hit.url ?? null,
