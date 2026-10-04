@@ -139,6 +139,86 @@ export type Database = {
         }
         Relationships: []
       }
+      collector_lots: {
+        Row: {
+          additional_cost: number
+          bottle_ml: number
+          condition: string
+          created_at: string
+          currency: string
+          estimate_confidence: string | null
+          estimate_currency: string | null
+          estimate_date: string | null
+          estimate_price: number | null
+          estimate_source: string | null
+          id: string
+          provenance: string
+          purchased_at: string
+          purpose: string
+          quantity: number
+          remaining: number
+          storage: string
+          unit_cost: number
+          updated_at: string
+          user_id: string
+          wine_id: string
+        }
+        Insert: {
+          additional_cost?: number
+          bottle_ml: number
+          condition?: string
+          created_at?: string
+          currency: string
+          estimate_confidence?: string | null
+          estimate_currency?: string | null
+          estimate_date?: string | null
+          estimate_price?: number | null
+          estimate_source?: string | null
+          id?: string
+          provenance?: string
+          purchased_at: string
+          purpose: string
+          quantity: number
+          remaining: number
+          storage?: string
+          unit_cost: number
+          updated_at?: string
+          user_id: string
+          wine_id: string
+        }
+        Update: {
+          additional_cost?: number
+          bottle_ml?: number
+          condition?: string
+          created_at?: string
+          currency?: string
+          estimate_confidence?: string | null
+          estimate_currency?: string | null
+          estimate_date?: string | null
+          estimate_price?: number | null
+          estimate_source?: string | null
+          id?: string
+          provenance?: string
+          purchased_at?: string
+          purpose?: string
+          quantity?: number
+          remaining?: number
+          storage?: string
+          unit_cost?: number
+          updated_at?: string
+          user_id?: string
+          wine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collector_lots_wine_id_user_id_fkey"
+            columns: ["wine_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wines"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       derived_preferences: {
         Row: {
           attribute: string
