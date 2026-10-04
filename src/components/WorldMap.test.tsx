@@ -39,6 +39,16 @@ describe("wine origin map", () => {
   it("uses detailed geographical outlines rather than hand-drawn polygons", () => {
     const html = renderToStaticMarkup(<WorldMap points={[]} />);
     expect(html.length).toBeGreaterThan(10000);
-    expect(html).toContain('viewBox="0 0 1000 520"');
+    expect(html).toContain('viewBox="0 0 1000 450"');
+  });
+  it("keeps the approved palette and compact height with a single scrollable legend", () => {
+    const html = renderToStaticMarkup(<WorldMap points={[]} />);
+    expect(html).toContain("h-[160px]");
+    expect(html).toContain("sm:h-[200px]");
+    expect(html).toContain('fill="#35151c"');
+    expect(html).toContain('stroke="#9b7950"');
+    expect(html).toContain("overflow-x-auto");
+    expect(html).not.toContain("flex-wrap");
+    expect(html).not.toContain("#344a46");
   });
 });

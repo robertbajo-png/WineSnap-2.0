@@ -5,6 +5,7 @@ export type Lang = "en" | "sv";
 const en = {
   "map.title": "Wine origins",
   "map.bottles": "bottles",
+  "map.bottle": "bottle",
   "map.empty": "No mapped origins yet",
   "map.unmapped": "Unknown location",
   "collector.title": "Collector cellar",
@@ -682,6 +683,7 @@ const en = {
 const sv: Record<keyof typeof en, string> = {
   "map.title": "Vinernas ursprung",
   "map.bottles": "flaskor",
+  "map.bottle": "flaska",
   "map.empty": "Inga kartlagda ursprung ännu",
   "map.unmapped": "Okänd plats",
   "collector.title": "Samlarkällare",

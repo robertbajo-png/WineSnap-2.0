@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { geoNaturalEarth1, geoPath, geoGraticule10 } from "d3-geo";
+import { geoNaturalEarth1, geoPath } from "d3-geo";
 import { feature, mesh } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
 import atlas from "world-atlas/countries-110m.json";
@@ -10,17 +10,22 @@ const world = atlas as unknown as Topology<{
   countries: GeometryCollection;
   land: GeometryCollection;
 }>;
+const countries = feature(world, world.objects.countries);
+// Keep the wine-producing latitudes in view without Antarctica consuming height.
+const wineWorld = {
+  ...countries,
+  features: countries.features.filter((country) => String(country.id) !== "010"),
+};
 const projection = geoNaturalEarth1().fitExtent(
   [
     [12, 12],
-    [988, 508],
+    [988, 438],
   ],
-  { type: "Sphere" },
+  wineWorld,
 );
 const path = geoPath(projection);
-const landPath = path(feature(world, world.objects.land)) ?? "";
+const landPath = path(wineWorld) ?? "";
 const borderPath = path(mesh(world, world.objects.countries, (a, b) => a !== b)) ?? "";
-const gridPath = path(geoGraticule10()) ?? "";
 
 export type MapPoint = { region: string | null; country: string | null; count: number };
 
@@ -61,16 +66,15 @@ export function WorldMap({ points }: { points: MapPoint[] }) {
   const maxCount = Math.max(...dots.map(([, d]) => d.count), 1);
 
   return (
-    <div className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-[#101919]">
+    <div className="mt-2 overflow-hidden bg-[#10090b]">
       <svg
-        viewBox="0 0 1000 520"
-        className="block aspect-[25/13] w-full"
+        viewBox="0 0 1000 450"
+        className="block h-[160px] w-full sm:h-[200px]"
         role="img"
         aria-label={t("map.title")}
       >
-        <path d={gridPath} fill="none" stroke="#688383" strokeOpacity="0.15" strokeWidth="0.7" />
-        <path d={landPath} fill="#344a46" stroke="#82968a" strokeWidth="0.8" />
-        <path d={borderPath} fill="none" stroke="#101919" strokeWidth="0.65" />
+        <path d={landPath} fill="#35151c" stroke="#9b7950" strokeWidth="0.85" />
+        <path d={borderPath} fill="none" stroke="#9b7950" strokeOpacity="0.65" strokeWidth="0.65" />
         {dots.map(([key, d]) => {
           const r = 5 + Math.sqrt(d.count / maxCount) * 5;
           return (
@@ -80,28 +84,30 @@ export function WorldMap({ points }: { points: MapPoint[] }) {
                 cy={d.y}
                 r={r}
                 fill={selected === key ? "#fff0c0" : "#e9b85e"}
-                stroke="#101919"
+                stroke="#10090b"
                 strokeWidth="2"
               >
-                <title>{`${d.label}: ${d.count} ${t("map.bottles")}`}</title>
+                <title>{`${d.label}: ${d.count} ${t(d.count === 1 ? "map.bottle" : "map.bottles")}`}</title>
               </circle>
             </g>
           );
         })}
       </svg>
-      <div className="border-t border-white/10 px-3 py-2">
-        <ul className="flex flex-wrap gap-x-4 gap-y-1">
+      <div className="border-t border-gold/15">
+        <ul
+          aria-label={t("map.title")}
+          className="flex overflow-x-auto divide-x divide-gold/20 py-1"
+        >
           {dots.map(([key, d]) => (
-            <li key={key} className="max-w-full">
+            <li key={key} className="max-w-full shrink-0 px-3 first:pl-0">
               <button
                 type="button"
                 aria-pressed={selected === key}
                 onClick={() => setSelected(selected === key ? null : key)}
-                className="flex min-h-11 max-w-full items-center gap-2 rounded px-1 text-xs text-cream focus-visible:outline-2 focus-visible:outline-gold"
+                className="flex min-h-11 max-w-full items-center gap-2 rounded px-1 text-xs text-cream aria-pressed:text-gold focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-gold"
               >
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[#e9b85e]" />
                 <span className="min-w-0 break-words">{d.label}</span>
-                <span className="shrink-0 tabular-nums text-gold">{d.count}</span>
+                <span className="shrink-0 font-medium tabular-nums text-gold">{d.count}</span>
               </button>
             </li>
           ))}
@@ -118,7 +124,7 @@ export function WorldMap({ points }: { points: MapPoint[] }) {
           href="https://www.naturalearthdata.com/"
           target="_blank"
           rel="noreferrer"
-          className="text-[10px] text-muted-foreground underline underline-offset-2"
+          className="inline-block py-1 text-[10px] text-muted-foreground underline underline-offset-2"
         >
           Natural Earth
         </a>

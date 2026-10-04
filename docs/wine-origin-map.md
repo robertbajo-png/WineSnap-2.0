@@ -12,8 +12,14 @@ identical coordinate are aggregated without discarding their origin labels.
 
 Automated coverage checks appellations, country matching, aggregation, unknown
 locations, empty states and detailed geometry. Static rendering was inspected.
-Browser-based mobile/desktop interaction and overflow checks remain pending
-because the Chrome connection timed out. This frontend change has not been
-published to the live Lovable app yet. No database changes are required.
+The approved compact style uses deep burgundy land, muted gold outlines and a
+near-black background, without the earlier green palette or graticule. Antarctica
+is excluded to prioritize wine-producing latitudes. The map is 160px high on
+mobile and 200px on desktop; the legend scrolls horizontally instead of wrapping.
+
+Browser checks of the real component with synthetic fixture data passed at
+390px and 1440px: no page overflow, expected map heights, and selecting Chile
+highlighted its marker. This frontend change has not been published to the live
+Lovable app yet. No database changes are required.
 
 Sources: https://github.com/topojson/world-atlas and https://www.naturalearthdata.com/
