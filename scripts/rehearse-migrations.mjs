@@ -129,6 +129,90 @@ try {
     "INSERT INTO recommendation_events (user_id,candidate_key,event_type,source,candidate) VALUES ($1,'test|riesling','like','restaurant',$2)",
     [owner, { wine_name: "Riesling", grape_varieties: ["Riesling"], wine_type: "white" }],
   );
+  await asUser(owner, "UPDATE wines SET quantity=4 WHERE id=$1", [wine]);
+  const acquisitionSql = `INSERT INTO collector_lots
+    (user_id,wine_id,purpose,purchased_at,quantity,remaining,bottle_ml,unit_cost,currency)
+    VALUES ($1,$2,'invest','2026-10-04',2,2,750,100,'SEK') RETURNING id`;
+  const acquisition = await asUser(owner, acquisitionSql, [owner, wine]);
+  const lotId = acquisition.rows[0].id;
+  await assert.rejects(
+    asUser(owner, "UPDATE collector_lots SET unit_cost='NaN'::numeric WHERE id=$1", [lotId]),
+    /check constraint/,
+  );
+  await asUser(
+    owner,
+    `UPDATE collector_lots SET estimate_price=150,estimate_currency='SEK',
+    estimate_date='2026-10-04',estimate_source='Synthetic test quote',estimate_confidence='low' WHERE id=$1`,
+    [lotId],
+  );
+  assert.equal(
+    (await asUser(owner, "SELECT id FROM collector_lots WHERE id=$1", [lotId])).rowCount,
+    1,
+  );
+  assert.equal(
+    (await asUser(stranger, "SELECT id FROM collector_lots WHERE id=$1", [lotId])).rowCount,
+    0,
+  );
+  assert.equal(
+    (
+      await asUser(stranger, "UPDATE collector_lots SET remaining=0 WHERE id=$1 RETURNING id", [
+        lotId,
+      ])
+    ).rowCount,
+    0,
+  );
+  await assert.rejects(
+    asUser(stranger, acquisitionSql, [owner, wine]),
+    /row-level security|Wine not available/,
+  );
+  await assert.rejects(asUser(stranger, acquisitionSql, [stranger, wine]), /Wine not available/);
+  await assert.rejects(
+    asUser(owner, "UPDATE collector_lots SET user_id=$1 WHERE id=$2", [stranger, lotId]),
+    /identity cannot change/,
+  );
+  await assert.rejects(
+    asUser(owner, "UPDATE collector_lots SET estimate_date=NULL WHERE id=$1", [lotId]),
+    /check constraint/,
+  );
+  await assert.rejects(
+    asUser(owner, "UPDATE collector_lots SET remaining=5 WHERE id=$1", [lotId]),
+    /exceeds cellar stock|check constraint/,
+  );
+  await assert.rejects(
+    asUser(owner, "UPDATE wines SET quantity=1 WHERE id=$1", [wine]),
+    /Reduce collector allocations/,
+  );
+  await assert.rejects(
+    asUser(owner, "UPDATE wines SET consumed_at=now() WHERE id=$1", [wine]),
+    /Reduce collector allocations/,
+  );
+  await asUser(owner, "UPDATE collector_lots SET remaining=0 WHERE id=$1", [lotId]);
+  await asUser(owner, "UPDATE wines SET quantity=2 WHERE id=$1", [wine]);
+
+  // Both writers target the same stock; only one allocation may commit.
+  const clients = [new Client(db.connectionParameters), new Client(db.connectionParameters)];
+  try {
+    for (const client of clients) {
+      await client.connect();
+      await client.query("BEGIN");
+      await client.query("SET LOCAL ROLE authenticated");
+      await client.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [owner]);
+    }
+    await clients[0].query(acquisitionSql, [owner, wine]);
+    const competing = clients[1].query(acquisitionSql, [owner, wine]).then(
+      () => null,
+      (error) => error,
+    );
+    await clients[0].query("COMMIT");
+    const rejected = await competing;
+    assert.match(rejected?.message ?? "", /exceeds cellar stock/);
+    await clients[1].query("ROLLBACK");
+  } finally {
+    for (const client of clients) await client.end();
+  }
+  console.log(
+    "Collector owner isolation, validation, stock guards and concurrent allocation passed",
+  );
   assert.ok(
     (
       await db.query(
@@ -144,6 +228,7 @@ try {
       ownerIsolation: "passed",
       legacyShareAndImage: "passed",
       restaurantFeedback: "passed",
+      collectorLots: "passed",
       scope: "local PostgreSQL, not hosted JWT or Storage HTTP",
     }),
   );

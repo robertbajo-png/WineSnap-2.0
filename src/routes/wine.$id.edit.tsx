@@ -128,7 +128,12 @@ function EditPage() {
     } as never;
     const { error } = await supabase.from("wines").update(payload).eq("id", id);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error)
+      return toast.error(
+        error.message.includes("Reduce collector allocations")
+          ? t("collector.reduceStock")
+          : error.message,
+      );
     toast.success(t("edit.saved"));
     navigate({ to: "/wine/$id", params: { id } });
   };

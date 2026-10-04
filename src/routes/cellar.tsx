@@ -154,6 +154,14 @@ function CellarListPage() {
           <span className="flex-1">{t("overview.title")}</span>
           <ChevronRight className="h-4 w-4" />
         </Link>
+        <Link
+          to="/cellar/collection"
+          className="flex items-center gap-2 border-b border-white/10 py-3 text-sm text-gold"
+        >
+          <Wine className="h-4 w-4" />
+          <span className="flex-1">{t("collector.title")}</span>
+          <ChevronRight className="h-4 w-4" />
+        </Link>
 
         <div className="mt-4">
           <div className="relative">

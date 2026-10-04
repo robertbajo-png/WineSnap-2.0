@@ -661,3 +661,32 @@ matching capture behavior, with a subtle continuous outline and shorter gold
 corner guides clipped inside the same frame. Focused camera tests pass (17),
 including hint placement and corner styling. No physical-camera visual test
 or Lovable publication was performed for this refinement.
+
+### Collector cellar foundation, 2026-10-04
+
+Add an optional `/cellar/collection` view linked from the existing cellar.
+Acquisition lots allocate existing stock across drinking, collection and
+investment purposes. Record purchase dates, quantities, bottle sizes, costs,
+acquisition fees, condition, provenance, storage and optional sourced manual
+resale estimates. Cost and estimate totals remain separated by currency;
+there are no automatic prices, investment returns or sales reports.
+
+The new migration adds owner-only RLS and a composite wine/owner foreign key.
+Stock locking prevents concurrent over-allocation. Wine stock reductions and
+consumption are rejected until allocations are reduced. Zero allocations
+retain closed acquisitions. Wine deletion cascades to its acquisition records;
+the existing deletion confirmation now explicitly warns about that loss.
+
+Verification: final typecheck and full lint passed; 143 tests across 30 files
+passed. The client, SSR and Nitro production build completed with exit 0
+(existing bundler/Cloudflare warnings remain). A fresh isolated PostgreSQL
+rehearsal applied all 29 migrations, passed seven invariant scripts, and
+verified owner isolation, invalid amounts and estimates, stock guards and
+concurrent allocation. This is not hosted JWT or Storage verification.
+
+Local signed-out browser checks confirmed navigation, the sign-in requirement
+and no horizontal overflow on the sign-in view at 390px and 1440px. The
+signed-in acquisition form and actual saving remain unverified in a hosted
+test environment. Deploy and verify the migration in WineSnap-test before
+production deployment or Lovable publication. No production database changes
+or publication were performed. See `docs/investment-cellar.md` for rollout.
