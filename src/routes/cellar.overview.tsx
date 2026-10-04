@@ -409,7 +409,7 @@ function CellarOverviewPage() {
 
         {active.length > 0 && (
           <section className="mt-7">
-            <h2 className="font-display text-base text-cream">World map</h2>
+            <h2 className="font-display text-base text-cream">{t("map.title")}</h2>
             <WorldMap
               points={active.map((w) => ({
                 region: w.region,

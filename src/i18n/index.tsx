@@ -3,6 +3,10 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export type Lang = "en" | "sv";
 
 const en = {
+  "map.title": "Wine origins",
+  "map.bottles": "bottles",
+  "map.empty": "No mapped origins yet",
+  "map.unmapped": "Unknown location",
   "collector.title": "Collector cellar",
   "collector.add": "Add acquisition",
   "collector.edit": "Edit acquisition",
@@ -676,6 +680,10 @@ const en = {
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
+  "map.title": "Vinernas ursprung",
+  "map.bottles": "flaskor",
+  "map.empty": "Inga kartlagda ursprung ännu",
+  "map.unmapped": "Okänd plats",
   "collector.title": "Samlarkällare",
   "collector.add": "Lägg till inköp",
   "collector.edit": "Redigera inköp",
