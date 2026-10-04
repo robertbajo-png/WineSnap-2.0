@@ -30,11 +30,18 @@ describe("wine origin map", () => {
     expect(html).toContain("France: 5 bottles");
     expect(html).toContain("Unknown location");
     expect(html).not.toContain("dotGlow");
-    expect(html).toContain("Natural Earth");
     expect(html).not.toContain("<ul");
   });
   it("renders an honest empty state", () => {
     expect(renderToStaticMarkup(<WorldMap points={[]} />)).toContain("No mapped origins yet");
+  });
+  it("keeps source attribution out of the app interface", () => {
+    const html = renderToStaticMarkup(
+      <WorldMap points={[{ region: null, country: "France", count: 1 }]} />,
+    );
+    expect(html).not.toContain("naturalearthdata.com");
+    expect(html).not.toContain("Natural Earth");
+    expect(html).not.toContain("<a");
   });
   it("uses detailed geographical outlines rather than hand-drawn polygons", () => {
     const html = renderToStaticMarkup(<WorldMap points={[]} />);

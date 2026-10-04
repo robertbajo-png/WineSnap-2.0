@@ -119,14 +119,6 @@ export function WorldMap({
           {t("map.unmapped")}: {unmapped} {t("map.bottles")}
         </p>
       )}
-      <a
-        href="https://www.naturalearthdata.com/"
-        target="_blank"
-        rel="noreferrer"
-        className="inline-block py-1 text-[10px] text-muted-foreground underline underline-offset-2"
-      >
-        Natural Earth
-      </a>
     </div>
   );
 }
