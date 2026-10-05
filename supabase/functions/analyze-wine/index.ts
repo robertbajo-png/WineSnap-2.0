@@ -16,6 +16,7 @@
 // here. Keep the two files in sync — see labelValidation.sync.test.ts.
 import { authoritativeLabelText, validateIdentity } from "./labelValidation.ts";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
+import { AI_MODELS } from "../_shared/aiModels.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -206,7 +207,7 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5.6-terra",
+        model: AI_MODELS.labelReading,
         reasoning_effort: "none",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },

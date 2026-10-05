@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { AI_MODELS } from "../../../../../supabase/functions/_shared/aiModels";
 
 const str = (max: number) => z.string().trim().max(max).nullish();
 
@@ -271,7 +272,7 @@ Pick the index of the candidate that is unambiguously the same wine (producer + 
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     body: JSON.stringify({
-      model: "google/gemini-3.7-flash",
+      model: AI_MODELS.fast,
       messages: [
         {
           role: "system",

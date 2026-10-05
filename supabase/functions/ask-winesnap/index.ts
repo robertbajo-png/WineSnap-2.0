@@ -1,13 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
 import { completedAskAnswer } from "../_shared/askAnswer.ts";
+import { AI_MODELS } from "../_shared/aiModels.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "google/gemini-3.7-flash";
+const MODEL = AI_MODELS.fast;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ScreenContext = {

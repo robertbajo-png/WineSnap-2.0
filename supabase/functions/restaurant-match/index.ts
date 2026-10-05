@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
+import { AI_MODELS } from "../_shared/aiModels.ts";
 import {
   rankRestaurantCandidates,
   sanitizeRestaurantIntensity,
@@ -201,7 +202,7 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30_000),
       body: JSON.stringify({
-        model: "google/gemini-3.7-flash",
+        model: AI_MODELS.fast,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },

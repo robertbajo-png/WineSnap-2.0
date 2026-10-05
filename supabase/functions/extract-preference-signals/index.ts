@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
+import { AI_MODELS } from "../_shared/aiModels.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -164,7 +165,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.7-flash",
+        model: AI_MODELS.fast,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
