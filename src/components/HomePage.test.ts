@@ -12,6 +12,18 @@ describe("home scan entry", () => {
     expect(nav).toContain('aria-label={t("nav.scan")}');
   });
 
+  it("keeps only the two compact shortcuts and leaves taste settings in the profile", () => {
+    const home = readFileSync(new URL("../routes/index.tsx", import.meta.url), "utf8");
+    const profile = readFileSync(new URL("../routes/me.tsx", import.meta.url), "utf8");
+    expect(home).toContain("grid grid-cols-2");
+    expect(home).toContain('to="/for-you"');
+    expect(home).toContain('t("nav.forYou")');
+    expect(home).toContain('to="/restaurant"');
+    expect(home).not.toContain('to="/cellar"');
+    expect(home).not.toContain('to="/taste"');
+    expect(profile).toContain('to="/taste"');
+  });
+
   it("uses the available viewport space for the image while leaving room for navigation", () => {
     const home = readFileSync(new URL("../routes/index.tsx", import.meta.url), "utf8");
     expect(home).toContain(

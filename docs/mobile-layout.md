@@ -4,7 +4,7 @@
 
 - Reading text is generally 16px; important secondary text is 14px. Minor captions may remain 12px.
 - Shared buttons, checkbox hit areas, tabs and slider tracks have at least 44px touch height. Inputs are 48px; slider grips are 24px.
-- Home uses full-width navigation rows, without an additional scan CTA. The hero fills the available viewport space above the links, with a 320px mobile minimum, and can grow with text instead of overlapping it.
+- Home uses a single two-column shortcut row for For You and Restaurant Mode. Cellar stays in bottom navigation and taste preferences stay in Profile, without an additional scan CTA. The hero fills the available viewport space above the links, with a 320px mobile minimum, and can grow with text instead of overlapping it.
 - Cellar and search names use two lines. Filters wrap; sorting and secondary actions have larger targets.
 - Wine detail retains Ask and groups compare, share and edit in an accessible menu. Sharing behavior is unchanged.
 - Aroma rows retain the approved imagery and layout, with readable family and intensity labels.
@@ -28,7 +28,7 @@ The actual home view and shared production components were inspected locally. Te
 - Closed required form sections open on validation and focus the invalid field.
 - Country disclosure controls preserve expanded state and region rows.
 
-Home follow-up (2026-10-05): the hero is approximately 490px at 390x844 and 546px at 1440x900, leaving 16px between the restaurant link and bottom navigation. At 320x568, the hero remains 320px and the lower links are reachable by scrolling. No horizontal overflow was observed at these sizes.
+Home shortcut follow-up (2026-10-05): the hero is approximately 660px at 390x844, 716px at 1440x900 and 384px at 320x568. The two shortcuts share a roughly 72px row and remain fully visible above bottom navigation, with a 16px gap. No horizontal overflow was observed at these sizes or at 430x932. Swedish labels fit on one line, and the existing For You and Restaurant Mode translations are reused.
 
 Primary text-token contrast against the relevant solid backgrounds: foreground/background 17.91:1, muted/card 8.75:1, gold/card 9.26:1, cream/burgundy 5.21:1. These measurements are not a full accessibility certification.
 
@@ -36,7 +36,7 @@ Physical iOS/Android keyboard behavior, camera permissions and capture still nee
 
 ## Automated Validation
 
-170 Vitest tests (35 files), TypeScript, ESLint, formatting and the production build passed. The build retains the existing TanStack/Radix directive and Nitro/Wrangler configuration warnings.
+171 Vitest tests (35 files), TypeScript, ESLint, formatting and the production build passed. The build retains the existing TanStack/Radix directive and Nitro/Wrangler configuration warnings.
 
 ## Publication
 

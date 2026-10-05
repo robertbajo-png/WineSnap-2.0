@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Wine, Sparkles, Heart, ChevronRight, UtensilsCrossed } from "lucide-react";
+import { Sparkles, UtensilsCrossed } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useT } from "@/i18n";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,11 +34,6 @@ function HomePage() {
       });
   }, [user, navigate]);
 
-  const FEATURES = [
-    { icon: Wine, title: t("cellar.title"), to: "/cellar" },
-    { icon: Sparkles, title: t("foryou.title"), to: "/for-you" },
-    { icon: Heart, title: t("taste.title"), to: "/taste" },
-  ] as const;
   return (
     <AppShell>
       <div className="-mx-5 -mt-6 flex min-h-[calc(100svh-var(--bottom-nav-height)-env(safe-area-inset-top,0px)-1rem)] flex-col">
@@ -66,28 +61,30 @@ function HomePage() {
         </div>
 
         <div className="px-5 pt-4">
-          <ul className="divide-y divide-white/10 border-y border-white/10">
-            {FEATURES.map(({ icon: Icon, title, to }) => (
-              <li key={to}>
-                <Link
-                  to={to}
-                  className="flex min-h-14 items-center gap-3 py-3 text-base text-cream"
-                >
-                  <Icon className="h-5 w-5 shrink-0 text-gold" strokeWidth={1.6} />
-                  <span className="min-w-0 flex-1 break-words">{title}</span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-                </Link>
-              </li>
-            ))}
+          <ul className="grid grid-cols-2 divide-x divide-white/10 border-y border-white/10">
+            <li className="min-w-0">
+              <Link
+                to="/for-you"
+                className="flex h-full min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-2 py-3 text-center text-base font-medium leading-snug text-cream transition-colors hover:bg-white/5 hover:text-gold"
+              >
+                <Sparkles aria-hidden className="h-5 w-5 shrink-0 text-gold" strokeWidth={1.6} />
+                <span className="w-full min-w-0 break-words">{t("nav.forYou")}</span>
+              </Link>
+            </li>
+            <li className="min-w-0">
+              <Link
+                to="/restaurant"
+                className="flex h-full min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-2 py-3 text-center text-base font-medium leading-snug text-cream transition-colors hover:bg-white/5 hover:text-gold"
+              >
+                <UtensilsCrossed
+                  aria-hidden
+                  className="h-5 w-5 shrink-0 text-gold"
+                  strokeWidth={1.6}
+                />
+                <span className="w-full min-w-0 break-words">{t("home.cta.restaurant")}</span>
+              </Link>
+            </li>
           </ul>
-
-          <Link
-            to="/restaurant"
-            className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-gold/40 bg-card/40 px-4 py-3 text-base font-medium text-gold transition-colors hover:bg-card"
-          >
-            <UtensilsCrossed className="h-5 w-5" />
-            {t("home.cta.restaurant")}
-          </Link>
         </div>
       </div>
     </AppShell>
