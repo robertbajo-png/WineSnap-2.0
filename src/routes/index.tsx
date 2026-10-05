@@ -41,9 +41,9 @@ function HomePage() {
   ] as const;
   return (
     <AppShell>
-      <div className="-mx-5 -mt-6 flex flex-col">
+      <div className="-mx-5 -mt-6 flex min-h-[calc(100svh-var(--bottom-nav-height)-env(safe-area-inset-top,0px)-1rem)] flex-col">
         {/* Hero image with overlay */}
-        <div className="relative flex min-h-[220px] w-full flex-col justify-between overflow-hidden sm:min-h-[260px]">
+        <div className="relative flex min-h-[320px] w-full flex-1 flex-col justify-between overflow-hidden sm:min-h-[360px]">
           <img
             src={heroBottle}
             alt="Bordeaux wine bottle and glass in a dark cellar"
