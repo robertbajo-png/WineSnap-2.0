@@ -5,29 +5,49 @@ import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { AI_MODELS } from "../../supabase/functions/_shared/aiModels";
 import * as labelValidation from "../../supabase/functions/analyze-wine/labelValidation";
+import * as labelResponse from "../../supabase/functions/analyze-wine/labelResponse";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 type Handler = (req: Request) => Promise<Response>;
 
 const labelField = (value: string) => ({ value, source: "label", confidence: 95, evidence: value });
+const unknownField = { value: null, source: "unknown", confidence: 0, evidence: null };
 const reading = {
   label_text: "ZEHN MORGEN\n2023\nCHARDONNAY & WEISSER BURGUNDER\nNAHE",
   identity: {
     producer: labelField("Zehn Morgen"),
+    wine_name: labelField("Chardonnay & Weisser Burgunder"),
     vintage: labelField("2023"),
     region: labelField("Nahe"),
+    country: unknownField,
+    wine_type: unknownField,
     grape_varieties: [labelField("Chardonnay"), labelField("Weisser Burgunder")],
   },
-  taste: { description: "Estimated fresh white wine style." },
+  taste: {
+    description: "Estimated fresh white wine style.",
+    fruit: null,
+    tannin: null,
+    acidity: null,
+    oak: null,
+    sweetness: null,
+    body: null,
+    primary_notes: [],
+    secondary_notes: [],
+    tertiary_notes: [],
+    food_pairings: [],
+    serving_temp: null,
+    glass_type: null,
+    decant: null,
+  },
 };
 
-function toolResponse(payload: unknown = reading) {
+function structuredResponse(payload: unknown = reading) {
   return Response.json({
-    choices: [{ message: { tool_calls: [{ function: { arguments: JSON.stringify(payload) } }] } }],
+    choices: [{ finish_reason: "stop", message: { content: JSON.stringify(payload) } }],
   });
 }
 
-function loadLabelReader(gatewayResponse = toolResponse(), denied?: Response) {
+function loadLabelReader(gatewayResponse = structuredResponse(), denied?: Response) {
   let handler: Handler | undefined;
   const fetch = vi.fn(async (_url: string, _init?: RequestInit) => gatewayResponse);
   const requireAiAccess = vi.fn(async () => denied ?? { userId: "synthetic-test-user" });
@@ -35,6 +55,7 @@ function loadLabelReader(gatewayResponse = toolResponse(), denied?: Response) {
     "../_shared/aiModels.ts": { AI_MODELS },
     "../_shared/aiSecurity.ts": { requireAiAccess },
     "./labelValidation.ts": labelValidation,
+    "./labelResponse.ts": labelResponse,
   };
   const source = read("supabase/functions/analyze-wine/index.ts");
 
@@ -54,6 +75,8 @@ function loadLabelReader(gatewayResponse = toolResponse(), denied?: Response) {
     },
     Request,
     Response,
+    Error,
+    AbortSignal,
     fetch,
     console: { error: vi.fn() },
   });
@@ -99,19 +122,30 @@ describe("Gateway workload routing", () => {
   });
 });
 
-describe("GPT-6 label reader compatibility", () => {
-  it("sends images with non-reasoning Chat Completions and the existing forced schema", async () => {
+describe("GPT-6.1 label reader compatibility", () => {
+  it("sends images with low reasoning and a strict JSON schema without unsupported tools", async () => {
     const reader = loadLabelReader();
     const response = await reader.call({ imageBase64: "synthetic-image", mimeType: "image/webp" });
     expect(response.status).toBe(200);
     const [url, init] = reader.fetch.mock.calls[0];
     const body = JSON.parse(String(init?.body));
     expect(url).toBe("https://ai.gateway.lovable.dev/v1/chat/completions");
-    expect(body.model).toBe("openai/gpt-6-sol");
-    expect(body.reasoning_effort).toBe("none");
-    expect(body.tool_choice).toEqual({ type: "function", function: { name: "extract_wine" } });
-    expect(body.tools[0].function.parameters.required).toEqual(["label_text", "identity", "taste"]);
-    expect(body.tools[0].function.parameters.additionalProperties).toBe(false);
+    expect(body.model).toBe("openai/gpt-6.1-sol");
+    expect(body.reasoning_effort).toBe("low");
+    expect(body.max_completion_tokens).toBe(8192);
+    expect(body).not.toHaveProperty("tools");
+    expect(body).not.toHaveProperty("tool_choice");
+    expect(body).not.toHaveProperty("temperature");
+    expect(body).not.toHaveProperty("top_p");
+    expect(body.response_format.type).toBe("json_schema");
+    expect(body.response_format.json_schema.strict).toBe(true);
+    expect(body.response_format.json_schema.schema.required).toEqual([
+      "label_text",
+      "identity",
+      "taste",
+    ]);
+    expect(body.response_format.json_schema.schema.additionalProperties).toBe(false);
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
     expect(body.messages[1].content[1].image_url.url).toBe(
       "data:image/webp;base64,synthetic-image",
     );
@@ -121,7 +155,7 @@ describe("GPT-6 label reader compatibility", () => {
 
   it("removes unsupported identities even when the new model returns a confident value", async () => {
     const reader = loadLabelReader(
-      toolResponse({
+      structuredResponse({
         ...reading,
         identity: {
           ...reading.identity,
@@ -136,7 +170,9 @@ describe("GPT-6 label reader compatibility", () => {
   });
 
   it("keeps user text authoritative instead of trusting a fabricated transcription", async () => {
-    const reader = loadLabelReader(toolResponse({ ...reading, label_text: "invented label 1998" }));
+    const reader = loadLabelReader(
+      structuredResponse({ ...reading, label_text: "invented label 1998" }),
+    );
     const response = await reader.call({ text: "Zehn Morgen 2023" });
     const { wine } = await response.json();
     expect(wine.label_text).toBe("Zehn Morgen 2023");
@@ -152,19 +188,40 @@ describe("GPT-6 label reader compatibility", () => {
     expect(await response.json()).toHaveProperty("error");
   });
 
-  it("rejects plain text when a structured tool result is missing", async () => {
+  it("rejects plain text instead of accepting an unstructured label answer", async () => {
     const reader = loadLabelReader(
-      Response.json({ choices: [{ message: { content: "A wine." } }] }),
+      Response.json({ choices: [{ finish_reason: "stop", message: { content: "A wine." } }] }),
     );
     const response = await reader.call({ text: "Zehn Morgen 2023" });
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: "AI returned no tool call" });
+    expect(await response.json()).toEqual({ error: "AI returned invalid label JSON" });
+  });
+
+  it("does not silently switch models when the gateway cannot serve GPT-6.1", async () => {
+    const reader = loadLabelReader(new Response("Model unavailable", { status: 404 }));
+    const response = await reader.call({ text: "Zehn Morgen 2023" });
+    expect(response.status).toBe(500);
+    expect(reader.fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(reader.fetch.mock.calls[0][1]?.body)).model).toBe(
+      "openai/gpt-6.1-sol",
+    );
+  });
+
+  it("does not return a wine from a truncated but otherwise valid JSON response", async () => {
+    const reader = loadLabelReader(
+      Response.json({
+        choices: [{ finish_reason: "length", message: { content: JSON.stringify(reading) } }],
+      }),
+    );
+    const response = await reader.call({ text: "Zehn Morgen 2023" });
+    expect(response.status).toBe(500);
+    expect(await response.json()).not.toHaveProperty("wine");
   });
 
   it.each([401, 429])(
     "does not spend gateway credits when the access guard denies with %s",
     async (status) => {
-      const reader = loadLabelReader(toolResponse(), new Response("denied", { status }));
+      const reader = loadLabelReader(structuredResponse(), new Response("denied", { status }));
       const response = await reader.call({ text: "Zehn Morgen 2023" });
       expect(response.status).toBe(status);
       expect(reader.fetch).not.toHaveBeenCalled();

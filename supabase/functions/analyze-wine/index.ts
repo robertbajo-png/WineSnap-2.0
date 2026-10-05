@@ -17,6 +17,7 @@
 import { authoritativeLabelText, validateIdentity } from "./labelValidation.ts";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
 import { AI_MODELS } from "../_shared/aiModels.ts";
+import { completedLabelReading } from "./labelResponse.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,7 +41,7 @@ HARD RULES:
 
 STEP 3 — Taste estimates. The taste block (structure, notes, pairings, serving) is an ESTIMATE based on the identified wine or its style. Only fill it if at least a wine name or producer was read; otherwise leave the values null.
 
-Respond in English. ALWAYS use the extract_wine tool.`;
+Respond in English. Return only the JSON object matching the supplied response schema, with no prose or Markdown.`;
 
 const identityField = (description: string) => ({
   type: "object",
@@ -54,12 +55,13 @@ const identityField = (description: string) => ({
   additionalProperties: false,
 });
 
-const wineTool = {
-  type: "function",
-  function: {
+const wineResponseFormat = {
+  type: "json_schema",
+  json_schema: {
     name: "extract_wine",
     description: "Transcribe the label, then report what it says about the wine.",
-    parameters: {
+    strict: true,
+    schema: {
       type: "object",
       properties: {
         label_text: {
@@ -206,15 +208,16 @@ Deno.serve(async (req: Request) => {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(45_000),
       body: JSON.stringify({
         model: AI_MODELS.labelReading,
-        reasoning_effort: "none",
+        reasoning_effort: "low",
+        max_completion_tokens: 8192,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },
         ],
-        tools: [wineTool],
-        tool_choice: { type: "function", function: { name: "extract_wine" } },
+        response_format: wineResponseFormat,
       }),
     });
 
@@ -230,10 +233,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`AI gateway: ${aiRes.status}`);
     }
 
-    const data = await aiRes.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("AI returned no tool call");
-    const parsed = JSON.parse(toolCall.function.arguments);
+    const parsed = completedLabelReading(await aiRes.json());
 
     // Text mode: the user's own words are the authoritative evidence, even if
     // the model invented a label_text. Image mode: only the transcription counts.

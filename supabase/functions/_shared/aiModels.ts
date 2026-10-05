@@ -1,7 +1,7 @@
-// Gateway-compatible workload defaults, reviewed against provider docs on 2026-10-05.
+// Workload defaults, reviewed against provider docs on 2026-10-05.
 export const AI_MODELS = {
-  // GPT-6 Sol supports forced tools on Chat Completions only with reasoning_effort: "none".
-  // GPT-6.1 Sol and GPT-6 Astra require Responses for tools; do not swap IDs alone.
-  labelReading: "openai/gpt-6-sol",
+  // GPT-6.1 uses a JSON-schema response with low reasoning, not Chat Completions tools.
+  // Project-specific gateway availability must be checked before deployment.
+  labelReading: "openai/gpt-6.1-sol",
   fast: "google/gemini-3.8-flash",
 } as const;
