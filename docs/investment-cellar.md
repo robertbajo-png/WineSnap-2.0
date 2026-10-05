@@ -10,7 +10,7 @@
 - Identify new retail lookups as bolaget.io rather than an official Systembolaget integration.
 - Preserve existing data and API fields for compatibility.
 
-Retail matching remains unverified. The reference lookup must not be used as an investment valuation feed.
+Legacy retail prices remain unverified. The verified refresh and its deployment requirements are documented in [retail-prices.md](retail-prices.md). Even a verified retail reference must not be used as an investment valuation feed.
 
 ## Phase 2: optional collector lots
 

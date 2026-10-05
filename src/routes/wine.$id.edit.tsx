@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import type { TKey } from "@/i18n";
+import { priceIdentity, samePriceIdentity, type RetailWine } from "@/lib/retailPrices";
 
 export const Route = createFileRoute("/wine/$id/edit")({
   head: () => ({ meta: [{ title: "Edit wine — WineSnap" }] }),
@@ -32,6 +33,7 @@ type Form = {
   purchased_at: string;
   consumed_at: string;
   quantity: string;
+  bottle_ml: string;
 };
 
 const empty: Form = {
@@ -50,6 +52,7 @@ const empty: Form = {
   purchased_at: "",
   consumed_at: "",
   quantity: "1",
+  bottle_ml: "",
 };
 
 function EditPage() {
@@ -59,6 +62,8 @@ function EditPage() {
   const [form, setForm] = useState<Form>(empty);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sizeReady, setSizeReady] = useState(false);
+  const original = useRef<RetailWine | null>(null);
 
   useEffect(() => {
     supabase
@@ -74,7 +79,10 @@ function EditPage() {
             purchased_at?: string | null;
             consumed_at?: string | null;
             quantity?: number | null;
+            bottle_ml?: number | null;
           };
+          setSizeReady("bottle_ml" in d);
+          original.current = d as unknown as RetailWine;
           setForm({
             producer: d.producer ?? "",
             wine_name: d.wine_name ?? "",
@@ -91,6 +99,7 @@ function EditPage() {
             purchased_at: d.purchased_at ?? "",
             consumed_at: d.consumed_at ?? "",
             quantity: d.quantity != null ? String(d.quantity) : "1",
+            bottle_ml: d.bottle_ml != null ? String(d.bottle_ml) : "",
           });
         }
         setLoading(false);
@@ -103,6 +112,9 @@ function EditPage() {
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const save = async () => {
+    const bottleMl = form.bottle_ml.trim() ? Number(form.bottle_ml) : null;
+    if (bottleMl !== null && (!Number.isInteger(bottleMl) || bottleMl < 50 || bottleMl > 30000))
+      return toast.error(t("prices.invalidSize"));
     setSaving(true);
     const price = form.purchase_price ? Number(form.purchase_price) : null;
     const qty = form.quantity ? Math.max(1, Math.floor(Number(form.quantity))) : 1;
@@ -125,8 +137,23 @@ function EditPage() {
       purchased_at: form.purchased_at || null,
       consumed_at: form.consumed_at || null,
       quantity: qty,
-    } as never;
-    const { error } = await supabase.from("wines").update(payload).eq("id", id);
+      ...(sizeReady ? { bottle_ml: bottleMl } : {}),
+    };
+    if (
+      sizeReady &&
+      original.current &&
+      !samePriceIdentity({ ...original.current, ...payload }, priceIdentity(original.current))
+    ) {
+      Object.assign(payload, {
+        retail_price_status: "unverified",
+        retail_price_match: null,
+        retail_price_candidates: null,
+      });
+    }
+    const { error } = await supabase
+      .from("wines")
+      .update(payload as never)
+      .eq("id", id);
     setSaving(false);
     if (error)
       return toast.error(
@@ -198,6 +225,15 @@ function EditPage() {
             onChange={upd("grape_varieties")}
             placeholder={t("edit.grapesPh")}
           />
+          {sizeReady && (
+            <Field
+              label={t("prices.bottleMl")}
+              value={form.bottle_ml}
+              onChange={upd("bottle_ml")}
+              inputMode="numeric"
+              placeholder={t("prices.unknownSize")}
+            />
+          )}
           <div>
             <label className="text-sm uppercase tracking-wider text-muted-foreground">
               {t("edit.description")}
@@ -286,10 +322,14 @@ function Field({
   placeholder?: string;
   inputMode?: "numeric" | "text";
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="text-sm uppercase tracking-wider text-muted-foreground">{label}</label>
+      <label htmlFor={id} className="text-sm uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
       <input
+        id={id}
         value={value}
         onChange={onChange}
         placeholder={placeholder}

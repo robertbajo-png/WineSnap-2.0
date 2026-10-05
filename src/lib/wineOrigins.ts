@@ -97,6 +97,10 @@ function countryInfo(value: string) {
   );
 }
 
+export function countryCode(value: string) {
+  return countryInfo(value)?.[0] ?? null;
+}
+
 export type OriginGroup = {
   key: string;
   code: string | null;

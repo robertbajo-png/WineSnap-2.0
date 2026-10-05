@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MobileDetails } from "@/components/MobileDetails";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import { CellarOrigins } from "@/components/CellarOrigins";
 import { summarizeCellarPrices } from "@/lib/cellarValue";
+import { RetailPricePanel } from "@/components/RetailPricePanel";
+import { missingPriceSchema, type PriceRequest, type RetailWine } from "@/lib/retailPrices";
 
 export const Route = createFileRoute("/cellar/overview")({
   head: () => ({
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/cellar/overview")({
   component: CellarOverviewPage,
 });
 
-type WineRow = {
+type WineRow = RetailWine & {
   region: string | null;
   country: string | null;
   grape_varieties: string[] | null;
@@ -41,6 +42,45 @@ type WineRow = {
   market_price_checked_at: string | null;
 };
 
+const LEGACY_COLS =
+  "id,producer,wine_name,region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at,updated_at,systembolaget_id,market_price,market_price_currency,market_price_source,market_price_checked_at";
+const PRICE_COLS = `${LEGACY_COLS},bottle_ml,retail_price_status,retail_price_attempted_at,retail_price_match,retail_price_candidates`;
+
+async function loadWines(userId: string, ids?: string[], ready = true) {
+  const wines: WineRow[] = [];
+  for (let from = 0; ; from += 500) {
+    let query = supabase
+      .from("wines")
+      .select(ready ? PRICE_COLS : LEGACY_COLS)
+      .eq("user_id", userId)
+      .order("id")
+      .range(from, from + 499);
+    if (ids) query = query.in("id", ids);
+    const { data, error } = await query;
+    if (ready && missingPriceSchema(error)) return loadWines(userId, ids, false);
+    if (error) throw error;
+    const rows = (data ?? []) as unknown as WineRow[];
+    wines.push(...rows);
+    if (rows.length < 500) return { wines, ready };
+  }
+}
+
+async function requestPrices(input: PriceRequest, signal: AbortSignal) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("No session");
+  const response = await fetch("/api/public/hooks/refresh-cellar-values", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
+  });
+  const json = await response.json();
+  if (!response.ok)
+    throw new Error(json.error === "migration_required" ? "migration_required" : "Request failed");
+  return json as unknown;
+}
+
 const TYPE_COLORS: Record<string, string> = {
   red: "oklch(0.42 0.16 20)",
   white: "oklch(0.82 0.08 90)",
@@ -52,63 +92,38 @@ const TYPE_COLORS: Record<string, string> = {
 
 function CellarOverviewPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const [pricesReady, setPricesReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-
-  const SELECT_COLS =
-    "region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at,market_price,market_price_currency,market_price_checked_at";
+  const currentUser = useRef(userId);
+  currentUser.current = userId;
 
   useEffect(() => {
     let cancelled = false;
     setWines([]);
+    setPricesReady(false);
     setLoadError(false);
-    setLoading(Boolean(user));
-    if (!user) return;
-    supabase
-      .from("wines")
-      .select(SELECT_COLS)
-      .eq("user_id", user.id)
-      .then(({ data, error }) => {
+    setLoading(Boolean(userId));
+    if (!userId) return;
+    loadWines(userId)
+      .then(({ wines, ready }) => {
         if (cancelled) return;
-        setLoadError(Boolean(error));
-        setWines(error ? [] : ((data as unknown as WineRow[]) ?? []));
+        setWines(wines);
+        setPricesReady(ready);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadError(true);
         setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [user]);
-
-  async function refreshValues() {
-    if (!user || refreshing) return;
-    setRefreshing(true);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("No session");
-      const res = await fetch("/api/public/hooks/refresh-cellar-values", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const json = (await res.json()) as { updated?: number; failed?: number; error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Request failed");
-      const { data, error } = await supabase
-        .from("wines")
-        .select(SELECT_COLS)
-        .eq("user_id", user.id);
-      if (error) throw error;
-      setWines((data as unknown as WineRow[]) ?? []);
-      if (json.failed) toast.error(`${t("overview.valuesFailed")} (${json.failed})`);
-      else toast.success(`${t("overview.valuesUpdated")} (${json.updated ?? 0})`);
-    } catch {
-      toast.error(t("overview.valuesFailed"));
-    } finally {
-      setRefreshing(false);
-    }
-  }
+  }, [userId]);
 
   const active = wines.filter((w) => !w.consumed_at);
   const consumed = wines.filter((w) => w.consumed_at);
@@ -118,14 +133,6 @@ function CellarOverviewPage() {
   const countries = new Set(wines.map((w) => w.country).filter(Boolean)).size;
 
   const purchase = summarizeCellarPrices(wines, "purchase");
-  const retail = summarizeCellarPrices(wines, "retail");
-  const valued = active.filter((w) => w.market_price != null);
-  const lastChecked = valued
-    .map((w) => w.market_price_checked_at)
-    .filter(Boolean)
-    .sort()
-    .at(-1);
-
   const now = new Date().getFullYear();
   const pastPeak = active
     .filter((w) => w.vintage && w.vintage < now - 6)
@@ -287,49 +294,21 @@ function CellarOverviewPage() {
         )}
 
         {active.length > 0 && (
-          <section className="mt-4 border-y border-gold/20 py-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm uppercase tracking-wider text-muted-foreground">
-                  {t("overview.marketValue")}
-                </p>
-                {retail.groups.length ? (
-                  retail.groups.map((g) => (
-                    <p
-                      key={g.currency}
-                      className="mt-1 break-words font-display text-2xl text-cream"
-                    >
-                      {formatMoney(g.total, g.currency)}
-                    </p>
-                  ))
-                ) : (
-                  <p className="mt-1 font-display text-2xl text-cream">—</p>
-                )}
-              </div>
-              <button
-                onClick={refreshValues}
-                disabled={refreshing}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gold/30 bg-card/50 px-3 py-1.5 text-sm text-gold disabled:opacity-60 min-h-11 min-w-11"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                {refreshing ? t("overview.updating") : t("overview.updateValues")}
-              </button>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {retail.groups.length
-                ? `${retail.groups.reduce((sum, g) => sum + g.bottles, 0)} ${t("overview.valued")} · ${t("overview.marketValueDesc")}${
-                    lastChecked
-                      ? ` · ${t("overview.lastChecked")} ${new Date(lastChecked).toLocaleDateString()}`
-                      : ""
-                  }`
-                : t("overview.marketValueEmpty")}
-            </p>
-            {retail.excluded > 0 && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                {retail.excluded} {t("overview.missingPrice")}
-              </p>
-            )}
-          </section>
+          <RetailPricePanel
+            key={userId}
+            wines={wines}
+            ready={pricesReady}
+            request={requestPrices}
+            reload={async (ids) => {
+              if (!userId) return;
+              const refreshed = await loadWines(userId, ids, pricesReady);
+              if (currentUser.current !== userId) return;
+              setWines((previous) =>
+                previous.map((wine) => refreshed.wines.find((next) => next.id === wine.id) ?? wine),
+              );
+              setPricesReady(refreshed.ready);
+            }}
+          />
         )}
 
         {typeStats.length > 0 && (
