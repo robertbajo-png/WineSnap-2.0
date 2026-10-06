@@ -231,7 +231,10 @@ function WineDetailPage() {
       </AppShell>
     );
 
-  const rating = computeRating(w);
+  const rating = notes.find(
+    (note) =>
+      note.rating != null && Number.isFinite(note.rating) && note.rating >= 0 && note.rating <= 5,
+  )?.rating;
   const aromas = [
     ...(w.primary_notes ?? []),
     ...(w.secondary_notes ?? []),
@@ -376,12 +379,15 @@ function WineDetailPage() {
               {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
             </p>
             <p className="text-sm text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <span className="flex items-center gap-1 text-sm">
-                <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-                <span className="font-medium">{rating.toFixed(1)}</span>
-              </span>
-            </div>
+            {rating != null && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span className="flex items-center gap-1 text-sm">
+                  <Star className="h-3.5 w-3.5 fill-gold text-gold" />
+                  <span className="font-medium">{rating.toFixed(1)}</span>
+                  <span className="text-muted-foreground">{t("wine.yourRating")}</span>
+                </span>
+              </div>
+            )}
           </div>
         </section>
 
@@ -807,18 +813,6 @@ function SliderRow({
 function pct(v: number | null): number {
   if (v == null) return 50;
   return Math.max(0, Math.min(100, v * 10));
-}
-
-function computeRating(w: {
-  fruit: number | null;
-  tannin: number | null;
-  acidity: number | null;
-  body: number | null;
-}): number {
-  const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
-  if (vals.length === 0) return 4.0;
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
 }
 
 function latestPersonalAromas(notes: TastingNote[]) {
