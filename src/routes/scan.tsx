@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { X, Loader2, Type, Camera, Sparkles } from "lucide-react";
+import { X, Loader2, Type, Camera, Sparkles, AlertCircle } from "lucide-react";
 import { LiveCamera } from "@/components/LiveCamera";
 import { Button } from "@/components/ui/button";
 import { ScanResult } from "@/components/ScanResult";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useT, useI18n } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
 import { createSaveGuard } from "@/lib/tastingNotes";
+import { scanFailure } from "@/lib/scanFailure";
 import {
   checkImageInput,
   createAttemptGuard,
@@ -72,11 +73,22 @@ function ScanPage() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
   const [saving, setSaving] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // One guard for the whole page: every analysis attempt gets an id, and a late
   // response from an abandoned attempt is dropped instead of overwriting state.
   const guardRef = useRef(createAttemptGuard());
   const previewUrlRef = useRef<string | null>(null);
+
+  const reportAnalysisFailure = async (error: unknown, attempt: number) => {
+    const failure = await scanFailure(error);
+    if (!guardRef.current.isCurrent(attempt)) return;
+    console.warn("Scan analysis failed", failure);
+    const known = error instanceof Error ? error.message : "";
+    setAnalysisError(
+      known === t("scan.notIdentified") || known === t("scan.imageError") ? known : t(failure.key),
+    );
+  };
 
   const setPreviewUrl = (url: string | null) => {
     if (previewUrlRef.current && previewUrlRef.current !== url) {
@@ -172,6 +184,7 @@ function ScanPage() {
       return;
     }
     const attempt = guard.start();
+    setAnalysisError(null);
     setStage("analyzing");
     try {
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
@@ -190,8 +203,8 @@ function ScanPage() {
       });
     } catch (e) {
       if (!guard.isCurrent(attempt)) return;
-      console.error(e);
-      toast.error(e instanceof Error ? e.message : t("common.error"));
+      await reportAnalysisFailure(e, attempt);
+      if (!guard.isCurrent(attempt)) return;
       setStage("idle");
     } finally {
       guard.finish(attempt);
@@ -220,6 +233,7 @@ function ScanPage() {
     const mimeType = check.mimeType;
 
     const attempt = guard.start();
+    setAnalysisError(null);
     setStage("analyzing");
     // Show exactly the bytes we submit, straight from the device.
     setPreviewUrl(URL.createObjectURL(image));
@@ -276,10 +290,10 @@ function ScanPage() {
       });
     } catch (e) {
       if (!guard.isCurrent(attempt)) return;
-      console.error(e);
       if (path) await supabase.storage.from("wine-labels").remove([path]);
       setPreviewUrl(null);
-      toast.error(e instanceof Error ? e.message : t("common.error"));
+      await reportAnalysisFailure(e, attempt);
+      if (!guard.isCurrent(attempt)) return;
       setStage("idle");
     } finally {
       guard.finish(attempt);
@@ -428,6 +442,13 @@ function ScanPage() {
           </button>
         </div>
       </div>
+
+      {analysisError && (
+        <div role="alert" className="mx-5 mt-4 flex items-start gap-2 text-sm text-cream">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+          <p>{analysisError}</p>
+        </div>
+      )}
 
       {mode === "camera" ? (
         user && !loading ? (

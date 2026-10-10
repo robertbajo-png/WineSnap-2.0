@@ -385,6 +385,12 @@ const en = {
   "scan.imageTooLarge": "That photo is too large. Try a smaller one.",
   "scan.imageType": "That file is not a photo we can read.",
   "scan.imageError": "We couldn't read that photo. Please try again.",
+  "scan.error.auth": "Your session could not be verified. Sign in again and retry the scan.",
+  "scan.error.rateLimit": "Too many scans. Wait a few minutes and try again.",
+  "scan.error.unavailable":
+    "Wine analysis is temporarily unavailable. Try again later. No wine was saved.",
+  "scan.error.generic":
+    "The scan could not be completed. Try another photo or description. No wine was saved.",
   "scan.labelRead": "Text read from the label",
   "scan.unknownFields": "Anything we couldn't read is left blank.",
   "scan.confidence": "Certainty",
@@ -1144,6 +1150,12 @@ const sv: Record<keyof typeof en, string> = {
   "scan.imageTooLarge": "Bilden är för stor. Prova en mindre bild.",
   "scan.imageType": "Filen är inte en bild vi kan läsa.",
   "scan.imageError": "Vi kunde inte läsa bilden. Försök igen.",
+  "scan.error.auth": "Din session kunde inte verifieras. Logga in igen och försök skanna på nytt.",
+  "scan.error.rateLimit": "För många skanningar. Vänta några minuter och försök igen.",
+  "scan.error.unavailable":
+    "Vinanalysen är tillfälligt otillgänglig. Försök igen senare. Inget vin sparades.",
+  "scan.error.generic":
+    "Skanningen kunde inte slutföras. Prova en annan bild eller beskrivning. Inget vin sparades.",
   "scan.labelRead": "Text vi läste på etiketten",
   "scan.unknownFields": "Det vi inte kunde läsa lämnas tomt.",
   "scan.confidence": "Säkerhet",
