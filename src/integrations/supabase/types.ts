@@ -746,6 +746,7 @@ export type Database = {
           acidity: number | null
           ai_raw: Json | null
           body: number | null
+          bottle_ml: number | null
           consumed_at: string | null
           country: string | null
           created_at: string
@@ -771,6 +772,10 @@ export type Database = {
           purchased_at: string | null
           quantity: number
           region: string | null
+          retail_price_attempted_at: string | null
+          retail_price_candidates: Json | null
+          retail_price_match: Json | null
+          retail_price_status: string
           secondary_notes: string[] | null
           serving_temp: string | null
           share_id: string | null
@@ -790,6 +795,7 @@ export type Database = {
           acidity?: number | null
           ai_raw?: Json | null
           body?: number | null
+          bottle_ml?: number | null
           consumed_at?: string | null
           country?: string | null
           created_at?: string
@@ -815,6 +821,10 @@ export type Database = {
           purchased_at?: string | null
           quantity?: number
           region?: string | null
+          retail_price_attempted_at?: string | null
+          retail_price_candidates?: Json | null
+          retail_price_match?: Json | null
+          retail_price_status?: string
           secondary_notes?: string[] | null
           serving_temp?: string | null
           share_id?: string | null
@@ -834,6 +844,7 @@ export type Database = {
           acidity?: number | null
           ai_raw?: Json | null
           body?: number | null
+          bottle_ml?: number | null
           consumed_at?: string | null
           country?: string | null
           created_at?: string
@@ -859,6 +870,10 @@ export type Database = {
           purchased_at?: string | null
           quantity?: number
           region?: string | null
+          retail_price_attempted_at?: string | null
+          retail_price_candidates?: Json | null
+          retail_price_match?: Json | null
+          retail_price_status?: string
           secondary_notes?: string[] | null
           serving_temp?: string | null
           share_id?: string | null
