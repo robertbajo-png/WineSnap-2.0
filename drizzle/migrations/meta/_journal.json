@@ -8,6 +8,13 @@
       "when": 1791647270213,
       "tag": "0000_verify_retail_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791650770178,
+      "tag": "0001_wishlist_bottle_size",
+      "breakpoints": true
     }
   ]
 }

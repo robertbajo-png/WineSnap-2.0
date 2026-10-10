@@ -894,6 +894,7 @@ export type Database = {
       wishlist: {
         Row: {
           ai_data: Json | null
+          bottle_ml: number | null
           country: string | null
           created_at: string
           current_price: number | null
@@ -902,6 +903,7 @@ export type Database = {
           id: string
           image_url: string | null
           last_checked_at: string | null
+          last_checked_currency: string | null
           last_checked_price: number | null
           last_price_check: string | null
           notes: string | null
@@ -913,6 +915,7 @@ export type Database = {
           priority: number
           producer: string | null
           region: string | null
+          retail_price_match: Json | null
           source: string
           systembolaget_id: string | null
           systembolaget_url: string | null
@@ -926,6 +929,7 @@ export type Database = {
         }
         Insert: {
           ai_data?: Json | null
+          bottle_ml?: number | null
           country?: string | null
           created_at?: string
           current_price?: number | null
@@ -934,6 +938,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_checked_at?: string | null
+          last_checked_currency?: string | null
           last_checked_price?: number | null
           last_price_check?: string | null
           notes?: string | null
@@ -945,6 +950,7 @@ export type Database = {
           priority?: number
           producer?: string | null
           region?: string | null
+          retail_price_match?: Json | null
           source?: string
           systembolaget_id?: string | null
           systembolaget_url?: string | null
@@ -958,6 +964,7 @@ export type Database = {
         }
         Update: {
           ai_data?: Json | null
+          bottle_ml?: number | null
           country?: string | null
           created_at?: string
           current_price?: number | null
@@ -966,6 +973,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_checked_at?: string | null
+          last_checked_currency?: string | null
           last_checked_price?: number | null
           last_price_check?: string | null
           notes?: string | null
@@ -977,6 +985,7 @@ export type Database = {
           priority?: number
           producer?: string | null
           region?: string | null
+          retail_price_match?: Json | null
           source?: string
           systembolaget_id?: string | null
           systembolaget_url?: string | null
