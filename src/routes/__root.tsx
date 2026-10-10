@@ -1,5 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { AppUpdate } from "@/components/AppUpdate";
+import { HostBadgeSpace } from "@/components/HostBadgeSpace";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 
@@ -95,36 +96,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-    if (import.meta.env.DEV) return;
-    const register = () => {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => {
-          // Pick up new builds without a manual hard refresh.
-          reg.addEventListener("updatefound", () => {
-            const next = reg.installing;
-            if (!next) return;
-            next.addEventListener("statechange", () => {
-              if (next.state === "installed" && navigator.serviceWorker.controller) {
-                next.postMessage("SKIP_WAITING");
-              }
-            });
-          });
-        })
-        .catch(() => {
-          /* service worker is a progressive enhancement */
-        });
-    };
-    if (document.readyState === "complete") register();
-    else window.addEventListener("load", register, { once: true });
-    return () => window.removeEventListener("load", register);
-  }, []);
-
   return (
     <I18nProvider>
       <Outlet />
+      <AppUpdate />
+      <HostBadgeSpace />
     </I18nProvider>
   );
 }

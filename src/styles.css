@@ -63,7 +63,8 @@
 
 :root {
   --radius: 0.5rem;
-  --bottom-nav-height: calc(5rem + env(safe-area-inset-bottom, 0px));
+  --host-badge-space: 0px;
+  --bottom-nav-height: calc(5rem + env(safe-area-inset-bottom, 0px) + var(--host-badge-space));
 
   /* Mörk lyx — djupt svart med varm underton */
   --background: oklch(0.13 0.008 30);

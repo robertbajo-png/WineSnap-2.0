@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { MobileDetails } from "@/components/MobileDetails";
+import { CollectorSelect } from "@/components/CollectorSelect";
 import { revealInvalidField } from "@/lib/mobileForms";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
@@ -12,7 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   COLLECTOR_CURRENCIES,
   COLLECTOR_PURPOSES,
-  collectorLotSchema,
+  collectorForm,
+  parseCollectorForm,
   collectorLotRowSchema,
   collectorTotals,
   type CollectorLot,
@@ -33,25 +35,7 @@ type Wine = {
   quantity: number | null;
   consumed_at: string | null;
 };
-const emptyForm = () => ({
-  wine_id: "",
-  purpose: "collect",
-  purchased_at: new Date().toISOString().slice(0, 10),
-  quantity: "1",
-  remaining: "1",
-  bottle_ml: "750",
-  unit_cost: "",
-  additional_cost: "0",
-  currency: "SEK",
-  condition: "",
-  provenance: "",
-  storage: "",
-  estimate_price: "",
-  estimate_currency: "SEK",
-  estimate_date: "",
-  estimate_source: "",
-  estimate_confidence: "low",
-});
+const emptyForm = () => collectorForm();
 type Form = ReturnType<typeof emptyForm>;
 const inputClass =
   "h-12 min-h-12 w-full min-w-0 rounded-md border border-white/15 bg-card px-3 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50";
@@ -123,30 +107,14 @@ function CollectorPage() {
   }, [userId, revision]);
 
   function edit(lot: CollectorLot) {
-    const draft = emptyForm();
-    for (const key of Object.keys(draft) as (keyof Form)[])
-      draft[key] = lot[key] == null ? "" : String(lot[key]);
     setEditing(lot.id);
-    setForm(draft);
+    setForm(collectorForm(lot));
   }
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!form || !user || saving) return;
-    const hasEstimate = form.estimate_price.trim() !== "";
-    const parsed = collectorLotSchema.safeParse({
-      ...form,
-      quantity: Number(form.quantity || NaN),
-      remaining: Number(form.remaining || NaN),
-      bottle_ml: Number(form.bottle_ml || NaN),
-      unit_cost: Number(form.unit_cost || NaN),
-      additional_cost: Number(form.additional_cost || 0),
-      estimate_price: hasEstimate ? Number(form.estimate_price) : null,
-      estimate_currency: hasEstimate ? form.estimate_currency : null,
-      estimate_date: hasEstimate ? form.estimate_date : null,
-      estimate_source: hasEstimate ? form.estimate_source : null,
-      estimate_confidence: hasEstimate ? form.estimate_confidence : null,
-    });
+    const parsed = parseCollectorForm(form);
     if (!parsed.success) {
       toast.error(t("collector.invalid"));
       return;
@@ -225,18 +193,13 @@ function CollectorPage() {
   }
   function currencySelect(key: "currency" | "estimate_currency") {
     return (
-      <label className="grid gap-1 text-sm text-muted-foreground">
-        <span>{t("collector.currency")}</span>
-        <select
-          className={inputClass}
-          value={form?.[key]}
-          onChange={(e) => update(key, e.target.value)}
-        >
-          {COLLECTOR_CURRENCIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-      </label>
+      <CollectorSelect
+        label={t("collector.currency")}
+        className={inputClass}
+        value={form?.[key] ?? "SEK"}
+        onChange={(value) => update(key, value)}
+        options={COLLECTOR_CURRENCIES.map((value) => ({ value, label: value }))}
+      />
     );
   }
 
@@ -428,20 +391,16 @@ function CollectorPage() {
                     "text",
                     form.estimate_price !== "",
                   )}
-                  <label className="grid gap-1 text-sm text-muted-foreground">
-                    <span>{t("collector.confidence")}</span>
-                    <select
-                      className={inputClass}
-                      value={form.estimate_confidence}
-                      onChange={(e) => update("estimate_confidence", e.target.value)}
-                    >
-                      {["low", "medium", "high"].map((c) => (
-                        <option key={c} value={c}>
-                          {t(`collector.${c}` as "collector.low")}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <CollectorSelect
+                    label={t("collector.confidence")}
+                    className={inputClass}
+                    value={form.estimate_confidence}
+                    onChange={(value) => update("estimate_confidence", value)}
+                    options={["low", "medium", "high"].map((value) => ({
+                      value,
+                      label: t(`collector.${value}` as "collector.low"),
+                    }))}
+                  />
                 </fieldset>
               </MobileDetails>
               <Button type="submit" disabled={saving} className="mt-4 min-h-11">

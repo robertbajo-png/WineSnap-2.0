@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { WineImage } from "@/components/WineImage";
 import { supabase } from "@/integrations/supabase/client";
 import { useT } from "@/i18n";
+import { wineRating, type RatedWine } from "@/lib/wineRatings";
+import { readAllPages } from "@/lib/readAllPages";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/search")({
   head: () => ({
@@ -20,7 +23,7 @@ export const Route = createFileRoute("/search")({
   component: SearchPage,
 });
 
-type WineRow = {
+type WineRow = RatedWine & {
   id: string;
   producer: string | null;
   wine_name: string | null;
@@ -40,20 +43,43 @@ function SearchPage() {
   const [q, setQ] = useState("");
   const [wines, setWines] = useState<WineRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    supabase
-      .from("wines")
-      .select(
-        "id,producer,wine_name,vintage,region,country,image_url,grape_varieties,fruit,tannin,acidity,body",
-      )
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
+    let cancelled = false;
+    setWines([]);
+    setLoadError(false);
+    setLoading(true);
+    if (authLoading) return;
+    readAllPages(
+      (from, to) =>
+        supabase
+          .from("wines")
+          .select(
+            "id,user_id,producer,wine_name,vintage,region,country,image_url,grape_varieties,fruit,tannin,acidity,body,user_rating,tasting_notes(rating,created_at,user_id)",
+          )
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      () => cancelled,
+    )
+      .then((data) => {
+        if (cancelled) return;
         setWines((data as WineRow[]) ?? []);
         setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError(true);
+          setLoading(false);
+        }
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, authLoading, revision]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -81,11 +107,13 @@ function SearchPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("search.ph")}
+              aria-label={t("search.ph")}
               className="min-h-12 w-full rounded-md border border-white/10 bg-card/60 pl-10 pr-14 text-base text-foreground placeholder:text-muted-foreground focus:border-gold/40 focus:outline-none"
             />
             {q && (
               <button
                 onClick={() => setQ("")}
+                aria-label={t("common.cancel")}
                 className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
               >
                 <X className="h-5 w-5" />
@@ -114,6 +142,13 @@ function SearchPage() {
                 <CellarRowSkeleton />
               </li>
             </>
+          ) : loadError ? (
+            <li role="alert">
+              {t("common.error")}{" "}
+              <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+                {t("common.retry")}
+              </Button>
+            </li>
           ) : filtered.length === 0 ? (
             <li>
               <EmptyState
@@ -140,7 +175,7 @@ function SearchPage() {
 }
 
 function ResultCard({ w }: { w: WineRow }) {
-  const rating = computeRating(w);
+  const rating = wineRating(w);
   return (
     <li>
       <Link
@@ -165,24 +200,14 @@ function ResultCard({ w }: { w: WineRow }) {
           <p className="break-words text-sm text-muted-foreground">
             {w.grape_varieties?.join(", ") || "—"}
           </p>
-          <div className="mt-1 flex items-center gap-1.5 text-sm">
-            <Star className="h-5 w-5 fill-gold text-gold" />
-            <span className="font-medium">{rating.toFixed(1)}</span>
-          </div>
+          {rating != null && (
+            <div className="mt-1 flex items-center gap-1.5 text-sm">
+              <Star className="h-5 w-5 fill-gold text-gold" />
+              <span className="font-medium">{rating.toFixed(1)}</span>
+            </div>
+          )}
         </div>
       </Link>
     </li>
   );
-}
-
-function computeRating(w: {
-  fruit: number | null;
-  tannin: number | null;
-  acidity: number | null;
-  body: number | null;
-}): number {
-  const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
-  if (vals.length === 0) return 4.0;
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
 }

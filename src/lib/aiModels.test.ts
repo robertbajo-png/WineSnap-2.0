@@ -105,7 +105,6 @@ describe("Gateway workload routing", () => {
     "supabase/functions/wine-suggestions/index.ts",
     "supabase/functions/taste-suggestions/index.ts",
     "supabase/functions/restaurant-match/index.ts",
-    "src/routes/api/public/hooks/match-systembolaget.ts",
   ])("uses the shared Flash default in %s", (path) => {
     const source = read(path);
     expect(source).toContain("model: AI_MODELS.fast");
@@ -123,6 +122,11 @@ describe("Gateway workload routing", () => {
 });
 
 describe("GPT-6.1 label reader compatibility", () => {
+  it("does not ask an AI model to guess a retail product identity", () => {
+    const source = read("src/routes/api/public/hooks/match-systembolaget.ts");
+    expect(source).toContain("exactRetailMatch");
+    expect(source).not.toContain("/v1/chat/completions");
+  });
   it("sends images with low reasoning and a strict JSON schema without unsupported tools", async () => {
     const reader = loadLabelReader();
     const response = await reader.call({ imageBase64: "synthetic-image", mimeType: "image/webp" });

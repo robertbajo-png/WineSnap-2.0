@@ -15,6 +15,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RestaurantRouteImport } from './routes/restaurant'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
@@ -36,6 +37,7 @@ import { Route as CellarCollectionRouteImport } from './routes/cellar.collection
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
 import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
+import { Route as ApiPublicHooksRefreshWishlistPricesRouteImport } from './routes/api/public/hooks/refresh-wishlist-prices'
 import { Route as ApiPublicHooksRefreshCellarValuesRouteImport } from './routes/api/public/hooks/refresh-cellar-values'
 import { Route as ApiPublicHooksMatchSystembolagetRouteImport } from './routes/api/public/hooks/match-systembolaget'
 import { Route as ApiPublicHooksCheckWishlistPricesRouteImport } from './routes/api/public/hooks/check-wishlist-prices'
@@ -68,6 +70,11 @@ const RestaurantRoute = RestaurantRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -175,6 +182,12 @@ const WineIdEditRoute = WineIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => WineIdRoute,
 } as any)
+const ApiPublicHooksRefreshWishlistPricesRoute =
+  ApiPublicHooksRefreshWishlistPricesRouteImport.update({
+    id: '/api/public/hooks/refresh-wishlist-prices',
+    path: '/api/public/hooks/refresh-wishlist-prices',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksRefreshCellarValuesRoute =
   ApiPublicHooksRefreshCellarValuesRouteImport.update({
     id: '/api/public/hooks/refresh-cellar-values',
@@ -208,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
@@ -225,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
   '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
   '/api/public/hooks/refresh-cellar-values': typeof ApiPublicHooksRefreshCellarValuesRoute
+  '/api/public/hooks/refresh-wishlist-prices': typeof ApiPublicHooksRefreshWishlistPricesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -240,6 +255,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
@@ -257,6 +273,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
   '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
   '/api/public/hooks/refresh-cellar-values': typeof ApiPublicHooksRefreshCellarValuesRoute
+  '/api/public/hooks/refresh-wishlist-prices': typeof ApiPublicHooksRefreshWishlistPricesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -273,6 +290,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/restaurant': typeof RestaurantRoute
   '/scan': typeof ScanRoute
@@ -290,6 +308,7 @@ export interface FileRoutesById {
   '/api/public/hooks/check-wishlist-prices': typeof ApiPublicHooksCheckWishlistPricesRoute
   '/api/public/hooks/match-systembolaget': typeof ApiPublicHooksMatchSystembolagetRoute
   '/api/public/hooks/refresh-cellar-values': typeof ApiPublicHooksRefreshCellarValuesRoute
+  '/api/public/hooks/refresh-wishlist-prices': typeof ApiPublicHooksRefreshWishlistPricesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -307,6 +326,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/onboarding'
+    | '/privacy'
     | '/reset-password'
     | '/restaurant'
     | '/scan'
@@ -324,6 +344,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/check-wishlist-prices'
     | '/api/public/hooks/match-systembolaget'
     | '/api/public/hooks/refresh-cellar-values'
+    | '/api/public/hooks/refresh-wishlist-prices'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -339,6 +360,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/onboarding'
+    | '/privacy'
     | '/reset-password'
     | '/restaurant'
     | '/scan'
@@ -356,6 +378,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/check-wishlist-prices'
     | '/api/public/hooks/match-systembolaget'
     | '/api/public/hooks/refresh-cellar-values'
+    | '/api/public/hooks/refresh-wishlist-prices'
   id:
     | '__root__'
     | '/'
@@ -371,6 +394,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/onboarding'
+    | '/privacy'
     | '/reset-password'
     | '/restaurant'
     | '/scan'
@@ -388,6 +412,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/check-wishlist-prices'
     | '/api/public/hooks/match-systembolaget'
     | '/api/public/hooks/refresh-cellar-values'
+    | '/api/public/hooks/refresh-wishlist-prices'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -404,6 +429,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   OnboardingRoute: typeof OnboardingRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RestaurantRoute: typeof RestaurantRoute
   ScanRoute: typeof ScanRoute
@@ -416,6 +442,7 @@ export interface RootRouteChildren {
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
   ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
   ApiPublicHooksRefreshCellarValuesRoute: typeof ApiPublicHooksRefreshCellarValuesRoute
+  ApiPublicHooksRefreshWishlistPricesRoute: typeof ApiPublicHooksRefreshWishlistPricesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -460,6 +487,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -609,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdEditRouteImport
       parentRoute: typeof WineIdRoute
     }
+    '/api/public/hooks/refresh-wishlist-prices': {
+      id: '/api/public/hooks/refresh-wishlist-prices'
+      path: '/api/public/hooks/refresh-wishlist-prices'
+      fullPath: '/api/public/hooks/refresh-wishlist-prices'
+      preLoaderRoute: typeof ApiPublicHooksRefreshWishlistPricesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/refresh-cellar-values': {
       id: '/api/public/hooks/refresh-cellar-values'
       path: '/api/public/hooks/refresh-cellar-values'
@@ -675,6 +716,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   OnboardingRoute: OnboardingRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RestaurantRoute: RestaurantRoute,
   ScanRoute: ScanRoute,
@@ -689,6 +731,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksMatchSystembolagetRoute: ApiPublicHooksMatchSystembolagetRoute,
   ApiPublicHooksRefreshCellarValuesRoute:
     ApiPublicHooksRefreshCellarValuesRoute,
+  ApiPublicHooksRefreshWishlistPricesRoute:
+    ApiPublicHooksRefreshWishlistPricesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

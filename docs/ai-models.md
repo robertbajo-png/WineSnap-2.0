@@ -3,7 +3,7 @@
 Model availability and API compatibility checked against official documentation on
 2026-10-05. Defaults are maintained in
 `supabase/functions/_shared/aiModels.ts`, shared by Edge Functions and the server
-catalog-matching route. No provider credentials are sent to the browser.
+recommendation routes. No provider credentials are sent to the browser.
 
 ## Workload routing
 
@@ -11,7 +11,9 @@ catalog-matching route. No provider credentials are sent to the browser.
 | -------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------ |
 | Label reading (`analyze-wine`)                                             | `openai/gpt-6.1-sol`      | Chat Completions, `reasoning_effort: "low"`, strict JSON-schema response |
 | Ask WineSnap                                                               | `google/gemini-3.8-flash` | Chat Completions, text answer; stored model metadata uses the same ID    |
-| Taste memory, recommendations, restaurant menus, wishlist catalog matching | `google/gemini-3.8-flash` | Chat Completions, existing forced tools                                  |
+| Taste memory, recommendations, restaurant menus | `google/gemini-3.8-flash` | Chat Completions, existing forced tools                                  |
+
+Retail matching is deterministic as of the 2026-10-10 release repair. It does not call an AI model or accept nearby vintages, assumed bottle sizes or low-confidence product selections. Concrete recommendation identities now come from a small source-linked catalog; the models select IDs and estimate style, not producer/name/vintage/price facts.
 
 Gemini 3.8 Flash is the latest stable Flash generation and is listed by Lovable.
 GPT-6.1 Sol supports image input and structured outputs on Chat Completions

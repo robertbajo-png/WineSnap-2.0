@@ -167,6 +167,19 @@ export function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Taste structure is always an integer on the same 0-10 scale as the UI. */
+export function structureScore(value: unknown): number | null {
+  const score = num(value);
+  return score !== null && Number.isInteger(score) && score >= 0 && score <= 10 ? score : null;
+}
+
+export function validateTaste(taste: Record<string, unknown> | undefined) {
+  const result = { ...(taste ?? {}) };
+  for (const key of ["fruit", "tannin", "acidity", "oak", "sweetness", "body"])
+    result[key] = structureScore(result[key]);
+  return result;
+}
+
 export function parseVintage(value: string): number | null {
   const year = num(value.replace(/[^0-9]/g, ""));
   if (year == null) return null;

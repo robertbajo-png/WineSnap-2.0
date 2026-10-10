@@ -61,6 +61,52 @@ export const collectorLotRowSchema = collectorLotSchema.and(
 );
 export type CollectorLot = z.infer<typeof collectorLotRowSchema>;
 
+export function collectorForm(lot?: CollectorLotInput) {
+  const draft = {
+    wine_id: "",
+    purpose: "collect",
+    purchased_at: new Date().toISOString().slice(0, 10),
+    quantity: "1",
+    remaining: "1",
+    bottle_ml: "750",
+    unit_cost: "",
+    additional_cost: "0",
+    currency: "SEK",
+    condition: "",
+    provenance: "",
+    storage: "",
+    estimate_price: "",
+    estimate_currency: "SEK",
+    estimate_date: "",
+    estimate_source: "",
+    estimate_confidence: "low",
+  };
+  if (lot) {
+    for (const key of Object.keys(draft) as (keyof typeof draft)[]) {
+      if (lot[key] != null) draft[key] = String(lot[key]);
+    }
+    draft.estimate_currency = lot.estimate_currency ?? lot.currency;
+  }
+  return draft;
+}
+
+export function parseCollectorForm(form: ReturnType<typeof collectorForm>) {
+  const hasEstimate = form.estimate_price.trim() !== "";
+  return collectorLotSchema.safeParse({
+    ...form,
+    quantity: Number(form.quantity || NaN),
+    remaining: Number(form.remaining || NaN),
+    bottle_ml: Number(form.bottle_ml || NaN),
+    unit_cost: Number(form.unit_cost || NaN),
+    additional_cost: Number(form.additional_cost || 0),
+    estimate_price: hasEstimate ? Number(form.estimate_price) : null,
+    estimate_currency: hasEstimate ? form.estimate_currency : null,
+    estimate_date: hasEstimate ? form.estimate_date : null,
+    estimate_source: hasEstimate ? form.estimate_source : null,
+    estimate_confidence: hasEstimate ? form.estimate_confidence : null,
+  });
+}
+
 export function collectorTotals(lots: CollectorLotInput[]) {
   const currencies = new Map<
     string,

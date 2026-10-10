@@ -110,6 +110,12 @@ function LoginPage() {
                 : t("login.createAccount")}
           </Button>
         </form>
+        <Link
+          to="/privacy"
+          className="mt-3 flex min-h-11 items-center justify-center text-sm text-gold"
+        >
+          {t("privacy.link")}
+        </Link>
         {mode === "signin" && (
           <div className="mt-3 text-center">
             <Link

@@ -23,9 +23,10 @@ export function computeDrinkingWindow(
   wineType: string | null | undefined,
   now: number = new Date().getFullYear(),
 ): DrinkingWindow | null {
-  if (!vintage) return null;
-  const key = (wineType ?? "red").toLowerCase();
-  const cfg = AGING[key] ?? AGING.red;
+  if (!vintage || !Number.isInteger(vintage) || vintage > now || !wineType) return null;
+  const key = wineType.toLowerCase();
+  const cfg = AGING[key];
+  if (!cfg) return null;
   const start = vintage + cfg.start;
   const peak = vintage + cfg.peak;
   const end = vintage + cfg.end;

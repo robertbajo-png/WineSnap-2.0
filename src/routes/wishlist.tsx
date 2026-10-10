@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Bookmark,
   Trash2,
@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import { toast } from "sonner";
+import { wishlistPriceResponse, verifiedWishlistQuote } from "@/lib/wishlistPriceContract";
 
 export const Route = createFileRoute("/wishlist")({
   head: () => ({ meta: [{ title: "Wishlist — WineSnap" }] }),
@@ -30,6 +31,10 @@ export const Route = createFileRoute("/wishlist")({
 type Row = {
   id: string;
   wine_id: string | null;
+  bottle_ml: number | null;
+  price_source: string | null;
+  last_checked_currency: string | null;
+  retail_price_match: unknown;
   producer: string | null;
   wine_name: string;
   vintage: number | null;
@@ -56,38 +61,66 @@ function WishlistPage() {
   const t = useT();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [checking, setChecking] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const owner = useRef(user?.id);
+  owner.current = user?.id;
 
   useEffect(() => {
+    let cancelled = false;
+    setRows(null);
+    setLoadError(false);
     if (!user) return;
     supabase
       .from("wishlist")
-      .select(
-        "id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at",
-      )
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setRows((data ?? []) as Row[]));
-  }, [user]);
+      .then(({ data, error }) => {
+        if (!cancelled) {
+          setLoadError(Boolean(error));
+          setRows((data ?? []) as unknown as Row[]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, revision]);
 
   const checkNow = async () => {
+    const userId = user?.id;
+    if (!userId) return;
     setChecking(true);
     try {
-      const res = await fetch("/api/public/hooks/check-wishlist-prices", { method: "POST" });
-      const json = (await res.json().catch(() => ({}))) as { checked?: number; triggered?: number };
-      if (!res.ok) throw new Error("check failed");
-      toast.success(
-        `${t("wishlist.checkedToast")} ${json.checked ?? 0} · ${t("wishlist.alertsToast")} ${json.triggered ?? 0}`,
-      );
-      if (user) {
-        const { data } = await supabase
-          .from("wishlist")
-          .select(
-            "id,wine_id,producer,wine_name,vintage,region,country,wine_type,grape_varieties,image_url,target_price,price_currency,notify_on_drop,notes,source,created_at,last_checked_price,last_checked_at,systembolaget_url,price_alert_triggered_at,price_alert_seen_at",
-          )
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        setRows((data ?? []) as Row[]);
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      if (!token) throw new Error("No session");
+      const json = { checked: 0, triggered: 0, failed: 0, unmatched: 0 };
+      const ids = (rows ?? []).map((row) => row.id);
+      for (let from = 0; from < ids.length; from += 3) {
+        if (owner.current !== userId) return;
+        const res = await fetch("/api/public/hooks/refresh-wishlist-prices", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: ids.slice(from, from + 3) }),
+          signal: AbortSignal.timeout(25000),
+        });
+        if (!res.ok || !res.headers.get("content-type")?.includes("application/json"))
+          throw new Error("Price service unavailable");
+        const batch = wishlistPriceResponse.parse(await res.json());
+        json.checked += batch.checked;
+        json.triggered += batch.triggered;
+        json.failed += batch.failed + batch.remaining;
+        json.unmatched += batch.unmatched;
       }
+      if (owner.current !== userId) return;
+      if (json.failed) toast.error(`${t("common.error")} (${json.failed})`);
+      if (json.unmatched) toast.info(`${t("prices.missing")}: ${json.unmatched}`);
+      if (!json.failed)
+        toast.success(
+          `${t("wishlist.checkedToast")} ${json.checked ?? 0} · ${t("wishlist.alertsToast")} ${json.triggered ?? 0}`,
+        );
+      setRevision((n) => n + 1);
     } catch {
       toast.error(t("common.error"));
     } finally {
@@ -95,37 +128,113 @@ function WishlistPage() {
     }
   };
 
-  const markSeen = async (r: Row) => {
-    if (!r.price_alert_triggered_at || r.price_alert_seen_at) return;
-    const now = new Date().toISOString();
-    setRows(
-      (rs) => rs?.map((x) => (x.id === r.id ? { ...x, price_alert_seen_at: now } : x)) ?? null,
-    );
-    await supabase.from("wishlist").update({ price_alert_seen_at: now }).eq("id", r.id);
-  };
-
-  const remove = async (id: string) => {
-    setRows((r) => r?.filter((x) => x.id !== id) ?? null);
-    await supabase.from("wishlist").delete().eq("id", id);
-  };
-
-  const toggleNotify = async (r: Row) => {
-    const next = !r.notify_on_drop;
-    setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, notify_on_drop: next } : x)) ?? null);
-    await supabase.from("wishlist").update({ notify_on_drop: next }).eq("id", r.id);
-  };
-
-  const setTargetPrice = async (r: Row) => {
-    const current = r.target_price != null ? String(r.target_price) : "";
-    const input = window.prompt(t("wishlist.setTargetPrompt"), current);
-    if (input === null) return;
-    const n = input.trim() === "" ? null : Number(input);
-    if (input.trim() !== "" && !Number.isFinite(n)) {
+  const setBottleSize = async (r: Row, raw: string) => {
+    if (!user) return;
+    const bottle_ml = raw === "" ? null : Number(raw);
+    if (
+      bottle_ml !== null &&
+      (!Number.isInteger(bottle_ml) || bottle_ml < 50 || bottle_ml > 30000)
+    ) {
       toast.error(t("common.error"));
       return;
     }
-    setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, target_price: n } : x)) ?? null);
-    await supabase.from("wishlist").update({ target_price: n }).eq("id", r.id);
+    if (bottle_ml === r.bottle_ml) return;
+    const patch = {
+      bottle_ml,
+      retail_price_match: null,
+      last_checked_currency: null,
+      last_checked_price: null,
+      last_checked_at: null,
+      systembolaget_id: null,
+      systembolaget_url: null,
+      price_source: null,
+      price_alert_triggered_at: null,
+      price_alert_seen_at: null,
+    };
+    const { error } = await supabase
+      .from("wishlist")
+      .update(patch as never)
+      .eq("id", r.id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error(t("common.error"));
+      return;
+    }
+    setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, ...patch } : x)) ?? null);
+  };
+
+  const markSeen = async (r: Row) => {
+    if (
+      !user ||
+      !r.price_alert_triggered_at ||
+      (r.price_alert_seen_at && r.price_alert_seen_at >= r.price_alert_triggered_at)
+    )
+      return;
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("wishlist")
+      .update({ price_alert_seen_at: now })
+      .eq("id", r.id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error(t("common.error"));
+      return;
+    }
+    setRows(
+      (rs) => rs?.map((x) => (x.id === r.id ? { ...x, price_alert_seen_at: now } : x)) ?? null,
+    );
+  };
+
+  const remove = async (id: string) => {
+    if (!user || !window.confirm(t("wishlist.confirmRemove"))) return;
+    const { error } = await supabase.from("wishlist").delete().eq("id", id).eq("user_id", user.id);
+    if (error) {
+      toast.error(t("common.error"));
+      return;
+    }
+    setRows((r) => r?.filter((x) => x.id !== id) ?? null);
+  };
+
+  const toggleNotify = async (r: Row) => {
+    if (!user) return;
+    const next = !r.notify_on_drop;
+    const { error } = await supabase
+      .from("wishlist")
+      .update({ notify_on_drop: next })
+      .eq("id", r.id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error(t("common.error"));
+      return;
+    }
+    setRows((rs) => rs?.map((x) => (x.id === r.id ? { ...x, notify_on_drop: next } : x)) ?? null);
+  };
+
+  const setTargetPrice = async (r: Row) => {
+    if (!user) return;
+    const current =
+      r.price_currency === "SEK" && r.target_price != null ? String(r.target_price) : "";
+    const input = window.prompt(`${t("wishlist.setTargetPrompt")} (SEK)`, current);
+    if (input === null) return;
+    const n = input.trim() === "" ? null : Number(input.replace(",", "."));
+    if (n !== null && (!Number.isFinite(n) || n <= 0)) {
+      toast.error(t("common.error"));
+      return;
+    }
+    const { error } = await supabase
+      .from("wishlist")
+      .update({ target_price: n, price_currency: "SEK" })
+      .eq("id", r.id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error(t("common.error"));
+      return;
+    }
+    setRows(
+      (rs) =>
+        rs?.map((x) => (x.id === r.id ? { ...x, target_price: n, price_currency: "SEK" } : x)) ??
+        null,
+    );
   };
 
   if (loading || (user && rows === null)) {
@@ -164,7 +273,7 @@ function WishlistPage() {
         <Header title={t("wishlist.title")} />
         <div className="mt-1 flex items-start justify-between gap-3">
           <p className="text-sm text-muted-foreground">{t("wishlist.subtitle")}</p>
-          {rows?.length ? (
+          {!loadError && rows?.length ? (
             <button
               onClick={checkNow}
               disabled={checking}
@@ -179,11 +288,19 @@ function WishlistPage() {
             </button>
           ) : null}
         </div>
+        {loadError && (
+          <p role="alert" className="my-4">
+            {t("common.error")}{" "}
+            <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+              {t("common.retry")}
+            </Button>
+          </p>
+        )}
         {rows?.length ? (
           <p className="mt-1 text-xs text-muted-foreground/70">{t("wishlist.autoNote")}</p>
         ) : null}
 
-        {!rows?.length ? (
+        {loadError ? null : !rows?.length ? (
           <EmptyState
             icon={Bookmark}
             title={t("wishlist.emptyTitle")}
@@ -198,27 +315,30 @@ function WishlistPage() {
           />
         ) : (
           <div className="mt-5 space-y-3 pb-4">
-            {rows.map((r) => (
+            {rows?.map((r) => (
               <article
                 key={r.id}
                 onClick={() => markSeen(r)}
                 className={`rounded-xl border p-3 ${
-                  r.price_alert_triggered_at && !r.price_alert_seen_at
+                  verifiedWishlistQuote(r) && r.price_alert_triggered_at && !r.price_alert_seen_at
                     ? "border-success/60 bg-success/5"
                     : "border-white/8 bg-card/50"
                 }`}
               >
-                {r.price_alert_triggered_at && !r.price_alert_seen_at && (
-                  <div className="mb-2 flex items-center gap-1.5 rounded-md bg-success/15 px-2 py-1 text-sm font-medium text-success">
-                    <TrendingDown className="h-3 w-3" />
-                    {t("wishlist.priceDropped")}
-                    {r.last_checked_price != null && r.target_price != null && (
-                      <span className="ml-auto opacity-80">
-                        {r.price_currency ?? "kr"} {r.last_checked_price} ≤ {r.target_price}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {verifiedWishlistQuote(r) &&
+                  r.price_currency === "SEK" &&
+                  r.price_alert_triggered_at &&
+                  !r.price_alert_seen_at && (
+                    <div className="mb-2 flex items-center gap-1.5 rounded-md bg-success/15 px-2 py-1 text-sm font-medium text-success">
+                      <TrendingDown className="h-3 w-3" />
+                      {t("wishlist.priceDropped")}
+                      {r.last_checked_price != null && r.target_price != null && (
+                        <span className="ml-auto opacity-80">
+                          {r.price_currency ?? "kr"} {r.last_checked_price} ≤ {r.target_price}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 <div className="flex gap-3">
                   <div className="flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-burgundy/40 to-background/60">
                     {r.image_url ? (
@@ -243,7 +363,10 @@ function WishlistPage() {
                     ) : null}
                     {r.last_checked_price != null && (
                       <p className="mt-1 text-base text-cream">
-                        {t("wishlist.currentPrice")}: {r.price_currency ?? "kr"}{" "}
+                        {verifiedWishlistQuote(r)
+                          ? t("wishlist.lastChecked")
+                          : t("prices.unverified")}
+                        : {r.last_checked_currency ?? r.price_currency ?? "kr"}{" "}
                         {r.last_checked_price}
                         {r.last_checked_at && (
                           <span className="block text-sm text-muted-foreground">
@@ -254,6 +377,23 @@ function WishlistPage() {
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {t("wishlist.bottleSize")}
+                        <input
+                          key={`${r.id}-${r.bottle_ml}`}
+                          type="number"
+                          min={50}
+                          max={30000}
+                          step={1}
+                          defaultValue={r.bottle_ml ?? ""}
+                          placeholder="ml"
+                          aria-label={t("wishlist.bottleSize")}
+                          disabled={checking}
+                          onClick={(e) => e.stopPropagation()}
+                          onBlur={(e) => void setBottleSize(r, e.target.value)}
+                          className="min-h-11 w-24 rounded-md border border-white/15 bg-background px-2 text-base"
+                        />
+                      </label>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

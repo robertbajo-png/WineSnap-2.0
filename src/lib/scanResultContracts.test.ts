@@ -21,8 +21,10 @@ describe("scan result integration", () => {
 
   it("uses personal tasting notes instead of deriving a star rating from taste intensity", () => {
     expect(detail).not.toContain("computeRating");
-    expect(detail).toContain("notes.find(");
-    expect(detail).toContain('t("wine.yourRating")');
+    expect(detail).toContain("wineRating(w)");
+    expect(detail).toContain("tasting_notes(rating,created_at,user_id)");
+    expect(detail).toContain('"wine.yourRating"');
+    expect(detail).toContain('"wine.ownerRating"');
     expect(detail).toContain("rating != null");
   });
 });

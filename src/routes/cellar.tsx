@@ -19,6 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
+import { wineRating, bottleCount, type RatedWine } from "@/lib/wineRatings";
+import { readAllPages } from "@/lib/readAllPages";
 
 export const Route = createFileRoute("/cellar")({
   head: () => ({
@@ -42,7 +44,9 @@ const TYPE_MAP: Record<string, Filter> = {
   sparkling: "Sparkling",
 };
 
-type WineRow = {
+type WineRow = RatedWine & {
+  quantity: number | null;
+  consumed_at: string | null;
   id: string;
   producer: string | null;
   wine_name: string | null;
@@ -64,31 +68,53 @@ function CellarPage() {
 }
 
 function CellarListPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("All");
   const [sort, setSort] = useState<Sort>("newest");
   const [q, setQ] = useState("");
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    setWines([]);
+    setLoadError(false);
+    setLoading(Boolean(user));
     if (!user) {
       setLoading(false);
       return;
     }
-    supabase
-      .from("wines")
-      .select(
-        "id,producer,wine_name,vintage,region,country,image_url,wine_type,created_at,fruit,tannin,acidity,body",
-      )
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
+    readAllPages(
+      (from, to) =>
+        supabase
+          .from("wines")
+          .select(
+            "id,user_id,producer,wine_name,vintage,region,country,image_url,wine_type,created_at,fruit,tannin,acidity,body,user_rating,quantity,consumed_at,tasting_notes(rating,created_at,user_id)",
+          )
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      () => cancelled,
+    )
+      .then((data) => {
+        if (cancelled) return;
         setWines((data as WineRow[]) ?? []);
         setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError(true);
+          setLoading(false);
+        }
       });
-  }, [user]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, revision]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -105,7 +131,7 @@ function CellarListPage() {
         case "oldest":
           return +new Date(a.created_at) - +new Date(b.created_at);
         case "rating":
-          return computeRating(b) - computeRating(a);
+          return (wineRating(b) ?? -1) - (wineRating(a) ?? -1);
         case "vintage":
           return (b.vintage ?? 0) - (a.vintage ?? 0);
         case "name":
@@ -200,8 +226,16 @@ function CellarListPage() {
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base">
-            <span className="font-display text-lg text-cream">{filtered.length}</span>{" "}
-            <span className="text-muted-foreground">{t("cellar.bottles")}</span>
+            <span className="font-display text-lg text-cream">
+              {filtered.reduce((sum, wine) => sum + bottleCount(wine), 0)}
+            </span>{" "}
+            <span className="text-muted-foreground">
+              {t(
+                filtered.reduce((sum, wine) => sum + bottleCount(wine), 0) === 1
+                  ? "map.bottle"
+                  : "map.bottles",
+              )}
+            </span>
           </h2>
           <select
             value={sort}
@@ -218,7 +252,7 @@ function CellarListPage() {
         </div>
 
         <ul className="mt-3 space-y-2.5 pb-4">
-          {loading ? (
+          {authLoading || loading ? (
             <>
               <li>
                 <CellarRowSkeleton />
@@ -230,6 +264,13 @@ function CellarListPage() {
                 <CellarRowSkeleton />
               </li>
             </>
+          ) : loadError ? (
+            <li role="alert">
+              {t("common.error")}{" "}
+              <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+                {t("collector.retry")}
+              </Button>
+            </li>
           ) : filtered.length === 0 ? (
             <li>
               {wines.length === 0 ? (
@@ -253,7 +294,7 @@ function CellarListPage() {
             </li>
           ) : (
             filtered.map((w) => {
-              const rating = computeRating(w);
+              const rating = wineRating(w);
               return (
                 <li key={w.id}>
                   <Link
@@ -285,10 +326,12 @@ function CellarListPage() {
                             {w.vintage}
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <Star className="h-5 w-5 fill-gold text-gold" />
-                          <span>{rating.toFixed(1)}</span>
-                        </span>
+                        {rating != null && (
+                          <span className="flex items-center gap-1">
+                            <Star className="h-5 w-5 fill-gold text-gold" />
+                            <span>{rating.toFixed(1)}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -301,16 +344,4 @@ function CellarListPage() {
       </div>
     </AppShell>
   );
-}
-
-function computeRating(w: {
-  fruit: number | null;
-  tannin: number | null;
-  acidity: number | null;
-  body: number | null;
-}): number {
-  const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v): v is number => v != null);
-  if (vals.length === 0) return 4.0;
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return Math.max(3.5, Math.min(5, 3.5 + (mean / 10) * 1.5));
 }

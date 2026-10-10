@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useT } from "@/i18n";
+import { useT, useI18n } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
 import { createSaveGuard } from "@/lib/tastingNotes";
 import {
@@ -61,6 +61,7 @@ function ScanPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const t = useT();
+  const { lang } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -174,7 +175,7 @@ function ScanPage() {
     setStage("analyzing");
     try {
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { text: q },
+        body: { text: q, language: lang },
       });
       if (!guard.isCurrent(attempt)) return;
       if (error) throw error;
@@ -252,7 +253,7 @@ function ScanPage() {
       }
 
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { imageBase64: base64, mimeType },
+        body: { imageBase64: base64, mimeType, language: lang },
       });
       if (!guard.isCurrent(attempt)) {
         await supabase.storage.from("wine-labels").remove([path]);
@@ -474,11 +475,11 @@ function ScanPage() {
           >
             {stage === "analyzing" ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" /> Analyzing…
+                <Loader2 className="h-5 w-5 animate-spin" /> {t("scan.analyzing")}
               </>
             ) : (
               <>
-                <Sparkles className="h-5 w-5" /> Identify wine
+                <Sparkles className="h-5 w-5" /> {t("scan.identify")}
               </>
             )}
           </Button>

@@ -3,6 +3,8 @@ import {
   collectorLotSchema,
   collectorLotRowSchema,
   collectorTotals,
+  collectorForm,
+  parseCollectorForm,
   type CollectorLotInput,
 } from "./collectorLots";
 
@@ -27,6 +29,20 @@ const lot = (overrides: Partial<CollectorLotInput> = {}): CollectorLotInput => (
   ...overrides,
 });
 describe("collector lots", () => {
+  it("adds a first valuation to an existing unvalued acquisition using displayed defaults", () => {
+    const form = collectorForm(lot({ currency: "EUR" }));
+    expect(form.estimate_currency).toBe("EUR");
+    expect(form.estimate_confidence).toBe("low");
+    expect(parseCollectorForm(form).success).toBe(true);
+    const result = parseCollectorForm({
+      ...form,
+      estimate_price: "150",
+      estimate_date: "2026-10-10",
+      estimate_source: "Quotation",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.estimate_currency).toBe("EUR");
+  });
   it("validates persisted rows before using them for portfolio totals", () => {
     const row = {
       ...lot(),

@@ -3,6 +3,15 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export type Lang = "en" | "sv";
 
 const en = {
+  "wine.ownerRating": "Owner's rating",
+  "privacy.link": "Privacy and your data",
+  "recommendation.styleEstimate": "AI-estimated style",
+  "wishlist.bottleSize": "Bottle size (ml)",
+  "wine.window.caveat":
+    "Estimate based only on vintage and wine type, not storage conditions, producer or bottle condition.",
+  "pwa.update": "Update available",
+  "pwa.confirm": "Reload WineSnap to update? Unsaved changes will be lost.",
+  "wishlist.confirmRemove": "Remove this wine from your wishlist?",
   "origins.title": "Origins",
   "origins.country": "Country",
   "origins.countrySingular": "country",
@@ -236,6 +245,9 @@ const en = {
   "type.red": "Red",
   "type.white": "White",
   "type.sparkling": "Sparkling",
+  "type.dessert": "Dessert",
+  "type.unknown": "Unknown",
+  "type.fortified": "Fortified",
   "type.rose": "Rosé",
 
   // Cellar
@@ -257,10 +269,10 @@ const en = {
   "overview.regions": "Regions",
   "overview.countries": "Countries",
   "overview.byRegion": "Bottles by Region",
-  "overview.window": "Drinking Window",
-  "overview.pastPeak": "Past Peak",
-  "overview.greatNow": "Great Now",
-  "overview.cellarWorthy": "Cellar Worthy",
+  "overview.window": "Estimated drinking window",
+  "overview.pastPeak": "After window",
+  "overview.greatNow": "Within window",
+  "overview.cellarWorthy": "Before window",
   "overview.topVarietals": "Top Varietals",
   "overview.empty": "Add bottles to your cellar to see analytics.",
   "overview.totalValue": "Purchase cost",
@@ -543,6 +555,7 @@ const en = {
 
   // Recommendations
   "recommendation.tasteMatch": "taste match",
+  "recommendation.identitySource": "Wine reference (not live availability)",
   "recommendation.confidence.low": "Early estimate",
   "recommendation.confidence.medium": "Some supporting evidence",
   "recommendation.confidence.high": "Strong supporting evidence",
@@ -586,10 +599,10 @@ const en = {
   "wine.edit": "Edit",
   "wine.shareText": "Check out this wine on WineSnap",
   "wine.linkCopied": "Link copied",
-  "wine.window": "Drinking Window",
-  "wine.window.tooYoung": "Too young — cellar it",
-  "wine.window.greatNow": "Drinking great now",
-  "wine.window.pastPeak": "Past peak",
+  "wine.window": "Estimated drinking window",
+  "wine.window.tooYoung": "Before estimated window",
+  "wine.window.greatNow": "Within estimated window",
+  "wine.window.pastPeak": "After estimated window",
   "wine.window.range": "Best {start}–{end}, peak {peak}",
 
   // Edit wine
@@ -700,7 +713,8 @@ const en = {
   "wishlist.lastChecked": "Last checked",
   "wishlist.viewAtSb": "View at Systembolaget",
   "wishlist.markSeen": "Mark as seen",
-  "wishlist.autoNote": "Prices are checked automatically once a day.",
+  "wishlist.autoNote":
+    "Price alerts appear here when you check prices. Retail availability is not guaranteed.",
   "profile.wishlist": "Wishlist",
   "crop.adjust": "Adjust label",
   "crop.retake": "Retake",
@@ -761,6 +775,15 @@ const en = {
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
+  "wine.ownerRating": "Ägarens betyg",
+  "privacy.link": "Integritet och dina data",
+  "recommendation.styleEstimate": "AI-uppskattad stil",
+  "wishlist.bottleSize": "Flaskstorlek (ml)",
+  "wine.window.caveat":
+    "Uppskattning utifrån årgång och vintyp, utan hänsyn till förvaring, producent eller flaskans skick.",
+  "pwa.update": "Uppdatering tillgänglig",
+  "pwa.confirm": "Ladda om WineSnap för att uppdatera? Osparade ändringar försvinner.",
+  "wishlist.confirmRemove": "Ta bort vinet från din önskelista?",
   "origins.title": "Ursprung",
   "origins.country": "Land",
   "origins.countrySingular": "land",
@@ -985,6 +1008,9 @@ const sv: Record<keyof typeof en, string> = {
   "type.red": "Rött",
   "type.white": "Vitt",
   "type.sparkling": "Mousserande",
+  "type.dessert": "Dessertvin",
+  "type.unknown": "Okänd",
+  "type.fortified": "Starkvin",
   "type.rose": "Rosé",
 
   "cellar.title": "Min källare",
@@ -1004,10 +1030,10 @@ const sv: Record<keyof typeof en, string> = {
   "overview.regions": "Regioner",
   "overview.countries": "Länder",
   "overview.byRegion": "Flaskor per region",
-  "overview.window": "Drickfönster",
-  "overview.pastPeak": "Över toppen",
-  "overview.greatNow": "Bra nu",
-  "overview.cellarWorthy": "Värd att lagra",
+  "overview.window": "Uppskattat drickfönster",
+  "overview.pastPeak": "Efter fönstret",
+  "overview.greatNow": "Inom fönstret",
+  "overview.cellarWorthy": "Före fönstret",
   "overview.topVarietals": "Toppdruvor",
   "overview.empty": "Lägg till flaskor för att se statistik.",
   "overview.totalValue": "Inköpskostnad",
@@ -1281,6 +1307,7 @@ const sv: Record<keyof typeof en, string> = {
   "foryou.signIn": "Logga in för att se förslag.",
 
   "recommendation.tasteMatch": "smakmatchning",
+  "recommendation.identitySource": "Vinkälla (inte aktuell tillgänglighet)",
   "recommendation.confidence.low": "Tidig uppskattning",
   "recommendation.confidence.medium": "Visst stöd i din historik",
   "recommendation.confidence.high": "Starkt stöd i din historik",
@@ -1321,10 +1348,10 @@ const sv: Record<keyof typeof en, string> = {
   "wine.edit": "Redigera",
   "wine.shareText": "Kolla in det här vinet på WineSnap",
   "wine.linkCopied": "Länk kopierad",
-  "wine.window": "Drickfönster",
-  "wine.window.tooYoung": "För ungt — lagra",
-  "wine.window.greatNow": "Drick nu",
-  "wine.window.pastPeak": "Över toppen",
+  "wine.window": "Uppskattat drickfönster",
+  "wine.window.tooYoung": "Före uppskattat fönster",
+  "wine.window.greatNow": "Inom uppskattat fönster",
+  "wine.window.pastPeak": "Efter uppskattat fönster",
   "wine.window.range": "Bäst {start}–{end}, topp {peak}",
 
   "edit.title": "Redigera vin",
@@ -1431,7 +1458,8 @@ const sv: Record<keyof typeof en, string> = {
   "wishlist.lastChecked": "Senast kontrollerat",
   "wishlist.viewAtSb": "Visa på Systembolaget",
   "wishlist.markSeen": "Markera som sett",
-  "wishlist.autoNote": "Priserna kontrolleras automatiskt en gång per dygn.",
+  "wishlist.autoNote":
+    "Prislarm visas här när du kontrollerar priser. Aktuell tillgänglighet i butik garanteras inte.",
   "profile.wishlist": "Önskelista",
   "crop.adjust": "Justera etikett",
   "crop.retake": "Ta om",

@@ -14,7 +14,7 @@
 // NOTE: ./labelValidation.ts is a byte-identical copy of src/lib/labelValidation.ts.
 // The edge bundler cannot reach outside the function directory, so the copy lives
 // here. Keep the two files in sync — see labelValidation.sync.test.ts.
-import { authoritativeLabelText, validateIdentity } from "./labelValidation.ts";
+import { authoritativeLabelText, validateIdentity, validateTaste } from "./labelValidation.ts";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
 import { AI_MODELS } from "../_shared/aiModels.ts";
 import { completedLabelReading } from "./labelResponse.ts";
@@ -41,7 +41,8 @@ HARD RULES:
 
 STEP 3 — Taste estimates. The taste block (structure, notes, pairings, serving) is an ESTIMATE based on the identified wine or its style. Only fill it if at least a wine name or producer was read; otherwise leave the values null.
 
-Respond in English. Return only the JSON object matching the supplied response schema, with no prose or Markdown.`;
+Taste structure uses INTEGER scores from 0 to 10: 0 means absent/very low, 5 medium, 10 very high. Do not use a 1-5 scale, decimals or percentages. Description and numerical scores must agree.
+Keep label_text, evidence and identity values in their original language. Translate only descriptions, aroma names, food pairings and serving/glass text into the requested response language. Return only the JSON object matching the supplied response schema, with no prose or Markdown.`;
 
 const identityField = (description: string) => ({
   type: "object",
@@ -99,12 +100,12 @@ const wineResponseFormat = {
           description: "ESTIMATES derived from the identified wine/style, not read from the label",
           properties: {
             description: { type: ["string", "null"] },
-            fruit: { type: ["number", "null"] },
-            tannin: { type: ["number", "null"] },
-            acidity: { type: ["number", "null"] },
-            oak: { type: ["number", "null"] },
-            sweetness: { type: ["number", "null"] },
-            body: { type: ["number", "null"] },
+            fruit: { type: ["integer", "null"], minimum: 0, maximum: 10 },
+            tannin: { type: ["integer", "null"], minimum: 0, maximum: 10 },
+            acidity: { type: ["integer", "null"], minimum: 0, maximum: 10 },
+            oak: { type: ["integer", "null"], minimum: 0, maximum: 10 },
+            sweetness: { type: ["integer", "null"], minimum: 0, maximum: 10 },
+            body: { type: ["integer", "null"], minimum: 0, maximum: 10 },
             primary_notes: { type: "array", items: { type: "string" } },
             secondary_notes: { type: "array", items: { type: "string" } },
             tertiary_notes: { type: "array", items: { type: "string" } },
@@ -170,7 +171,8 @@ Deno.serve(async (req: Request) => {
     });
 
   try {
-    const { imageBase64, imageUrl, mimeType, text } = await req.json();
+    const { imageBase64, imageUrl, mimeType, text, language } = await req.json();
+    const responseLanguage = language === "sv" ? "Swedish" : "English";
     if (!imageBase64 && !imageUrl && !text) {
       return json({ error: "imageBase64, imageUrl or text is required" }, 400);
     }
@@ -214,7 +216,10 @@ Deno.serve(async (req: Request) => {
         reasoning_effort: "low",
         max_completion_tokens: 8192,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "system",
+            content: `${SYSTEM_PROMPT}\nResponse language for estimates: ${responseLanguage}.`,
+          },
           { role: "user", content: userContent },
         ],
         response_format: wineResponseFormat,
@@ -246,7 +251,7 @@ Deno.serve(async (req: Request) => {
     const wine = {
       label_text: labelText,
       identity: validateIdentity(parsed.identity, labelText),
-      taste: parsed.taste ?? {},
+      taste: validateTaste(parsed.taste),
     };
 
     return json({ wine });

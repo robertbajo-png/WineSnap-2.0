@@ -1,12 +1,11 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "2026-10-06-scan-result-overview";
+const VERSION = "2026-10-10-release-hardening";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(PAGE_CACHE).then((cache) => cache.addAll([OFFLINE_URL])));
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -21,7 +20,7 @@ self.addEventListener("activate", (event) => {
         ),
       ),
   );
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("message", (event) => {
@@ -37,33 +36,22 @@ self.addEventListener("fetch", (event) => {
   // Never cache API traffic or server functions.
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_serverFn")) return;
 
-  // Navigations: network first, fall back to cached page, then offline page.
+  // Never persist account pages or old HTML that references deleted asset hashes.
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(PAGE_CACHE).then((c) => c.put(req, copy));
-          return res;
-        })
-        .catch(async () => (await caches.match(req)) || (await caches.match(OFFLINE_URL))),
+      fetch(req).catch(async () => (await caches.match(OFFLINE_URL)) || Response.error()),
     );
     return;
   }
 
   // Static assets: cache first, refresh in background.
   if (/\.(js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)) {
-    event.respondWith(
-      caches.match(req).then((cached) => {
-        const network = fetch(req)
-          .then((res) => {
-            const copy = res.clone();
-            caches.open(ASSET_CACHE).then((c) => c.put(req, copy));
-            return res;
-          })
-          .catch(() => cached);
-        return cached || network;
-      }),
-    );
+    const network = fetch(req).then(async (res) => {
+      if (res.ok && res.type === "basic")
+        await (await caches.open(ASSET_CACHE)).put(req, res.clone());
+      return res;
+    });
+    event.waitUntil(network.catch(() => undefined));
+    event.respondWith(caches.match(req).then((cached) => cached || network));
   }
 });

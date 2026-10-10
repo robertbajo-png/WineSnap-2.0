@@ -10,6 +10,8 @@ import { CellarOrigins } from "@/components/CellarOrigins";
 import { summarizeCellarPrices } from "@/lib/cellarValue";
 import { RetailPricePanel } from "@/components/RetailPricePanel";
 import { missingPriceSchema, type PriceRequest, type RetailWine } from "@/lib/retailPrices";
+import { wineRating, type RatedWine } from "@/lib/wineRatings";
+import { computeDrinkingWindow } from "@/lib/drinkingWindow";
 
 export const Route = createFileRoute("/cellar/overview")({
   head: () => ({
@@ -24,26 +26,27 @@ export const Route = createFileRoute("/cellar/overview")({
   component: CellarOverviewPage,
 });
 
-type WineRow = RetailWine & {
-  region: string | null;
-  country: string | null;
-  grape_varieties: string[] | null;
-  vintage: number | null;
-  wine_type: string | null;
-  user_rating: number | null;
-  purchase_price: number | null;
-  purchase_currency: string | null;
-  purchased_at: string | null;
-  consumed_at: string | null;
-  quantity: number | null;
-  created_at: string;
-  market_price: number | null;
-  market_price_currency: string | null;
-  market_price_checked_at: string | null;
-};
+type WineRow = RetailWine &
+  RatedWine & {
+    region: string | null;
+    country: string | null;
+    grape_varieties: string[] | null;
+    vintage: number | null;
+    wine_type: string | null;
+    user_rating: number | null;
+    purchase_price: number | null;
+    purchase_currency: string | null;
+    purchased_at: string | null;
+    consumed_at: string | null;
+    quantity: number | null;
+    created_at: string;
+    market_price: number | null;
+    market_price_currency: string | null;
+    market_price_checked_at: string | null;
+  };
 
 const LEGACY_COLS =
-  "id,producer,wine_name,region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at,updated_at,systembolaget_id,market_price,market_price_currency,market_price_source,market_price_checked_at";
+  "id,user_id,producer,wine_name,region,country,grape_varieties,vintage,wine_type,user_rating,purchase_price,purchase_currency,purchased_at,consumed_at,quantity,created_at,updated_at,systembolaget_id,market_price,market_price_currency,market_price_source,market_price_checked_at,tasting_notes(rating,created_at,user_id)";
 const PRICE_COLS = `${LEGACY_COLS},bottle_ml,retail_price_status,retail_price_attempted_at,retail_price_match,retail_price_candidates`;
 
 async function loadWines(userId: string, ids?: string[], ready = true) {
@@ -91,7 +94,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 function CellarOverviewPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const userId = user?.id;
   const t = useT();
   const [wines, setWines] = useState<WineRow[]>([]);
@@ -135,13 +138,13 @@ function CellarOverviewPage() {
   const purchase = summarizeCellarPrices(wines, "purchase");
   const now = new Date().getFullYear();
   const pastPeak = active
-    .filter((w) => w.vintage && w.vintage < now - 6)
+    .filter((w) => computeDrinkingWindow(w.vintage, w.wine_type, now)?.status === "past-peak")
     .reduce((s, w) => s + (w.quantity ?? 1), 0);
   const greatNow = active
-    .filter((w) => w.vintage && w.vintage >= now - 6 && w.vintage <= now - 1)
+    .filter((w) => computeDrinkingWindow(w.vintage, w.wine_type, now)?.status === "great-now")
     .reduce((s, w) => s + (w.quantity ?? 1), 0);
   const cellarWorthy = active
-    .filter((w) => w.vintage && w.vintage >= now)
+    .filter((w) => computeDrinkingWindow(w.vintage, w.wine_type, now)?.status === "too-young")
     .reduce((s, w) => s + (w.quantity ?? 1), 0);
 
   const varietalStats = useMemo(() => {
@@ -191,11 +194,12 @@ function CellarOverviewPage() {
     let rated = 0;
     let sum = 0;
     for (const w of wines) {
-      if (w.user_rating == null) continue;
-      const idx = Math.min(4, Math.max(0, Math.round(w.user_rating) - 1));
+      const rating = wineRating(w);
+      if (rating == null) continue;
+      const idx = Math.min(4, Math.max(0, Math.round(rating) - 1));
       buckets[idx] += 1;
       rated += 1;
-      sum += Number(w.user_rating);
+      sum += rating;
     }
     return { buckets, rated, avg: rated ? sum / rated : 0 };
   }, [wines]);
@@ -222,7 +226,7 @@ function CellarOverviewPage() {
     });
   }, [wines]);
 
-  if (loading || loadError) {
+  if (authLoading || loading || loadError) {
     return (
       <AppShell>
         <p
@@ -358,23 +362,24 @@ function CellarOverviewPage() {
               <WindowCard
                 value={pastPeak}
                 title={t("overview.pastPeak")}
-                sub={`< ${now - 6}`}
+                sub=""
                 barColor="oklch(0.55 0.2 25)"
               />
               <WindowCard
                 value={greatNow}
                 title={t("overview.greatNow")}
-                sub={`${now - 6} – ${now}`}
+                sub=""
                 barColor="oklch(0.7 0.18 145)"
                 highlight
               />
               <WindowCard
                 value={cellarWorthy}
                 title={t("overview.cellarWorthy")}
-                sub={`${now + 1}+`}
+                sub=""
                 barColor="oklch(0.78 0.13 75)"
               />
             </div>
+            <p className="mt-3 text-sm text-muted-foreground">{t("wine.window.caveat")}</p>
           </section>
         )}
 
@@ -501,7 +506,7 @@ function WindowCard({
     >
       <p className="font-display text-2xl text-cream">{value}</p>
       <p className="mt-0.5 text-sm text-foreground/80">{title}</p>
-      <p className="text-xs text-muted-foreground">{sub}</p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       <div className="mt-2 h-1 rounded-full" style={{ background: barColor, opacity: 0.7 }} />
     </div>
   );

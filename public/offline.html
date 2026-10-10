@@ -13,7 +13,11 @@
         justify-content: center;
         background: #0e0709;
         color: #f2e9e4;
-        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          sans-serif;
         text-align: center;
         padding: 24px;
       }
@@ -40,7 +44,23 @@
     <main>
       <img src="/icon-512.png" alt="WineSnap" />
       <h1>You're offline</h1>
-      <p>WineSnap needs a connection to scan labels and load your cellar. Reconnect and try again.</p>
+      <p>
+        WineSnap needs a connection to scan labels and load your cellar. Reconnect and try again.
+      </p>
+      <p style="margin-top: 16px"><a href="/" style="color: #d7b46e" id="retry">Try again</a></p>
     </main>
+    <script>
+      let lang;
+      try {
+        lang = localStorage.getItem("lang");
+      } catch {}
+      if (lang === "sv" || (!lang && navigator.language.startsWith("sv"))) {
+        document.documentElement.lang = "sv";
+        document.querySelector("h1").textContent = "Du är offline";
+        document.querySelector("p").textContent =
+          "WineSnap behöver uppkoppling för att skanna etiketter och läsa din källare. Dina uppgifter är inte tillgängliga offline.";
+        document.getElementById("retry").textContent = "Försök igen";
+      }
+    </script>
   </body>
 </html>

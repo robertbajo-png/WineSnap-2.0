@@ -44,6 +44,8 @@ type Suggestion = RecommendationCandidate & {
   match_confidence: "low" | "medium" | "high";
   match_evidence: MatchEvidence[];
   reason: string;
+  source_url?: string;
+  identity_verified?: boolean;
 };
 
 type FeedbackState = Record<string, "like" | "dislike">;
@@ -60,7 +62,10 @@ function ForYouPage() {
   const [error, setError] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<number | null>(null);
   const [coldStart, setColdStart] = useState(false);
-  const cacheKey = useMemo(() => (user ? `winesnap:suggestions:v3:${user.id}` : null), [user]);
+  const cacheKey = useMemo(
+    () => (user ? `winesnap:suggestions:v4:${user.id}:${lang}` : null),
+    [user, lang],
+  );
 
   useEffect(() => {
     setSuggestions([]);
@@ -72,7 +77,11 @@ function ForYouPage() {
       const raw = localStorage.getItem(cacheKey);
       if (raw) {
         const parsed = JSON.parse(raw);
-        setSuggestions(parsed.suggestions ?? []);
+        setSuggestions(
+          (parsed.suggestions ?? []).filter(
+            (wine: Suggestion) => wine.identity_verified && wine.source_url,
+          ),
+        );
         setGeneratedAt(parsed.generatedAt ?? null);
         setColdStart(Boolean(parsed.coldStart));
       }
@@ -92,7 +101,10 @@ function ForYouPage() {
       if (functionError) throw functionError;
       if (data?.error) throw new Error(data.error);
 
-      const list: Suggestion[] = data?.suggestions ?? [];
+      const list: Suggestion[] = (data?.suggestions ?? []).filter(
+        (wine: Suggestion) => wine.identity_verified && wine.source_url,
+      );
+      if (!list.length) throw new Error("No verified suggestions returned");
       const isColdStart = Boolean(data?.cold_start);
       const timestamp = Date.now();
       setSuggestions(list);
@@ -264,8 +276,21 @@ function ForYouPage() {
                     </p>
                   ) : null}
                   <p className="mt-2 text-sm leading-relaxed text-foreground/80">
+                    <span className="mb-1 block text-sm text-muted-foreground">
+                      {t("recommendation.styleEstimate")}
+                    </span>
                     {suggestion.reason}
                   </p>
+                  {suggestion.source_url && (
+                    <a
+                      href={suggestion.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex min-h-11 items-center text-sm text-gold"
+                    >
+                      {t("recommendation.identitySource")}
+                    </a>
+                  )}
 
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/8 pt-3">
                     <div className="flex items-center gap-1">

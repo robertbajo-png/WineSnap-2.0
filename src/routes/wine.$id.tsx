@@ -42,6 +42,8 @@ import { RecommendationMatch } from "@/components/RecommendationMatch";
 import type { MatchEvidence, RecommendationCandidate } from "@/lib/recommendationEngine";
 import { recommendationKey, recordRecommendationEvent } from "@/lib/recommendationEvents";
 import { addToWishlist } from "@/lib/wishlist";
+import { wineRating, type RatedWine } from "@/lib/wineRatings";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -49,7 +51,7 @@ export const Route = createFileRoute("/wine/$id")({
 });
 
 type Pair = { dish: string; reason: string };
-type WineRow = {
+type WineRow = RatedWine & {
   id: string;
   image_url: string | null;
   producer: string | null;
@@ -81,6 +83,8 @@ const TAB_KEYS = ["overview", "aromas", "tasting", "food", "ai"] as const;
 type Tab = (typeof TAB_KEYS)[number];
 
 type Suggestion = RecommendationCandidate & {
+  identity_verified: boolean;
+  source_url: string;
   producer: string;
   wine_name: string;
   region: string;
@@ -124,6 +128,9 @@ function WineDetailPage() {
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestFeedback, setSuggestFeedback] = useState<Record<string, "like" | "dislike">>({});
   const [notes, setNotes] = useState<TastingNote[]>([]);
+  const { user, loading: authLoading } = useAuth();
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   const loadSuggestions = async () => {
     if (!w || suggestLoading) return;
@@ -136,7 +143,11 @@ function WineDetailPage() {
       if (error) throw error;
       const payload = data as { error?: string; suggestions?: Suggestion[] } | null;
       if (payload?.error) throw new Error(payload.error);
-      setSuggestions(payload?.suggestions ?? []);
+      setSuggestions(
+        (payload?.suggestions ?? []).filter(
+          (suggestion) => suggestion.identity_verified && suggestion.source_url,
+        ),
+      );
     } catch (e) {
       setSuggestError(e instanceof Error ? e.message : "Failed to load suggestions");
     } finally {
@@ -187,12 +198,21 @@ function WineDetailPage() {
   }, [tab, w]);
 
   useEffect(() => {
+    let cancelled = false;
+    setW(null);
+    setNotes([]);
+    setLoading(true);
+    setLoadError(false);
+    setSuggestions(null);
+    if (authLoading) return;
     supabase
       .from("wines")
-      .select("*")
+      .select("*,tasting_notes(rating,created_at,user_id)")
       .eq("id", id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLoadError(Boolean(error));
         setW(data as WineRow | null);
         setLoading(false);
       });
@@ -202,8 +222,16 @@ function WineDetailPage() {
       .eq("wine_id", id)
       .order("tasted_at", { ascending: false })
       .limit(5)
-      .then(({ data }) => setNotes((data as TastingNote[]) ?? []));
-  }, [id]);
+      .then(({ data, error }) => {
+        if (!cancelled) {
+          setNotes((data as TastingNote[]) ?? []);
+          if (error) toast.error(t("common.error"));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user?.id, authLoading, revision, t]);
 
   const remove = async () => {
     if (!confirm(t("wine.deleteConfirm"))) return;
@@ -213,10 +241,19 @@ function WineDetailPage() {
     navigate({ to: "/cellar" });
   };
 
-  if (loading)
+  if (loading || authLoading)
     return (
       <AppShell>
         <WineDetailSkeleton />
+      </AppShell>
+    );
+  if (loadError)
+    return (
+      <AppShell>
+        <p role="alert">{t("common.error")}</p>
+        <Button variant="outline" onClick={() => setRevision((n) => n + 1)}>
+          {t("common.retry")}
+        </Button>
       </AppShell>
     );
   if (!w)
@@ -231,10 +268,7 @@ function WineDetailPage() {
       </AppShell>
     );
 
-  const rating = notes.find(
-    (note) =>
-      note.rating != null && Number.isFinite(note.rating) && note.rating >= 0 && note.rating <= 5,
-  )?.rating;
+  const rating = wineRating(w);
   const aromas = [
     ...(w.primary_notes ?? []),
     ...(w.secondary_notes ?? []),
@@ -372,7 +406,7 @@ function WineDetailPage() {
           </div>
           <div className="min-w-0 flex-1 pt-1">
             <h1 className="font-display text-[26px] leading-tight text-cream">
-              {w.wine_name ?? "Unknown"}
+              {w.wine_name ?? w.producer ?? t("type.unknown")}
               {w.vintage ? ` ${w.vintage}` : ""}
             </h1>
             <p className="mt-1 text-base text-gold">
@@ -384,7 +418,9 @@ function WineDetailPage() {
                 <span className="flex items-center gap-1 text-sm">
                   <Star className="h-3.5 w-3.5 fill-gold text-gold" />
                   <span className="font-medium">{rating.toFixed(1)}</span>
-                  <span className="text-muted-foreground">{t("wine.yourRating")}</span>
+                  <span className="text-muted-foreground">
+                    {t(w.user_id === user?.id ? "wine.yourRating" : "wine.ownerRating")}
+                  </span>
                 </span>
               </div>
             )}
@@ -516,6 +552,7 @@ function WineDetailPage() {
                       .replace("{end}", String(win.end))
                       .replace("{peak}", String(win.peak))}
                   </p>
+                  <p className="mt-2 text-sm text-muted-foreground">{t("wine.window.caveat")}</p>
                 </Card>
               );
             })()}
@@ -693,6 +730,17 @@ function WineDetailPage() {
                     />
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-foreground/80">{s.reason}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {t("recommendation.styleEstimate")}
+                  </p>
+                  <a
+                    href={s.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center text-sm text-gold"
+                  >
+                    {t("recommendation.identitySource")}
+                  </a>
                   {s.price_range && (
                     <p className="mt-1.5 font-display text-sm text-cream">{s.price_range}</p>
                   )}

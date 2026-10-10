@@ -17,6 +17,10 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, useT, type Lang } from "@/i18n";
+import { profileStats } from "@/lib/wineRatings";
+import { toast } from "sonner";
+import { readAllPages } from "@/lib/readAllPages";
+import { DataControls } from "@/components/DataControls";
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -46,7 +50,7 @@ type ProfileRow = {
 };
 
 function MePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { t, lang, setLang } = useI18n();
   const [bottles, setBottles] = useState(0);
   const [tasted, setTasted] = useState(0);
@@ -54,26 +58,44 @@ function MePage() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
 
   const [topGrapes, setTopGrapes] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+    setBottles(0);
+    setTasted(0);
+    setAvg(0);
+    setProfile(null);
+    setTopGrapes([]);
+    setLoadError(false);
+    setStatsLoading(Boolean(user));
     if (!user) return;
-    supabase
-      .from("wines")
-      .select("id,user_rating,fruit,tannin,acidity,body")
-      .then(({ data }) => {
-        const ws = data ?? [];
-        setBottles(ws.length);
-        setTasted(ws.filter((w) => w.user_rating != null).length);
-        const ratings = ws
-          .map((w) => {
-            if (w.user_rating != null) return w.user_rating;
-            const vals = [w.fruit, w.tannin, w.acidity, w.body].filter((v) => v != null);
-            if (!vals.length) return null;
-            const m = vals.reduce((a, b) => a + b, 0) / vals.length;
-            return 3.5 + (m / 10) * 1.5;
-          })
-          .filter((r): r is number => r != null);
-        setAvg(ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0);
+    readAllPages(
+      (from, to) =>
+        supabase
+          .from("wines")
+          .select(
+            "id,user_id,user_rating,quantity,consumed_at,tasting_notes(rating,created_at,user_id)",
+          )
+          .eq("user_id", user.id)
+          .order("id")
+          .range(from, to),
+      () => cancelled,
+    )
+      .then((data) => {
+        if (cancelled) return;
+        setStatsLoading(false);
+        const stats = profileStats(data ?? [], user.id);
+        setBottles(stats.bottles);
+        setTasted(stats.tasted);
+        setAvg(stats.average ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError(true);
+          setStatsLoading(false);
+        }
       });
     supabase
       .from("profiles")
@@ -82,19 +104,28 @@ function MePage() {
       )
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => setProfile(data as ProfileRow));
+      .then(({ data, error }) => {
+        if (!cancelled) {
+          setProfile(data as ProfileRow);
+          if (error) setLoadError(true);
+        }
+      });
     supabase
       .from("taste_profile")
       .select("favorite_grapes")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
+        if (cancelled) return;
         const fg = (data?.favorite_grapes ?? {}) as Record<string, number>;
         const sorted = Object.entries(fg)
           .sort((a, b) => b[1] - a[1])
           .map(([g]) => g);
         setTopGrapes(sorted);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const memberSince = user
@@ -132,15 +163,20 @@ function MePage() {
         </section>
 
         {/* Stats */}
+        {loadError && (
+          <p role="alert" className="mt-4 text-sm">
+            {t("common.error")}
+          </p>
+        )}
         <section className="mt-5 grid grid-cols-3 gap-2">
           <StatBox
             icon={<Wine className="h-4 w-4 text-gold" />}
-            value={String(bottles)}
+            value={authLoading || statsLoading || loadError ? "—" : String(bottles)}
             label={t("profile.bottles")}
           />
           <StatBox
             icon={<GlassWater className="h-4 w-4 text-gold" />}
-            value={String(tasted)}
+            value={authLoading || statsLoading || loadError ? "—" : String(tasted)}
             label={t("profile.tasted")}
           />
           <StatBox
@@ -250,7 +286,7 @@ function MePage() {
               value={profile?.username ?? ""}
               onSave={async (v) => {
                 const clean = v.trim().replace(/^@/, "").toLowerCase();
-                await updatePref(user?.id, { username: clean || null }, setProfile);
+                return updatePref(user?.id, { username: clean || null }, setProfile);
               }}
             />
             <TextRow
@@ -258,7 +294,7 @@ function MePage() {
               placeholder={t("profile.bioPh")}
               value={profile?.bio ?? ""}
               onSave={async (v) => {
-                await updatePref(user?.id, { bio: v.trim() || null }, setProfile);
+                return updatePref(user?.id, { bio: v.trim() || null }, setProfile);
               }}
               multiline
             />
@@ -283,6 +319,7 @@ function MePage() {
           </div>
         </section>
 
+        <DataControls />
         {user && (
           <button
             onClick={() => supabase.auth.signOut()}
@@ -413,7 +450,7 @@ function TextRow({
   label: string;
   value: string;
   placeholder?: string;
-  onSave: (v: string) => Promise<void> | void;
+  onSave: (v: string) => Promise<void | boolean> | void | boolean;
   multiline?: boolean;
 }) {
   const t = useT();
@@ -469,8 +506,8 @@ function TextRow({
         </button>
         <button
           onClick={async () => {
-            await onSave(draft);
-            setEditing(false);
+            const saved = await onSave(draft);
+            if (saved !== false) setEditing(false);
           }}
           className="rounded-lg bg-burgundy px-3 py-1.5 text-sm text-cream min-h-11 min-w-11"
         >
@@ -503,11 +540,16 @@ async function updatePref(
   setProfile: React.Dispatch<React.SetStateAction<ProfileRow | null>>,
 ) {
   if (!userId) return;
-  setProfile((p) => ({ ...((p ?? {}) as ProfileRow), ...patch }) as ProfileRow);
-  await supabase
+  const { error } = await supabase
     .from("profiles")
     .update(patch as never)
     .eq("id", userId);
+  if (error) {
+    toast.error("Kunde inte spara / Could not save");
+    return false;
+  }
+  setProfile((p) => ({ ...((p ?? {}) as ProfileRow), ...patch }) as ProfileRow);
+  return true;
 }
 
 async function editPriceRange(

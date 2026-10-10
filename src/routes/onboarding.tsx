@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { logEvent } from "@/lib/analytics";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Welcome — WineSnap" }] }),
@@ -32,10 +33,14 @@ function OnboardingPage() {
 
   const finish = async (destination: "/scan" | "/taste") => {
     if (user) {
-      await supabase
+      const { error } = await supabase
         .from("profiles")
         .update({ onboarded_at: new Date().toISOString() })
         .eq("id", user.id);
+      if (error) {
+        toast.error(t("common.error"));
+        return;
+      }
       logEvent("onboarding_finished", { destination });
     }
     navigate({ to: destination });
