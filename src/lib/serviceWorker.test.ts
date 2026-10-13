@@ -33,6 +33,8 @@ function worker() {
             "unrelated-cache",
             "winesnap-assets-2026-10-03",
             "winesnap-pages-2026-10-03",
+            "winesnap-assets-2026-10-10-scan-errors",
+            "winesnap-pages-2026-10-10-scan-errors",
             ...currentCaches,
           ],
           delete: remove,
@@ -95,6 +97,8 @@ describe("release service worker", () => {
       "winesnap-pages-v1",
       "winesnap-assets-2026-10-03",
       "winesnap-pages-2026-10-03",
+      "winesnap-assets-2026-10-10-scan-errors",
+      "winesnap-pages-2026-10-10-scan-errors",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });
