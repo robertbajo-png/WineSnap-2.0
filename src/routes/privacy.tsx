@@ -17,8 +17,8 @@ function PrivacyPage() {
       {!privacyInformationComplete && (
         <p role="alert" className="mt-4 border-l-2 border-gold pl-3 text-base">
           {sv
-            ? "Integritetsinformationen är inte fullständig ännu. Ansvarig, kontakt, rättslig grund och lagringstid måste bekräftas före offentlig release."
-            : "Privacy information is not complete yet. The responsible party, contact, legal basis and retention must be confirmed before public release."}
+            ? "Integritetsinformationen är inte fullständig ännu. Återstående uppgifter måste bekräftas före offentlig release."
+            : "Privacy information is not complete yet. The remaining details must be confirmed before public release."}
         </p>
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
@@ -36,7 +36,11 @@ function PrivacyPage() {
           >
             {siteInformation.contact}
           </a>
-        ) : (
+        ) : null}
+        {siteInformation.postalAddress && (
+          <address className="not-italic break-words">{siteInformation.postalAddress}</address>
+        )}
+        {!siteInformation.contact && !siteInformation.postalAddress && (
           <p>
             {sv ? "Offentlig supportadress ej angiven" : "Public support address not specified"}
           </p>
