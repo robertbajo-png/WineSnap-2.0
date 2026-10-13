@@ -88,6 +88,36 @@ protected receipt copy no longer than its justified retention. The SQL receipt
 table alone is not independent of the database being restored. A staging restoration
 rehearsal and an operator alerting/contact mechanism remain required.
 
+### Recovery procedure
+
+1. Close public application/Storage access and pause writers and scheduled workers
+   before restoration. Preserve the latest receipts and pending requests in a
+   separate protected operator location, outside the backup being restored.
+2. Restore the database with its tested migrations, grants and RLS. Import the
+   protected receipt copy through parameterized operator tooling; do not paste
+   real account identifiers or archive contents into chat or source control.
+3. Apply `supabase/operations/reapply-restored-erasures.sql` before reopening access.
+   It requeues previously requested erasures, hides their restored public wines
+   and profiles, and marks the receipt pending until erasure completes again.
+   It is idempotent and does not erase accounts merely because they are inactive.
+4. Process the queue with the verified Storage/Auth worker. Check that affected
+   accounts, files and public shares are gone, and that unrelated users remain
+   intact. Re-enable access/workers only after these acceptance checks.
+
+`scripts/rehearse-privacy-recovery.mjs` exercises this sequence with synthetic
+users in a newly created loopback-only PostgreSQL cluster. It accepts an optional
+dependency directory containing the existing `embedded-postgres` and `pg` runtime,
+not a database URL or a production archive. Example:
+
+```sh
+node scripts/rehearse-privacy-recovery.mjs ../WineSnap-2.0-hardening
+```
+
+The script uses PostgreSQL template cloning to reproduce an old database snapshot,
+then imports a separately preserved synthetic erasure ledger. Storage deletion is
+simulated using the local platform-contract tables. This is not a hosted backup/PITR
+or physical object-storage recovery certification.
+
 Confirm agreements cover the actual hosted app and AI-gateway flow, not merely the
 Lovable development chat. Record applicable DPAs, subprocessors, model-specific
 retention/training terms, locations and lawful international-transfer safeguards.
@@ -141,6 +171,11 @@ must exist even for users who cannot log in.
   legacy share/image preservation. No real user data was used.
 - The rebuilt local runtime returns HTTP 200 for `/privacy`, with Boleo AI, the
   approved address, retention information and the pending-deployment warning.
+- The synthetic recovery rehearsal also passes: all 33 migrations, an old snapshot
+  that predates erasure, independently reapplied receipts, restored-account JWT/RLS
+  restrictions, anonymous share/image metadata restrictions, preserved peer data,
+  idempotent requeueing and repeat erasure completion. The scope is local database
+  snapshot cloning with simulated Storage, not hosted JWT/Storage or backup files.
 - No production migration, Edge deployment, Vault secret, cron activation,
   provider-setting change or successful hosted erasure is claimed. There is no
   connected Supabase/Lovable deployment tool in this session. Fresh browser/device
