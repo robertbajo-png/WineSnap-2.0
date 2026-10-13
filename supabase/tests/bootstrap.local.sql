@@ -12,6 +12,8 @@ SET search_path = public, extensions;
 CREATE TABLE auth.users (
   id uuid PRIMARY KEY,
   email text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  last_sign_in_at timestamptz,
   raw_user_meta_data jsonb DEFAULT '{}'::jsonb
 );
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
@@ -22,6 +24,9 @@ CREATE TABLE storage.objects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   bucket_id text REFERENCES storage.buckets(id),
   name text NOT NULL,
+  owner uuid,
+  owner_id text,
+  created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (bucket_id, name)
 );
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;

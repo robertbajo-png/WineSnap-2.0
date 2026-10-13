@@ -182,10 +182,7 @@ Deno.serve(async (req) => {
         .limit(30),
     ]);
     if (profileResult.error || memoryResult.error) {
-      console.error("restaurant-match profile load failed", {
-        profile: profileResult.error?.message,
-        memory: memoryResult.error?.message,
-      });
+      console.error("restaurant-match profile load failed");
       throw new Error("Could not load taste profile");
     }
 
@@ -213,8 +210,7 @@ Deno.serve(async (req) => {
     });
 
     if (!response.ok) {
-      const detail = await response.text();
-      console.error("restaurant-match gateway error", response.status, detail.slice(0, 500));
+      console.error("restaurant-match gateway failure", response.status);
       if (response.status === 429) return json({ error: "Rate limit, try again soon." }, 429);
       if (response.status === 402) return json({ error: "AI credits are unavailable." }, 402);
       return json({ error: "AI gateway error" }, 502);
@@ -266,7 +262,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const timeout = error instanceof DOMException && error.name === "TimeoutError";
-    console.error("restaurant-match error", error);
+    console.error("restaurant-match failed", timeout ? "timeout" : "request_error");
     return json(
       { error: timeout ? "Menu analysis timed out." : "Could not analyze the wine list." },
       timeout ? 504 : 500,

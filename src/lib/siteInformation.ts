@@ -39,4 +39,7 @@ export const siteInformation = resolveSiteInformation({
   VITE_PRIVACY_RETENTION: import.meta.env.VITE_PRIVACY_RETENTION,
   VITE_PRIVACY_LEGAL_BASIS: import.meta.env.VITE_PRIVACY_LEGAL_BASIS,
 });
-export const privacyInformationComplete = isPrivacyInformationComplete(siteInformation);
+// Text fields alone are not proof that deletion, scheduling or vendor settings work.
+export const privacyInformationComplete =
+  isPrivacyInformationComplete(siteInformation) &&
+  import.meta.env.VITE_PRIVACY_OPERATIONS_VERIFIED === "true";

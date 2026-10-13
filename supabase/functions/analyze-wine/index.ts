@@ -227,8 +227,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!aiRes.ok) {
-      const t = await aiRes.text();
-      console.error("AI error:", aiRes.status, t);
+      console.error("analyze-wine gateway failure", aiRes.status);
       if (aiRes.status === 429) {
         return json({ error: "Too many requests, please try again shortly." }, 429);
       }
@@ -256,7 +255,11 @@ Deno.serve(async (req: Request) => {
 
     return json({ wine });
   } catch (e) {
-    console.error("analyze-wine error:", e);
-    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+    console.error("analyze-wine failed");
+    const safeError =
+      e instanceof Error && e.message === "AI returned invalid label JSON"
+        ? "AI returned invalid label JSON"
+        : "Could not analyze the wine right now.";
+    return json({ error: safeError }, 500);
   }
 });

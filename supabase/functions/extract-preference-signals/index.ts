@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
       }),
     });
     if (!response.ok) {
-      console.error("Preference extraction failed", response.status, await response.text());
+      console.error("Preference extraction failed", response.status);
       return new Response(JSON.stringify({ error: "Preference extraction failed" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("extract-preference-signals error", error);
+    console.error("extract-preference-signals failed");
     return new Response(JSON.stringify({ error: "Could not process feedback" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

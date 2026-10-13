@@ -36,8 +36,8 @@ type PendingMatch = {
   wine: AnalyzedWine;
   /** Local preview of exactly the image we submitted (no public storage needed). */
   previewUrl: string | null;
-  imageUrl: string | null;
-  storagePath: string | null;
+  image: Blob | null;
+  mimeType: string | null;
   mode: "camera" | "text";
   partial: boolean;
   labelText: string;
@@ -197,8 +197,8 @@ function ScanPage() {
       if (!result.identified) throw new Error(t("scan.notIdentified"));
       applyResult(result, {
         previewUrl: null,
-        imageUrl: null,
-        storagePath: null,
+        image: null,
+        mimeType: null,
         mode: "text",
       });
     } catch (e) {
@@ -239,17 +239,7 @@ function ScanPage() {
     setPreviewUrl(URL.createObjectURL(image));
     const localPreview = previewUrlRef.current;
 
-    let path: string | null = null;
     try {
-      path = `${user.id}/${crypto.randomUUID()}.${extensionForMime(mimeType)}`;
-      const { error: upErr } = await supabase.storage
-        .from("wine-labels")
-        .upload(path, image, { contentType: mimeType, cacheControl: "0" });
-      if (!guard.isCurrent(attempt)) {
-        await supabase.storage.from("wine-labels").remove([path]);
-        return;
-      }
-      if (upErr) throw upErr;
       const base64 = await new Promise<string>((res, rej) => {
         const r = new FileReader();
         r.onload = () => {
@@ -261,36 +251,27 @@ function ScanPage() {
         r.onerror = () => rej(new Error(t("scan.imageError")));
         r.readAsDataURL(image);
       });
-      if (!guard.isCurrent(attempt)) {
-        await supabase.storage.from("wine-labels").remove([path]);
-        return;
-      }
+      if (!guard.isCurrent(attempt)) return;
 
       const { data, error } = await supabase.functions.invoke("analyze-wine", {
         body: { imageBase64: base64, mimeType, language: lang },
       });
-      if (!guard.isCurrent(attempt)) {
-        await supabase.storage.from("wine-labels").remove([path]);
-        return;
-      }
+      if (!guard.isCurrent(attempt)) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const result = sanitizeAnalysis(data?.wine);
       if (!result.identified) {
-        await supabase.storage.from("wine-labels").remove([path]);
-        path = null;
         throw new Error(t("scan.notIdentified"));
       }
       applyResult(result, {
         previewUrl: localPreview,
-        imageUrl: path,
-        storagePath: path,
+        image,
+        mimeType,
         mode: "camera",
       });
     } catch (e) {
       if (!guard.isCurrent(attempt)) return;
-      if (path) await supabase.storage.from("wine-labels").remove([path]);
       setPreviewUrl(null);
       await reportAnalysisFailure(e, attempt);
       if (!guard.isCurrent(attempt)) return;
@@ -303,20 +284,31 @@ function ScanPage() {
   const savePending = async () => {
     if (!pendingMatch || !user || savedIdRef.current || !saveGuardRef.current.tryStart()) return;
     setSaving(true);
+    let path: string | null = null;
+    let persisted = false;
     try {
-      const inserted = await persistWine(
-        pendingMatch.wine,
-        pendingMatch.imageUrl,
-        pendingMatch.originalWine,
-      );
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || auth.user?.id !== user.id) throw new Error("Account changed");
+      if (pendingMatch.image && pendingMatch.mimeType) {
+        path = `${user.id}/${crypto.randomUUID()}.${extensionForMime(pendingMatch.mimeType)}`;
+        const { error } = await supabase.storage
+          .from("wine-labels")
+          .upload(path, pendingMatch.image, {
+            contentType: pendingMatch.mimeType,
+            cacheControl: "0",
+          });
+        if (error) throw error;
+      }
+      const inserted = await persistWine(pendingMatch.wine, path, pendingMatch.originalWine);
+      persisted = true;
       savedIdRef.current = inserted.id;
       setSavedId(inserted.id);
-      if (pendingMatch.storagePath && pendingMatch.imageUrl) {
+      if (path) {
         const { error: photoError } = await supabase.from("wine_photos").insert({
           wine_id: inserted.id,
           user_id: user.id,
-          url: pendingMatch.imageUrl,
-          storage_path: pendingMatch.storagePath,
+          url: path,
+          storage_path: path,
           kind: "label",
           sort_order: 0,
         });
@@ -329,8 +321,8 @@ function ScanPage() {
         partial: pendingMatch.partial,
       });
     } catch (e) {
-      console.error(e);
-      toast.error(e instanceof Error ? e.message : t("common.error"));
+      if (path && !persisted) await supabase.storage.from("wine-labels").remove([path]);
+      toast.error(t("common.error"));
     } finally {
       setSaving(false);
       saveGuardRef.current.finish();
@@ -339,20 +331,16 @@ function ScanPage() {
 
   const discardPending = async () => {
     if (saving || savedIdRef.current) return;
-    const pm = pendingMatch;
     setPendingMatch(null);
     setPreviewUrl(null);
     setStage("idle");
-    if (pm?.storagePath) {
-      await supabase.storage.from("wine-labels").remove([pm.storagePath]);
-    }
   };
 
   if (stage === "result" && pendingMatch) {
     return (
       <ScanResult
         wine={pendingMatch.wine}
-        imageUrl={pendingMatch.previewUrl ?? pendingMatch.imageUrl}
+        imageUrl={pendingMatch.previewUrl}
         labelText={pendingMatch.labelText}
         mode={pendingMatch.mode}
         partial={pendingMatch.partial}

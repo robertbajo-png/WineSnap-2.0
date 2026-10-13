@@ -17,3 +17,13 @@ verify_jwt = true
 
 [functions.ask-winesnap]
 verify_jwt = true
+
+[functions.privacy-controls]
+verify_jwt = true
+
+[functions.privacy-export]
+verify_jwt = true
+
+# Uses its own fail-closed scheduler secret; user JWTs cannot authorize it.
+[functions.privacy-maintenance]
+verify_jwt = false

@@ -153,9 +153,12 @@ Deno.serve(async (req) => {
 
     const memory = (memoryResult.data ?? []) as Record<string, unknown>[];
     const cellar = (cellarResult.data ?? []) as Record<string, unknown>[];
+    // Internal account and wine identifiers are not useful to the model.
+    const { id: _wineId, user_id: _ownerId, is_public: _public, ...wineFacts } = currentWine ?? {};
+    const screenFacts = { source: screenContext.source };
     const contextBlock = {
-      screen: screenContext,
-      currentWine,
+      screen: screenFacts,
+      currentWine: currentWine ? wineFacts : null,
       statedProfile: profileResult.data,
       computedTaste: tasteResult.data,
       reliableMemory: memory.map(formatPreference),
@@ -202,8 +205,7 @@ You may use the current wine and cellar as context, but you cannot purchase, res
     });
 
     if (!aiResponse.ok) {
-      const detail = await aiResponse.text();
-      console.error("ask-winesnap gateway error", aiResponse.status, detail.slice(0, 500));
+      console.error("ask-winesnap gateway failure", aiResponse.status);
       return json(
         {
           error: aiResponse.status === 429 ? "AI is busy. Try again shortly." : "AI gateway error",
@@ -249,7 +251,7 @@ You may use the current wine and cellar as context, but you cannot purchase, res
     });
   } catch (error) {
     const isTimeout = error instanceof DOMException && error.name === "TimeoutError";
-    console.error("ask-winesnap error", error);
+    console.error("ask-winesnap failed", isTimeout ? "timeout" : "request_error");
     return json(
       {
         error: isTimeout ? "The sommelier took too long to answer." : "Could not answer right now.",

@@ -2,6 +2,12 @@
 
 ## Completed in source
 
+The subsequent operator-approved privacy implementation is documented in
+[privacy operations](privacy-operations.md). It adds disabled-by-default deployment
+gates, erasure/export/reset controls, bounded retention maintenance and an isolated
+SQL rehearsal. The earlier checks below describe the contact/update-dialog patch;
+they are not production proof for the subsequent privacy migration.
+
 The PWA update offer now uses the existing Radix alert-dialog components instead of a native `window.confirm`. Opening or cancelling the dialog does not activate the waiting worker or reload the page. Only the explicit confirmation sends `SKIP_WAITING`; duplicate confirmations are guarded, and activation failures remove the reload listener and allow retry. The unsaved-change warning remains in both languages. Service-worker version: `2026-10-13-update-dialog`.
 
 Focused component tests mock React hooks and the worker interface; they are not a real-browser focus, installation or visual certification. The third-party dialog primitives are reused without modification.

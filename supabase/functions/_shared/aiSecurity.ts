@@ -51,6 +51,12 @@ export async function requireAiAccess(req: Request, options: AiAccessOptions) {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const { data: active, error: privacyError } = await admin.rpc("privacy_account_active", {
+    _user_id: authData.user.id,
+  });
+  if (privacyError || active !== true) {
+    return json({ error: "Account is unavailable" }, privacyError ? 503 : 403, options.corsHeaders);
+  }
   const windowSeconds = options.windowSeconds ?? 300;
   const { data, error } = await admin.rpc("consume_ai_quota", {
     _user_id: authData.user.id,
@@ -59,7 +65,7 @@ export async function requireAiAccess(req: Request, options: AiAccessOptions) {
     _window_seconds: windowSeconds,
   });
   if (error) {
-    console.error("AI quota check failed", options.functionName, error.message);
+    console.error("AI quota check failed", options.functionName);
     return json({ error: "Server configuration error" }, 500, options.corsHeaders);
   }
 

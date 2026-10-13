@@ -196,8 +196,7 @@ Return up to 10 candidate wines from this catalog.`;
     });
 
     if (!response.ok) {
-      const detail = await response.text();
-      console.error("taste-suggestions gateway error", response.status, detail.slice(0, 500));
+      console.error("taste-suggestions gateway failure", response.status);
       if (response.status === 429) return json({ error: "Rate limit, try again soon." }, 429);
       if (response.status === 402) return json({ error: "AI credits are unavailable." }, 402);
       return json({ error: "AI gateway error" }, 502);
@@ -228,7 +227,7 @@ Return up to 10 candidate wines from this catalog.`;
     });
   } catch (error) {
     const timeout = error instanceof DOMException && error.name === "TimeoutError";
-    console.error("taste-suggestions error", error);
+    console.error("taste-suggestions failed", timeout ? "timeout" : "request_error");
     return json(
       {
         error: timeout ? "Recommendation request timed out." : "Could not generate suggestions.",
