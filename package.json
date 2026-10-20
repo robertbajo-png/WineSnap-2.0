@@ -16,6 +16,7 @@
     "build:independent:check": "vite build --config vite.independent.config.ts --mode runtime-check",
     "start:independent": "node dist/independent-runtime/server/index.mjs",
     "test:independent": "node scripts/check-independent-runtime.mjs",
+    "test:database": "node scripts/check-staging-database.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
