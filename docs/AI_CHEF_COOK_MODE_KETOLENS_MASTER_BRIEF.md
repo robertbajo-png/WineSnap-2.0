@@ -1,5 +1,19 @@
 # CODEX MASTER BRIEF — WineSnap Evolution: Personal AI Chef, Sommelier & KetoLens
 
+## Mandatory development decision: Codex builds and owns the app — NO LOVABLE
+
+**This explicitly overrides any earlier assumption that development, UI generation or release should continue in Lovable.**
+
+- Codex must implement the entire new application **directly in this existing Git repository**, writing and maintaining the actual frontend, backend, database migrations, AI integrations, tests and build/deployment configuration. Do not delegate design or coding to Lovable or use its AI agent, editor, preview builder, code generation, hosting or paid credits.
+- Reuse working React, TypeScript, TanStack, Supabase and other *portable* existing source code when appropriate; owning the code and deployment independently is the objective. Do not discard good source simply because Lovable originally produced it.
+- **Audit all Lovable dependencies**: packages and build plugins (including `@lovable.dev/...`), generated configuration, preview URLs, deployment workflows, hosted database, storage, authentication, edge functions and AI gateway. Categorize each as replace, retain temporarily for migration, or no dependency.
+- Propose an **independently controlled infrastructure**: for example GitHub + Codex for development, Cloudflare or other independently managed hosting, separately administered Supabase or equivalent database/auth/storage and direct provider AI APIs with server-side keys. Choose technologies based on existing code, cost and technical suitability, not on an assumed mandate to use these vendors.
+- In particular, **do not presume that leaving the Lovable development tool instantly migrates or terminates Lovable-managed Cloud resources**. Existing production data, user identity, wine images and functions must remain intact until there is a documented, tested, approved migration to resources the owner controls.
+- Codex should produce a concrete exit/migration plan, including data and storage export, authentication/user migration feasibility, secrets rotation, API compatibility, DNS/custom domain, CI/CD, staging, backup and restore rehearsal, rollback, operational costs and validation of parity.
+- The working app should be buildable, testable and deployable using documented commands and standard tools **without requiring Lovable access**.
+- **No migration, cutover, deletion or production deployment without explicit approval.** Keep the old app available until the replacement passes functional and security checks.
+- Create a feature branch for actual code changes; do not merge to main without review. Documentation updates do not authorize touching live infrastructure.
+
 ## Mission and scope
 
 Transform the existing WineSnap 2.0 application into a personal AI chef and culinary companion with long-term memory, integrated wine expertise, and an **optional advanced keto / low-carb capability derived from KetoLens**.
@@ -164,10 +178,10 @@ Phases may be reprioritized based on dependencies and measurable user value; do 
 
 ## Codex execution instructions
 
-1. **Begin with a repository audit and a revised detailed implementation plan.**
+1. **Begin with a repository audit, a Lovable dependency/exit audit, and a revised detailed implementation plan that Codex can implement and deploy independently.**
 2. Produce a distinct coherent visual prototype that we can review before major backend changes.
 3. Use a feature branch; do not automatically merge to main or publish production.
-4. Do not deploy production migrations or AI functions without explicit approval. Do not touch or reveal secrets or real user data.
+4. Do not deploy production migrations or AI functions without explicit approval. Do not use Lovable for design, coding, preview generation or deployment. Do not touch or reveal secrets or real user data.
 5. Keep all existing WineSnap functionality and data intact during migration.
 6. Clearly label what has been implemented, what is simulated and what is planned.
 7. Estimate AI and storage costs, and propose staged feature flags and rollback points.
