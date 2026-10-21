@@ -27,6 +27,7 @@ const admin = createClient(origin, secretKey, options);
 const users = [];
 const objects = [];
 const results = [];
+const directReadResults = [];
 let cleanupFailures = 0;
 let completed = false;
 const ok = ({ data, error }) => {
@@ -115,11 +116,31 @@ try {
     assert.match(response.headers.get("cache-control") ?? "", /no-store/);
     await response.body?.cancel();
   };
-  const directDenied = async (client) => {
+  const directDenied = async (client, actor) => {
     const result = await client.storage.from("wine-labels").download(path);
+    directReadResults.push({
+      actor,
+      status: Number.isInteger(result.error?.status) ? result.error.status : null,
+      returnedImage: result.data instanceof Blob,
+    });
     assert.equal(result.data, null);
     assert.ok([400, 401, 403, 404].includes(result.error?.status));
   };
+  const infoDenied = async (client) => {
+    const result = await client.storage.from("wine-labels").info(path);
+    assert.equal(result.data, null);
+    assert.ok([400, 401, 403, 404].includes(result.error?.status));
+  };
+  const headDenied = async (token) => {
+    const response = await testFetch(`${origin}/storage/v1/object/wine-labels/${path}`, {
+      method: "HEAD",
+      headers: { apikey: publicKey, Authorization: `Bearer ${token}` },
+    });
+    assert.ok([400, 401, 403, 404].includes(response.status));
+    await response.body?.cancel();
+  };
+  const ownerObjects = async () =>
+    ok(await owner.client.storage.from("wine-labels").list(owner.id, { limit: 100 }));
   await check("owner receives private PNG through non-cacheable proxy", () =>
     image(owner.token).then(expectImage),
   );
@@ -134,24 +155,36 @@ try {
     image(owner.token, "../other-bucket/image.png").then((r) => expectDenied(r, 400)),
   );
   await check("direct owner download is denied despite owning the image", () =>
-    directDenied(owner.client),
+    directDenied(owner.client, "owner-private"),
   );
-  await check("owner can still read image metadata", async () =>
-    assert.ok(ok(await owner.client.storage.from("wine-labels").info(path))),
+  await check("owner can still list own image metadata", async () =>
+    assert.ok((await ownerObjects()).some((item) => item.name === path.split("/")[1])),
+  );
+  await check("owner GET info cannot authorize a CDN image download", () =>
+    infoDenied(owner.client),
+  );
+  await check("owner HEAD info cannot authorize a CDN image download", () =>
+    headDenied(owner.token),
   );
   await check("owner can still upload and remove a temporary image", async () => {
     const temporary = `${owner.id}/${randomUUID()}.png`;
     await upload(temporary);
-    assert.ok(ok(await owner.client.storage.from("wine-labels").info(temporary)));
+    assert.ok((await ownerObjects()).some((item) => item.name === temporary.split("/")[1]));
     ok(await owner.client.storage.from("wine-labels").remove([temporary]));
-    assert.ok((await owner.client.storage.from("wine-labels").info(temporary)).error);
+    assert.ok(!(await ownerObjects()).some((item) => item.name === temporary.split("/")[1]));
   });
   ok(await owner.client.from("wines").update({ is_public: true }).eq("id", wine.id));
   await check("anonymous reads explicitly shared PNG through proxy", () =>
     image(null).then(expectImage),
   );
   await check("public sharing does not reopen direct Storage downloads", () =>
-    directDenied(stranger.client),
+    directDenied(stranger.client, "stranger-shared"),
+  );
+  await check("shared GET info cannot authorize a CDN image download", () =>
+    infoDenied(stranger.client),
+  );
+  await check("shared HEAD info cannot authorize a CDN image download", () =>
+    headDenied(stranger.token),
   );
   ok(await owner.client.from("wines").update({ is_public: false }).eq("id", wine.id));
   await check("same anonymous proxy request is denied immediately after unsharing", () =>
@@ -196,6 +229,7 @@ try {
     failed: results.filter((r) => !r.passed).length,
     cleanupFailures,
     results,
+    directReadResults,
   };
   const directory = fileURLToPath(new URL("../dist/", import.meta.url));
   await mkdir(directory, { recursive: true });

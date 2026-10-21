@@ -19,15 +19,15 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Preserve the SELECT checks used by existing owner upload/delete/metadata APIs.
--- Unknown operations fail closed; no client download, signing, render or S3 read.
+-- Preserve owner listing and upload/delete checks, not direct object info.
+-- Hosted CDN downloads also authorize through GET object info. HEAD info is
+-- denied too; allowing metadata here can reopen the direct image-byte path.
 CREATE POLICY "Wine labels use revocable image proxy"
   ON storage.objects AS RESTRICTIVE FOR SELECT TO anon, authenticated
   USING (
     bucket_id <> 'wine-labels'
     OR storage.allow_any_operation(ARRAY[
-      'object.list', 'object.list_v2', 'object.get_authenticated_info',
-      'object.head_authenticated_info', 'object.upload', 'object.upload_update',
+      'object.list', 'object.list_v2', 'object.upload', 'object.upload_update',
       'object.delete', 'object.delete_many'
     ])
   );

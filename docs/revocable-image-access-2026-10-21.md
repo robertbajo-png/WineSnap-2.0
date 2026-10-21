@@ -6,7 +6,10 @@ Implemented behind disabled-by-default frontend/backend flags on a feature
 branch. Local handler, adapter and client tests pass, as does a synthetic
 PostgreSQL policy rehearsal. After explicit approval, the endpoint was deployed
 and activated only in WineSnap-test and the test-only restrictive Storage policy
-was installed. The full hosted HTTP acceptance test is **not** yet run. Production
+was installed. The first hosted HTTP acceptance run completed with **12 passes,
+2 failures, and zero cleanup failures**. The two direct Storage download checks
+returned images instead of denying access; this is a real release blocker, not
+a passing proxy rollout. Production
 and main are unchanged. The frontend flag remains off by default; no production
 frontend or independent staging frontend was published by this work.
 
@@ -14,14 +17,50 @@ Actual hosted checks: disabled endpoint returned 503; after activation an
 anonymous nonexistent-image POST returned 404 with `no-store`. The dashboard
 reported the policy transaction successful after confirming zero users, wines
 and Storage objects. These checks do not prove successful owner image delivery
-or immediate revocation through the new endpoint; the full acceptance run is
-still required.
+or immediate revocation by themselves. The subsequent authenticated acceptance
+run proved owner/public proxy delivery and immediate proxy denial after unsharing
+and an erasure request, but not closure of the direct Storage route.
 
 Independent post-deployment SQL confirmed the proxy policy is installed and all
 seven cleanup counts are zero (Auth users, wines, photos, Storage objects, erasure
 receipts, erasure jobs and quota rows). Local screenshot:
 `dist/image-proxy-hosted-test-status.jpg`. This is not a report from the blocked
-authenticated HTTP acceptance test.
+authenticated HTTP acceptance test. After the first HTTP run, independent SQL
+again confirmed all seven counts zero and the private bucket and restrictive
+policy present: `dist/image-proxy-http-cleanup-2026-10-21.jpg`.
+
+### Hosted Metadata Route Finding
+
+The initial safe report (`checkedAt: 2026-10-21T09:17:04.953Z`) is retained locally
+as `dist/hosted-image-proxy-initial-report.json`. Its SHA-256 is
+`8dc122a864803021defcb1ca1b47d6c205735a640049107d55d093f9c73f2c70`.
+The two failed assertions remain failures in that report.
+
+Dashboard API gateway logs show HTTP 200 for the two direct SDK downloads.
+Matching Storage origin logs show GET `/object/info/wine-labels/...` requests,
+rather than direct object-byte requests. This demonstrates that the deployed
+CDN path uses object-info authorization before serving bytes; allowing direct
+GET info also allowed direct downloads. The original SQL simulation used only
+the object-download operation, so it did not catch this hosted routing behavior.
+
+The corrected new-install policy denies both GET and HEAD object-info operations,
+while preserving owner listing, uploads and removal. The app itself does not use
+direct Storage `info()` calls. Metadata remains available through owner-scoped
+listing. `supabase/operations/test-image-proxy-metadata-repair.sql` tightens only
+the exact original restrictive policy in an empty private test project. It
+refuses populated projects and unknown policy definitions. The synthetic database
+checker verifies both a new installation and this exact legacy-policy repair.
+Both local paths passed, together with all 33 migrations, 11 existing SQL
+invariants, 426 Vitest assertions and targeted ESLint/syntax checks.
+
+The guarded repair was then applied successfully only to WineSnap-test. An
+independent readback confirmed the restrictive policy no longer includes
+object-info operations, the bucket remains private, and all seven cleanup counts
+remain zero. Screenshot: `dist/image-proxy-metadata-repair-status.jpg`. A fresh
+extended hosted acceptance run remains pending. The checker now has 18 assertions,
+including owner/shared GET and HEAD info denial, and safe direct-read diagnostics
+containing only a fixed actor label, numeric status and an image-returned boolean.
+No raw error message, token, object path or credential is included.
 
 This implements the next step after the measured
 [Storage CDN revocation finding](image-revocation-diagnostics-2026-10-21.md).
@@ -49,9 +88,10 @@ It does not retroactively turn that old raw-URL test into a pass.
 - Client routing uses `VITE_WINE_IMAGE_PROXY_ENABLED=true`. Once enabled, a proxy
   error never falls back to the direct Storage path. Anonymous calls explicitly
   omit a user bearer token instead of treating a publishable key as a user JWT.
-- Existing uploads, metadata reads and image removal remain direct owner-scoped
+- Existing uploads, metadata listing and image removal remain direct owner-scoped
   Storage operations. The test-only restrictive SELECT policy permits those
-  operation contexts but denies downloads, signing, renders, S3 reads and unknown
+  operation contexts but denies direct GET/HEAD object info, downloads, signing,
+  renders, S3 reads and unknown
   contexts. It does not grant new mutations or alter unrelated buckets.
 
 The storage operation allowlist follows the official
@@ -92,11 +132,15 @@ Test-only rollout order after explicit approval:
 4. Apply `supabase/operations/test-image-proxy-policy.sql` manually to the empty
    test project. Its empty-project/dependency/existing-policy guards are mandatory.
    This file is deliberately not an automatically deployed migration.
+   For the already-installed initial metadata-allowing policy, use only the
+   exact-definition/empty-project guarded `test-image-proxy-metadata-repair.sql`.
+   Do not run its synthetic legacy-policy fixture on a hosted database.
 5. Run `scripts/check-hosted-image-proxy.mjs` using existing test-only keys in
    temporary environment variables, never CLI arguments or a credentials file.
    It creates two disposable accounts and synthetic PNGs, verifies owner/stranger/
-   anonymous boundaries, headers, upload/remove, direct-path denial, unsharing and
-   erasure, then cleans only those fixtures. The safe report is local under
+   anonymous boundaries, headers, listing/upload/remove, direct GET/HEAD info and
+   download denial, unsharing and erasure, then cleans only those fixtures.
+   The safe report is local under
    `dist/hosted-image-proxy-report.json`.
 6. Independently confirm the usual seven aggregate cleanup counts are zero.
    Retain hosted HTTP results separately from local contract results.
@@ -117,9 +161,9 @@ finally block. It writes no credential file or persistent user/machine setting.
 Run it from PowerShell 7 in the user's normal local terminal, outside the blocked
 automation environment. Only the safe test report should be shared afterward.
 
-This manual secure-entry step is not a completed hosted acceptance test. Do not
-mark the image fix fully verified until the report passes and independent cleanup
-counts are zero.
+The user completed this secure-entry step for the initial 12-pass/2-failure run.
+Do not mark the image fix fully verified until a fresh report passes after the
+metadata-route repair and independent cleanup counts are zero.
 
 Do not roll back only the frontend flag while leaving the direct-download policy
 in place: old clients would fail to display images. Before applying the policy,
@@ -142,7 +186,8 @@ local test run passed. Neither failure was hidden by dropping an assertion.
 
 ## Remaining Release Boundaries
 
-- Hosted permission/HTTP and staging browser checks remain pending until performed.
+- Hosted HTTP re-verification after the metadata-route repair and staging browser
+  checks remain pending. The initial HTTP run is completed but not all green.
 - The original raw CDN cache finding remains valid for already fetched old URLs.
   Existing signed URLs may also bypass current RLS until retired. This feature
   cannot instantly revoke copies already downloaded by a recipient.

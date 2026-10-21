@@ -183,12 +183,17 @@ try {
   for (const file of [
     "supabase/operations/test-image-proxy-policy.sql",
     "supabase/tests/image_proxy.local.sql",
+    "supabase/tests/image_proxy_legacy_metadata.local.sql",
+    "supabase/operations/test-image-proxy-metadata-repair.sql",
+    "supabase/tests/image_proxy.local.sql",
   ]) {
     const source = await readFile(resolve(root, file), "utf8");
     await db.unsafe(source);
     imageProxyFiles.push({ file, sha256: createHash("sha256").update(source).digest("hex") });
   }
-  console.log("PASS test-only image proxy policy: raw reads denied, owner mutations preserved");
+  console.log(
+    "PASS new and repaired image policies: raw/info reads denied, owner listing/mutations preserved",
+  );
   stage = "write-synthetic-report";
   report = {
     status: "passed",

@@ -15,6 +15,8 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '55555555-5555-4555-8555-555555555551', true);
 DO $$ DECLARE op text; BEGIN
   FOREACH op IN ARRAY ARRAY['object.get_authenticated', 'storage.object.get_authenticated',
+    'object.get_authenticated_info', 'storage.object.get_authenticated_info',
+    'object.head_authenticated_info', 'storage.object.head_authenticated_info',
     'render.image_authenticated', 'render.image_public', 'render.image_sign',
     'object.sign', 'object.sign_many', 's3.object.get', 'future.download', ''] LOOP
     PERFORM set_config('test.storage_operation', op, true);
@@ -22,11 +24,11 @@ DO $$ DECLARE op text; BEGIN
       RAISE EXCEPTION 'Client image bytes must only use proxy';
     END IF;
   END LOOP;
-  FOREACH op IN ARRAY ARRAY['object.list', 'storage.object.list', 'object.get_authenticated_info',
+  FOREACH op IN ARRAY ARRAY['object.list', 'storage.object.list', 'object.list_v2',
     'object.delete', 'object.delete_many', 'object.upload', 'object.upload_update'] LOOP
     PERFORM set_config('test.storage_operation', op, true);
     IF (SELECT count(*) FROM storage.objects) <> 1 THEN
-      RAISE EXCEPTION 'Owner metadata/mutation SELECT check regressed';
+      RAISE EXCEPTION 'Owner listing/mutation SELECT check regressed';
     END IF;
   END LOOP;
 END $$;
