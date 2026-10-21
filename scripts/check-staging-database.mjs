@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
@@ -107,17 +107,51 @@ try {
   stage = "bootstrap-platform-contracts";
   await db.unsafe(await readFile(resolve(root, "supabase/tests/bootstrap.local.sql"), "utf8"));
   const inventory = await sqlInventory(root);
+  const preflightFile = "supabase/operations/staging-preflight.sql";
+  const preflightSource = await readFile(resolve(root, preflightFile), "utf8");
+  async function checkPreflight(privacyInstalled) {
+    const counts = async () =>
+      (
+        await db`SELECT
+      (SELECT count(*)::int FROM auth.users) AS auth_users,
+      (SELECT count(*)::int FROM public.wines) AS wines,
+      (SELECT count(*)::int FROM public.wine_photos) AS wine_photos,
+      (SELECT count(*)::int FROM storage.objects) AS storage_objects`
+      )[0];
+    const before = await counts();
+    const rows = (await db.unsafe(preflightSource)).flat().filter((row) => row?.check_name);
+    assert.equal(rows.length, 6, "Expected six preflight result groups");
+    assert.deepEqual(rows.find((row) => row.check_name === "counts_only").result, { ...before });
+    assert.deepEqual({ ...(await counts()) }, { ...before }, "Preflight changed fixture counts");
+    const functions = rows.find((row) => row.check_name === "function_permissions").result;
+    const tables = rows.find((row) => row.check_name === "table_security").result;
+    assert.equal(
+      functions.find((item) => item.function === "privacy_account_active").present,
+      privacyInstalled,
+    );
+    assert.equal(
+      tables.find((item) => item.table === "privacy_erasure_receipts").present,
+      privacyInstalled,
+    );
+  }
   const owner = randomUUID();
   const wine = randomUUID();
   const share = `synthetic+legacy/${randomUUID()}`;
   const path = `${owner}/legacy.jpg`;
   let seeded = false;
+  let preflightBeforePrivacy = false;
   for (const migration of inventory.migrations) {
     if (!seeded && migration.name >= "20260923") {
       stage = "seed-legacy-upgrade-fixture";
       await db`INSERT INTO auth.users (id,email) VALUES (${owner},'staging-fixture@example.test')`;
       await db`INSERT INTO public.wines (id,user_id,wine_name,is_public,share_id,image_url) VALUES (${wine},${owner},'Synthetic legacy wine',true,${share},${`https://example.invalid/storage/v1/object/public/wine-labels/${path}`})`;
       seeded = true;
+    }
+    if (migration.name === "20261013180000_privacy_controls.sql") {
+      stage = "preflight-before-privacy-migration";
+      await checkPreflight(false);
+      preflightBeforePrivacy = true;
+      console.log("PASS preflight detects missing privacy schema without changing fixture counts");
     }
     stage = migration.name;
     await db.unsafe(migration.source);
@@ -135,6 +169,10 @@ try {
     await db.unsafe(invariant.source);
     console.log(`PASS invariants ${invariant.name}`);
   }
+  stage = "read-only-staging-preflight";
+  assert(preflightBeforePrivacy);
+  await checkPreflight(true);
+  console.log("PASS preflight detects installed privacy schema without changing fixture counts");
   stage = "write-synthetic-report";
   report = {
     status: "passed",
@@ -143,8 +181,13 @@ try {
     migrations: inventory.migrations.length,
     invariantFiles: inventory.invariants.length,
     legacyShareAndImage: "preserved",
+    readOnlyPreflight: "passed before and after privacy migration",
     scope: "Synthetic PostgreSQL platform contracts only; not hosted Auth JWT or Storage HTTP",
-    files: [...inventory.migrations, ...inventory.invariants].map(({ file, sha256 }) => ({
+    files: [
+      ...inventory.migrations,
+      ...inventory.invariants,
+      { file: preflightFile, sha256: createHash("sha256").update(preflightSource).digest("hex") },
+    ].map(({ file, sha256 }) => ({
       file,
       sha256,
     })),
