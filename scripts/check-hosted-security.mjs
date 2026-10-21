@@ -13,13 +13,40 @@ const credentials = process.argv[2]
       secretKey: process.env.WINESNAP_TEST_SECRET_KEY,
     };
 assert.ok(credentials.publicKey && credentials.secretKey, "Test credentials required");
+let activeCheck = "fixture setup";
+let physicalDeletionAt = null;
+const storageResponses = [];
 const options = {
   auth: { persistSession: false, autoRefreshToken: false },
   global: {
-    fetch: (input, init) => {
+    fetch: async (input, init) => {
       const target = new URL(input instanceof Request ? input.url : String(input));
       assert.equal(target.origin, url, "Hosted tests may only contact WineSnap-test");
-      return fetch(input, { ...init, redirect: "error", signal: AbortSignal.timeout(20000) });
+      const response = await fetch(input, {
+        ...init,
+        redirect: "error",
+        signal: AbortSignal.timeout(20000),
+      });
+      if (
+        target.pathname.startsWith("/storage/v1/object/") &&
+        (!init?.method || init.method === "GET")
+      ) {
+        // Never retain request headers, URLs, tokens or file/user identifiers.
+        const headers = Object.fromEntries(
+          ["cache-control", "cf-cache-status", "age", "vary", "x-cache", "expires", "content-type"]
+            .map((name) => [name, response.headers.get(name)])
+            .filter(([, value]) => value !== null),
+        );
+        storageResponses.push({
+          check: activeCheck,
+          status: response.status,
+          requestCache: init?.cache ?? "default",
+          cacheNonce: target.searchParams.has("cacheNonce"),
+          sinceDeletionMs: physicalDeletionAt === null ? null : Date.now() - physicalDeletionAt,
+          headers,
+        });
+      }
+      return response;
     },
   },
 };
@@ -37,6 +64,7 @@ const ok = ({ data, error }) => {
   return data;
 };
 async function check(name, test) {
+  activeCheck = name;
   try {
     await test();
     passed++;
@@ -46,6 +74,8 @@ async function check(name, test) {
     failures++;
     results.push({ name, passed: false });
     console.log(`FAIL ${name}`);
+  } finally {
+    activeCheck = "fixture setup";
   }
 }
 try {
@@ -309,6 +339,48 @@ try {
       1,
     ),
   );
+  await check("anonymous cannot reuse shared image URL after erasure request", async () =>
+    assert.ok(
+      (await anon.storage.from("wine-labels").download(path, {}, { cache: "no-store" })).error,
+    ),
+  );
+  await check("service physically deletes the synthetic image", async () => {
+    assert.ok(ok(await admin.storage.from("wine-labels").info(path)));
+    ok(await admin.storage.from("wine-labels").remove([path]));
+    physicalDeletionAt = Date.now();
+    assert.ok((await admin.storage.from("wine-labels").info(path)).error);
+  });
+  await check("fresh image request denied after physical deletion", async () =>
+    assert.ok(
+      (
+        await owner.client.storage
+          .from("wine-labels")
+          .download(path, { cacheNonce: randomUUID() }, { cache: "no-store" })
+      ).error,
+    ),
+  );
+  await check("previous image URLs denied within 65 seconds after physical deletion", async () => {
+    assert.notEqual(physicalDeletionAt, null, "Physical deletion must succeed first");
+    const deadline = physicalDeletionAt + 65000;
+    while (true) {
+      const ownerRead = await owner.client.storage
+        .from("wine-labels")
+        .download(path, {}, { cache: "no-store" });
+      const publicRead = await anon.storage
+        .from("wine-labels")
+        .download(path, {}, { cache: "no-store" });
+      assert.ok(
+        Date.now() <= deadline,
+        "Image revocation observation exceeded the deletion window",
+      );
+      if (ownerRead.error && publicRead.error) break;
+      assert.ok(
+        Date.now() < deadline,
+        "Previously fetched image URL still readable after deletion window",
+      );
+      await new Promise((resolve) => setTimeout(resolve, Math.min(10000, deadline - Date.now())));
+    }
+  });
   completed = true;
 } finally {
   // Only synthetic fixtures created in this invocation may be removed.
@@ -334,10 +406,11 @@ try {
     cleanupFailures,
     scope: "Hosted Auth JWT, Storage HTTP and database RPC; no AI, UI or production deployment",
     results,
+    storageResponses,
   };
   const directory = fileURLToPath(new URL("../dist/", import.meta.url));
   await mkdir(directory, { recursive: true });
   await writeFile(`${directory}/hosted-security-report.json`, JSON.stringify(report, null, 2));
-  console.log(JSON.stringify({ ...report, results: undefined }));
+  console.log(JSON.stringify({ ...report, results: undefined, storageResponses: undefined }));
 }
 if (!completed || failures || cleanupFailures) process.exitCode = 1;

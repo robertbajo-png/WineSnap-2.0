@@ -6,6 +6,10 @@ This report supersedes the pending role/privacy checks in
 [the earlier preflight](hosted-staging-preflight-2026-10-21.md), not its historical
 observations. This is not full product or release acceptance.
 
+Continuation: [image cache diagnostics](image-revocation-diagnostics-2026-10-21.md)
+now identify the CDN response and test physical deletion. The original results
+below are retained; they have not been retroactively relabeled as successful.
+
 ## Approved Changes
 
 The live project was empty before changes: no Auth users, wines or Storage

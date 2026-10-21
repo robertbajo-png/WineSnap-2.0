@@ -40,4 +40,24 @@ describe("authenticated wine image downloads", () => {
     download.mockResolvedValue({ data: new Blob(["image"]), error: null });
     expect(await downloadWineImage("private.jpg", controller.signal)).toBeNull();
   });
+
+  it("uses a new cache nonce even when reading the same image twice", async () => {
+    download.mockResolvedValue({ data: new Blob(["image"]), error: null });
+    vi.spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
+      .mockReturnValueOnce("00000000-0000-4000-8000-000000000002");
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test-image");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const controller = new AbortController();
+    const first = await downloadWineImage("owner/photo.jpg", controller.signal);
+    const second = await downloadWineImage("owner/photo.jpg", controller.signal);
+
+    expect(download.mock.calls.map(([, options]) => options.cacheNonce)).toEqual([
+      "00000000-0000-4000-8000-000000000001",
+      "00000000-0000-4000-8000-000000000002",
+    ]);
+    expect(download.mock.calls.every(([, , options]) => options.cache === "no-store")).toBe(true);
+    first?.release();
+    second?.release();
+  });
 });

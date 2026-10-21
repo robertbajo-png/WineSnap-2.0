@@ -31,6 +31,13 @@ been performed by creating these files. No real account or cellar was erased.
   JWTs. The worker removes owned Storage files in all buckets before deleting Auth.
   Legacy photo metadata without an Auth FK is removed explicitly. Batches and
   five-minute claims support retries without reporting partial erasure as complete.
+  These RLS checks apply at the origin; an already cached Storage response can
+  still be served for the same previously authorized URL/token. The app bypasses
+  that cache using a new nonce per image request. Physical file deletion also
+  requires CDN propagation before previously fetched URLs are denied. Do not
+  describe the worker's `complete` result as an instantaneous purge of every CDN
+  or browser copy. See the measured
+  [test-only image revocation findings](image-revocation-diagnostics-2026-10-21.md).
 - A service-only erasure receipt survives the Auth cascade. It contains account ID
   and request/completion times, not wine/chat contents; cleanup expires completed
   receipts after 30 days. A missing completion mark is reconciled by maintenance.
