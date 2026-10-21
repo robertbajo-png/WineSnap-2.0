@@ -1,3 +1,4 @@
+param([switch]$Browser)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $node = Get-Command node -ErrorAction SilentlyContinue
@@ -24,7 +25,8 @@ try {
   $start.WorkingDirectory = $root
   $start.UseShellExecute = $false
   $start.CreateNoWindow = $true
-  $start.ArgumentList.Add((Join-Path $PSScriptRoot 'check-hosted-image-proxy.mjs'))
+  $entry = if ($Browser) { 'run-hosted-image-browser.mjs' } else { 'check-hosted-image-proxy.mjs' }
+  $start.ArgumentList.Add((Join-Path $PSScriptRoot $entry))
   $start.Environment['WINESNAP_TEST_PUBLISHABLE_KEY'] = $publicValue
   $start.Environment['WINESNAP_TEST_SECRET_KEY'] = $secretValue
   $process = [System.Diagnostics.Process]::Start($start)
@@ -39,5 +41,9 @@ try {
   $public.Dispose()
   $secret.Dispose()
 }
-Write-Host 'Safe report: dist/hosted-image-proxy-report.json'
+if ($Browser) {
+  Write-Host 'Safe session report: dist/hosted-image-browser-session.json'
+} else {
+  Write-Host 'Safe report: dist/hosted-image-proxy-report.json'
+}
 exit $exitCode

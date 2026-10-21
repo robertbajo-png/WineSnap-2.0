@@ -209,6 +209,8 @@ local test run passed. Neither failure was hidden by dropping an assertion.
 - Hosted backend HTTP verification is green after the metadata-route repair.
   A separate staging frontend with the proxy flag on still needs browser checks;
   no such frontend was published by this work.
+  Local actual-app browser preparation and its pending checks are recorded in
+  [Hosted Image Browser Acceptance](image-browser-acceptance-2026-10-21.md).
 - The original raw CDN cache finding remains valid for already fetched old URLs.
   Existing signed URLs may also bypass current RLS until retired. This feature
   cannot instantly revoke copies already downloaded by a recipient.
