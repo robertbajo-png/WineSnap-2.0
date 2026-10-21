@@ -17,6 +17,7 @@ that the original Chrome dialog was closed. The 18-pass hosted HTTP image
 test was also rerun successfully and is documented separately in
 [Revocable Image Access](revocable-image-access-2026-10-21.md).
 This is image-only local frontend acceptance, not a production release verdict.
+The later built-PWA run also passed all 17 checks; its distinct evidence is below.
 
 ## Local Session
 
@@ -179,6 +180,9 @@ Screenshots were visually inspected on desktop and mobile. Owner mobile proof:
 Erasure proof: `dist/image-browser-erasure-images-cleared.png`, SHA-256
 `18ed64c8dba52705de1b7589b37bc9cde7c14ede9cb63940abe5ecdf29fa30e7`.
 The report also lists desktop, cellar, peer-denied, shared and unshared screenshots.
+These hashes identify the original 12-check run. Screenshot paths are local
+latest-run artifacts and may be replaced by subsequent PWA captures; their latest
+hashes belong to the PWA evidence below, not to the historical run.
 
 To repeat, start the secure `-Browser` wrapper above, then run the driver in a
 second terminal while that fresh private fixture is ready:
@@ -199,6 +203,107 @@ Avoid the AI Picks/Ask/scan-analysis actions in this image-only acceptance run.
 Sharing state can be controlled through the fixture operator page without
 opening a native operating-system share dialog. This does not test that dialog.
 
+## Built PWA Test Mode
+
+```powershell
+./scripts/run-hosted-image-proxy-check.ps1 -Browser -Pwa
+# In a second terminal, with the same optional local Playwright module setting:
+node scripts/check-hosted-image-browser.mjs
+```
+
+The wrapper reuses the enrolled encrypted test keys. `-Pwa` without `-Browser`
+is refused. The runner builds the actual application in `image-browser` mode,
+then starts its Node artifact on loopback. It never uses the synthetic
+`runtime-check` artifact as the real app. This rebuilds
+`dist/independent-runtime`; rebuild `runtime-check` mode before using the separate
+synthetic runtime checker again. The default Lovable build is unchanged.
+
+The build and app children receive fresh allowlisted public test configuration,
+not the parent operator's admin key or other inherited private settings. The Node
+server is bound to 127.0.0.1 and receives only the public test URL/key. Privileged
+fixture operations stay in the existing guarded local operator. Builds time out
+after ten minutes, startup after five; fixtures are not created before readiness.
+
+The same driver detects the fresh `runtime=built` session and runs 17 checks:
+the original 12 image scenarios plus real service-worker activation, obsolete
+cache removal, explicit update confirmation, offline layout and cache privacy.
+Normal development mode still runs 12 checks with service workers blocked.
+The PWA report is separate: `dist/hosted-image-pwa-report.json`.
+
+The production `AppUpdate` component registers the actual `/sw.js` worker.
+Owner, peer and anonymous contexts must each be controlled by that worker.
+The test seeds only empty obsolete WineSnap caches and an unrelated empty cache,
+then verifies activation removes the obsolete ones but preserves the unrelated
+one. It does not seed real user data or change production caches.
+
+For update testing, registering the same real worker with a fixed revision query
+creates a waiting worker. The normal app dialog must appear, Cancel must preserve
+a synthetic unsaved email field and leave the worker waiting, and Reload must
+activate the worker and reload the document. This tests the browser/app lifecycle,
+not an upgrade from a historical production binary or a native OS install prompt.
+
+Five cache audits inspect actual Cache Storage while private/shared images are
+visible and after erasure, offline navigation and peer denial. Only same-origin
+bundled public assets, icons and the offline shell are allowed. Readable cached
+bodies are checked for token/secret-shaped values and known synthetic account,
+draft and wine markers. Only aggregate findings are reported, never cached bodies
+or credentials. Context-level network listeners also observe worker-owned requests;
+see [Playwright service-worker network events](https://playwright.dev/docs/service-workers#network-events-and-routing).
+
+The worker now precaches the offline icon with its HTML and uses cache version
+`2026-10-21-revocable-images`. The offline page includes padding in its viewport
+height, uses 16px body text and provides a 48px retry target. The browser checks
+the 390 by 844 layout for horizontal/vertical overflow and a target of at least
+44 rendered CSS pixels; it also requires the offline icon to decode and no managed
+wine image to remain.
+
+### PWA Result
+
+**17 passed, zero failed, cleanup confirmed**, at 2026-10-21T19:49:38.441Z.
+Report SHA-256:
+`5bc83f680c3c44dcd72f32749b750c80aada7e66e2c75cb95e828798409a4262`.
+All three app contexts were naturally worker-controlled. The same three real
+focus transitions still revoked previously displayed images with the worker on.
+There were zero direct Storage reads, AI requests, page/script errors, unexpected
+HTTP errors or blocked unexpected requests.
+
+Cache audits counted 43 entries with the owner's private images visible, nine
+with the anonymous shared image visible, 45 after owner erasure, 16 after offline
+navigation, and 39 in the denied peer context. Every audit found zero unexpected
+URLs and zero private-marker/token-shaped bodies. These are concrete fixture
+observations, not proof that every future private payload will match a regex.
+
+The final offline document and scroll dimensions both measured 390 by 844.
+The retry target measured 47.999 CSS pixels, above the unchanged 44px minimum.
+Desktop/mobile screenshots were visually reviewed. Latest local proof:
+
+- `dist/image-browser-pwa-update-confirmation.png`, SHA-256
+  `83ad58923e7a27cc660dab5e88015df5c694f6fa73e664d89a758371137b55ec`.
+- `dist/image-browser-pwa-offline-mobile.png`, SHA-256
+  `e63b89e02cf2daad846063b4d5c034bcf22e658d067dc99b89cf8f7db235d4ac`.
+- `dist/image-browser-owner-mobile-e2e.png`, latest PWA capture SHA-256
+  `08c51d453e66fab3e798d828e8054adc816837f3af735eac96e397037f9b7e1c`.
+
+The initial PWA run passed 17 checks before the visual review added a stricter
+offline layout/touch assertion. The next run passed 15, failed that touch target
+and left the final cache check pending; it remains a failure in
+`dist/hosted-image-pwa-touch-target-report.json`. An isolated built-app diagnostic
+measured a CSS 44px link as 43.996px under headed-window scaling. The source now
+uses 48px; the test's 44px threshold was not weakened. The final clean-fixture run
+reran all 17 assertions successfully, including the added layout measurements.
+
+Code checks: 446 unit tests in 67 files, TypeScript, Node syntax, PowerShell parser,
+and ESLint pass. Local lint excludes generated dependency-backup and tool-cache
+directories; those are not application source. The actual configured Node build
+was exercised by this browser run. No backend function, SQL policy or production
+setting changed; the separate earlier 18-pass backend report still stands.
+
+All three PWA fixture sessions cleaned successfully and closed their six checked
+app/operator ports. The isolated browsers and diagnostic server were closed.
+An independent read-only API count at 2026-10-21T19:50:14.020Z again confirmed zero
+Auth users, wines, photos, erasure receipts, erasure jobs, quota rows and Storage
+root entries in WineSnap-test. No production project was queried or changed.
+
 ## Cleanup And Safety
 
 Finish through the local operator's cleanup button, or Ctrl+C in the interactive
@@ -213,7 +318,7 @@ check aggregate Auth/wine/photo/Storage/erasure/job/quota counts in the dashboar
 afterward, and verify the app's loopback port has closed. Keep a passing browser
 verdict separate from this cleanup proof and the HTTP test report.
 
-Final code checks passed: 440 Vitest assertions in 67 files, TypeScript, targeted
+Initial image-only code checks passed: 440 Vitest assertions in 67 files, TypeScript, targeted
 ESLint, Node syntax, PowerShell parser and the independent runtime-check build.
 The build retains its existing large-chunk warning. These cover public environment
 isolation, target pinning, local mutation guards and HTML escaping. They do not
@@ -241,6 +346,8 @@ Storage entries. The local report is `dist/image-browser-cleanup-counts.json`.
 The earlier SQL cleanup proof remains a separate prior observation; this readback
 did not require a dashboard mutation or production access.
 
-Not tested here: AI identification, PWA/service-worker lifecycle, native OS share
-UI, production schema/caches or public deployment. Service workers were blocked
-in this isolated image acceptance run, so no PWA acceptance is inferred.
+Not tested by the original 12-check run: AI identification, PWA/service-worker
+lifecycle, native OS share UI, production schema/caches or public deployment.
+Service workers were blocked in that original run. The built PWA mode above is
+separate; neither mode proves installation or camera/background behavior on a
+physical iPhone/Android device, or production release acceptance.

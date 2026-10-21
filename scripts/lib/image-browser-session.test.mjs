@@ -6,6 +6,8 @@ import {
   imageTestOrigin,
   imageBrowserSessionUrls,
   imageBrowserRequestAllowed,
+  imageBrowserPwaCacheEntryAllowed,
+  imageBrowserRuntimeEnvironment,
 } from "./image-browser-session.mjs";
 
 describe("hosted image browser session boundaries", () => {
@@ -26,6 +28,7 @@ describe("hosted image browser session boundaries", () => {
       { project: "production" },
       { phase: "cleaned" },
       { setupCompleted: false },
+      { runtime: "production" },
       { checkedAt: "invalid" },
       { checkedAt: "2026-10-20T12:00:00.000Z" },
       { appUrl: "https://example.com" },
@@ -38,6 +41,59 @@ describe("hosted image browser session boundaries", () => {
       expect(() =>
         imageBrowserSessionUrls({ ...session, ...changes }, Date.parse(checkedAt)),
       ).toThrow();
+    }
+  });
+  it("limits PWA caches to bundled public assets and the offline shell", () => {
+    for (const path of [
+      "/offline.html",
+      "/icon-512.png",
+      "/favicon.png",
+      "/assets/app-hash.js",
+      "/assets/bottle-hash.jpg",
+    ]) {
+      expect(imageBrowserPwaCacheEntryAllowed(session.appUrl + path, session.appUrl)).toBe(true);
+    }
+    for (const url of [
+      session.wineUrl,
+      session.shareUrl,
+      session.appUrl + "/login",
+      session.appUrl + "/api/private.jpg",
+      session.appUrl + "/_serverFn/test.js",
+      session.appUrl + "/assets/app.js?token=synthetic",
+      session.appUrl + "/wine-labels/private.jpg",
+      `${imageTestOrigin}/functions/v1/wine-image`,
+      `${imageTestOrigin}/storage/v1/object/private/wine-labels/test.jpg`,
+      "blob:" + session.appUrl + "/synthetic",
+      "http://user:password@127.0.0.1:5203/offline.html",
+    ]) {
+      expect(imageBrowserPwaCacheEntryAllowed(url, session.appUrl)).toBe(false);
+    }
+  });
+  it("runs the built app on loopback with public test settings but no operator secrets", () => {
+    const env = imageBrowserRuntimeEnvironment(
+      {
+        PATH: "synthetic-path",
+        WINESNAP_TEST_SECRET_KEY: "private-canary",
+        SUPABASE_SERVICE_ROLE_KEY: "private-canary",
+        NODE_OPTIONS: "--import private-canary",
+        SUPABASE_URL: "https://production.invalid",
+        NITRO_HOST: "0.0.0.0",
+      },
+      "sb_publishable_synthetic",
+      5203,
+    );
+    expect(env).toMatchObject({
+      NODE_ENV: "production",
+      HOST: "127.0.0.1",
+      NITRO_HOST: "127.0.0.1",
+      PORT: "5203",
+      NITRO_PORT: "5203",
+      SUPABASE_URL: imageTestOrigin,
+      SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
+    });
+    expect(JSON.stringify(env)).not.toMatch(/private-canary|production.invalid|0\.0\.0\.0/);
+    for (const port of [0, 80, 65536, 5203.5, "5203"]) {
+      expect(() => imageBrowserRuntimeEnvironment({}, "sb_publishable_synthetic", port)).toThrow();
     }
   });
   it("blocks production, unexpected origins and all AI functions in the browser run", () => {

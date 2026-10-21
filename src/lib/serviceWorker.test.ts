@@ -35,6 +35,8 @@ function worker() {
             "winesnap-pages-2026-10-03",
             "winesnap-assets-2026-10-10-scan-errors",
             "winesnap-pages-2026-10-10-scan-errors",
+            "winesnap-assets-2026-10-13-privacy-controls",
+            "winesnap-pages-2026-10-13-privacy-controls",
             ...currentCaches,
           ],
           delete: remove,
@@ -60,7 +62,7 @@ describe("release service worker", () => {
       },
     });
     await installed;
-    expect(cache.addAll).toHaveBeenCalledWith(["/offline.html"]);
+    expect(cache.addAll).toHaveBeenCalledWith(["/offline.html", "/icon-512.png"]);
     expect(skipWaiting).not.toHaveBeenCalled();
     listeners.get("message")?.({ data: "SKIP_WAITING" });
     expect(skipWaiting).toHaveBeenCalledOnce();
@@ -99,6 +101,8 @@ describe("release service worker", () => {
       "winesnap-pages-2026-10-03",
       "winesnap-assets-2026-10-10-scan-errors",
       "winesnap-pages-2026-10-10-scan-errors",
+      "winesnap-assets-2026-10-13-privacy-controls",
+      "winesnap-pages-2026-10-13-privacy-controls",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });
@@ -113,4 +117,17 @@ describe("release service worker", () => {
     listeners.get("fetch")?.({ request: { method: "GET", url, mode: "cors" }, respondWith });
     expect(respondWith).not.toHaveBeenCalled();
   });
+
+  it.each(["POST", "PUT", "DELETE", "HEAD"])(
+    "does not intercept %s image/API requests",
+    (method) => {
+      const { listeners } = worker();
+      const respondWith = vi.fn();
+      listeners.get("fetch")?.({
+        request: { method, url: "https://wine.example/api/wine-image", mode: "cors" },
+        respondWith,
+      });
+      expect(respondWith).not.toHaveBeenCalled();
+    },
+  );
 });

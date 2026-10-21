@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import {
   imageBrowserRequestAllowed,
+  imageBrowserPwaCacheEntryAllowed,
   imageBrowserSessionUrls,
   imageTestOrigin,
 } from "./lib/image-browser-session.mjs";
@@ -12,7 +13,8 @@ assert.equal(process.argv.length, 2, "This check accepts no connection arguments
 assert.ok(!process.env.WINESNAP_TEST_SECRET_KEY, "Browser checks must not inherit admin keys");
 const root = fileURLToPath(new URL("../", import.meta.url));
 const lifecycleFile = new URL("../dist/hosted-image-browser-session.json", import.meta.url);
-const reportFile = new URL("../dist/hosted-image-playwright-report.json", import.meta.url);
+let reportFile = new URL("../dist/hosted-image-playwright-report.json", import.meta.url);
+let pwaMode = false;
 const steps = [
   "anonymous private share is unavailable",
   "owner signs in and sees decoded private cellar thumbnail",
@@ -93,6 +95,52 @@ async function login(page, email, password) {
   await page.getByLabel("Lösenord", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Logga in", exact: true }).click();
   await page.waitForURL(urls.appUrl + "/");
+  if (pwaMode) await controlled(page);
+}
+async function controlled(page) {
+  await page.waitForFunction(
+    () =>
+      navigator.serviceWorker.controller &&
+      new URL(navigator.serviceWorker.controller.scriptURL).pathname === "/sw.js",
+  );
+}
+async function auditCache(page, actor, stage) {
+  if (!pwaMode) return;
+  const entries = await page.evaluate(async () => {
+    const result = [];
+    for (const name of await caches.keys()) {
+      if (!name.startsWith("winesnap-")) continue;
+      const cache = await caches.open(name);
+      for (const request of await cache.keys()) {
+        const response = await cache.match(request);
+        const readable = /javascript|text|json/.test(response.headers.get("content-type") ?? "");
+        const body = readable ? await response.text() : "";
+        result.push({
+          url: request.url,
+          privateBody:
+            /sb_secret_[A-Za-z0-9_-]{16,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|winesnap-browser-[^\s"<>]+@example\.test|pwa-unsaved@example\.test|Synthetic image access test/.test(
+              body,
+            ),
+        });
+      }
+    }
+    return result;
+  });
+  const unexpected = entries.filter(
+    ({ url }) => !imageBrowserPwaCacheEntryAllowed(url, urls.appUrl),
+  );
+  const privateBodies = entries.filter((entry) => entry.privateBody).length;
+  report.pwa.cacheAudits.push({
+    actor,
+    stage,
+    entries: entries.length,
+    unexpected: unexpected.length,
+    privateBodies,
+  });
+  assert.equal(unexpected.length, 0);
+  assert.equal(privateBodies, 0);
+  assert.ok(entries.some(({ url }) => new URL(url).pathname === "/offline.html"));
+  assert.ok(entries.some(({ url }) => new URL(url).pathname.startsWith("/assets/")));
 }
 async function control(name, phase) {
   await operator.getByRole("button", { name, exact: true }).click();
@@ -132,6 +180,20 @@ async function focusAndWaitForImage(page, otherPage) {
 try {
   const session = JSON.parse(await readFile(lifecycleFile, "utf8"));
   urls = imageBrowserSessionUrls(session);
+  pwaMode = session.runtime === "built";
+  if (pwaMode) {
+    reportFile = new URL("../dist/hosted-image-pwa-report.json", import.meta.url);
+    report.pwa = { cacheAudits: [] };
+    report.results.push(
+      ...[
+        "built app naturally activates the real service worker for all app users",
+        "activation deletes obsolete WineSnap caches but preserves unrelated caches",
+        "update waits for explicit confirmation and reloads only after approval",
+        "offline navigation shows only the offline shell with a decoded icon",
+        "no account HTML, private images, credentials or API responses enter PWA caches",
+      ].map((name) => ({ name, status: "pending" })),
+    );
+  }
   const moduleFile = process.env.WINESNAP_PLAYWRIGHT_MODULE;
   const { chromium } = await import(
     moduleFile ? pathToFileURL(resolve(moduleFile)).href : "playwright"
@@ -142,7 +204,7 @@ try {
     const context = await testBrowser.newContext({
       viewport: { width: 1440, height: 1000 },
       locale: "sv-SE",
-      serviceWorkers: "block",
+      serviceWorkers: pwaMode && name !== "operator" ? "allow" : "block",
     });
     await context.route("**/*", async (route) => {
       const request = route.request();
@@ -174,7 +236,7 @@ try {
         scriptConsoleErrors++;
       }
     });
-    page.on("response", (response) => {
+    context.on("response", (response) => {
       const url = new URL(response.url());
       const proxy = url.origin === imageTestOrigin && url.pathname === "/functions/v1/wine-image";
       if (proxy) {
@@ -218,6 +280,17 @@ try {
     await imageCount(anonymous, 0);
   });
   await check(1, async () => {
+    if (pwaMode) {
+      await owner.goto(`${urls.appUrl}/offline.html`);
+      await owner.evaluate(async () => {
+        for (const name of [
+          "winesnap-assets-2026-10-13-privacy-controls",
+          "winesnap-pages-2026-10-13-privacy-controls",
+          "image-browser-unrelated",
+        ])
+          await caches.open(name);
+      });
+    }
     await login(owner, credentials[0], credentials[1]);
     await owner.goto(`${urls.appUrl}/cellar`);
     await owner.getByRole("heading", { name: "Min källare", exact: true }).waitFor();
@@ -229,6 +302,7 @@ try {
     await owner.getByRole("heading", { name: /Synthetic image access test/ }).waitFor();
     await owner.getByRole("button", { name: "Översikt", exact: true }).click();
     await decoded(owner, 2);
+    await auditCache(owner, "owner", "private-images-visible");
   });
   await check(3, async () => {
     await layout(owner);
@@ -275,6 +349,8 @@ try {
     await anonymous.reload();
     await anonymous.getByRole("heading", { name: /Synthetic image access test/ }).waitFor();
     await decoded(anonymous, 1);
+    if (pwaMode) await controlled(anonymous);
+    await auditCache(anonymous, "anonymous", "shared-image-visible");
     assert.ok(
       report.proxyResponses.some(
         (response) =>
@@ -325,6 +401,103 @@ try {
     assert.equal(scriptConsoleErrors, 0);
     assert.equal(unexpectedResponses.length, 0);
   });
+  if (pwaMode) {
+    await check(12, async () => {
+      for (const page of [owner, peer, anonymous]) await controlled(page);
+      report.pwa.controlledContexts = 3;
+    });
+    await check(13, async () => {
+      const names = await owner.evaluate(() => caches.keys());
+      assert.ok(names.includes("image-browser-unrelated"));
+      assert.ok(!names.includes("winesnap-assets-2026-10-13-privacy-controls"));
+      assert.ok(!names.includes("winesnap-pages-2026-10-13-privacy-controls"));
+    });
+    await check(14, async () => {
+      await anonymous.goto(`${urls.appUrl}/login`);
+      await anonymous.getByRole("button", { name: "Logga in", exact: true }).waitFor();
+      await controlled(anonymous);
+      await anonymous.getByLabel("E-post", { exact: true }).fill("pwa-unsaved@example.test");
+      // Same real worker, new script URL: exercise the browser's waiting/update lifecycle.
+      await anonymous.evaluate(() =>
+        navigator.serviceWorker.register("/sw.js?image-browser-update=1"),
+      );
+      const offer = anonymous.getByRole("button", { name: "Uppdatering tillgänglig", exact: true });
+      await offer.waitFor();
+      assert.ok(
+        await anonymous.evaluate(async () =>
+          Boolean((await navigator.serviceWorker.getRegistration()).waiting),
+        ),
+      );
+      await offer.click();
+      let dialog = anonymous.getByRole("alertdialog");
+      await dialog.getByRole("button", { name: "Avbryt", exact: true }).click();
+      assert.equal(
+        await anonymous.getByLabel("E-post", { exact: true }).inputValue(),
+        "pwa-unsaved@example.test",
+      );
+      assert.ok(
+        await anonymous.evaluate(async () =>
+          Boolean((await navigator.serviceWorker.getRegistration()).waiting),
+        ),
+      );
+      await offer.click();
+      dialog = anonymous.getByRole("alertdialog");
+      await screenshot(anonymous, "pwa-update-confirmation");
+      await Promise.all([
+        anonymous.waitForEvent("load"),
+        dialog.getByRole("button", { name: "Ladda om", exact: true }).click(),
+      ]);
+      await anonymous.getByRole("button", { name: "Logga in", exact: true }).waitFor();
+      assert.equal(await anonymous.getByLabel("E-post", { exact: true }).inputValue(), "");
+      await controlled(anonymous);
+    });
+    await check(15, async () => {
+      await anonymous.context().setOffline(true);
+      try {
+        await anonymous.goto(`${urls.appUrl}/cellar`);
+        await anonymous.getByRole("heading", { name: "Du är offline", exact: true }).waitFor();
+        report.pwa.offlineLayout = await anonymous.evaluate(() => ({
+          width: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+          height: document.documentElement.clientHeight,
+          scrollHeight: document.documentElement.scrollHeight,
+          bodyHeight: document.body.getBoundingClientRect().height,
+          boxSizing: getComputedStyle(document.body).boxSizing,
+          retryHeight: document.querySelector("a")?.getBoundingClientRect().height,
+        }));
+        await screenshot(anonymous, "pwa-offline-mobile");
+        await layout(anonymous);
+        assert.equal(
+          await anonymous.evaluate(
+            () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+          ),
+          false,
+        );
+        assert.ok(
+          (await anonymous.getByRole("link", { name: "Försök igen", exact: true }).boundingBox())
+            .height >= 44,
+        );
+        await imageCount(anonymous, 0);
+        assert.equal(await anonymous.locator("img").count(), 1);
+        await anonymous.waitForFunction(() => {
+          const icon = document.querySelector("img");
+          return icon?.complete && icon.naturalWidth > 0;
+        });
+      } finally {
+        await anonymous.context().setOffline(false);
+      }
+    });
+    await check(16, async () => {
+      await auditCache(owner, "owner", "erasure-complete");
+      await auditCache(anonymous, "anonymous", "offline-complete");
+      await auditCache(peer, "peer", "private-access-denied");
+      assert.equal(blockedRequests, 0);
+      assert.equal(directStorageReads, 0);
+      assert.equal(pageErrors, 0);
+      assert.equal(scriptConsoleErrors, 0);
+      assert.equal(unexpectedResponses.length, 0);
+    });
+  }
   report.completed = true;
 } catch (error) {
   if (activeStep !== undefined) report.results[activeStep].status = "failed";

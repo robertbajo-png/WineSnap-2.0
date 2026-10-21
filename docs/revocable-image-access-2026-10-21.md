@@ -10,7 +10,11 @@ was installed. After repairing the hosted metadata authorization route, the fina
 hosted HTTP acceptance run completed with **18 passes, zero failures, and zero
 cleanup failures**. Independent SQL then confirmed all seven cleanup counts zero
 and the restrictive policy installed on the private bucket. This verifies the
-backend image-access path only. Production and main are unchanged.
+backend image-access path only. Later actual-app acceptance passed the 12-check
+image run and the separate 17-check built-PWA run, including cache privacy,
+explicit update/reload and mobile offline behavior; see
+[Hosted Image Browser Acceptance](image-browser-acceptance-2026-10-21.md).
+Production and main are unchanged.
 The frontend flag remains off by default; no production
 frontend or independent staging frontend was published by this work.
 
@@ -223,6 +227,10 @@ local test run passed. Neither failure was hidden by dropping an assertion.
   Binary decoding and anonymous public-view lookup bugs were fixed in the client;
   no hosted grants or schema were changed by those fixes. The user-approved
   separate Playwright browser replaced the unavailable ordinary Chrome control.
+  The built Node application subsequently passed all 17 image/PWA browser checks,
+  including real service-worker activation/update and offline cache privacy.
+  Real-device installation, camera/background behavior and a production upgrade
+  from the historical hosted binary are still separate release gates.
   No separate publicly hosted staging frontend was deployed. Results are in
   [Hosted Image Browser Acceptance](image-browser-acceptance-2026-10-21.md).
 - The original raw CDN cache finding remains valid for already fetched old URLs.

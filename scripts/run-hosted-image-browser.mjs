@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   escapeImageTestHtml as html,
   imageBrowserEnvironment,
+  imageBrowserRuntimeEnvironment,
   imageControlRequestAllowed,
   imageTestOrigin as origin,
 } from "./lib/image-browser-session.mjs";
@@ -18,6 +19,7 @@ const publicKey = process.env.WINESNAP_TEST_PUBLISHABLE_KEY;
 const secretKey = process.env.WINESNAP_TEST_SECRET_KEY;
 assert.ok(publicKey?.startsWith("sb_publishable_") && secretKey?.startsWith("sb_secret_"));
 const root = fileURLToPath(new URL("../", import.meta.url));
+const built = process.env.WINESNAP_IMAGE_BROWSER_PWA === "true";
 const reportFile = new URL("../dist/hosted-image-browser-session.json", import.meta.url);
 const testFetch = (input, init) => {
   assert.equal(new URL(input instanceof Request ? input.url : String(input)).origin, origin);
@@ -43,6 +45,7 @@ const state = {
   phase: "starting",
   setupCompleted: false,
   cleanupFailures: 0,
+  runtime: built ? "built" : "development",
 };
 let app;
 let server;
@@ -121,25 +124,71 @@ function page() {
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WineSnap image test operator</title><style>body{font:16px system-ui;max-width:850px;margin:32px auto;padding:0 20px;background:#fff;color:#202020}a{display:block;margin:12px 0}details{margin:24px 0}label{display:block;margin:12px 0}input{font:inherit;width:min(100%,620px)}button{font:inherit;padding:12px;margin:8px 0}code{overflow-wrap:anywhere}</style><h1>WineSnap-test image session</h1><p>Project: pzniyupmgwvlldvztzqh. Local test only. Phase: ${html(state.phase)}</p><a href="${state.appUrl}/login" target="_blank" rel="noreferrer">Open actual WineSnap login</a><a href="${state.wineUrl}" target="_blank" rel="noreferrer">Open synthetic owner wine</a><a href="${state.shareUrl}" target="_blank" rel="noreferrer">Open synthetic share</a><details><summary>Show temporary test sign-ins</summary>${users.map((user, i) => `<section><h2>${i ? "Peer" : "Owner"}</h2><label>${i ? "Peer" : "Owner"} email<input readonly value="${html(user.email)}"></label><label>${i ? "Peer" : "Owner"} password<input readonly value="${html(user.password)}"></label></section>`).join("")}</details>${form("share", "Make synthetic wine public")}${form("unshare", "Make synthetic wine private")}${form("erase", "Request synthetic owner erasure")}${form("finish", "Finish test and clean fixtures")}</html>`;
 }
 
+process.once("SIGINT", () => void finish());
+process.once("SIGTERM", () => void finish());
+
 try {
   const appPort = await availablePort();
   state.appUrl = `http://127.0.0.1:${appPort}`;
   await saveReport();
+  if (built) {
+    // Build only with public test settings; never inherit the operator's admin key.
+    app = spawn(
+      process.execPath,
+      [
+        "node_modules/vite/bin/vite.js",
+        "build",
+        "--config",
+        "vite.independent.config.ts",
+        "--mode",
+        "image-browser",
+      ],
+      {
+        cwd: root,
+        env: imageBrowserEnvironment(process.env, publicKey),
+        stdio: "ignore",
+        windowsHide: true,
+      },
+    );
+    let buildTimer;
+    try {
+      await new Promise((resolve, reject) => {
+        buildTimer = setTimeout(
+          () => {
+            app.kill("SIGTERM");
+            reject(new Error("app_build_timeout"));
+          },
+          10 * 60 * 1000,
+        );
+        app.once("error", () => reject(new Error("app_build_failed")));
+        app.once("exit", (code) =>
+          code === 0 ? resolve() : reject(new Error("app_build_failed")),
+        );
+      });
+    } finally {
+      clearTimeout(buildTimer);
+    }
+  }
+  if (finishing) throw new Error("app_start_failed");
   app = spawn(
     process.execPath,
-    [
-      "node_modules/vite/bin/vite.js",
-      "--config",
-      "vite.independent.config.ts",
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(appPort),
-      "--strictPort",
-    ],
+    built
+      ? ["dist/independent-runtime/server/index.mjs"]
+      : [
+          "node_modules/vite/bin/vite.js",
+          "--config",
+          "vite.independent.config.ts",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          String(appPort),
+          "--strictPort",
+        ],
     {
       cwd: root,
-      env: imageBrowserEnvironment(process.env, publicKey),
+      env: built
+        ? imageBrowserRuntimeEnvironment(process.env, publicKey, appPort)
+        : imageBrowserEnvironment(process.env, publicKey),
       stdio: "ignore",
       windowsHide: true,
     },
@@ -157,9 +206,12 @@ try {
       const htmlReady = response.ok;
       await response.body?.cancel();
       if (htmlReady) {
-        const client = await fetch(`${state.appUrl}/@id/virtual:tanstack-start-client-entry`, {
-          signal: AbortSignal.timeout(30000),
-        });
+        const client = await fetch(
+          `${state.appUrl}${built ? "/sw.js" : "/@id/virtual:tanstack-start-client-entry"}`,
+          {
+            signal: AbortSignal.timeout(30000),
+          },
+        );
         ready = client.ok && /javascript/.test(client.headers.get("content-type") ?? "");
         await client.body?.cancel();
         if (ready) break;
@@ -317,16 +369,18 @@ try {
     "Keep this window open during the browser checks. Ctrl+C cleans the disposable fixtures.",
   );
   timer = setTimeout(() => void finish(), 30 * 60 * 1000);
-  process.once("SIGINT", () => void finish());
-  process.once("SIGTERM", () => void finish());
   app.once("exit", () => {
     if (!finishing) void finish();
   });
 } catch (error) {
   state.setupFailed = true;
-  state.failureCode = ["app_start_failed", "app_start_timeout", "test_api_failure"].includes(
-    error?.message,
-  )
+  state.failureCode = [
+    "app_build_failed",
+    "app_build_timeout",
+    "app_start_failed",
+    "app_start_timeout",
+    "test_api_failure",
+  ].includes(error?.message)
     ? error.message
     : "unexpected_setup_failure";
   if (typeof app?.exitCode === "number") state.appExitCode = app.exitCode;

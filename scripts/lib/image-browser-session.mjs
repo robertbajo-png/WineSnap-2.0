@@ -4,6 +4,7 @@ export function imageBrowserSessionUrls(session, now = Date.now()) {
   if (
     session.project !== "pzniyupmgwvlldvztzqh" ||
     session.phase !== "private" ||
+    ![undefined, "development", "built"].includes(session.runtime) ||
     session.setupCompleted !== true ||
     !Number.isFinite(Date.parse(session.checkedAt)) ||
     Math.abs(now - Date.parse(session.checkedAt)) > 5 * 60 * 1000
@@ -42,6 +43,35 @@ export function imageBrowserSessionUrls(session, now = Date.now()) {
     controlUrl: urls.controlUrl.origin,
     wineUrl: urls.wineUrl.href,
     shareUrl: urls.shareUrl.href,
+  };
+}
+
+export function imageBrowserPwaCacheEntryAllowed(value, appOrigin) {
+  const url = new URL(value);
+  return (
+    url.origin === appOrigin &&
+    !url.username &&
+    !url.password &&
+    !url.search &&
+    !url.hash &&
+    (["/offline.html", "/icon-512.png", "/favicon.png"].includes(url.pathname) ||
+      /^\/assets\/[^/]+\.(?:js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname))
+  );
+}
+
+export function imageBrowserRuntimeEnvironment(env, publicKey, port) {
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    throw new Error("loopback_runtime_port_required");
+  }
+  return {
+    ...imageBrowserEnvironment(env, publicKey),
+    NODE_ENV: "production",
+    NITRO_HOST: "127.0.0.1",
+    NITRO_PORT: String(port),
+    HOST: "127.0.0.1",
+    PORT: String(port),
+    SUPABASE_URL: imageTestOrigin,
+    SUPABASE_PUBLISHABLE_KEY: publicKey,
   };
 }
 

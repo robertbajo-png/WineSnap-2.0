@@ -1,11 +1,13 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "2026-10-13-privacy-controls";
+const VERSION = "2026-10-21-revocable-images";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(PAGE_CACHE).then((cache) => cache.addAll([OFFLINE_URL])));
+  event.waitUntil(
+    caches.open(PAGE_CACHE).then((cache) => cache.addAll([OFFLINE_URL, "/icon-512.png"])),
+  );
 });
 
 self.addEventListener("activate", (event) => {
