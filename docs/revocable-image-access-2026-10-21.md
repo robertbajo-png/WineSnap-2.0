@@ -4,8 +4,24 @@
 
 Implemented behind disabled-by-default frontend/backend flags on a feature
 branch. Local handler, adapter and client tests pass, as does a synthetic
-PostgreSQL policy rehearsal. Hosted deployment/activation and the new hosted
-HTTP acceptance test have **not** yet run. Production and main are unchanged.
+PostgreSQL policy rehearsal. After explicit approval, the endpoint was deployed
+and activated only in WineSnap-test and the test-only restrictive Storage policy
+was installed. The full hosted HTTP acceptance test is **not** yet run. Production
+and main are unchanged. The frontend flag remains off by default; no production
+frontend or independent staging frontend was published by this work.
+
+Actual hosted checks: disabled endpoint returned 503; after activation an
+anonymous nonexistent-image POST returned 404 with `no-store`. The dashboard
+reported the policy transaction successful after confirming zero users, wines
+and Storage objects. These checks do not prove successful owner image delivery
+or immediate revocation through the new endpoint; the full acceptance run is
+still required.
+
+Independent post-deployment SQL confirmed the proxy policy is installed and all
+seven cleanup counts are zero (Auth users, wines, photos, Storage objects, erasure
+receipts, erasure jobs and quota rows). Local screenshot:
+`dist/image-proxy-hosted-test-status.jpg`. This is not a report from the blocked
+authenticated HTTP acceptance test.
 
 This implements the next step after the measured
 [Storage CDN revocation finding](image-revocation-diagnostics-2026-10-21.md).
@@ -84,6 +100,26 @@ Test-only rollout order after explicit approval:
    `dist/hosted-image-proxy-report.json`.
 6. Independently confirm the usual seven aggregate cleanup counts are zero.
    Retain hosted HTTP results separately from local contract results.
+
+### Secure Local Acceptance Entry
+
+The approved local test executor could contact WineSnap-test, but the browser
+automation environment denied both named-pipe and loopback credential handoff
+(`EPERM`/`EACCES`). The agent did not work around that isolation by launching an
+unapproved network process, saving a credential file or putting keys in command
+arguments. Both temporary listeners were stopped and key material was cleared.
+No fixture account or image was created by these blocked test launches.
+
+`scripts/run-hosted-image-proxy-check.ps1` provides a local interactive entry:
+existing test keys are entered through hidden SecureString prompts, passed only
+in the child process environment and removed from the launch configuration in a
+finally block. It writes no credential file or persistent user/machine setting.
+Run it from PowerShell 7 in the user's normal local terminal, outside the blocked
+automation environment. Only the safe test report should be shared afterward.
+
+This manual secure-entry step is not a completed hosted acceptance test. Do not
+mark the image fix fully verified until the report passes and independent cleanup
+counts are zero.
 
 Do not roll back only the frontend flag while leaving the direct-download policy
 in place: old clients would fail to display images. Before applying the policy,
