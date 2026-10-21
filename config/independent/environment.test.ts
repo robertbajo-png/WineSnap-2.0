@@ -92,6 +92,10 @@ describe("independent build configuration", () => {
     expect(config).toContain("envDir: false");
     expect(config).toContain("envPrefix: []");
     expect(config).toContain('behavior: "error"');
+    expect(config).toContain(
+      'realpathSync(fileURLToPath(new URL("./node_modules", import.meta.url)))',
+    );
+    expect(config).toContain("fs: { strict: true, allow: [root, dependencies] }");
     expect(readFileSync("vite.config.ts", "utf8")).toContain("@lovable.dev/vite-tanstack-config");
     expect(readFileSync("prototypes/chef/vite.config.ts", "utf8")).toContain("dist/chef-prototype");
   });

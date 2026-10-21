@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -8,6 +9,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { independentEnvironment } from "./config/independent/environment";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
+const dependencies = realpathSync(fileURLToPath(new URL("./node_modules", import.meta.url)));
 const envDir = fileURLToPath(new URL("./config/independent", import.meta.url));
 const output = fileURLToPath(new URL("./dist/independent-runtime", import.meta.url));
 
@@ -49,6 +51,12 @@ export default defineConfig(({ mode, command }) => {
       alias: { "@": `${root}/src` },
       dedupe: ["react", "react-dom", "@tanstack/react-query", "@tanstack/query-core"],
     },
-    server: { host: "127.0.0.1", port: 5202, strictPort: true },
+    server: {
+      host: "127.0.0.1",
+      port: 5202,
+      strictPort: true,
+      // Linked dependencies may resolve outside the checkout on Windows.
+      fs: { strict: true, allow: [root, dependencies] },
+    },
   };
 });

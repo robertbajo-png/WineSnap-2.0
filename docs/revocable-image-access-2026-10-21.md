@@ -153,7 +153,9 @@ Test-only rollout order after explicit approval:
    exact-definition/empty-project guarded `test-image-proxy-metadata-repair.sql`.
    Do not run its synthetic legacy-policy fixture on a hosted database.
 5. Run `scripts/check-hosted-image-proxy.mjs` using existing test-only keys in
-   temporary environment variables, never CLI arguments or a credentials file.
+   temporary environment variables, never CLI arguments or plaintext files.
+   The wrapper also supports the separately approved Windows-encrypted key reuse
+   described in the browser acceptance report.
    It creates two disposable accounts and synthetic PNGs, verifies owner/stranger/
    anonymous boundaries, headers, listing/upload/remove, direct GET/HEAD info and
    download denial, unsharing and erasure, then cleans only those fixtures.
@@ -174,7 +176,8 @@ No fixture account or image was created by these blocked test launches.
 `scripts/run-hosted-image-proxy-check.ps1` provides a local interactive entry:
 existing test keys are entered through hidden SecureString prompts, passed only
 in the child process environment and removed from the launch configuration in a
-finally block. It writes no credential file or persistent user/machine setting.
+finally block. Without optional key enrollment, it writes no credential file or
+persistent user/machine setting.
 Run it from PowerShell 7 in the user's normal local terminal, outside the blocked
 automation environment. Only the safe test report should be shared afterward.
 
@@ -184,6 +187,13 @@ and the copied key was removed from the clipboard afterward. No key was written
 to a report, credential file or repository. The final report and independent
 cleanup readback complete the hosted backend verification, not browser or
 production release acceptance.
+
+The user subsequently requested avoiding repeated entry. The wrapper now supports
+explicit Windows DPAPI-encrypted key enrollment and automatic local reuse; actual
+test keys were enrolled with a protected ACL and no Git or browser exposure.
+This later authorized encrypted cache does not change the earlier runs' transient
+credential handling. Details and the partial actual-app results are in
+[Hosted Image Browser Acceptance](image-browser-acceptance-2026-10-21.md).
 
 Do not roll back only the frontend flag while leaving the direct-download policy
 in place: old clients would fail to display images. Before applying the policy,
@@ -209,7 +219,9 @@ local test run passed. Neither failure was hidden by dropping an assertion.
 - Hosted backend HTTP verification is green after the metadata-route repair.
   A separate staging frontend with the proxy flag on still needs browser checks;
   no such frontend was published by this work.
-  Local actual-app browser preparation and its pending checks are recorded in
+  Local actual-app owner image/gallery/upload checks passed after fixing binary
+  image decoding. Native Chrome confirmation handling blocked the remaining
+  browser checks; this is not full frontend acceptance. Results are recorded in
   [Hosted Image Browser Acceptance](image-browser-acceptance-2026-10-21.md).
 - The original raw CDN cache finding remains valid for already fetched old URLs.
   Existing signed URLs may also bypass current RLS until retired. This feature

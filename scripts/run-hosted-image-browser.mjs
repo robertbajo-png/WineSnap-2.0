@@ -152,12 +152,16 @@ try {
     if (app.exitCode !== null) throw new Error("app_start_failed");
     try {
       const response = await fetch(`${state.appUrl}/login`, { signal: AbortSignal.timeout(2000) });
-      if (response.ok) {
-        ready = true;
-        await response.body?.cancel();
-        break;
-      }
+      const htmlReady = response.ok;
       await response.body?.cancel();
+      if (htmlReady) {
+        const client = await fetch(`${state.appUrl}/@id/virtual:tanstack-start-client-entry`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        ready = client.ok && /javascript/.test(client.headers.get("content-type") ?? "");
+        await client.body?.cancel();
+        if (ready) break;
+      }
     } catch {
       /* Wait for the same local dev server to become ready. */
     }

@@ -16,6 +16,10 @@ dist-ssr
 .nitro
 *.local
 
+# Windows-user-encrypted test credentials, never commit even encrypted copies.
+.winesnap-test.keys*.local
+.env.winesnap-test-keys*.local
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
