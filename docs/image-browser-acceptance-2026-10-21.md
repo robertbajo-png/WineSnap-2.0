@@ -224,11 +224,13 @@ server is bound to 127.0.0.1 and receives only the public test URL/key. Privileg
 fixture operations stay in the existing guarded local operator. Builds time out
 after ten minutes, startup after five; fixtures are not created before readiness.
 
-The same driver detects the fresh `runtime=built` session and runs 17 checks:
-the original 12 image scenarios plus real service-worker activation, obsolete
-cache removal, explicit update confirmation, offline layout and cache privacy.
+The same driver detects the fresh `runtime=built` session. The original PWA run
+had 17 checks: the original 12 image scenarios plus real service-worker activation,
+obsolete cache removal, explicit update confirmation, offline layout and cache
+privacy. Its report remains `dist/hosted-image-pwa-report.json`. The driver now
+adds eight mobile/camera checks and writes the combined 25-check verdict separately
+to `dist/hosted-image-mobile-report.json`; see the mobile follow-up below.
 Normal development mode still runs 12 checks with service workers blocked.
-The PWA report is separate: `dist/hosted-image-pwa-report.json`.
 
 The production `AppUpdate` component registers the actual `/sw.js` worker.
 Owner, peer and anonymous contexts must each be controlled by that worker.

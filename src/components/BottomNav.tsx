@@ -33,7 +33,7 @@ export function BottomNav() {
               aria-label={t("nav.scan")}
               aria-current={scanActive ? "page" : undefined}
               className={cn(
-                "relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold bg-background ring-4 ring-background transition-transform",
+                "relative flex aspect-square h-auto w-14 max-w-full shrink-0 items-center justify-center rounded-full border-2 border-gold bg-background ring-4 ring-background transition-transform",
                 scanActive ? "scale-105 shadow-gold-ring" : "shadow-soft hover:scale-105",
               )}
             >

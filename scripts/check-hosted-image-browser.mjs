@@ -8,6 +8,7 @@ import {
   imageBrowserSessionUrls,
   imageTestOrigin,
 } from "./lib/image-browser-session.mjs";
+import { mobileBrowserSteps, runMobileBrowserChecks } from "./lib/mobile-browser-checks.mjs";
 
 assert.equal(process.argv.length, 2, "This check accepts no connection arguments");
 assert.ok(!process.env.WINESNAP_TEST_SECRET_KEY, "Browser checks must not inherit admin keys");
@@ -15,6 +16,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const lifecycleFile = new URL("../dist/hosted-image-browser-session.json", import.meta.url);
 let reportFile = new URL("../dist/hosted-image-playwright-report.json", import.meta.url);
 let pwaMode = false;
+let mobileOffset;
 const steps = [
   "anonymous private share is unavailable",
   "owner signs in and sees decoded private cellar thumbnail",
@@ -182,7 +184,7 @@ try {
   urls = imageBrowserSessionUrls(session);
   pwaMode = session.runtime === "built";
   if (pwaMode) {
-    reportFile = new URL("../dist/hosted-image-pwa-report.json", import.meta.url);
+    reportFile = new URL("../dist/hosted-image-mobile-report.json", import.meta.url);
     report.pwa = { cacheAudits: [] };
     report.results.push(
       ...[
@@ -193,12 +195,17 @@ try {
         "no account HTML, private images, credentials or API responses enter PWA caches",
       ].map((name) => ({ name, status: "pending" })),
     );
+    mobileOffset = report.results.length;
+    report.results.push(...mobileBrowserSteps.map((name) => ({ name, status: "pending" })));
   }
   const moduleFile = process.env.WINESNAP_PLAYWRIGHT_MODULE;
   const { chromium } = await import(
     moduleFile ? pathToFileURL(resolve(moduleFile)).href : "playwright"
   );
-  testBrowser = await chromium.launch({ headless: false });
+  testBrowser = await chromium.launch({
+    headless: false,
+    args: ["--use-fake-device-for-media-stream"],
+  });
   const pages = {};
   for (const name of ["operator", "owner", "peer", "anonymous"]) {
     const context = await testBrowser.newContext({
@@ -496,6 +503,23 @@ try {
       assert.equal(pageErrors, 0);
       assert.equal(scriptConsoleErrors, 0);
       assert.equal(unexpectedResponses.length, 0);
+    });
+    await runMobileBrowserChecks({
+      page: peer,
+      appUrl: urls.appUrl,
+      assetPath: resolve(root, "src/assets/hero-bottle.jpg"),
+      check: (index, run) => check(mobileOffset + index, run),
+      report,
+      screenshot,
+      layout,
+      finalAudit: async () => {
+        await auditCache(peer, "peer", "camera-and-drafts-cancelled");
+        assert.equal(blockedRequests, 0);
+        assert.equal(directStorageReads, 0);
+        assert.equal(pageErrors, 0);
+        assert.equal(scriptConsoleErrors, 0);
+        assert.equal(unexpectedResponses.length, 0);
+      },
     });
   }
   report.completed = true;

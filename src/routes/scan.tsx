@@ -455,7 +455,7 @@ function ScanPage() {
           </div>
         )
       ) : (
-        <div className="flex flex-1 flex-col px-5 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
           <div className="flex flex-1 flex-col">
             <label
               htmlFor="scan-description"
