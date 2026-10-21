@@ -1,15 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { download } = vi.hoisted(() => ({ download: vi.fn() }));
+const { download, invoke, getSession } = vi.hoisted(() => ({
+  download: vi.fn(),
+  invoke: vi.fn(),
+  getSession: vi.fn(),
+}));
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { storage: { from: () => ({ download }) } },
+  supabase: {
+    storage: { from: () => ({ download }) },
+    functions: { invoke },
+    auth: { getSession },
+  },
 }));
 import { downloadWineImage } from "./wineImageUrls";
 
 describe("authenticated wine image downloads", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.stubEnv("VITE_WINE_IMAGE_PROXY_ENABLED", "false");
     download.mockReset();
+    invoke.mockReset();
+    getSession.mockReset();
   });
 
   it("downloads without browser caching and releases the local blob URL", async () => {
@@ -59,5 +71,52 @@ describe("authenticated wine image downloads", () => {
     expect(download.mock.calls.every(([, , options]) => options.cache === "no-store")).toBe(true);
     first?.release();
     second?.release();
+  });
+
+  it("uses the verified server image path when explicitly enabled", async () => {
+    vi.stubEnv("VITE_WINE_IMAGE_PROXY_ENABLED", "true");
+    getSession.mockResolvedValue({
+      data: { session: { access_token: "synthetic-user-token" } },
+      error: null,
+    });
+    invoke.mockResolvedValue({ data: new Blob(["image"], { type: "image/png" }), error: null });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:server-image");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const signal = new AbortController().signal;
+    const image = await downloadWineImage("owner/photo.jpg", signal);
+    expect(invoke).toHaveBeenCalledWith("wine-image", {
+      body: { path: "owner/photo.jpg" },
+      signal,
+      headers: { Authorization: "Bearer synthetic-user-token" },
+    });
+    expect(download).not.toHaveBeenCalled();
+    image?.release();
+  });
+
+  it("sends no user JWT for an anonymous share", async () => {
+    vi.stubEnv("VITE_WINE_IMAGE_PROXY_ENABLED", "true");
+    getSession.mockResolvedValue({ data: { session: null }, error: null });
+    invoke.mockResolvedValue({ data: null, error: new Error("Denied") });
+    expect(await downloadWineImage("owner/photo.jpg", new AbortController().signal)).toBeNull();
+    expect(invoke.mock.calls[0][1].headers.Authorization).toBe("");
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to direct Storage when the proxy is unavailable or returns JSON", async () => {
+    vi.stubEnv("VITE_WINE_IMAGE_PROXY_ENABLED", "true");
+    getSession.mockResolvedValue({ data: { session: null }, error: null });
+    invoke.mockResolvedValue({ data: null, error: new Error("Unavailable") });
+    expect(await downloadWineImage("owner/photo.jpg", new AbortController().signal)).toBeNull();
+    invoke.mockResolvedValue({ data: { url: "unsafe-direct-link" }, error: null });
+    expect(await downloadWineImage("owner/photo.jpg", new AbortController().signal)).toBeNull();
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it("does not request the image when the session cannot be read", async () => {
+    vi.stubEnv("VITE_WINE_IMAGE_PROXY_ENABLED", "true");
+    getSession.mockResolvedValue({ data: { session: null }, error: new Error("Session changed") });
+    expect(await downloadWineImage("owner/photo.jpg", new AbortController().signal)).toBeNull();
+    expect(invoke).not.toHaveBeenCalled();
+    expect(download).not.toHaveBeenCalled();
   });
 });

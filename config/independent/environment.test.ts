@@ -13,11 +13,13 @@ describe("independent build configuration", () => {
       ...input,
       VITE_PRIVACY_CONTROLS_ENABLED: "true",
       VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
+      VITE_WINE_IMAGE_PROXY_ENABLED: "true",
       VITE_SUPPORT_EMAIL: "not-public@example.invalid",
     });
     expect(values.VITE_SUPABASE_URL).toBe("https://example.invalid");
     expect(values.VITE_PRIVACY_CONTROLS_ENABLED).toBe("false");
     expect(values.VITE_PRIVACY_OPERATIONS_VERIFIED).toBe("false");
+    expect(values.VITE_WINE_IMAGE_PROXY_ENABLED).toBe("false");
     expect(values).not.toHaveProperty("VITE_SUPPORT_EMAIL");
   });
 
@@ -73,6 +75,13 @@ describe("independent build configuration", () => {
         VITE_SUPABASE_PUBLISHABLE_KEY: key,
       }).VITE_SUPABASE_PUBLISHABLE_KEY,
     ).toBe(key);
+  });
+
+  it("only enables the image proxy from deliberate public configuration", () => {
+    expect(
+      independentEnvironment("production", { ...input, VITE_WINE_IMAGE_PROXY_ENABLED: "true" })
+        .VITE_WINE_IMAGE_PROXY_ENABLED,
+    ).toBe("true");
   });
 
   it("keeps the alternate build separate from the original and Chef prototype", () => {

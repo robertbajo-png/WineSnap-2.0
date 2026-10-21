@@ -27,3 +27,8 @@ verify_jwt = true
 # Uses its own fail-closed scheduler secret; user JWTs cannot authorize it.
 [functions.privacy-maintenance]
 verify_jwt = false
+
+# Public shares are supported; the handler verifies any supplied user token itself.
+# Disabled at runtime unless WINE_IMAGE_PROXY_ENABLED=true is explicitly configured.
+[functions.wine-image]
+verify_jwt = false

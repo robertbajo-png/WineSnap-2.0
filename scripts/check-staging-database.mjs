@@ -173,6 +173,22 @@ try {
   assert(preflightBeforePrivacy);
   await checkPreflight(true);
   console.log("PASS preflight detects installed privacy schema without changing fixture counts");
+  stage = "test-only-image-proxy-policy";
+  // Preservation was asserted above. Remove only this checker's own legacy fixture
+  // so the operator policy's empty-project guard is exercised, not bypassed.
+  await db`DELETE FROM public.wine_photos WHERE wine_id=${wine}`;
+  await db`DELETE FROM public.wines WHERE id=${wine} AND user_id=${owner}`;
+  await db`DELETE FROM auth.users WHERE id=${owner}`;
+  const imageProxyFiles = [];
+  for (const file of [
+    "supabase/operations/test-image-proxy-policy.sql",
+    "supabase/tests/image_proxy.local.sql",
+  ]) {
+    const source = await readFile(resolve(root, file), "utf8");
+    await db.unsafe(source);
+    imageProxyFiles.push({ file, sha256: createHash("sha256").update(source).digest("hex") });
+  }
+  console.log("PASS test-only image proxy policy: raw reads denied, owner mutations preserved");
   stage = "write-synthetic-report";
   report = {
     status: "passed",
@@ -182,10 +198,12 @@ try {
     invariantFiles: inventory.invariants.length,
     legacyShareAndImage: "preserved",
     readOnlyPreflight: "passed before and after privacy migration",
+    testOnlyImageProxyPolicy: "passed; not an automatic migration",
     scope: "Synthetic PostgreSQL platform contracts only; not hosted Auth JWT or Storage HTTP",
     files: [
       ...inventory.migrations,
       ...inventory.invariants,
+      ...imageProxyFiles,
       { file: preflightFile, sha256: createHash("sha256").update(preflightSource).digest("hex") },
     ].map(({ file, sha256 }) => ({
       file,
