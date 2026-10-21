@@ -124,6 +124,7 @@ function page() {
 try {
   const appPort = await availablePort();
   state.appUrl = `http://127.0.0.1:${appPort}`;
+  await saveReport();
   app = spawn(
     process.execPath,
     [
@@ -148,15 +149,16 @@ try {
     void finish();
   });
   let ready = false;
-  for (let attempt = 0; attempt < 120; attempt++) {
+  const startupDeadline = Date.now() + 5 * 60 * 1000;
+  while (Date.now() < startupDeadline) {
     if (app.exitCode !== null) throw new Error("app_start_failed");
     try {
-      const response = await fetch(`${state.appUrl}/login`, { signal: AbortSignal.timeout(2000) });
+      const response = await fetch(`${state.appUrl}/login`, { signal: AbortSignal.timeout(30000) });
       const htmlReady = response.ok;
       await response.body?.cancel();
       if (htmlReady) {
         const client = await fetch(`${state.appUrl}/@id/virtual:tanstack-start-client-entry`, {
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(30000),
         });
         ready = client.ok && /javascript/.test(client.headers.get("content-type") ?? "");
         await client.body?.cancel();
@@ -320,8 +322,14 @@ try {
   app.once("exit", () => {
     if (!finishing) void finish();
   });
-} catch {
+} catch (error) {
   state.setupFailed = true;
+  state.failureCode = ["app_start_failed", "app_start_timeout", "test_api_failure"].includes(
+    error?.message,
+  )
+    ? error.message
+    : "unexpected_setup_failure";
+  if (typeof app?.exitCode === "number") state.appExitCode = app.exitCode;
   state.phase = "setup_failed";
   await finish();
   process.exitCode = 1;

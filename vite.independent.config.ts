@@ -28,7 +28,7 @@ export default defineConfig(({ mode, command }) => {
     ),
     cacheDir: "node_modules/.vite-independent",
     plugins: [
-      tsconfigPaths(),
+      tsconfigPaths({ projects: [fileURLToPath(new URL("./tsconfig.json", import.meta.url))] }),
       tailwindcss(),
       tanstackStart({
         importProtection: {
@@ -55,6 +55,7 @@ export default defineConfig(({ mode, command }) => {
       host: "127.0.0.1",
       port: 5202,
       strictPort: true,
+      watch: { ignored: ["**/node_modules.release-backup/**"] },
       // Linked dependencies may resolve outside the checkout on Windows.
       fs: { strict: true, allow: [root, dependencies] },
     },

@@ -92,6 +92,10 @@ describe("independent build configuration", () => {
     expect(config).toContain("envDir: false");
     expect(config).toContain("envPrefix: []");
     expect(config).toContain('behavior: "error"');
+    expect(config).toContain('watch: { ignored: ["**/node_modules.release-backup/**"] }');
+    expect(config).toContain(
+      'projects: [fileURLToPath(new URL("./tsconfig.json", import.meta.url))]',
+    );
     expect(config).toContain(
       'realpathSync(fileURLToPath(new URL("./node_modules", import.meta.url)))',
     );

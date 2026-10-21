@@ -1,5 +1,61 @@
 export const imageTestOrigin = "https://pzniyupmgwvlldvztzqh.supabase.co";
 
+export function imageBrowserSessionUrls(session, now = Date.now()) {
+  if (
+    session.project !== "pzniyupmgwvlldvztzqh" ||
+    session.phase !== "private" ||
+    session.setupCompleted !== true ||
+    !Number.isFinite(Date.parse(session.checkedAt)) ||
+    Math.abs(now - Date.parse(session.checkedAt)) > 5 * 60 * 1000
+  ) {
+    throw new Error("fresh_private_test_session_required");
+  }
+  const urls = Object.fromEntries(
+    ["appUrl", "controlUrl", "wineUrl", "shareUrl"].map((key) => [key, new URL(session[key])]),
+  );
+  for (const url of Object.values(urls)) {
+    if (
+      url.protocol !== "http:" ||
+      url.hostname !== "127.0.0.1" ||
+      !url.port ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    ) {
+      throw new Error("loopback_test_url_required");
+    }
+  }
+  if (
+    urls.appUrl.pathname !== "/" ||
+    urls.controlUrl.pathname !== "/" ||
+    urls.appUrl.origin === urls.controlUrl.origin ||
+    urls.wineUrl.origin !== urls.appUrl.origin ||
+    urls.shareUrl.origin !== urls.appUrl.origin ||
+    !/^\/wine\/[a-f0-9-]{36}$/.test(urls.wineUrl.pathname) ||
+    !/^\/w\/[A-Za-z0-9_-]{8,100}$/.test(urls.shareUrl.pathname)
+  ) {
+    throw new Error("expected_fixture_routes_required");
+  }
+  return {
+    appUrl: urls.appUrl.origin,
+    controlUrl: urls.controlUrl.origin,
+    wineUrl: urls.wineUrl.href,
+    shareUrl: urls.shareUrl.href,
+  };
+}
+
+export function imageBrowserRequestAllowed(value, appOrigin, controlOrigin) {
+  const url = new URL(value);
+  if (["data:", "blob:"].includes(url.protocol)) return true;
+  if ([appOrigin, controlOrigin].includes(url.origin)) return true;
+  if (["https://fonts.googleapis.com", "https://fonts.gstatic.com"].includes(url.origin)) {
+    return true;
+  }
+  if (url.origin !== imageTestOrigin) return false;
+  return !url.pathname.startsWith("/functions/") || url.pathname === "/functions/v1/wine-image";
+}
+
 export function imageBrowserEnvironment(env, publicKey) {
   if (!publicKey?.startsWith("sb_publishable_")) throw new Error("test_public_key_required");
   const child = {};

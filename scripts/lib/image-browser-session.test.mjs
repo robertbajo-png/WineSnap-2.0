@@ -4,9 +4,64 @@ import {
   imageBrowserEnvironment,
   imageControlRequestAllowed,
   imageTestOrigin,
+  imageBrowserSessionUrls,
+  imageBrowserRequestAllowed,
 } from "./image-browser-session.mjs";
 
 describe("hosted image browser session boundaries", () => {
+  const checkedAt = "2026-10-21T12:00:00.000Z";
+  const session = {
+    project: "pzniyupmgwvlldvztzqh",
+    phase: "private",
+    setupCompleted: true,
+    checkedAt,
+    appUrl: "http://127.0.0.1:5203",
+    controlUrl: "http://127.0.0.1:5204",
+    wineUrl: "http://127.0.0.1:5203/wine/11111111-1111-4111-8111-111111111111",
+    shareUrl: "http://127.0.0.1:5203/w/synthetic-share",
+  };
+  it("only accepts a fresh ready private fixture on separate loopback ports", () => {
+    expect(imageBrowserSessionUrls(session, Date.parse(checkedAt)).appUrl).toBe(session.appUrl);
+    for (const changes of [
+      { project: "production" },
+      { phase: "cleaned" },
+      { setupCompleted: false },
+      { checkedAt: "invalid" },
+      { checkedAt: "2026-10-20T12:00:00.000Z" },
+      { appUrl: "https://example.com" },
+      { controlUrl: session.appUrl },
+      { wineUrl: session.wineUrl.replace("5203", "5205") },
+      { wineUrl: session.wineUrl + "?key=private-canary" },
+      { shareUrl: "http://127.0.0.1:5203/admin" },
+      { controlUrl: "http://user:password@127.0.0.1:5204" },
+    ]) {
+      expect(() =>
+        imageBrowserSessionUrls({ ...session, ...changes }, Date.parse(checkedAt)),
+      ).toThrow();
+    }
+  });
+  it("blocks production, unexpected origins and all AI functions in the browser run", () => {
+    for (const url of [
+      session.wineUrl,
+      session.controlUrl,
+      `${imageTestOrigin}/auth/v1/token`,
+      `${imageTestOrigin}/rest/v1/wines`,
+      `${imageTestOrigin}/functions/v1/wine-image`,
+      "blob:http://127.0.0.1:5203/synthetic",
+      "https://fonts.gstatic.com/synthetic-font.woff2",
+    ]) {
+      expect(imageBrowserRequestAllowed(url, session.appUrl, session.controlUrl)).toBe(true);
+    }
+    for (const url of [
+      "https://mervdrbnwgreaifobasw.supabase.co/rest/v1/wines",
+      "https://attacker.invalid/collect",
+      `${imageTestOrigin}/functions/v1/analyze-label`,
+      `${imageTestOrigin}/functions/v1/wine-suggestions`,
+      `${imageTestOrigin}/functions/anything-else`,
+    ]) {
+      expect(imageBrowserRequestAllowed(url, session.appUrl, session.controlUrl)).toBe(false);
+    }
+  });
   it("pins the actual app to the approved test with the image proxy enabled", () => {
     const env = imageBrowserEnvironment({}, "sb_publishable_synthetic");
     expect(env.VITE_SUPABASE_URL).toBe(imageTestOrigin);

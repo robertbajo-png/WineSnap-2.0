@@ -192,7 +192,7 @@ The user subsequently requested avoiding repeated entry. The wrapper now support
 explicit Windows DPAPI-encrypted key enrollment and automatic local reuse; actual
 test keys were enrolled with a protected ACL and no Git or browser exposure.
 This later authorized encrypted cache does not change the earlier runs' transient
-credential handling. Details and the partial actual-app results are in
+credential handling. Details and the completed actual-app image results are in
 [Hosted Image Browser Acceptance](image-browser-acceptance-2026-10-21.md).
 
 Do not roll back only the frontend flag while leaving the direct-download policy
@@ -216,12 +216,14 @@ local test run passed. Neither failure was hidden by dropping an assertion.
 
 ## Remaining Release Boundaries
 
-- Hosted backend HTTP verification is green after the metadata-route repair.
-  A separate staging frontend with the proxy flag on still needs browser checks;
-  no such frontend was published by this work.
-  Local actual-app owner image/gallery/upload checks passed after fixing binary
-  image decoding. Native Chrome confirmation handling blocked the remaining
-  browser checks; this is not full frontend acceptance. Results are recorded in
+- Hosted backend HTTP verification is green after the metadata-route repair:
+  18 checks passed again at 2026-10-21T19:12:41.140Z. Local actual-app browser image
+  acceptance also passed all 12 checks against the test project, including owner,
+  peer, public share, upload/delete, unsharing and erasure focus revalidation.
+  Binary decoding and anonymous public-view lookup bugs were fixed in the client;
+  no hosted grants or schema were changed by those fixes. The user-approved
+  separate Playwright browser replaced the unavailable ordinary Chrome control.
+  No separate publicly hosted staging frontend was deployed. Results are in
   [Hosted Image Browser Acceptance](image-browser-acceptance-2026-10-21.md).
 - The original raw CDN cache finding remains valid for already fetched old URLs.
   Existing signed URLs may also bypass current RLS until retired. This feature

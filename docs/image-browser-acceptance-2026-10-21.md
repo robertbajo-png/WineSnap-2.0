@@ -8,13 +8,15 @@ This is a local instance of the actual WineSnap application, using
 It is not the Chef prototype and does not use the synthetic runtime-check build.
 Production, main, public hosting and Lovable are unchanged.
 
-Actual browser acceptance is **partially verified**, not complete. Encrypted key
-enrollment and the owner image/gallery/upload checks have passed. A native Chrome
-confirmation blocked further browser automation; the remaining checks below are
-not reported as passed. The already completed 18-pass hosted HTTP image
-test is documented separately in
+Actual image-browser acceptance is **passed: 12 checks, zero failures**, completed
+at 2026-10-21T19:12:00.668Z. After the Chrome extension stopped responding and native
+Chrome control was unavailable, the user approved a separate, isolated Playwright
+browser. It used ordinary synthetic account logins, not the user's Chrome profile.
+The photo-delete confirmation was accepted in that test browser. No claim is made
+that the original Chrome dialog was closed. The 18-pass hosted HTTP image
+test was also rerun successfully and is documented separately in
 [Revocable Image Access](revocable-image-access-2026-10-21.md).
-Preparing this browser runner or passing its unit tests is not a browser test.
+This is image-only local frontend acceptance, not a production release verdict.
 
 ## Local Session
 
@@ -69,7 +71,7 @@ exclusion. The browser runner successfully loaded them without another prompt.
 Synthetic verification passed: encrypted round trip, absence of both plaintext
 canaries in the file, protected two-principal ACL, refusal of another project,
 Git exclusion and cleanup of the synthetic credential file. These checks do not
-validate the real API keys or replace the pending browser acceptance.
+validate the real API keys; the actual browser results are recorded below.
 
 The first browser attempt also exposed a local dev-server problem: the dependency
 junction resolved TanStack's client entry outside Vite's default filesystem
@@ -78,6 +80,10 @@ dependency directory while retaining strict filesystem checks. Startup checks
 both rendered HTML and the JavaScript client entry before creating fixtures.
 The initial failed browser attempt and the duplicate older session were cleaned
 with zero reported cleanup failures; neither is counted as passing acceptance.
+The independent config also explicitly selects the root tsconfig and excludes
+`node_modules.release-backup` from watching. This avoids scanning an unrelated
+dependency backup. Startup has a five-minute bound and 30-second request deadlines;
+fixtures are still created only after both HTML and client JavaScript are ready.
 
 DPAPI behavior is documented by
 [Microsoft Export-Clixml](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/export-clixml?view=powershell-7.4).
@@ -107,7 +113,8 @@ from cleanup after a startup failure. Its lifecycle status is not an E2E verdict
 
 ## Browser Checks
 
-Observed on 2026-10-21 using the actual app on loopback port 52477:
+Final run used the actual app on loopback port 53345 and separate owner, peer,
+anonymous and fixture-operator browser contexts. All 12 checks passed:
 
 1. Anonymous private share is unavailable and reveals no managed image.
 2. Owner signs in through the normal app form and sees the private bottle image
@@ -124,24 +131,30 @@ Observed on 2026-10-21 using the actual app on loopback port 52477:
 8. Inspect desktop and mobile layouts, image dimensions, horizontal overflow and
    browser errors. Save screenshots of app pages, not exposed test passwords.
 
-Results:
+The safe report is `dist/hosted-image-playwright-report.json`, SHA-256
+`119980d1268d87441e8effd177c2949154d57850f63f5f33de734f532322a95a`.
+Its 12 individually recorded checks cover the list above, including separate
+cellar/detail/layout/upload/delete/owner-retention and browser-error assertions.
+Desktop was 1440 by 1000, mobile 390 by 844; both had no horizontal overflow.
+Private images decoded, peer access was denied, anonymous sharing returned JPEG
+bytes with `private, no-store, max-age=0`, and the same browser proxy requests
+returned 404 after unsharing or erasure. Existing images were removed from the DOM.
+There were zero direct Storage image reads, AI calls, page errors, script console
+errors, unexpected HTTP errors or blocked unexpected requests.
 
-- **Passed:** anonymous private share displayed "Not available" with no image.
-- **Passed:** normal owner sign-in, private wine detail and gallery image decoded
-  from local Blob URLs. The original JPEG was 1024 by 1024 pixels.
-- **Passed:** lightbox image decoded and displayed at 358 by 358 CSS pixels on
-  mobile; an additional repository image uploaded through the real crop/upload
-  flow. Three images then decoded: header, original gallery and extra gallery.
-- **Passed:** 390 by 844 mobile viewport, scroll width 390, no horizontal overflow.
-  The owner image also decoded before switching from the normal desktop viewport.
-- **Pending:** recheck the cellar thumbnail after the binary-response fix, peer
-  account denial, anonymous public image, browser-origin hosted logs, unsharing
-  on focus/reload and owner erasure revalidation. HTTP-level equivalents remain
-  green but do not replace these frontend observations.
-- **Pending:** extra-photo removal through the UI and complete desktop/error-log
-  review. Chrome automation timed out while handling the native "Delete this
-  image?" confirmation. No successful deletion is inferred from clicking it.
-  Browser viewport reset was also unavailable after the connection stopped.
+Focus revalidation used real headed-window activation, not `dispatchEvent` or an
+application mock. Playwright normally emulates permanent focus, so this run
+disabled that emulation through its CDP session, waited for the other page to
+actually receive focus and the target to lose it, then activated the target.
+Three natural focus events were recorded: unshared anonymous page, erased owner
+page and erased anonymous page. No sleeps were used to substitute for those
+focus-state assertions.
+
+Earlier attempts remain failures, not passes: the first Playwright attempt passed
+four checks before an ambiguous lightbox Close locator; the next two passed eight
+before the focus harness timed out. Each cleaned its fixtures. The locator was
+restricted to the actual Close button, and real focus transitions fixed the
+harness. The successful final run reran every assertion from clean fixtures.
 
 The browser run exposed a real client bug: Supabase FunctionsClient parsed
 `image/jpeg` as text, and the UI rejected the result because it was not a Blob.
@@ -151,8 +164,35 @@ redirects, active content, empty images and responses over 10 MiB. It still neve
 falls back to direct Storage when the proxy flag is enabled. JPEG-byte regression
 tests cover the observed failure rather than mocking an already-correct SDK Blob.
 
-Local screenshot: `dist/image-browser-owner-mobile.png`.
-SHA-256: `cb828586c3bfac9e539e84c443beb8788220121a6e8e768ddfa886a0237d79a8`.
+A second real client bug surfaced: hosted anonymous reads of `wines` returned
+401/42501, while the existing `public_wines` view was readable. Public shares now
+select only the explicit public projection from that view. A local typed contract
+avoids editing generated database types. Source-only installations fall back to
+the original `wines` RLS lookup only when the view itself is missing, and always
+filter by the exact share ID and `is_public=true`. Empty/revoked shares, denied
+reads, column errors and network errors never trigger fallback. Four regression
+tests cover those boundaries. No grants, policies or hosted schema were changed.
+
+Screenshots were visually inspected on desktop and mobile. Owner mobile proof:
+`dist/image-browser-owner-mobile-e2e.png`, SHA-256
+`b7133c63c88c3378154b3d0fa36bf0e224411429c9577300799be500d44bb6a7`.
+Erasure proof: `dist/image-browser-erasure-images-cleared.png`, SHA-256
+`18ed64c8dba52705de1b7589b37bc9cde7c14ede9cb63940abe5ecdf29fa30e7`.
+The report also lists desktop, cellar, peer-denied, shared and unshared screenshots.
+
+To repeat, start the secure `-Browser` wrapper above, then run the driver in a
+second terminal while that fresh private fixture is ready:
+
+```powershell
+# If Playwright is bundled elsewhere, set this to its local index.mjs path.
+$env:WINESNAP_PLAYWRIGHT_MODULE = '<local Playwright module path>'
+node scripts/check-hosted-image-browser.mjs
+```
+
+The driver accepts no connection arguments, refuses an inherited admin key,
+validates the fresh test-only loopback URLs and blocks production/AI requests.
+Temporary synthetic passwords exist only in memory. No auth state, HAR or trace
+is saved. The browser closes and fixture cleanup runs in a finally block.
 
 Use a repository image for uploads; do not select a personal photo or invoke AI.
 Avoid the AI Picks/Ask/scan-analysis actions in this image-only acceptance run.
@@ -171,13 +211,13 @@ worker, administrator role, cron or destructive migration is enabled.
 The runner reports cleanup failures instead of claiming success. Independently
 check aggregate Auth/wine/photo/Storage/erasure/job/quota counts in the dashboard
 afterward, and verify the app's loopback port has closed. Keep a passing browser
-verdict separate from this cleanup proof and the earlier HTTP test report.
+verdict separate from this cleanup proof and the HTTP test report.
 
-Final code checks passed: 434 Vitest assertions in 66 files, TypeScript, targeted
+Final code checks passed: 440 Vitest assertions in 67 files, TypeScript, targeted
 ESLint, Node syntax, PowerShell parser and the independent runtime-check build.
 The build retains its existing large-chunk warning. These cover public environment
 isolation, target pinning, local mutation guards and HTML escaping. They do not
-replace the pending browser checks or prove public production deployment.
+replace browser checks or prove public production deployment.
 
 After Chrome stopped, the session was finished through the same loopback
 operator's guarded cleanup endpoint using its own session cookie, origin and form
@@ -186,13 +226,21 @@ reported `phase=cleaned`, `setupCompleted=true`, `cleanupFailures=0` at
 2026-10-21T11:41:08.589Z. All six local app/operator ports from the three sessions
 were independently confirmed closed.
 
+The final browser session reported `phase=cleaned`, `setupCompleted=true`,
+`cleanupFailures=0` at 2026-10-21T19:11:57.005Z. All eleven checked app/operator
+ports from the later sessions were closed. Its isolated browser was closed.
+
 The hosted HTTP suite was rerun using the encrypted keys without manual entry:
 **18 passed, 0 failed, 0 cleanup failures**, completed at
-2026-10-21T11:41:50.357Z. Report SHA-256:
-`833f57910d3336bdfd1f8e24c76024cab248b16e93dd5043aa19ee2292620313`.
+2026-10-21T19:12:41.140Z. Report SHA-256:
+`fdf73ae38584ade94e6565f73ce8fc21844c896a08eaea94bcaea29a0cd27b1b`.
 
-An independent read-only API check at 2026-10-21T11:44:55.228Z confirmed zero Auth
+An independent read-only API check at 2026-10-21T19:13:40.238Z confirmed zero Auth
 users, wines, wine photos, erasure receipts, erasure jobs, quota rows and root
 Storage entries. The local report is `dist/image-browser-cleanup-counts.json`.
 The earlier SQL cleanup proof remains a separate prior observation; this readback
 did not require a dashboard mutation or production access.
+
+Not tested here: AI identification, PWA/service-worker lifecycle, native OS share
+UI, production schema/caches or public deployment. Service workers were blocked
+in this isolated image acceptance run, so no PWA acceptance is inferred.
