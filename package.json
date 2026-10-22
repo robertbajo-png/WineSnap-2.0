@@ -17,10 +17,11 @@
     "start:independent": "node dist/independent-runtime/server/index.mjs",
     "test:independent": "node scripts/check-independent-runtime.mjs",
     "test:database": "node scripts/check-staging-database.mjs",
+    "test:bundle": "node scripts/check-client-budget.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run test:bundle",
     "format": "prettier --write ."
   },
   "dependencies": {

@@ -185,6 +185,8 @@ function TastePage() {
       <div className="-mx-5 -mt-6 px-5 pt-3">
         <header className="flex items-center justify-between">
           <button
+            type="button"
+            aria-label={t("common.back")}
             onClick={() => window.history.back()}
             className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11 min-w-11"
           >

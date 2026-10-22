@@ -37,6 +37,8 @@ function worker() {
             "winesnap-pages-2026-10-10-scan-errors",
             "winesnap-assets-2026-10-13-privacy-controls",
             "winesnap-pages-2026-10-13-privacy-controls",
+            "winesnap-assets-2026-10-21-revocable-images",
+            "winesnap-pages-2026-10-21-revocable-images",
             ...currentCaches,
           ],
           delete: remove,
@@ -103,6 +105,8 @@ describe("release service worker", () => {
       "winesnap-pages-2026-10-10-scan-errors",
       "winesnap-assets-2026-10-13-privacy-controls",
       "winesnap-pages-2026-10-13-privacy-controls",
+      "winesnap-assets-2026-10-21-revocable-images",
+      "winesnap-pages-2026-10-21-revocable-images",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });

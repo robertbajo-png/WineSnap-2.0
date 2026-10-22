@@ -19,6 +19,7 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+      - run: npm run test:bundle
       - run: npm run build:chef
       - name: Build independent Node candidate with synthetic configuration
         run: npm run build:independent:check
@@ -28,3 +29,4 @@ jobs:
           VITE_UNKNOWN_SECRET: independent-check-private-canary-must-not-be-public
           VITE_SUPABASE_URL: https://production-should-not-be-used.invalid
       - run: npm run test:independent
+      - run: npm run test:bundle -- --independent

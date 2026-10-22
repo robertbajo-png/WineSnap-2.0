@@ -21,6 +21,7 @@ import { profileStats } from "@/lib/wineRatings";
 import { toast } from "sonner";
 import { readAllPages } from "@/lib/readAllPages";
 import { DataControls } from "@/components/DataControls";
+import { ProfileAccountSection } from "@/components/ProfileAccountSection";
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -144,162 +145,164 @@ function MePage() {
           <span className="h-9 w-9" />
         </header>
 
-        {/* Avatar + name */}
-        <section className="mt-6 flex items-center gap-4">
-          <div className="relative h-16 w-16 shrink-0 rounded-full border-2 border-gold bg-gradient-to-b from-burgundy/40 to-background/60">
-            <div className="flex h-full w-full items-center justify-center font-display text-2xl text-gold">
-              {(profile?.display_name ?? user?.email ?? "A")[0].toUpperCase()}
-            </div>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-2xl text-cream">
-              {profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}
-            </p>
-            <p className="text-sm text-gold">{t(explorerTierKey(bottles))}</p>
-            <p className="text-sm text-muted-foreground">
-              {t("profile.memberSince")} {memberSince}
-            </p>
-          </div>
-        </section>
-
-        {/* Stats */}
-        {loadError && (
-          <p role="alert" className="mt-4 text-sm">
-            {t("common.error")}
-          </p>
-        )}
-        <section className="mt-5 grid grid-cols-3 gap-2">
-          <StatBox
-            icon={<Wine className="h-4 w-4 text-gold" />}
-            value={authLoading || statsLoading || loadError ? "—" : String(bottles)}
-            label={t("profile.bottles")}
-          />
-          <StatBox
-            icon={<GlassWater className="h-4 w-4 text-gold" />}
-            value={authLoading || statsLoading || loadError ? "—" : String(tasted)}
-            label={t("profile.tasted")}
-          />
-          <StatBox
-            icon={<Star className="h-4 w-4 fill-gold text-gold" />}
-            value={avg ? avg.toFixed(1) : "—"}
-            label={t("profile.avgRating")}
-          />
-        </section>
-
-        {/* Favorites */}
-        <section className="mt-7">
-          <h2 className="font-display text-lg text-gold">{t("profile.favorites")}</h2>
-          <div className="mt-3 space-y-2.5">
-            <FavRow
-              to="/taste"
-              hash="types"
-              icon={<Wine className="h-4 w-4 text-gold" />}
-              label={t("profile.wineTypes")}
-              value={
-                profile?.preferred_types?.length
-                  ? profile.preferred_types.join(", ")
-                  : t("profile.notSet")
-              }
-            />
-            <FavRow
-              to="/taste"
-              hash="profile"
-              icon={<BookmarkIcon className="h-4 w-4 text-gold" />}
-              label={t("profile.tasteProfile")}
-              value={tasteProfileSummary(profile) ?? t("profile.notSet")}
-            />
-            <FavRow
-              to="/taste"
-              hash="regions"
-              icon={<MapPin className="h-4 w-4 text-gold" />}
-              label={t("profile.regions")}
-              value={
-                profile?.preferred_regions?.length
-                  ? profile.preferred_regions.slice(0, 3).join(", ") +
-                    (profile.preferred_regions.length > 3
-                      ? ` +${profile.preferred_regions.length - 3}`
-                      : "")
-                  : t("profile.notSet")
-              }
-            />
-            <FavRow
-              to="/taste"
-              hash="grapes"
-              icon={<Grape className="h-4 w-4 text-gold" />}
-              label={t("profile.grapes")}
-              value={(() => {
-                const list = profile?.preferred_grapes?.length
-                  ? profile.preferred_grapes
-                  : topGrapes;
-                return list.length
-                  ? list.slice(0, 2).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "")
-                  : t("profile.notSet");
-              })()}
-            />
-            <FavRow
-              to="/wishlist"
-              icon={<Bookmark className="h-4 w-4 text-gold" />}
-              label={t("profile.wishlist")}
-              value={t("common.more")}
-            />
-          </div>
-        </section>
-
-        {/* Recommended For You */}
-        <section className="mt-7">
-          <h2 className="font-display text-lg text-gold">{t("profile.recommended")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("profile.recommendedDesc")}</p>
-          <div className="mt-3 space-y-2.5 pb-4">
-            <FavRow
-              icon={null}
-              label={t("profile.priceRange")}
-              value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))}
-              onClick={() => editPriceRange(user?.id, profile, setProfile, lang)}
-            />
-          </div>
-        </section>
-
-        {/* Social */}
-        <section className="mt-7">
-          <h2 className="font-display text-lg text-gold">{t("profile.social")}</h2>
-          <div className="mt-3 space-y-2.5">
-            <Link
-              to="/friends"
-              className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
-            >
-              <Users className="h-5 w-5 text-gold" />
-              <div className="min-w-0 flex-1">
-                <p className="text-base text-foreground/90">{t("profile.friends")}</p>
-                <p className="text-sm text-muted-foreground">{t("profile.friendsDesc")}</p>
+        <ProfileAccountSection checking={authLoading} signedIn={Boolean(user)}>
+          {/* Avatar + name */}
+          <section className="mt-6 flex items-center gap-4">
+            <div className="relative h-16 w-16 shrink-0 rounded-full border-2 border-gold bg-gradient-to-b from-burgundy/40 to-background/60">
+              <div className="flex h-full w-full items-center justify-center font-display text-2xl text-gold">
+                {(profile?.display_name ?? user?.email ?? "A")[0].toUpperCase()}
               </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </Link>
-            <ToggleRow
-              title={t("profile.publicProfile")}
-              desc={t("profile.publicProfileDesc")}
-              value={profile?.is_public ?? false}
-              onChange={(v) => updatePref(user?.id, { is_public: v }, setProfile)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-2xl text-cream">
+                {profile?.display_name ?? user?.email?.split("@")[0] ?? "Guest"}
+              </p>
+              <p className="text-sm text-gold">{t(explorerTierKey(bottles))}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("profile.memberSince")} {memberSince}
+              </p>
+            </div>
+          </section>
+
+          {/* Stats */}
+          {loadError && (
+            <p role="alert" className="mt-4 text-sm">
+              {t("common.error")}
+            </p>
+          )}
+          <section className="mt-5 grid grid-cols-3 gap-2">
+            <StatBox
+              icon={<Wine className="h-4 w-4 text-gold" />}
+              value={authLoading || statsLoading || loadError ? "—" : String(bottles)}
+              label={t("profile.bottles")}
             />
-            <TextRow
-              label={t("profile.username")}
-              placeholder={t("profile.usernamePh")}
-              value={profile?.username ?? ""}
-              onSave={async (v) => {
-                const clean = v.trim().replace(/^@/, "").toLowerCase();
-                return updatePref(user?.id, { username: clean || null }, setProfile);
-              }}
+            <StatBox
+              icon={<GlassWater className="h-4 w-4 text-gold" />}
+              value={authLoading || statsLoading || loadError ? "—" : String(tasted)}
+              label={t("profile.tasted")}
             />
-            <TextRow
-              label={t("profile.bio")}
-              placeholder={t("profile.bioPh")}
-              value={profile?.bio ?? ""}
-              onSave={async (v) => {
-                return updatePref(user?.id, { bio: v.trim() || null }, setProfile);
-              }}
-              multiline
+            <StatBox
+              icon={<Star className="h-4 w-4 fill-gold text-gold" />}
+              value={avg ? avg.toFixed(1) : "—"}
+              label={t("profile.avgRating")}
             />
-          </div>
-        </section>
+          </section>
+
+          {/* Favorites */}
+          <section className="mt-7">
+            <h2 className="font-display text-lg text-gold">{t("profile.favorites")}</h2>
+            <div className="mt-3 space-y-2.5">
+              <FavRow
+                to="/taste"
+                hash="types"
+                icon={<Wine className="h-4 w-4 text-gold" />}
+                label={t("profile.wineTypes")}
+                value={
+                  profile?.preferred_types?.length
+                    ? profile.preferred_types.join(", ")
+                    : t("profile.notSet")
+                }
+              />
+              <FavRow
+                to="/taste"
+                hash="profile"
+                icon={<BookmarkIcon className="h-4 w-4 text-gold" />}
+                label={t("profile.tasteProfile")}
+                value={tasteProfileSummary(profile) ?? t("profile.notSet")}
+              />
+              <FavRow
+                to="/taste"
+                hash="regions"
+                icon={<MapPin className="h-4 w-4 text-gold" />}
+                label={t("profile.regions")}
+                value={
+                  profile?.preferred_regions?.length
+                    ? profile.preferred_regions.slice(0, 3).join(", ") +
+                      (profile.preferred_regions.length > 3
+                        ? ` +${profile.preferred_regions.length - 3}`
+                        : "")
+                    : t("profile.notSet")
+                }
+              />
+              <FavRow
+                to="/taste"
+                hash="grapes"
+                icon={<Grape className="h-4 w-4 text-gold" />}
+                label={t("profile.grapes")}
+                value={(() => {
+                  const list = profile?.preferred_grapes?.length
+                    ? profile.preferred_grapes
+                    : topGrapes;
+                  return list.length
+                    ? list.slice(0, 2).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "")
+                    : t("profile.notSet");
+                })()}
+              />
+              <FavRow
+                to="/wishlist"
+                icon={<Bookmark className="h-4 w-4 text-gold" />}
+                label={t("profile.wishlist")}
+                value={t("common.more")}
+              />
+            </div>
+          </section>
+
+          {/* Recommended For You */}
+          <section className="mt-7">
+            <h2 className="font-display text-lg text-gold">{t("profile.recommended")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("profile.recommendedDesc")}</p>
+            <div className="mt-3 space-y-2.5 pb-4">
+              <FavRow
+                icon={null}
+                label={t("profile.priceRange")}
+                value={priceRangeLabel(profile?.price_min, profile?.price_max, t("profile.notSet"))}
+                onClick={() => editPriceRange(user?.id, profile, setProfile, lang)}
+              />
+            </div>
+          </section>
+
+          {/* Social */}
+          <section className="mt-7">
+            <h2 className="font-display text-lg text-gold">{t("profile.social")}</h2>
+            <div className="mt-3 space-y-2.5">
+              <Link
+                to="/friends"
+                className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-card/40 px-3.5 py-3 text-left transition-colors hover:bg-card/70"
+              >
+                <Users className="h-5 w-5 text-gold" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-base text-foreground/90">{t("profile.friends")}</p>
+                  <p className="text-sm text-muted-foreground">{t("profile.friendsDesc")}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </Link>
+              <ToggleRow
+                title={t("profile.publicProfile")}
+                desc={t("profile.publicProfileDesc")}
+                value={profile?.is_public ?? false}
+                onChange={(v) => updatePref(user?.id, { is_public: v }, setProfile)}
+              />
+              <TextRow
+                label={t("profile.username")}
+                placeholder={t("profile.usernamePh")}
+                value={profile?.username ?? ""}
+                onSave={async (v) => {
+                  const clean = v.trim().replace(/^@/, "").toLowerCase();
+                  return updatePref(user?.id, { username: clean || null }, setProfile);
+                }}
+              />
+              <TextRow
+                label={t("profile.bio")}
+                placeholder={t("profile.bioPh")}
+                value={profile?.bio ?? ""}
+                onSave={async (v) => {
+                  return updatePref(user?.id, { bio: v.trim() || null }, setProfile);
+                }}
+                multiline
+              />
+            </div>
+          </section>
+        </ProfileAccountSection>
 
         {/* Language */}
         <section className="mt-2">

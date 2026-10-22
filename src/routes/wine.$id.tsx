@@ -801,7 +801,7 @@ function WineDetailPage() {
         <Button
           variant="ghost"
           onClick={remove}
-          className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive min-h-11"
+          className="mt-8 mb-4 w-full text-red-300 hover:bg-destructive/10 hover:text-red-200 min-h-11"
         >
           <Trash2 className="h-5 w-5" /> {t("wine.delete")}
         </Button>
