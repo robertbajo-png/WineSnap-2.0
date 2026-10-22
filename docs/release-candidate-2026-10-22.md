@@ -2,8 +2,8 @@
 
 ## Decision
 
-**NO-GO for production publication at this checkpoint.** The source candidate is
-being verified, but production access, complete hosted AI/privacy operations and
+**NO-GO for production publication at this checkpoint.** The source candidate has
+passed the automated checks below, but production access, complete hosted AI/privacy operations and
 physical-device acceptance are not established. A green local/test result is not
 a production deployment. No production migration, account change, object move,
 cron activation or main-branch merge has been performed in this run.
@@ -70,10 +70,13 @@ gzip, either kind is missing, or sizes are invalid. CI checks both existing and
 independent builds. These are initial size-regression limits, not Core Web Vitals
 or a claim that every asset is loaded on the initial route.
 
-Measured default largest JavaScript: 568,253 bytes raw, 174,513 bytes gzip.
-The existing >500 kB raw-chunk warning remains; this work adds a measured guard,
-not an artificial chunk split or a claim of improved phone latency. The existing
-Nitro/Wrangler/dependency build warnings also remain.
+The baseline default largest JavaScript was 568,253 bytes raw, 174,513 bytes gzip.
+The security-patched CI build measures 342,257 bytes raw, 107,859 bytes gzip for
+its largest compressed JavaScript asset. The test-configured local Node build
+measures 342,140 bytes raw, 107,839 bytes gzip. This is a per-file improvement,
+not a claim about total route transfer or phone latency. Dependency directive
+warnings remain. The new Nitro parser required removing the existing trailing
+comma from Wrangler's configuration; a focused test guards that strict JSON subset.
 
 `scripts/check-release-ui.mjs` uses the fresh loopback session created by
 `scripts/run-hosted-image-proxy-check.ps1 -Browser -Pwa`. Supply Playwright and
@@ -84,16 +87,19 @@ and verifies the actual guest sign-in state. External requests are allowlisted;
 AI functions and production are blocked. Reports retain rule IDs/selectors,
 not page HTML, credentials or account content.
 
-This read-only UI audit must finish before the existing
-`scripts/check-hosted-image-browser.mjs` suite changes sharing/erasure and cleans
-the session. Neither script is a production test or complete screen-reader audit.
+This read-only application-page audit includes normal synthetic sign-in. Run it
+separately from `scripts/check-hosted-image-browser.mjs`, which changes synthetic
+sharing/erasure and cleans its session. Use fresh sessions when an audit exceeds
+the existing freshness/lifetime guards; do not edit timestamps or weaken guards.
+Neither script is a production test or complete screen-reader audit.
 Test keys remain in the existing Windows-user-encrypted local store and are not
 committed or passed to browser processes.
 
 ## Recorded Verification
 
 - TypeScript and full ESLint: passed after the source fixes.
-- Vitest: **464 passed**, including profile and asset-budget regressions.
+- Vitest: **465 passed in 71 files** in clean GitHub CI, including profile,
+  asset-budget and deployment-configuration regressions.
 - Default client/SSR/Nitro build and default/independent compressed-asset budgets:
   passed. The independently built app is the browser-test artifact.
 - Fresh synthetic PostgreSQL: **33 migrations, 11 SQL invariant files**, plus
@@ -108,12 +114,20 @@ committed or passed to browser processes.
   The subsequent contrast fix and new worker version require the final rerun.
 - Final post-fix accessibility audit: **34 of 34 page/viewport checks passed**,
   zero reported WCAG violations, overflow, blocked requests or page errors.
-- Final post-fix built image/camera/PWA suite: **25 passed**, cleanup confirmed.
-  Camera motion uses synthetic Chromium video, not a physical camera.
+  This was repeated successfully on the security-patched Node artifact at
+  `2026-10-22T21:08:16.594Z`; that session later expired and cleaned itself.
+- Final security-patched built image/camera/PWA suite: **25 passed**, zero failed,
+  cleanup confirmed at `2026-10-22T22:21:52.317Z`. Camera motion uses synthetic
+  Chromium video, not a physical camera. Mobile and desktop screenshots were
+  visually inspected after the run.
+- Independent read-only cleanup at `2026-10-22T22:22:27.417Z`: all seven aggregates
+  were zero (Auth users, wines, wine photos, account-erasure jobs, erasure receipts,
+  AI quota rows and root Storage entries). No rows were disclosed or deleted by
+  this check; it does not certify physical backup erasure or old CDN retirement.
 
 ### Dependency Security Gate
 
-A fresh `npm audit --omit=dev` reports 26 affected dependency entries: three
+The initial `npm audit --omit=dev` reported 26 affected dependency entries: three
 critical, 14 high, seven moderate and two low. Cascaded package entries are not
 26 independent exploits or proof of production compromise. Critical reports
 include the TanStack Start server-function XSS advisory and Seroval
@@ -127,17 +141,35 @@ start-server-core 1.169.39 and Seroval 1.7.0. Vite 7 and the earlier Vite 8.0
 series were rejected during preparation because of builder compatibility or
 remaining advisories, rather than accepting a forced legacy-peer installation.
 The explicit Lovable-wrapper Nitro override binds its old prerelease peer range
-to the selected root Nitro. Strict clean npm installation and both builders must
-verify this combination; no general peer-dependency suppression is used.
+to the selected root Nitro. Strict clean npm installation and both builders have
+verified this combination in GitHub CI; no general peer-dependency suppression
+is used.
 
 The final candidate lockfile's production audit reports **zero high, critical or
 moderate entries**, with one low Windows-development-server esbuild advisory in
 the tsx chain. This is not proof that the published service is patched. CI now
-rejects high/critical production advisories. Final installation/build/browser
-verification for this dependency tree is still in progress at this checkpoint.
-The original shared dependency target has not been overwritten; the checkout's
-junction is being moved to an isolated clean installation. Vitest has an explicit
-source/config/script test inventory, excluding generated/dependency backup trees.
+rejects high/critical production advisories. Both
+[Quality](https://github.com/robertbajo-png/WineSnap-2.0/actions/runs/39852135889)
+and [Database Safety](https://github.com/robertbajo-png/WineSnap-2.0/actions/runs/39852136010)
+passed on code revision `9e9cc9db87c750715eeba386dd49df140de76b77`.
+Quality includes clean npm installation, audit, typecheck, lint, all 465 tests,
+both application builds, the isolated Chef build, Node-runtime isolation and
+both asset budgets.
+
+Windows npm installation was exceptionally slow and was abandoned without
+overwriting the original shared installation. A separate pnpm installation
+imported the checked-in npm lock; every direct installed version and the
+wrapper's actual Nitro peer were checked against that lock. The checkout now
+uses this isolated installation. Vitest has an explicit source/config/script
+inventory, excluding generated/dependency backup trees. Three filesystem-heavy
+local tests initially exceeded five seconds under cold-build contention. The full
+local rerun passed all **465 tests in 71 files** with two workers and a 30-second
+local timeout. CI retains its normal timing and passed all tests independently.
+The two synthetic browser sessions are cleaned; test keys were reused encrypted,
+never sent to the browser or committed. Chrome is no longer connected at the end
+of this run; the earlier denied Lovable/production access has not been resolved.
+All ten app/operator ports used during this run were independently confirmed to
+have no remaining listeners. Existing unrelated servers were not stopped.
 
 ## Production Rollout Order Once Access Is Verified
 

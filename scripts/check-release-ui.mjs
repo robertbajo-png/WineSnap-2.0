@@ -25,7 +25,7 @@ const { default: AxeBuilder } = await import(
 );
 const report = {
   project: "pzniyupmgwvlldvztzqh",
-  scope: "built app, synthetic accounts, no AI calls or writes",
+  scope: "built app, synthetic sign-in, read-only application pages, no AI calls",
   completed: false,
   checks: [],
   blockedRequests: 0,
