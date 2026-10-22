@@ -4,7 +4,7 @@ Scan a wine label (or type the wine), get producer, grape, flavour profile and f
 
 ## Stack
 
-- TanStack Start (React 19, Vite 7) — file routes in `src/routes`
+- TanStack Start (React 19, Vite 8) — file routes in `src/routes`
 - Tailwind v4 via `src/styles.css`
 - Lovable Cloud (Postgres + Auth + Storage) — client in `src/integrations/supabase`
 - AI: the six AI Edge Functions use Lovable's gateway. Source defaults in
@@ -68,6 +68,7 @@ then removed without deleting unrelated caches. Bump the worker version at relea
 npm run dev         # existing Lovable-compatible dev server
 npm run check       # typecheck, ESLint, Vitest and production build
 npm run test:bundle # compressed client-asset size budget, after a build
+npm run test:security # reject high/critical production dependency advisories
 npm run test:database # disposable CI PostgreSQL only, never production
 npm run build:independent:check # synthetic Node-runtime check, not a live app
 npm run test:independent

@@ -37,6 +37,11 @@ cron activation or main-branch merge has been performed in this run.
   copied into test.
 - The public WineSnap browser session is a guest, not an authenticated production
   acceptance account. No password or real account was changed to get around this.
+- Its `/privacy` page still renders the old missing-operator/contact/legal-basis/
+  retention placeholders, including after a reload. The source already contains
+  the approved Boleo AI postal information and newer policy. The live client has
+  not been demonstrated to contain that source; publication/cache verification
+  is a release blocker, not a reason to invent contact details or enable flags.
 
 ## Source Fixes
 
@@ -116,10 +121,23 @@ deserialization advisories. Both upstream maintainers publish patched versions:
 [TanStack advisory](https://github.com/TanStack/router/security/advisories/GHSA-qx66-fv34-fjm8),
 [Seroval advisory](https://github.com/lxsmnsyc/seroval/security/advisories/GHSA-p6vx-979v-rg4c).
 
-This is an additional **production release blocker**. Dependency remediation is
-being prepared with an isolated installation; the preceding passing builds and
-browser results do not yet certify the patched dependency tree. The original
-shared dependency installation must not be silently overwritten.
+The remediation candidate pins React Start 1.168.60, router 1.170.41, router
+plugin 1.168.42, Nitro 3.0.260903-beta and Vite 8.3.5; its lockfile resolves
+start-server-core 1.169.39 and Seroval 1.7.0. Vite 7 and the earlier Vite 8.0
+series were rejected during preparation because of builder compatibility or
+remaining advisories, rather than accepting a forced legacy-peer installation.
+The explicit Lovable-wrapper Nitro override binds its old prerelease peer range
+to the selected root Nitro. Strict clean npm installation and both builders must
+verify this combination; no general peer-dependency suppression is used.
+
+The final candidate lockfile's production audit reports **zero high, critical or
+moderate entries**, with one low Windows-development-server esbuild advisory in
+the tsx chain. This is not proof that the published service is patched. CI now
+rejects high/critical production advisories. Final installation/build/browser
+verification for this dependency tree is still in progress at this checkpoint.
+The original shared dependency target has not been overwritten; the checkout's
+junction is being moved to an isolated clean installation. Vitest has an explicit
+source/config/script test inventory, excluding generated/dependency backup trees.
 
 ## Production Rollout Order Once Access Is Verified
 

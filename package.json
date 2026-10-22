@@ -18,6 +18,7 @@
     "test:independent": "node scripts/check-independent-runtime.mjs",
     "test:database": "node scripts/check-staging-database.mjs",
     "test:bundle": "node scripts/check-client-budget.mjs",
+    "test:security": "npm audit --omit=dev --audit-level=high",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -56,9 +57,9 @@
     "@supabase/supabase-js": "^2.105.1",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.83.0",
-    "@tanstack/react-router": "^1.168.0",
-    "@tanstack/react-start": "^1.167.14",
-    "@tanstack/router-plugin": "^1.167.10",
+    "@tanstack/react-router": "1.170.41",
+    "@tanstack/react-start": "1.168.60",
+    "@tanstack/router-plugin": "1.168.42",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -67,7 +68,7 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
-    "nitro": "3.0.260603-beta",
+    "nitro": "3.0.260903-beta",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
@@ -86,6 +87,11 @@
     "vite-tsconfig-paths": "^6.0.2",
     "world-atlas": "^2.0.2",
     "zod": "^3.24.2"
+  },
+  "overrides": {
+    "@lovable.dev/vite-tanstack-config": {
+      "nitro": "$nitro"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
@@ -109,7 +115,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1",
+    "vite": "8.3.5",
     "vitest": "^5.0.0"
   }
 }

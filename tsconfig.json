@@ -5,6 +5,7 @@
     "config/independent/**/*.ts",
     "vite.config.ts",
     "vite.independent.config.ts",
+    "vitest.config.ts",
     "eslint.config.js"
   ],
   "compilerOptions": {
