@@ -1,5 +1,9 @@
 # Local Windows Hosting
 
+Latest local completion and remaining external/device gates:
+[Local WineSnap Completion](local-windows-completion-2026-10-23.md).
+The sections below retain the earlier installation and provider checkpoints.
+
 Date: 2026-10-23. Local test installation, not a production migration.
 Later update: user-logon startup and an email-protected temporary Internet
 tunnel are installed. Later the same day, the owner approved an existing OpenAI

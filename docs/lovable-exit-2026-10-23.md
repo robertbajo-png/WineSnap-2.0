@@ -2,6 +2,11 @@
 
 Date: 2026-10-23. Source candidate; production cutover has NOT occurred.
 
+Latest local runtime status:
+[Local WineSnap Completion](local-windows-completion-2026-10-23.md).
+It supersedes earlier same-day statements below about missing local AI,
+price/privacy transport and local operational setup, not production cutover gates.
+
 Later checkpoint on the same date: the original project is accessible again.
 Its WineSnap GitHub sync is disconnected, and real database/Auth and image
 exports have been downloaded, encrypted and rehearsed locally. See
