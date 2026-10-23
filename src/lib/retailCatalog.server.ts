@@ -62,7 +62,12 @@ export async function lookupRetailCandidates(
   const signal = AbortSignal.timeout(6000);
   const found = new Map<string, RetailCandidate>();
   for (const url of urls) {
-    const response = await fetcher(url, { headers: { accept: "application/json" }, signal });
+    const response = await fetcher(url, {
+      headers: { accept: "application/json" },
+      signal,
+      redirect: "error",
+      cache: "no-store",
+    });
     if (response.status === 404) continue;
     if (!response.ok) throw new Error("Catalog unavailable");
     const records = products(await response.json());

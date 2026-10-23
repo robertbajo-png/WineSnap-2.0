@@ -66,7 +66,7 @@ function loadHandler(
     "../_shared/restaurantRanking.ts": restaurantRanking,
   };
   let handler: Handler | undefined;
-  const shared = ["ask-winesnap", "taste-suggestions", "wine-suggestions"].includes(name);
+  const shared = true;
   const exported: { createHandler?: (dependencies: unknown) => Handler } = {};
   const source = readFileSync(
     `supabase/functions/${name}/${shared ? "handler" : "index"}.ts`,

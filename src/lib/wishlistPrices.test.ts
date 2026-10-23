@@ -46,6 +46,22 @@ function setup(override: Partial<WishlistPriceRow> = {}) {
   return { deps, request };
 }
 describe("wishlist price authorization and alerts", () => {
+  it("awaits the private runtime's scheduler secret without exposing or caching it", async () => {
+    const { deps } = setup();
+    const handler = createWishlistPriceHandler(
+      { ...deps, secret: async () => "synthetic-private-secret" },
+      "cron",
+    );
+    const response = await handler(
+      new Request("http://localhost/prices", {
+        method: "POST",
+        headers: { "x-cron-secret": "synthetic-private-secret" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.text()).not.toContain("synthetic-private-secret");
+  });
   it("keeps a quote tied to the exact wishlist identity and does not repeat the same alert", async () => {
     const { deps, request } = setup();
     const repeat = request.clone();

@@ -62,6 +62,9 @@ async function checkServer(configuredCron, artifact) {
     "SystemRoot",
     "SYSTEMROOT",
     "WINDIR",
+    "SystemDrive",
+    "ProgramData",
+    "ALLUSERSPROFILE",
     "TEMP",
     "TMP",
     "HOME",
@@ -109,18 +112,29 @@ async function checkServer(configuredCron, artifact) {
   });
   const closed = new Promise((done) => child.once("close", done));
   const request = async (path, options) => {
-    const response = await fetch(`${base}${path}`, {
-      ...options,
-      redirect: "manual",
-      signal: AbortSignal.timeout(10000),
-    });
+    const started = performance.now();
+    // Portable Windows fixtures import freshly copied modules on their first request.
+    const timeout = process.platform === "win32" ? 30000 : 10000;
+    let response;
+    try {
+      response = await fetch(`${base}${path}`, {
+        ...options,
+        redirect: "manual",
+        signal: AbortSignal.timeout(timeout),
+      });
+    } catch {
+      throw new Error(
+        `Synthetic runtime request failed at ${path} after ${Math.round(performance.now() - started)}ms`,
+      );
+    }
     const body = await response.text();
     assert(!body.includes(canary), `Private runtime canary exposed at ${path}`);
     return { response, body };
   };
   try {
     let ready = false;
-    for (let attempt = 0; attempt < 120; attempt++) {
+    const readyDeadline = Date.now() + 120000;
+    for (let attempt = 0; attempt < 120 && Date.now() < readyDeadline; attempt++) {
       if (spawnError) throw spawnError;
       assert(child.exitCode === null, `Server exited before readiness: ${logs}`);
       try {
@@ -140,7 +154,14 @@ async function checkServer(configuredCron, artifact) {
     assert.equal(health.response.status, 200);
     assert.deepEqual(JSON.parse(health.body), { status: "ok" });
     assert.equal(health.response.headers.get("cache-control"), "no-store");
-    for (const name of ["analyze-wine", "ask-winesnap", "taste-suggestions", "wine-suggestions"]) {
+    for (const name of [
+      "analyze-wine",
+      "ask-winesnap",
+      "taste-suggestions",
+      "wine-suggestions",
+      "restaurant-match",
+      "extract-preference-signals",
+    ]) {
       const localAi = await request(`/api/ai/${name}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -152,6 +173,19 @@ async function checkServer(configuredCron, artifact) {
         "Test-only AI must stay disabled outside its explicit runtime",
       );
       assert.equal(localAi.response.headers.get("cache-control"), "no-store");
+    }
+    for (const name of ["privacy-export", "privacy-controls", "privacy-maintenance"]) {
+      const privacy = await request(`/api/privacy/${name}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      assert.equal(
+        privacy.response.status,
+        503,
+        "Local privacy operations must stay disabled by default",
+      );
+      assert.equal(privacy.response.headers.get("cache-control"), "no-store");
     }
 
     if (!configuredCron) {

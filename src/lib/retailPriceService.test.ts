@@ -24,6 +24,19 @@ function setup(overrides = {}) {
   return { deps, request };
 }
 describe("owner-only price refresh", () => {
+  it("never caches either owner prices or authorization errors", async () => {
+    for (const authenticate of [async () => "owner", async () => null]) {
+      const { deps } = setup();
+      const response = await createRetailPriceHandler({ ...deps, authenticate })(
+        new Request("http://localhost/price", {
+          method: "POST",
+          body: JSON.stringify({ action: "refresh", wineIds: [wine.id] }),
+        }),
+      );
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("cdn-cache-control")).toBe("no-store");
+    }
+  });
   it("authenticates before validation or spending source requests", async () => {
     const { deps, request } = setup({ authenticate: vi.fn(async () => null) });
     expect((await request()).code).toBe(401);

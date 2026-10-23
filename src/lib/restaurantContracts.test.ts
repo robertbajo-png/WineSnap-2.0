@@ -7,7 +7,7 @@ function source(relativePath: string) {
 
 describe("restaurant menu contracts", () => {
   it("loads private taste data server-side and keeps scores outside the AI schema", () => {
-    const edgeFunction = source("supabase/functions/restaurant-match/index.ts");
+    const edgeFunction = source("supabase/functions/restaurant-match/handler.ts");
 
     expect(edgeFunction).toContain("rankRestaurantCandidates");
     expect(edgeFunction).toContain('.eq("id", access.userId)');
@@ -18,7 +18,7 @@ describe("restaurant menu contracts", () => {
   });
 
   it("validates transient images before sending them to the direct provider with a timeout", () => {
-    const edgeFunction = source("supabase/functions/restaurant-match/index.ts");
+    const edgeFunction = source("supabase/functions/restaurant-match/handler.ts");
 
     expect(edgeFunction).toContain("validImageDataUrl");
     expect(edgeFunction).toContain("6 * 1024 * 1024");

@@ -181,7 +181,13 @@ describe("shared Edge/Node AI access guard", () => {
 });
 
 describe("local Gemini chat and recommendation boundary", () => {
-  const names = ["ask-winesnap", "taste-suggestions", "wine-suggestions"] as const;
+  const names = [
+    "ask-winesnap",
+    "taste-suggestions",
+    "wine-suggestions",
+    "restaurant-match",
+    "extract-preference-signals",
+  ] as const;
   const owner = "b10ec3dc-4751-41aa-ab93-a628eb2f1fd7";
   const wineId = "efc0c97c-248d-4549-ac62-7ab0f7fcd4c4";
   function client(data: Record<string, unknown[]> = {}) {
@@ -232,6 +238,11 @@ describe("local Gemini chat and recommendation boundary", () => {
     ["ask-winesnap", { message: "Wine", userId: "foreign" }],
     ["taste-suggestions", { model: "attacker-selected-model" }],
     ["wine-suggestions", { wineId: "not-a-uuid" }],
+    ["restaurant-match", { text: "Menu", constraints: { userId: "stranger" } }],
+    ["restaurant-match", { image: "https://private.invalid/image.png" }],
+    ["restaurant-match", { text: "Menu", constraints: { maxPrice: -1 } }],
+    ["extract-preference-signals", { tastingNoteId: "not-a-uuid" }],
+    ["extract-preference-signals", { tastingNoteId: wineId, userId: owner }],
   ] as const)("rejects unsupported %s input before database/provider calls", async (name, body) => {
     expect((await handleLocalAi(request(body), name)).status).toBe(400);
     expect(doubles.createClient).not.toHaveBeenCalled();
@@ -283,6 +294,22 @@ describe("local Gemini chat and recommendation boundary", () => {
     expect(response.status).toBe(429);
     expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("filters preference extraction by both note ID and verified owner before inference", async () => {
+    doubles.readFile.mockResolvedValue(
+      JSON.stringify({ ...keys, gemini: "synthetic-google-key-never-real" }),
+    );
+    const database = client();
+    const send = vi.fn();
+    vi.stubGlobal("fetch", send);
+    const response = await handleLocalAi(
+      request({ tastingNoteId: wineId }),
+      "extract-preference-signals",
+    );
+    expect(response.status).toBe(404);
+    expect(database.filters).toContainEqual(["tasting_notes", "id", wineId]);
+    expect(database.filters).toContainEqual(["tasting_notes", "user_id", owner]);
     expect(send).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-param([ValidateSet('Install', 'Check', 'Test', 'TestGemini')][string]$Action = 'Install')
+param([ValidateSet('Install', 'Check', 'Test', 'TestGemini', 'TestFeatures')][string]$Action = 'Install')
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'PowerShell 7 on Windows is required.' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -10,7 +10,7 @@ $aiKeys = $null
 $payload = $null
 $process = $null
 $phase = 'engine'
-$isTest = $Action -in @('Test', 'TestGemini')
+$isTest = $Action -in @('Test', 'TestGemini', 'TestFeatures')
 
 function Read-PrivateStore([string]$Path) {
   foreach ($item in @((Split-Path -Parent $Path), $Path)) {
@@ -48,14 +48,14 @@ try {
   $start.RedirectStandardOutput = $true
   $start.RedirectStandardError = $true
   $start.Environment.Clear()
-  foreach ($key in @('PATH', 'SystemRoot', 'WINDIR', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP')) {
+  foreach ($key in @('PATH', 'SystemRoot', 'WINDIR', 'SystemDrive', 'ProgramData', 'ALLUSERSPROFILE', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP')) {
     $value = [Environment]::GetEnvironmentVariable($key)
     if ($value) { $start.Environment[$key] = $value }
   }
   $installer = [IO.File]::ReadAllText((Join-Path $root 'config/local-windows/install-ai-credentials.mjs'))
   if ($isTest) {
     $start.FileName = Join-Path $HOME '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
-    $entry = if ($Action -eq 'TestGemini') { 'check-local-windows-gemini.mjs' } else { 'check-local-windows-ai.mjs' }
+    $entry = if ($Action -eq 'TestFeatures') { 'check-local-windows-features.mjs' } elseif ($Action -eq 'TestGemini') { 'check-local-windows-gemini.mjs' } else { 'check-local-windows-ai.mjs' }
     $start.ArgumentList.Add((Join-Path $PSScriptRoot $entry))
   } else {
     foreach ($argument in @('--context', 'desktop-linux', 'exec', '-i', $name, 'node', '--input-type=module', '--eval', $installer)) {
@@ -95,7 +95,7 @@ try {
   if ($payload) { $process.StandardInput.Write($payload) }
   $process.StandardInput.Close()
   $payload = $null
-  $timeout = if ($isTest) { 300000 } else { 30000 }
+  $timeout = if ($isTest) { 600000 } else { 30000 }
   if (-not $process.WaitForExit($timeout)) { $process.Kill(); throw 'Local AI operation timed out.' }
   $phase = 'runtime_installation'
   $rawOutput = $output.GetAwaiter().GetResult()
@@ -103,7 +103,7 @@ try {
   $result = $rawOutput | ConvertFrom-Json
   $errors.GetAwaiter().GetResult() | Out-Null
   if ($isTest) {
-    $report = if ($Action -eq 'TestGemini') { 'dist/local-windows-gemini-report.json' } else { 'dist/local-windows-ai-report.json' }
+    $report = if ($Action -eq 'TestFeatures') { 'dist/local-windows-features-report.json' } elseif ($Action -eq 'TestGemini') { 'dist/local-windows-gemini-report.json' } else { 'dist/local-windows-ai-report.json' }
     [pscustomobject]@{ completed=[bool]$result.completed; project=$project; report=$report } | ConvertTo-Json -Compress
     if ($process.ExitCode -ne 0 -or -not $result.completed) { exit 1 }
     exit 0
@@ -111,7 +111,7 @@ try {
   if ($process.ExitCode -ne 0 -or $result.configured -ne $true -or $result.project -ne $project) {
     throw 'Local credential installation failed.'
   }
-  [pscustomobject]@{ configured=$true; project=$project; provider='OpenAI'; model='gpt-6.1-sol'; geminiConfigured=[bool]$result.geminiConfigured; apiValidityChecked=$false } | ConvertTo-Json -Compress
+  [pscustomobject]@{ configured=$true; project=$project; provider='OpenAI'; model='gpt-6.1-sol'; geminiConfigured=[bool]$result.geminiConfigured; operationsConfigured=[bool]$result.operationsConfigured; apiValidityChecked=$false } | ConvertTo-Json -Compress
 } catch {
   Write-Host "Local AI configuration failed at $phase. No keys reported; production was not contacted."
   exit 1

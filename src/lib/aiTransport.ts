@@ -1,7 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type LocalAiFunction =
-  "analyze-wine" | "ask-winesnap" | "taste-suggestions" | "wine-suggestions";
+  | "analyze-wine"
+  | "ask-winesnap"
+  | "taste-suggestions"
+  | "wine-suggestions"
+  | "restaurant-match"
+  | "extract-preference-signals";
 
 export async function invokeAi(name: LocalAiFunction, body: Record<string, unknown>) {
   if (import.meta.env.VITE_LOCAL_AI_ENABLED !== "true") {

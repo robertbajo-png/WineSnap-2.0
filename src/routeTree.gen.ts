@@ -37,8 +37,13 @@ import { Route as WShareIdRouteImport } from './routes/w.$shareId'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as ApiAiAnalyzeWineRouteImport } from './routes/api/ai/analyze-wine'
 import { Route as ApiAiAskWinesnapRouteImport } from './routes/api/ai/ask-winesnap'
+import { Route as ApiAiExtractPreferenceSignalsRouteImport } from './routes/api/ai/extract-preference-signals'
+import { Route as ApiAiRestaurantMatchRouteImport } from './routes/api/ai/restaurant-match'
 import { Route as ApiAiTasteSuggestionsRouteImport } from './routes/api/ai/taste-suggestions'
 import { Route as ApiAiWineSuggestionsRouteImport } from './routes/api/ai/wine-suggestions'
+import { Route as ApiPrivacyPrivacyControlsRouteImport } from './routes/api/privacy/privacy-controls'
+import { Route as ApiPrivacyPrivacyExportRouteImport } from './routes/api/privacy/privacy-export'
+import { Route as ApiPrivacyPrivacyMaintenanceRouteImport } from './routes/api/privacy/privacy-maintenance'
 import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
@@ -187,6 +192,17 @@ const ApiAiAskWinesnapRoute = ApiAiAskWinesnapRouteImport.update({
   path: '/api/ai/ask-winesnap',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiExtractPreferenceSignalsRoute =
+  ApiAiExtractPreferenceSignalsRouteImport.update({
+    id: '/api/ai/extract-preference-signals',
+    path: '/api/ai/extract-preference-signals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAiRestaurantMatchRoute = ApiAiRestaurantMatchRouteImport.update({
+  id: '/api/ai/restaurant-match',
+  path: '/api/ai/restaurant-match',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAiTasteSuggestionsRoute = ApiAiTasteSuggestionsRouteImport.update({
   id: '/api/ai/taste-suggestions',
   path: '/api/ai/taste-suggestions',
@@ -197,6 +213,23 @@ const ApiAiWineSuggestionsRoute = ApiAiWineSuggestionsRouteImport.update({
   path: '/api/ai/wine-suggestions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPrivacyPrivacyControlsRoute =
+  ApiPrivacyPrivacyControlsRouteImport.update({
+    id: '/api/privacy/privacy-controls',
+    path: '/api/privacy/privacy-controls',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPrivacyPrivacyExportRoute = ApiPrivacyPrivacyExportRouteImport.update({
+  id: '/api/privacy/privacy-export',
+  path: '/api/privacy/privacy-export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPrivacyPrivacyMaintenanceRoute =
+  ApiPrivacyPrivacyMaintenanceRouteImport.update({
+    id: '/api/privacy/privacy-maintenance',
+    path: '/api/privacy/privacy-maintenance',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const WineIdEditRoute = WineIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -266,8 +299,13 @@ export interface FileRoutesByFullPath {
   '/wine/$id': typeof WineIdRouteWithChildren
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
+  '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
   '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
   '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
+  '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
+  '/api/privacy/privacy-maintenance': typeof ApiPrivacyPrivacyMaintenanceRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -305,8 +343,13 @@ export interface FileRoutesByTo {
   '/wine/$id': typeof WineIdRouteWithChildren
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
+  '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
   '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
   '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
+  '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
+  '/api/privacy/privacy-maintenance': typeof ApiPrivacyPrivacyMaintenanceRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -345,8 +388,13 @@ export interface FileRoutesById {
   '/wine/$id': typeof WineIdRouteWithChildren
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
+  '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
   '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
   '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
+  '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
+  '/api/privacy/privacy-maintenance': typeof ApiPrivacyPrivacyMaintenanceRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -386,8 +434,13 @@ export interface FileRouteTypes {
     | '/wine/$id'
     | '/api/ai/analyze-wine'
     | '/api/ai/ask-winesnap'
+    | '/api/ai/extract-preference-signals'
+    | '/api/ai/restaurant-match'
     | '/api/ai/taste-suggestions'
     | '/api/ai/wine-suggestions'
+    | '/api/privacy/privacy-controls'
+    | '/api/privacy/privacy-export'
+    | '/api/privacy/privacy-maintenance'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -425,8 +478,13 @@ export interface FileRouteTypes {
     | '/wine/$id'
     | '/api/ai/analyze-wine'
     | '/api/ai/ask-winesnap'
+    | '/api/ai/extract-preference-signals'
+    | '/api/ai/restaurant-match'
     | '/api/ai/taste-suggestions'
     | '/api/ai/wine-suggestions'
+    | '/api/privacy/privacy-controls'
+    | '/api/privacy/privacy-export'
+    | '/api/privacy/privacy-maintenance'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -464,8 +522,13 @@ export interface FileRouteTypes {
     | '/wine/$id'
     | '/api/ai/analyze-wine'
     | '/api/ai/ask-winesnap'
+    | '/api/ai/extract-preference-signals'
+    | '/api/ai/restaurant-match'
     | '/api/ai/taste-suggestions'
     | '/api/ai/wine-suggestions'
+    | '/api/privacy/privacy-controls'
+    | '/api/privacy/privacy-export'
+    | '/api/privacy/privacy-maintenance'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -502,8 +565,13 @@ export interface RootRouteChildren {
   WineIdRoute: typeof WineIdRouteWithChildren
   ApiAiAnalyzeWineRoute: typeof ApiAiAnalyzeWineRoute
   ApiAiAskWinesnapRoute: typeof ApiAiAskWinesnapRoute
+  ApiAiExtractPreferenceSignalsRoute: typeof ApiAiExtractPreferenceSignalsRoute
+  ApiAiRestaurantMatchRoute: typeof ApiAiRestaurantMatchRoute
   ApiAiTasteSuggestionsRoute: typeof ApiAiTasteSuggestionsRoute
   ApiAiWineSuggestionsRoute: typeof ApiAiWineSuggestionsRoute
+  ApiPrivacyPrivacyControlsRoute: typeof ApiPrivacyPrivacyControlsRoute
+  ApiPrivacyPrivacyExportRoute: typeof ApiPrivacyPrivacyExportRoute
+  ApiPrivacyPrivacyMaintenanceRoute: typeof ApiPrivacyPrivacyMaintenanceRoute
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
   ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
   ApiPublicHooksRefreshCellarValuesRoute: typeof ApiPublicHooksRefreshCellarValuesRoute
@@ -708,6 +776,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiAskWinesnapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai/extract-preference-signals': {
+      id: '/api/ai/extract-preference-signals'
+      path: '/api/ai/extract-preference-signals'
+      fullPath: '/api/ai/extract-preference-signals'
+      preLoaderRoute: typeof ApiAiExtractPreferenceSignalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/restaurant-match': {
+      id: '/api/ai/restaurant-match'
+      path: '/api/ai/restaurant-match'
+      fullPath: '/api/ai/restaurant-match'
+      preLoaderRoute: typeof ApiAiRestaurantMatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ai/taste-suggestions': {
       id: '/api/ai/taste-suggestions'
       path: '/api/ai/taste-suggestions'
@@ -720,6 +802,27 @@ declare module '@tanstack/react-router' {
       path: '/api/ai/wine-suggestions'
       fullPath: '/api/ai/wine-suggestions'
       preLoaderRoute: typeof ApiAiWineSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/privacy-controls': {
+      id: '/api/privacy/privacy-controls'
+      path: '/api/privacy/privacy-controls'
+      fullPath: '/api/privacy/privacy-controls'
+      preLoaderRoute: typeof ApiPrivacyPrivacyControlsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/privacy-export': {
+      id: '/api/privacy/privacy-export'
+      path: '/api/privacy/privacy-export'
+      fullPath: '/api/privacy/privacy-export'
+      preLoaderRoute: typeof ApiPrivacyPrivacyExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/privacy-maintenance': {
+      id: '/api/privacy/privacy-maintenance'
+      path: '/api/privacy/privacy-maintenance'
+      fullPath: '/api/privacy/privacy-maintenance'
+      preLoaderRoute: typeof ApiPrivacyPrivacyMaintenanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wine/$id/edit': {
@@ -829,8 +932,13 @@ const rootRouteChildren: RootRouteChildren = {
   WineIdRoute: WineIdRouteWithChildren,
   ApiAiAnalyzeWineRoute: ApiAiAnalyzeWineRoute,
   ApiAiAskWinesnapRoute: ApiAiAskWinesnapRoute,
+  ApiAiExtractPreferenceSignalsRoute: ApiAiExtractPreferenceSignalsRoute,
+  ApiAiRestaurantMatchRoute: ApiAiRestaurantMatchRoute,
   ApiAiTasteSuggestionsRoute: ApiAiTasteSuggestionsRoute,
   ApiAiWineSuggestionsRoute: ApiAiWineSuggestionsRoute,
+  ApiPrivacyPrivacyControlsRoute: ApiPrivacyPrivacyControlsRoute,
+  ApiPrivacyPrivacyExportRoute: ApiPrivacyPrivacyExportRoute,
+  ApiPrivacyPrivacyMaintenanceRoute: ApiPrivacyPrivacyMaintenanceRoute,
   ApiPublicHooksCheckWishlistPricesRoute:
     ApiPublicHooksCheckWishlistPricesRoute,
   ApiPublicHooksMatchSystembolagetRoute: ApiPublicHooksMatchSystembolagetRoute,

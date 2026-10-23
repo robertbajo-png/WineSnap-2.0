@@ -22,7 +22,7 @@ function Invoke-LocalDocker([string[]]$Arguments) {
   $start.RedirectStandardOutput = $true
   $start.RedirectStandardError = $true
   $start.Environment.Clear()
-  foreach ($key in @('PATH', 'SystemRoot', 'WINDIR', 'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'COMSPEC', 'PATHEXT', 'ProgramData')) {
+  foreach ($key in @('PATH', 'SystemRoot', 'WINDIR', 'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'COMSPEC', 'PATHEXT', 'ProgramData', 'SystemDrive', 'ALLUSERSPROFILE')) {
     $value = [Environment]::GetEnvironmentVariable($key)
     if ($value) { $start.Environment[$key] = $value }
   }

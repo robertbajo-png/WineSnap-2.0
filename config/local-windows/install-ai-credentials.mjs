@@ -1,8 +1,9 @@
 import { lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { randomBytes, randomUUID } from "node:crypto";
 
 const directory = "/tmp/winesnap-ai";
 const path = `${directory}/credentials.json`;
-const temporary = `${directory}/credentials.pending`;
+const temporary = `${directory}/credentials-${randomUUID()}.pending`;
 const project = "pzniyupmgwvlldvztzqh";
 const checkOnly = process.argv.includes("--check");
 try {
@@ -41,6 +42,10 @@ try {
       stat.mode & 0o077
     )
       throw new Error();
+    if (process.env.WINESNAP_LOCAL_OPERATIONS_ENABLED === "true") {
+      value.cronSecret = randomBytes(32).toString("hex");
+      value.privacyCronSecret = randomBytes(32).toString("hex");
+    }
     await writeFile(temporary, JSON.stringify(value), { mode: 0o600, flag: "wx" });
     await rename(temporary, path);
     input = "";
@@ -58,6 +63,7 @@ try {
       provider: "OpenAI",
       model: "gpt-6.1-sol",
       geminiConfigured: Boolean(stored.gemini),
+      operationsConfigured: Boolean(stored.cronSecret && stored.privacyCronSecret),
     }),
   );
 } catch {

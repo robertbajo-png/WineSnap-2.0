@@ -112,10 +112,10 @@ function loadLabelReader(
 
 describe("Direct provider workload routing", () => {
   it.each([
-    "supabase/functions/extract-preference-signals/index.ts",
+    "supabase/functions/extract-preference-signals/handler.ts",
     "supabase/functions/wine-suggestions/handler.ts",
     "supabase/functions/taste-suggestions/handler.ts",
-    "supabase/functions/restaurant-match/index.ts",
+    "supabase/functions/restaurant-match/handler.ts",
   ])("uses the direct Flash client in %s", (path) => {
     const source = read(path);
     expect(source).toContain('createAiClient("fast",');

@@ -19,7 +19,11 @@ try {
   }
   if (-not $ready) { throw 'engine_not_ready' }
   & (Join-Path $PSScriptRoot 'run-local-windows.ps1') -Action Resume
+  if ($LASTEXITCODE -ne 0) { throw 'local_app_resume_failed' }
+  $watch = Join-Path $PSScriptRoot 'watch-local-windows.ps1'
+  Start-Process -FilePath (Get-Process -Id $PID).Path -WindowStyle Hidden -ArgumentList @('-NoProfile', '-NonInteractive', '-File', "`"$watch`"") | Out-Null
   & (Join-Path $PSScriptRoot 'run-local-windows-internet.ps1') -Action Resume
+  if ($LASTEXITCODE -ne 0) { throw 'local_tunnel_resume_failed' }
   $status.completed = $true
 } catch {
   $status.failure = 'local_session_start_failed'

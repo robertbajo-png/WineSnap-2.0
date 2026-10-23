@@ -9,6 +9,7 @@ const owner = "33333333-3333-4333-8333-333333333333";
 const secret = "synthetic-secret-".repeat(3);
 function setup(name: string, env: Record<string, string> = {}) {
   let handler: Handler | undefined;
+  const exported: { createHandler?: (dependencies: unknown) => Handler } = {};
   const user = {
     id: owner,
     email: "owner@example.test",
@@ -44,13 +45,13 @@ function setup(name: string, env: Record<string, string> = {}) {
   const erase = vi.fn().mockResolvedValue({ complete: true });
   const logger = { error: vi.fn(), info: vi.fn() };
   const output = transpileModule(
-    readFileSync(new URL(`../../supabase/functions/${name}/index.ts`, import.meta.url), "utf8"),
+    readFileSync(new URL(`../../supabase/functions/${name}/handler.ts`, import.meta.url), "utf8"),
     {
       compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
     },
   ).outputText;
   runInNewContext(output, {
-    exports: {},
+    exports: exported,
     require: (path: string) => {
       if (path === "../_shared/privacy.ts") return privacy;
       if (path === "../_shared/privacyRuntime.ts")
@@ -70,6 +71,7 @@ function setup(name: string, env: Record<string, string> = {}) {
     TextEncoder,
     console: logger,
   });
+  handler = exported.createHandler?.({ env: (key: string) => env[key], admin: () => admin, erase });
   if (!handler) throw new Error("Missing handler");
   return {
     admin,
@@ -151,6 +153,16 @@ describe("actual scheduler handler", () => {
     expect(api.erase).not.toHaveBeenCalled();
     expect(api.remove).not.toHaveBeenCalled();
     expect((await api.call({ execute: true }, secret)).status).toBe(503);
+  });
+  it("reports another batch instead of silently claiming a drained queue", async () => {
+    const api = setup("privacy-maintenance", { PRIVACY_CRON_SECRET: secret });
+    api.rpc.mockImplementationOnce(async () => ({
+      data: { more_batches_required: true },
+      error: null,
+    }));
+    const response = await api.call({}, secret);
+    expect(response.status).toBe(200);
+    expect((await response.json()).more_work).toBe(true);
   });
 });
 

@@ -1,4 +1,3 @@
-import { lstat, readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createAiAccessGuard } from "../../supabase/functions/_shared/aiAccess";
@@ -6,25 +5,13 @@ import { createLabelReader } from "../../supabase/functions/analyze-wine/handler
 import { createHandler as createAsk } from "../../supabase/functions/ask-winesnap/handler";
 import { createHandler as createTasteSuggestions } from "../../supabase/functions/taste-suggestions/handler";
 import { createHandler as createWineSuggestions } from "../../supabase/functions/wine-suggestions/handler";
+import { createHandler as createRestaurantMatch } from "../../supabase/functions/restaurant-match/handler";
+import { createHandler as createPreferenceSignals } from "../../supabase/functions/extract-preference-signals/handler";
 import type { LocalAiFunction } from "./aiTransport";
 
-export const localAiProject = "pzniyupmgwvlldvztzqh";
+import { loadCredentials, localAiProject } from "./localCredentials.server";
+export { localAiProject } from "./localCredentials.server";
 const origin = `https://${localAiProject}.supabase.co`;
-const directory = "/tmp/winesnap-ai";
-const credentialFile = `${directory}/credentials.json`;
-const credentialsSchema = z
-  .object({
-    version: z.literal(1),
-    project: z.literal(localAiProject),
-    publishable: z.string().regex(/^sb_publishable_[A-Za-z0-9_-]+$/),
-    secret: z.string().regex(/^sb_secret_[A-Za-z0-9_-]+$/),
-    openai: z.string().regex(/^sk-[A-Za-z0-9_-]{20,4093}$/),
-    gemini: z
-      .string()
-      .regex(/^[A-Za-z0-9_-]{20,4096}$/)
-      .optional(),
-  })
-  .strict();
 const inputSchema = z
   .object({
     text: z.string().trim().min(3).max(12_000).optional(),
@@ -62,25 +49,33 @@ const schemas = {
     .strict(),
   "taste-suggestions": z.object({ language }).strict(),
   "wine-suggestions": z.object({ language, wineId: z.string().uuid() }).strict(),
+  "restaurant-match": z
+    .object({
+      text: z.string().trim().max(30_000).optional(),
+      image: z
+        .string()
+        .max(8_388_650)
+        .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/)
+        .optional(),
+      constraints: z
+        .object({
+          source: z.enum(["text", "camera"]).optional(),
+          dish: z.string().trim().max(160).optional(),
+          maxPrice: z.number().positive().max(1_000_000).nullable().optional(),
+          mode: z.enum(["familiar", "balanced", "adventurous"]).optional(),
+        })
+        .strict()
+        .optional(),
+      language,
+    })
+    .strict()
+    .refine((input) => input.text || input.image),
+  "extract-preference-signals": z.object({ tastingNoteId: z.string().uuid() }).strict(),
 };
 
-async function loadCredentials() {
-  for (const path of [directory, credentialFile]) {
-    const stat = await lstat(path);
-    if (
-      stat.isSymbolicLink() ||
-      stat.uid !== process.getuid?.() ||
-      (stat.mode & 0o077) !== 0 ||
-      (path === credentialFile && (!stat.isFile() || stat.size > 16_384)) ||
-      (path === directory && !stat.isDirectory())
-    )
-      throw new Error("Private AI storage required");
-  }
-  return credentialsSchema.parse(JSON.parse(await readFile(credentialFile, "utf8")));
-}
-
 async function readInput(request: Request, name: LocalAiFunction) {
-  const limit = name === "analyze-wine" ? 18_100_000 : 32_000;
+  const limit =
+    name === "analyze-wine" ? 18_100_000 : name === "restaurant-match" ? 8_500_000 : 32_000;
   if (Number(request.headers.get("content-length")) > limit) return null;
   const reader = request.body?.getReader();
   if (!reader) return null;
@@ -160,6 +155,8 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
       "ask-winesnap": createAsk,
       "taste-suggestions": createTasteSuggestions,
       "wine-suggestions": createWineSuggestions,
+      "restaurant-match": createRestaurantMatch,
+      "extract-preference-signals": createPreferenceSignals,
     }[name](dependencies);
     const response = await handler(
       new Request(request.url, {

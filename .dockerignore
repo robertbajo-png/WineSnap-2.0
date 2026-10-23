@@ -33,3 +33,16 @@
 !supabase/functions/taste-suggestions/handler.ts
 !supabase/functions/wine-suggestions/
 !supabase/functions/wine-suggestions/handler.ts
+!supabase/functions/restaurant-match/
+!supabase/functions/restaurant-match/handler.ts
+!supabase/functions/extract-preference-signals/
+!supabase/functions/extract-preference-signals/handler.ts
+!supabase/functions/_shared/privacy.ts
+!supabase/functions/_shared/privacyDependencies.ts
+!supabase/functions/_shared/privacyErasure.ts
+!supabase/functions/privacy-controls/
+!supabase/functions/privacy-controls/handler.ts
+!supabase/functions/privacy-export/
+!supabase/functions/privacy-export/handler.ts
+!supabase/functions/privacy-maintenance/
+!supabase/functions/privacy-maintenance/handler.ts

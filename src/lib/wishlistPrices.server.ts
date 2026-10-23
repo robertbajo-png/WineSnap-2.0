@@ -25,8 +25,15 @@ export type WishlistPriceRow = {
   price_alert_seen_at: string | null;
 };
 const inputSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(3) }).strict();
+const json = (body: unknown, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+  headers.set("CDN-Cache-Control", "no-store");
+  return Response.json(body, { ...init, headers });
+};
+
 type Dependencies = {
-  secret: () => string | undefined;
+  secret: () => string | undefined | Promise<string | undefined>;
   authenticate: (request: Request) => Promise<string | null>;
   load: (userId: string | null, ids?: string[]) => Promise<WishlistPriceRow[]>;
   lookup: (wine: RetailWine) => Promise<RetailCandidate[]>;
@@ -39,15 +46,15 @@ export function createWishlistPriceHandler(deps: Dependencies, mode: "cron" | "m
       let userId: string | null = null;
       let ids: string[] | undefined;
       if (mode === "cron") {
-        const secret = deps.secret();
-        if (!secret) return Response.json({ error: "Scheduler not configured" }, { status: 503 });
+        const secret = await deps.secret();
+        if (!secret) return json({ error: "Scheduler not configured" }, { status: 503 });
         if (request.headers.get("x-cron-secret") !== secret)
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
+          return json({ error: "Unauthorized" }, { status: 401 });
       } else {
         userId = await deps.authenticate(request);
-        if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+        if (!userId) return json({ error: "Unauthorized" }, { status: 401 });
         const input = inputSchema.safeParse(await request.json().catch(() => null));
-        if (!input.success) return Response.json({ error: "Invalid request" }, { status: 400 });
+        if (!input.success) return json({ error: "Invalid request" }, { status: 400 });
         ids = [...new Set(input.data.ids)];
       }
       const rows = await deps.load(userId, ids);
@@ -114,7 +121,7 @@ export function createWishlistPriceHandler(deps: Dependencies, mode: "cron" | "m
         );
       }
       const remaining = rows.length - checked;
-      return Response.json({
+      return json({
         ok: failed === 0 && remaining === 0,
         checked,
         triggered,
@@ -123,7 +130,7 @@ export function createWishlistPriceHandler(deps: Dependencies, mode: "cron" | "m
         remaining,
       });
     } catch {
-      return Response.json({ error: "Price service unavailable" }, { status: 503 });
+      return json({ error: "Price service unavailable" }, { status: 503 });
     }
   };
 }

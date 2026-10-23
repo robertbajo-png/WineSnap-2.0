@@ -1,5 +1,5 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "2026-10-23-independent-runtime";
+const VERSION = "2026-10-23-local-operations";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";

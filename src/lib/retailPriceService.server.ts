@@ -13,6 +13,13 @@ import {
   type RetailWine,
 } from "./retailPrices";
 
+const json = (body: unknown, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+  headers.set("CDN-Cache-Control", "no-store");
+  return Response.json(body, { ...init, headers });
+};
+
 type Dependencies = {
   authenticate: (request: Request) => Promise<string | null>;
   load: (userId: string, ids: string[]) => Promise<RetailWine[]>;
@@ -24,10 +31,9 @@ export function createRetailPriceHandler(deps: Dependencies) {
   return async (request: Request): Promise<Response> => {
     try {
       const userId = await deps.authenticate(request);
-      if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+      if (!userId) return json({ error: "Unauthorized" }, { status: 401 });
       const parsed = priceRequestSchema.safeParse(await request.json().catch(() => null));
-      if (!parsed.success)
-        return Response.json({ error: "Invalid price request" }, { status: 400 });
+      if (!parsed.success) return json({ error: "Invalid price request" }, { status: 400 });
       const input = parsed.data;
       const ids = input.action === "refresh" ? [...new Set(input.wineIds)] : [input.wineId];
       const rows = await deps.load(userId, ids);
@@ -127,11 +133,11 @@ export function createRetailPriceHandler(deps: Dependencies) {
           }
         }),
       );
-      return Response.json({ results });
+      return json({ results });
     } catch (error) {
       const code =
         error && typeof error === "object" && "code" in error ? String(error.code) : undefined;
-      return Response.json(
+      return json(
         { error: missingPriceSchema({ code }) ? "migration_required" : "unavailable" },
         { status: 503 },
       );

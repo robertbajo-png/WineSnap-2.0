@@ -14,13 +14,14 @@ describe("local Windows hosting boundaries", () => {
     );
     expect(web.build.args.VITE_WINE_IMAGE_PROXY_ENABLED).toBe("true");
     expect(web.build.args.VITE_LOCAL_AI_ENABLED).toBe("true");
-    expect(web.build.args.VITE_PRIVACY_CONTROLS_ENABLED).toBe("false");
-    expect(web.build.args.VITE_PRIVACY_OPERATIONS_VERIFIED).toBe("false");
+    expect(web.build.args.VITE_PRIVACY_CONTROLS_ENABLED).toBe("true");
+    expect(web.build.args.VITE_PRIVACY_OPERATIONS_VERIFIED).toBe("true");
     expect(Object.keys(web.environment).sort()).toEqual([
       "NODE_OPTIONS",
       "SUPABASE_PUBLISHABLE_KEY",
       "SUPABASE_URL",
       "WINESNAP_LOCAL_AI_ENABLED",
+      "WINESNAP_LOCAL_OPERATIONS_ENABLED",
     ]);
     expect(JSON.stringify(web)).not.toMatch(
       /mervdrbnwgreaifobasw|sb_secret_|SERVICE_ROLE|OPENAI_API_KEY|GEMINI_API_KEY/,
@@ -65,6 +66,7 @@ describe("local Windows hosting boundaries", () => {
     expect(configure).toContain("$start.RedirectStandardInput = $true");
     expect(configure).toContain("$process.StandardInput.Write($payload)");
     expect(configure).toContain("$start.Environment.Clear()");
+    expect(configure).toContain("'SystemDrive'");
     expect(configure).toContain("WineSnapHosting/ai-keys.clixml");
     expect(configure).not.toMatch(
       /Set-Content|Export-Clixml|ArgumentList.Add\(\$payload\)|Write-Host \$payload/,

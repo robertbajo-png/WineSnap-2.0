@@ -177,10 +177,10 @@ describe("privacy source contracts", () => {
     expect(code.slice(code.indexOf("const savePending"))).toContain(".upload(");
   });
   it("takes the erasure identity only from the verified session", () => {
-    const code = read("supabase/functions/privacy-controls/index.ts");
+    const code = read("supabase/functions/privacy-controls/handler.ts");
     expect(code).toContain("admin.auth.getUser(token)");
     expect(code).toContain("_user_id: auth.user.id");
     expect(code).not.toContain("body.userId");
-    expect(code).toContain('Deno.env.get("PRIVACY_DELETION_ENABLED") !== "true"');
+    expect(code).toContain('env("PRIVACY_DELETION_ENABLED") !== "true"');
   });
 });

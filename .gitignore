@@ -31,6 +31,8 @@ supabase/functions/.env
 !.vscode/extensions.json
 .idea
 .DS_Store
+# Windows shell cache from isolated test process environments.
+/%SystemDrive%/
 *.suo
 *.ntvs*
 *.njsproj

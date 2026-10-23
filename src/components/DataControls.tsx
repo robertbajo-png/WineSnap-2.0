@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck, Loader2, Trash2, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { completePrivacyExport } from "@/lib/privacyExport";
+import { invokePrivacy } from "@/lib/privacyTransport";
 import {
   invokePrivacyAction,
   privacyControlsEnabled,
@@ -41,8 +42,7 @@ export function DataControls() {
       const id = user.id;
       let result;
       if (privacyControlsEnabled) {
-        const { data: exportData, error: exportError } =
-          await supabase.functions.invoke("privacy-export");
+        const { data: exportData, error: exportError } = await invokePrivacy("privacy-export");
         if (exportError) throw exportError;
         result = await completePrivacyExport(
           exportData,

@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, useT } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/aiTransport";
 import type { Json } from "@/integrations/supabase/types";
 import type { MatchEvidence } from "@/lib/recommendationEngine";
 import { askErrorKey } from "@/lib/askWineSnap";
@@ -202,13 +203,11 @@ function RestaurantPage() {
     setError(null);
     try {
       const constraints = currentConstraints();
-      const { data, error: functionError } = await supabase.functions.invoke("restaurant-match", {
-        body: {
-          text: inputMode === "text" ? text : undefined,
-          image: inputMode === "camera" ? image : undefined,
-          constraints,
-          language: lang,
-        },
+      const { data, error: functionError } = await invokeAi("restaurant-match", {
+        text: inputMode === "text" ? text : undefined,
+        image: inputMode === "camera" ? image : undefined,
+        constraints,
+        language: lang,
       });
       if (functionError) throw functionError;
       if (data?.error) throw new Error(data.error);
