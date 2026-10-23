@@ -1,6 +1,8 @@
 # Local Windows Hosting
 
 Date: 2026-10-23. Local test installation, not a production migration.
+Later update: user-logon startup and an email-protected temporary Internet
+tunnel are installed. AI key provisioning remains a separate owner decision.
 
 ## Machine Check
 
@@ -39,7 +41,12 @@ explicitly empty to avoid loading a checkout-root `.env`.
 The price scheduler is not provisioned. Admin-dependent Node operations are
 not enabled by supplying an admin key. Privacy rollout flags stay off. The
 previously verified test image proxy is on. No live AI request or provider
-credential configuration is included in this setup.
+credential configuration has been completed. The test dashboard confirms that
+neither `OPENAI_API_KEY` nor `GEMINI_API_KEY` is configured. The existing direct
+provider code can be bundled with `scripts/prepare-test-ai-functions.mjs` for
+six standalone dashboard files under ignored `dist/test-ai-functions`. This
+performs no network deployment or inference. A dashboard deployment attempt
+for `analyze-wine` was not confirmed successful; do not treat it as installed.
 
 ## Operation
 
@@ -52,6 +59,7 @@ From the repository root in PowerShell 7:
 ./scripts/run-local-windows.ps1 -Action Stop
 ./scripts/run-local-windows.ps1 -Action Start
 ./scripts/run-local-windows.ps1 -Action Restart
+./scripts/run-local-windows.ps1 -Action Resume
 ```
 
 Start builds/rebuilds the image, brings up only the `winesnap-local` Compose
@@ -67,11 +75,52 @@ Docker socket or database port is mounted/published. Its only published port
 is `127.0.0.1:5210`; other devices cannot connect over Wi-Fi or the Internet.
 
 The `unless-stopped` restart policy applies after the Docker engine is running.
-Docker Desktop's current AutoStart setting is false. No scheduled task,
-startup shortcut, automatic Windows login, power setting, firewall rule, router
-port, domain or Cloudflare tunnel was changed. Closing Codex does not stop the
-container, but shutting down/sleeping Windows or stopping Docker makes it
-unavailable. Windows reboot/autostart has not been certified.
+Docker Desktop's global AutoStart setting was not changed. The separate
+`WineSnap Local Test.lnk` in this user's Windows Startup folder launches
+`start-local-windows-session.ps1` hidden after sign-in. It starts Docker Desktop
+if needed, waits for the local Linux engine and resumes only the previously
+installed WineSnap app and tunnel. Resume does not build or read credentials.
+No administrator privilege, saved password, scheduled task or automatic Windows
+login is required. No power setting, firewall rule or router port was changed.
+The actual shortcut was launched after stopping both WineSnap containers; its
+session report confirms completion and both containers resume. The observed
+test did not reboot Windows or stop Docker/other applications. Before-sign-in
+or logged-out server operation is not certified. Closing Codex does not stop
+the containers; sleeping Windows or stopping Docker makes them unavailable.
+
+### Protected Internet Access
+
+`run-local-windows-internet.ps1` creates/resumes only `winesnap-local-tunnel`,
+using an explicitly pinned official Cloudflare image on the existing WineSnap
+Docker network. It publishes no host ports or volumes, has bounded memory/CPU
+and logs, and restricts access to one exact owner email using `--allowed-mail`.
+The address is a temporary HTTPS `trycloudflare.com` hostname, not a new
+production domain. The owner receives an email PIN before reaching WineSnap's
+own sign-in screen. The full owner-PIN flow was not completed by the agent.
+
+The current address is saved in
+`%LOCALAPPDATA%\WineSnapHosting\internet-status.json` and is printed by:
+
+```powershell
+./scripts/run-local-windows-internet.ps1 -Action Status
+./scripts/run-local-windows-internet.ps1 -Action Stop
+./scripts/run-local-windows-internet.ps1 -Action Resume
+./scripts/install-local-windows-startup.ps1 -Remove
+```
+
+No owner email is embedded in this repository. An unauthenticated HTTPS request
+is verified to return a redirect to `login.trycloudflare.com/authorize`, not the
+app's health response. If the gate cannot be verified during Start/Resume, the
+tunnel stops rather than leaving an unverified public route running. The
+initial redirect allowlist was corrected to match that observed official host;
+there is no anonymous fallback. A browser also shows Cloudflare Access's email
+login form. Internet access after the owner PIN, remote-phone camera behavior
+and hosted password-recovery redirects remain acceptance checks.
+
+Quick Tunnels change hostname after restart, have no uptime guarantee and are
+for development/test only. A stable public release needs a separately approved
+owned hostname and managed tunnel. Production DNS is untouched. See
+[Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
 
 ## Browser Verification
 
@@ -115,7 +164,7 @@ Ignored evidence: `dist/local-windows-ui-report.json`,
 
 - No production database/Storage/Auth writes, migration replay or restore.
 - No production domain, hosting, Lovable publication, subscription or DNS change.
-- No paid resource, public tunnel, real-user data import or main-branch merge.
+- No paid resource, production tunnel, real-user data import or main-branch merge.
 - No changes to unrelated Docker containers or their restart settings.
 
 This completes a local app-server installation, not the outstanding production

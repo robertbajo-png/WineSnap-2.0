@@ -1,4 +1,4 @@
-param([ValidateSet('Start', 'Stop', 'Status', 'Restart', 'Verify')][string]$Action = 'Start')
+param([ValidateSet('Start', 'Stop', 'Status', 'Restart', 'Resume', 'Verify')][string]$Action = 'Start')
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'This launcher requires PowerShell 7 on Windows.' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -6,7 +6,9 @@ $project = 'pzniyupmgwvlldvztzqh'
 $origin = "https://$project.supabase.co"
 $app = 'http://127.0.0.1:5210'
 $name = 'winesnap-local-web-1'
-$docker = (Get-Command docker -ErrorAction Stop).Source
+$dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
+$docker = if ($dockerCommand) { $dockerCommand.Source } else { Join-Path $env:LOCALAPPDATA 'Programs/DockerDesktop/resources/bin/docker.exe' }
+if (-not (Test-Path -LiteralPath $docker -PathType Leaf)) { throw 'Docker Desktop is required.' }
 $keyPath = Join-Path $root '.env.winesnap-test-keys.local'
 $publicValue = $null
 $stored = $null
@@ -91,9 +93,10 @@ try {
     exit 0
   }
   if ($Action -eq 'Verify') { Test-LocalContainer $container; exit 0 }
-  if ($Action -eq 'Restart') {
+  if ($Action -in @('Restart', 'Resume')) {
     if (-not $container) { throw 'Run Start first.' }
-    Invoke-LocalDocker @('restart', $container.Id) | Out-Null
+    if ($Action -eq 'Restart') { Invoke-LocalDocker @('restart', $container.Id) | Out-Null }
+    elseif (-not $container.State.Running) { Invoke-LocalDocker @('start', $container.Id) | Out-Null }
   } else {
     if (-not $container -and (Get-NetTCPConnection -State Listen -LocalPort 5210 -ErrorAction SilentlyContinue)) {
       throw 'Port 5210 is occupied. No existing process will be stopped.'
