@@ -125,7 +125,7 @@ describe.each(cases)("%s direct AI handler", (name, body) => {
     expect(api.fetcher).not.toHaveBeenCalled();
   });
 
-  it.each([429, 404])(
+  it.each([429, 404, 503])(
     "handles HTTP %s without leaking details or trying another provider",
     async (status) => {
       const api = loadHandler(name, { status });

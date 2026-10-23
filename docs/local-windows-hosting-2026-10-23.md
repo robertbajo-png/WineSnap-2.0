@@ -3,9 +3,9 @@
 Date: 2026-10-23. Local test installation, not a production migration.
 Later update: user-logon startup and an email-protected temporary Internet
 tunnel are installed. Later the same day, the owner approved an existing OpenAI
-key and real text/image scanning was accepted in the local app. A subsequent
-Gemini transport is installed locally, but live acceptance is blocked by the
-supplied Gemini key being rejected by Google. Production remains unchanged.
+key and real text/image scanning was accepted in the local app. Gemini chat and
+both recommendation flows now also pass real local acceptance with the owner's
+replacement key. Production remains unchanged.
 
 ## Machine Check
 
@@ -302,22 +302,48 @@ presence only, explicitly not API validity.
 ./scripts/configure-local-windows-ai.ps1 -Action TestGemini
 ```
 
-Current evidence: 580 unit tests, TypeScript, ESLint, the actual local Docker
+Current evidence: 585 unit tests, TypeScript, ESLint, the actual local Docker
 build, synthetic portable Node runtime and client budget pass. All three actual
 local Gemini endpoints reject anonymous and invalid JWT requests with 401 and
-`no-store`. The live chat attempt reaches Google, which returns HTTP 400; WineSnap
-returns a safe 502 and does not save a failed exchange. A separate fixed Google
-model-metadata request confirms `INVALID_ARGUMENT` / invalid API key. No key or
-raw Google error text was printed. The first two synthetic users and their wine
-were removed with zero cleanup failures.
+`no-store`. The initial key was rejected by Google (HTTP 400 / invalid API key);
+WineSnap returned a safe 502 without saving a failed exchange. The owner replaced
+that key through the approved private dialog. No key or raw Google error text
+was printed.
 The OpenAI suite was rerun against the combined local transport: actual text and
 the original bottle image both pass, with zero browser errors or cleanup failures.
 
-Positive live chat, continuation and both recommendation flows are NOT accepted
-yet. A valid Gemini key must replace the rejected value in the private dialog;
-then rerun the live suite. That suite verifies the stored model, private-history
-RLS, foreign-conversation/reference denial, mobile/desktop rendering, absence of
-hosted AI calls and cleanup. Do not call mocked tests or key presence live success.
-Safe ignored evidence is `dist/local-windows-gemini-report.json`; successful
-screenshots are written to `dist/local-gemini-*.png` only after the corresponding
-checks reach those steps. No production data, deployment or DNS was changed.
+Positive real acceptance now passes against the installed local container:
+chat, continuation, personal suggestions and similar-wine suggestions all return
+200 from `gemini-3.8-flash`. The chat's stored model is verified. Another user
+cannot read the conversation through RLS, continue it through the local API or
+request suggestions from its private reference wine. Verified recommendation
+identities and source links render without horizontal overflow on mobile and
+desktop. No unexpected browser errors, hosted AI calls or unintended saved wines
+occur; all synthetic users, conversation history and the fixture wine are cleaned
+with zero cleanup failures. The initial complete run has ten passing scenarios;
+the extended post-restart run has eleven, including reopening saved history on
+mobile and desktop.
+
+One intervening run observed a Google HTTP 503 for similar wines. The server
+returned a safe 502, with no hidden retry, invented candidates or provider/model
+fallback. The following full live run passes all eleven scenarios, with every
+model request returning 200 on its first attempt. The test runner may click the
+existing user-facing retry button once after a generic upstream-service failure;
+that branch was not needed in the final green run. Separate handler regressions
+now cover upstream HTTP 503 for all five Gemini functions. Provider availability
+is not guaranteed by local acceptance.
+
+Restart and automatic restoration of both encrypted provider keys also pass.
+`Check` deliberately remains a presence check (`apiValidityChecked:false`); the
+separate successful live report is evidence of actual API access. Physical-phone
+camera behavior, Internet/Cloudflare PIN acceptance, restaurant matching and
+preference extraction remain outside this chat/recommendation acceptance.
+
+Safe ignored evidence is `dist/local-windows-gemini-report.json`; screenshots are
+`dist/local-gemini-chat-mobile.png`, `dist/local-gemini-recommendations-mobile.png`
+and `dist/local-gemini-recommendations-desktop.png`. These were visually checked.
+The suite additionally reopens saved conversation history on mobile and desktop
+and writes `dist/local-gemini-history-mobile.png` and
+`dist/local-gemini-chat-desktop.png`. No production data, deployment or DNS was
+changed. This completes the approved local Gemini connection, not a production
+cutover or activation of the two remaining hosted Gemini features.

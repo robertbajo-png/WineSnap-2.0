@@ -168,6 +168,7 @@ try {
       conversationId = answer.conversationId;
       await page.locator("article").nth(1).waitFor({ state: "visible" });
       assert.ok((await page.locator("article").nth(1).innerText()).length > 20);
+      await page.locator("#ask-input:not([disabled])").waitFor();
       await page.screenshot({ path: screenshot("chat-mobile"), fullPage: true });
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
@@ -223,6 +224,25 @@ try {
       4,
     );
   });
+  await check("saved conversation reopens on mobile and desktop", async () => {
+    await page.goto(`${app}/ask`);
+    await page.getByRole("button", { name: /^(Konversationer|Conversations)$/ }).click();
+    await page.getByRole("button", { name: /Vilken mat passar till ett friskt vin/ }).click();
+    await page.waitForFunction(() => document.querySelectorAll("article").length === 4);
+    assert.ok((await page.locator("article").last().innerText()).length > 10);
+    await page.screenshot({ path: screenshot("history-mobile"), fullPage: true });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.screenshot({ path: screenshot("chat-desktop"), fullPage: true });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+  });
   await check(
     "personal recommendations render verified identities on mobile and desktop",
     async () => {
@@ -263,7 +283,18 @@ try {
       { timeout: 90000 },
     );
     await page.getByRole("button", { name: /AI Picks|AI-tips/i }).click();
-    const response = await pending;
+    let response = await pending;
+    report.similarInitialStatus = response.status();
+    if (response.status() === 502 && (await response.json()).error === "AI service error") {
+      // Exercise the existing user-operated retry once, never a hidden runtime retry.
+      const retry = page.waitForResponse(
+        (response) => response.url() === `${app}/api/ai/wine-suggestions`,
+        { timeout: 90000 },
+      );
+      await page.getByRole("button", { name: /^(Försök igen|Retry|Try again)$/i }).click();
+      response = await retry;
+      report.similarManualRetry = true;
+    }
     report.similarStatus = response.status();
     assert.equal(response.status(), 200);
     const payload = await response.json();

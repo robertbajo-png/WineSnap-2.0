@@ -12,8 +12,9 @@ Local hosting update: an isolated Windows Docker app server is now available
 on loopback port 5210 against the disposable hosted test backend. This is not
 a public replacement host or a production backend migration. See
 `local-windows-hosting-2026-10-23.md` for operation and boundaries.
-Its later same-day update records working direct OpenAI text/image scanning in
-that local test installation. Gemini and production AI remain separate gates.
+Its later same-day updates record working direct OpenAI text/image scanning and
+Gemini chat/personal/similar-wine recommendations in that local test installation.
+Production AI deployment remains a separate gate.
 
 The owner requested that WineSnap leave Lovable and continue in Codex. Codex is
 the development environment, not the production host, database or model runtime.
