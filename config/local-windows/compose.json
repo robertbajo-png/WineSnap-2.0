@@ -1,0 +1,35 @@
+{
+  "services": {
+    "web": {
+      "image": "winesnap-local:test",
+      "build": {
+        "context": "../..",
+        "dockerfile": "Dockerfile",
+        "args": {
+          "VITE_SUPABASE_URL": "https://pzniyupmgwvlldvztzqh.supabase.co",
+          "VITE_SUPABASE_PUBLISHABLE_KEY": "${WINESNAP_LOCAL_PUBLISHABLE_KEY:?Use scripts/run-local-windows.ps1}",
+          "VITE_WINE_IMAGE_PROXY_ENABLED": "true",
+          "VITE_PRIVACY_CONTROLS_ENABLED": "false",
+          "VITE_PRIVACY_OPERATIONS_VERIFIED": "false"
+        }
+      },
+      "ports": [{ "target": 3000, "published": "5210", "host_ip": "127.0.0.1", "protocol": "tcp" }],
+      "environment": {
+        "SUPABASE_URL": "https://pzniyupmgwvlldvztzqh.supabase.co",
+        "SUPABASE_PUBLISHABLE_KEY": "${WINESNAP_LOCAL_PUBLISHABLE_KEY:?Use scripts/run-local-windows.ps1}",
+        "NODE_OPTIONS": "--max-old-space-size=384"
+      },
+      "labels": { "winesnap.scope": "local-windows-test" },
+      "restart": "unless-stopped",
+      "init": true,
+      "read_only": true,
+      "tmpfs": ["/tmp:size=16m,noexec,nosuid,nodev"],
+      "cap_drop": ["ALL"],
+      "security_opt": ["no-new-privileges:true"],
+      "mem_limit": "768m",
+      "cpus": 1.5,
+      "pids_limit": 128,
+      "logging": { "driver": "json-file", "options": { "max-size": "10m", "max-file": "3" } }
+    }
+  }
+}

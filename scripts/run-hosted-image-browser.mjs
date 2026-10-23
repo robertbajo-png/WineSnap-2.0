@@ -19,7 +19,8 @@ const publicKey = process.env.WINESNAP_TEST_PUBLISHABLE_KEY;
 const secretKey = process.env.WINESNAP_TEST_SECRET_KEY;
 assert.ok(publicKey?.startsWith("sb_publishable_") && secretKey?.startsWith("sb_secret_"));
 const root = fileURLToPath(new URL("../", import.meta.url));
-const built = process.env.WINESNAP_IMAGE_BROWSER_PWA === "true";
+const localWindows = process.env.WINESNAP_IMAGE_BROWSER_LOCAL_WINDOWS === "true";
+const built = localWindows || process.env.WINESNAP_IMAGE_BROWSER_PWA === "true";
 const reportFile = new URL("../dist/hosted-image-browser-session.json", import.meta.url);
 const testFetch = (input, init) => {
   assert.equal(new URL(input instanceof Request ? input.url : String(input)).origin, origin);
@@ -128,10 +129,10 @@ process.once("SIGINT", () => void finish());
 process.once("SIGTERM", () => void finish());
 
 try {
-  const appPort = await availablePort();
+  const appPort = localWindows ? 5210 : await availablePort();
   state.appUrl = `http://127.0.0.1:${appPort}`;
   await saveReport();
-  if (built) {
+  if (built && !localWindows) {
     // Build only with public test settings; never inherit the operator's admin key.
     app = spawn(
       process.execPath,
@@ -170,37 +171,39 @@ try {
     }
   }
   if (finishing) throw new Error("app_start_failed");
-  app = spawn(
-    process.execPath,
-    built
-      ? ["dist/independent-runtime/server/index.mjs"]
-      : [
-          "node_modules/vite/bin/vite.js",
-          "--config",
-          "vite.independent.config.ts",
-          "--host",
-          "127.0.0.1",
-          "--port",
-          String(appPort),
-          "--strictPort",
-        ],
-    {
-      cwd: root,
-      env: built
-        ? imageBrowserRuntimeEnvironment(process.env, publicKey, appPort)
-        : imageBrowserEnvironment(process.env, publicKey),
-      stdio: "ignore",
-      windowsHide: true,
-    },
-  );
-  app.on("error", () => {
-    state.phase = "app_failed";
-    void finish();
-  });
+  if (!localWindows) {
+    app = spawn(
+      process.execPath,
+      built
+        ? ["dist/independent-runtime/server/index.mjs"]
+        : [
+            "node_modules/vite/bin/vite.js",
+            "--config",
+            "vite.independent.config.ts",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            String(appPort),
+            "--strictPort",
+          ],
+      {
+        cwd: root,
+        env: built
+          ? imageBrowserRuntimeEnvironment(process.env, publicKey, appPort)
+          : imageBrowserEnvironment(process.env, publicKey),
+        stdio: "ignore",
+        windowsHide: true,
+      },
+    );
+    app.on("error", () => {
+      state.phase = "app_failed";
+      void finish();
+    });
+  }
   let ready = false;
   const startupDeadline = Date.now() + 5 * 60 * 1000;
   while (Date.now() < startupDeadline) {
-    if (app.exitCode !== null) throw new Error("app_start_failed");
+    if (app && app.exitCode !== null) throw new Error("app_start_failed");
     try {
       const response = await fetch(`${state.appUrl}/login`, { signal: AbortSignal.timeout(30000) });
       const htmlReady = response.ok;
@@ -369,7 +372,7 @@ try {
     "Keep this window open during the browser checks. Ctrl+C cleans the disposable fixtures.",
   );
   timer = setTimeout(() => void finish(), 30 * 60 * 1000);
-  app.once("exit", () => {
+  app?.once("exit", () => {
     if (!finishing) void finish();
   });
 } catch (error) {

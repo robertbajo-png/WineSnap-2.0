@@ -8,6 +8,11 @@ exports have been downloaded, encrypted and rehearsed locally. See
 `lovable-migration-checkpoint-2026-10-23.md`. New production hosting/backend and
 owned AI access are still not provisioned; the old public service remains intact.
 
+Local hosting update: an isolated Windows Docker app server is now available
+on loopback port 5210 against the disposable hosted test backend. This is not
+a public replacement host or a production backend migration. See
+`local-windows-hosting-2026-10-23.md` for operation and boundaries.
+
 The owner requested that WineSnap leave Lovable and continue in Codex. Codex is
 the development environment, not the production host, database or model runtime.
 No further development or verification is delegated to Lovable.

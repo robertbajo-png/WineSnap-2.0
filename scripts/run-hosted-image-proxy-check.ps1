@@ -1,6 +1,8 @@
-param([switch]$Browser, [switch]$RememberKeys, [switch]$StoreKeysOnly, [switch]$Pwa)
+param([switch]$Browser, [switch]$RememberKeys, [switch]$StoreKeysOnly, [switch]$Pwa, [switch]$LocalWindows)
 $ErrorActionPreference = 'Stop'
 if ($Pwa -and (-not $Browser -or $StoreKeysOnly)) { throw 'PWA checks require the browser session.' }
+if ($LocalWindows -and (-not $Browser -or $StoreKeysOnly)) { throw 'Local Windows checks require the browser session.' }
+if ($LocalWindows) { & (Join-Path $PSScriptRoot 'run-local-windows.ps1') -Action Verify }
 $root = Split-Path -Parent $PSScriptRoot
 $project = 'pzniyupmgwvlldvztzqh'
 # The .env. prefix also keeps this encrypted XML out of Vite's file server.
@@ -115,6 +117,7 @@ try {
   $start.Environment['WINESNAP_TEST_PUBLISHABLE_KEY'] = $publicValue
   $start.Environment['WINESNAP_TEST_SECRET_KEY'] = $secretValue
   $start.Environment['WINESNAP_IMAGE_BROWSER_PWA'] = if ($Pwa) { 'true' } else { 'false' }
+  $start.Environment['WINESNAP_IMAGE_BROWSER_LOCAL_WINDOWS'] = if ($LocalWindows) { 'true' } else { 'false' }
   $process = [System.Diagnostics.Process]::Start($start)
   $process.WaitForExit()
   $exitCode = $process.ExitCode
@@ -123,6 +126,7 @@ try {
   $start.Environment.Remove('WINESNAP_TEST_PUBLISHABLE_KEY') | Out-Null
   $start.Environment.Remove('WINESNAP_TEST_SECRET_KEY') | Out-Null
   $start.Environment.Remove('WINESNAP_IMAGE_BROWSER_PWA') | Out-Null
+  $start.Environment.Remove('WINESNAP_IMAGE_BROWSER_LOCAL_WINDOWS') | Out-Null
   $publicValue = $null
   $secretValue = $null
   $public.Dispose()
