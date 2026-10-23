@@ -57,6 +57,13 @@ project metadata. The directory and file have owner/SYSTEM-only ACLs; redirected
 paths are refused. No plaintext env file, global environment setting, key
 creation, upload or provider call is performed. Entry must happen in the private
 local window, never in chat. Reopening is possible with the same script.
+Use `-Window` for the masked local Windows dialog; this does not require a
+console input handle. It offers Save and Cancel, shows the approved encrypted
+destination and clears the input control when it closes.
+The dialog is launched in an STA PowerShell process without a console, rather
+than hiding the dialog with a process-level Hidden window flag. Existing file
+descriptors are updated through the .NET ACL API without audit/SACL changes;
+repeat hardening does not require administrator/security privileges.
 
 `./scripts/store-local-openai-key.ps1 -Check` reports only whether the private
 test key store exists and decrypts into the expected credential type. It never

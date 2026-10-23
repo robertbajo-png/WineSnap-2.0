@@ -5,10 +5,13 @@ const input = readFileSync("scripts/store-local-openai-key.ps1", "utf8");
 
 describe("existing OpenAI key local input", () => {
   it("requires hidden interactive input and never accepts a secret argument", () => {
-    expect(input).toContain("param([switch]$Check, [switch]$SelfTest)");
+    expect(input).toContain("param([switch]$Check, [switch]$SelfTest, [switch]$Window)");
     expect(input).toContain("[Console]::IsInputRedirected");
     expect(input).toContain("[Console]::IsOutputRedirected");
     expect(input).toContain("Read-Host 'OPENAI_API_KEY (hidden)' -AsSecureString");
+    expect(input).toContain("$field.UseSystemPasswordChar = $true");
+    expect(input).toContain("$field.Clear()");
+    expect(input).toContain("$form.ShowDialog()");
     expect(input).not.toMatch(
       /Invoke-WebRequest|Invoke-RestMethod|HttpClient|SetEnvironmentVariable/,
     );

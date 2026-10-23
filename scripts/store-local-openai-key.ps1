@@ -1,7 +1,7 @@
-param([switch]$Check, [switch]$SelfTest)
+param([switch]$Check, [switch]$SelfTest, [switch]$Window)
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'PowerShell 7 on Windows is required.' }
-if ($Check -and $SelfTest) { throw 'Choose one check mode.' }
+if (($Check -and $SelfTest) -or ($Window -and ($Check -or $SelfTest))) { throw 'Choose one input/check mode.' }
 $folder = Join-Path $env:LOCALAPPDATA 'WineSnapHosting'
 $path = Join-Path $folder 'ai-keys.clixml'
 $temporary = $null
@@ -17,7 +17,9 @@ function Assert-NotRedirected([string]$Path) {
 
 function Set-PrivateAccess([string]$Path, [switch]$Directory) {
   $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-  $acl = if ($Directory) { [System.Security.AccessControl.DirectorySecurity]::new() } else { [System.Security.AccessControl.FileSecurity]::new() }
+  # Preserve the existing descriptor so hardening does not request audit/SACL privileges.
+  $acl = Get-Acl -LiteralPath $Path
+  foreach ($rule in @($acl.Access)) { $acl.PurgeAccessRules($rule.IdentityReference) }
   $acl.SetOwner($owner)
   $acl.SetAccessRuleProtection($true, $false)
   foreach ($sid in @($owner, [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18'))) {
@@ -27,7 +29,8 @@ function Set-PrivateAccess([string]$Path, [switch]$Directory) {
       $inherit, [System.Security.AccessControl.PropagationFlags]::None,
       [System.Security.AccessControl.AccessControlType]::Allow))
   }
-  Set-Acl -LiteralPath $Path -AclObject $acl
+  $item = Get-Item -LiteralPath $Path -Force
+  [System.IO.FileSystemAclExtensions]::SetAccessControl($item, $acl)
 }
 
 function Assert-PrivateAccess([string]$Path) {
@@ -54,6 +57,55 @@ function Read-KeyStore([string]$Path) {
   return $value
 }
 
+function Read-PrivateKeyWindow {
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+  $form = [System.Windows.Forms.Form]::new()
+  $form.Text = 'WineSnap - Private OpenAI Key'
+  $form.ClientSize = [System.Drawing.Size]::new(620, 255)
+  $form.StartPosition = 'CenterScreen'
+  $form.FormBorderStyle = 'FixedDialog'
+  $form.MaximizeBox = $false
+  $form.MinimizeBox = $false
+  $form.Font = [System.Drawing.Font]::new('Segoe UI', 11)
+  $label = [System.Windows.Forms.Label]::new()
+  $label.Text = "Paste your EXISTING OpenAI API key. Input stays hidden.`r`nLocal encrypted storage only. No upload or API request."
+  $label.SetBounds(20, 18, 580, 52)
+  $field = [System.Windows.Forms.TextBox]::new()
+  $field.UseSystemPasswordChar = $true
+  $field.MaxLength = 4096
+  $field.SetBounds(20, 82, 580, 30)
+  $destination = [System.Windows.Forms.Label]::new()
+  $destination.Text = "Encrypted destination:`r`n$path"
+  $destination.SetBounds(20, 124, 580, 52)
+  $save = [System.Windows.Forms.Button]::new()
+  $save.Text = 'Save'
+  $save.SetBounds(370, 198, 110, 36)
+  $save.Add_Click({
+    if ($field.Text -cmatch '^sk-[A-Za-z0-9_-]{20,4093}$') {
+      $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+      $form.Close()
+    } else {
+      [System.Windows.Forms.MessageBox]::Show('Paste the existing OpenAI API key, not its name or a URL.', 'WineSnap') | Out-Null
+    }
+  })
+  $cancel = [System.Windows.Forms.Button]::new()
+  $cancel.Text = 'Cancel'
+  $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+  $cancel.SetBounds(490, 198, 110, 36)
+  $form.Controls.AddRange(@($label, $field, $destination, $save, $cancel))
+  $form.AcceptButton = $save
+  $form.CancelButton = $cancel
+  $form.Add_Shown({ $field.Focus() | Out-Null })
+  try {
+    if ($form.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { throw 'Private input cancelled.' }
+    return (ConvertTo-SecureString -String $field.Text -AsPlainText -Force)
+  } finally {
+    $field.Clear()
+    $form.Dispose()
+  }
+}
+
 try {
   Assert-NotRedirected $folder
   Assert-NotRedirected $path
@@ -68,14 +120,18 @@ try {
     $path = Join-Path $folder ('key-input-selftest-' + [guid]::NewGuid().ToString('N') + '.local')
     $inputKey = ConvertTo-SecureString 'sk-synthetic-encryption-test-not-a-real-key' -AsPlainText -Force
   } else {
-    if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) { throw 'Use the private interactive window.' }
-    $Host.UI.RawUI.WindowTitle = 'WineSnap - Private OpenAI Key'
-    Write-Host 'WineSnap local TEST - existing OpenAI key only.'
-    Write-Host 'Paste the existing key below and press Enter. Input is hidden.'
-    Write-Host 'It will be Windows-user encrypted locally. No API call, upload or production change is made.'
-    Write-Host "Destination: $path"
     if (Test-Path -LiteralPath $path -PathType Leaf) { $stored = Read-KeyStore $path }
-    $inputKey = Read-Host 'OPENAI_API_KEY (hidden)' -AsSecureString
+    if ($Window) {
+      $inputKey = Read-PrivateKeyWindow
+    } else {
+      if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) { throw 'Use the private interactive window.' }
+      $Host.UI.RawUI.WindowTitle = 'WineSnap - Private OpenAI Key'
+      Write-Host 'WineSnap local TEST - existing OpenAI key only.'
+      Write-Host 'Paste the existing key below and press Enter. Input is hidden.'
+      Write-Host 'It will be Windows-user encrypted locally. No API call, upload or production change is made.'
+      Write-Host "Destination: $path"
+      $inputKey = Read-Host 'OPENAI_API_KEY (hidden)' -AsSecureString
+    }
     $plain = [System.Net.NetworkCredential]::new('', $inputKey).Password
     $valid = $plain -cmatch '^sk-[A-Za-z0-9_-]{20,4093}$'
     $plain = $null
@@ -106,7 +162,7 @@ try {
   }
 } catch {
   Write-Host 'The key was not saved. Check the pasted value and try again. No key values are reported.' -ForegroundColor Red
-  if (-not $Check -and -not $SelfTest -and -not [Console]::IsInputRedirected) { Read-Host 'Press Enter to close' | Out-Null }
+  if (-not $Check -and -not $SelfTest -and -not $Window -and -not [Console]::IsInputRedirected) { Read-Host 'Press Enter to close' | Out-Null }
   exit 1
 } finally {
   $plain = $null
@@ -118,3 +174,4 @@ try {
     Remove-Item -LiteralPath $path -Force
   }
 }
+exit 0
