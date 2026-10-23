@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
-import { AI_MODELS } from "../_shared/aiModels.ts";
+import { AiConfigurationError, createAiClient } from "../_shared/aiClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,9 +130,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!supabaseUrl || !serviceRoleKey || !lovableKey)
-      throw new Error("Server configuration error");
+    if (!supabaseUrl || !serviceRoleKey) throw new Error("Server configuration error");
+    const ai = createAiClient("fast", (name) => Deno.env.get(name));
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -158,28 +157,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: AI_MODELS.fast,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: JSON.stringify({
-              wine: note.wines,
-              rating: note.rating,
-              feedback: note.notes,
-            }),
-          },
-        ],
-        tools: [tool],
-        tool_choice: { type: "function", function: { name: "extract_preference_signals" } },
-      }),
+    const response = await ai.complete({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: JSON.stringify({
+            wine: note.wines,
+            rating: note.rating,
+            feedback: note.notes,
+          }),
+        },
+      ],
+      tools: [tool],
+      tool_choice: { type: "function", function: { name: "extract_preference_signals" } },
     });
     if (!response.ok) {
       console.error("Preference extraction failed", response.status);
@@ -207,9 +198,16 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    if (error instanceof AiConfigurationError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const timeout = error instanceof DOMException && error.name === "TimeoutError";
     console.error("extract-preference-signals failed");
     return new Response(JSON.stringify({ error: "Could not process feedback" }), {
-      status: 500,
+      status: timeout ? 504 : 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

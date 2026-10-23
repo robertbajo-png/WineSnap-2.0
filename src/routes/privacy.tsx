@@ -68,8 +68,8 @@ function PrivacyPage() {
         </p>
         <p>
           {sv
-            ? "Bilder och text du skickar för AI-analys behandlas via Lovables AI-gateway och vald AI-leverantör. Konto och appdata hanteras med Supabase och Lovable. Undvik känsliga uppgifter i bilder och frågor. Publika profiler, publika viner och delningslänkar gör avsiktligt valda uppgifter tillgängliga för andra."
-            : "Images and text you submit for AI analysis are processed through Lovable's AI gateway and the selected AI provider. Account and application data are handled using Supabase and Lovable. Avoid sensitive information in images and questions. Public profiles, public wines and share links make intentionally selected data available to others."}
+            ? "I denna fristående version skickas bilder och text för AI-analys direkt från servern till OpenAI (etikettanalys) eller Google Gemini (frågor och rekommendationer), utan Lovables AI-gateway. Konto, databas och sparade bilder hanteras med Supabase; webbappen körs hos den driftleverantör ansvarig anlitar. Faktisk drift och leverantörsvillkor måste verifieras före publicering. Undvik känsliga uppgifter i bilder och frågor. Publika profiler, publika viner och delningslänkar gör avsiktligt valda uppgifter tillgängliga för andra."
+            : "In this standalone version, images and text for AI analysis are sent directly from the server to OpenAI (label analysis) or Google Gemini (questions and recommendations), without Lovable's AI gateway. Account, database and saved images use Supabase; the web app runs with the hosting provider appointed by the operator. Actual deployment and provider terms must be verified before publication. Avoid sensitive information in images and questions. Public profiles, public wines and share links make intentionally selected data available to others."}
         </p>
         <p>
           {siteInformation.legalBasis ??

@@ -15,6 +15,8 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+.env
+supabase/functions/.env
 
 # Windows-user-encrypted test credentials, never commit even encrypted copies.
 .winesnap-test.keys*.local

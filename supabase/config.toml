@@ -1,4 +1,6 @@
-project_id = "mervdrbnwgreaifobasw"
+# Local CLI identity, not a default remote deployment target.
+# Always pass the verified destination explicitly when deploying functions.
+project_id = "winesnap-local"
 
 [functions.analyze-wine]
 verify_jwt = true

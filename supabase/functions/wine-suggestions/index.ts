@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
-import { AI_MODELS } from "../_shared/aiModels.ts";
+import { AiConfigurationError, createAiClient } from "../_shared/aiClient.ts";
 import {
   SUGGESTION_CATALOG,
   groundedSuggestions,
@@ -98,10 +98,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!supabaseUrl || !serviceRoleKey || !lovableKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Server configuration error");
     }
+    const ai = createAiClient("fast", (name) => Deno.env.get(name));
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -143,26 +143,20 @@ Reference wine data: ${JSON.stringify({
     })}
 Return 8 candidate wines and do not repeat the reference wine.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(25_000),
-      body: JSON.stringify({
-        model: AI_MODELS.fast,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-        tools: [tool],
-        tool_choice: { type: "function", function: { name: "suggest_wines" } },
-      }),
+    const response = await ai.complete({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      tools: [tool],
+      tool_choice: { type: "function", function: { name: "suggest_wines" } },
     });
 
     if (!response.ok) {
-      console.error("wine-suggestions gateway failure", response.status);
+      console.error("wine-suggestions provider failure", response.status);
       if (response.status === 429) return json({ error: "Rate limit, try again soon." }, 429);
       if (response.status === 402) return json({ error: "AI credits are unavailable." }, 402);
-      return json({ error: "AI gateway error" }, 502);
+      return json({ error: "AI service error" }, 502);
     }
 
     const payload = await response.json();
@@ -187,6 +181,7 @@ Return 8 candidate wines and do not repeat the reference wine.`;
 
     return json({ suggestions });
   } catch (error) {
+    if (error instanceof AiConfigurationError) return json({ error: error.message }, 503);
     const timeout = error instanceof DOMException && error.name === "TimeoutError";
     console.error("wine-suggestions failed", timeout ? "timeout" : "request_error");
     return json(

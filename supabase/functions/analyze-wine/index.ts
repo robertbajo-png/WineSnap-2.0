@@ -1,6 +1,6 @@
 // Edge function: analyze-wine
 // Receives { imageBase64, mimeType } or { imageUrl } or { text } and returns a
-// structured reading of the label via Lovable AI vision.
+// structured reading of the label via the owner's OpenAI account.
 //
 // Contract: the model must FIRST transcribe the visible label text, and may only
 // identify the wine from that transcription. Identity fields carry their own
@@ -16,7 +16,7 @@
 // here. Keep the two files in sync — see labelValidation.sync.test.ts.
 import { authoritativeLabelText, validateIdentity, validateTaste } from "./labelValidation.ts";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
-import { AI_MODELS } from "../_shared/aiModels.ts";
+import { AiConfigurationError, createAiClient } from "../_shared/aiClient.ts";
 import { completedLabelReading } from "./labelResponse.ts";
 
 const corsHeaders = {
@@ -183,8 +183,7 @@ Deno.serve(async (req: Request) => {
       ? String(mimeType).toLowerCase()
       : "image/jpeg";
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const ai = createAiClient("labelReading", (name) => Deno.env.get(name));
 
     let userContent: unknown;
     if (imageBase64 || imageUrl) {
@@ -204,37 +203,28 @@ Deno.serve(async (req: Request) => {
       userContent = `There is no label image. Treat the user's own words as label_text and identify the wine strictly from them; leave anything they did not state as unknown. User text: "${text}"`;
     }
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      signal: AbortSignal.timeout(45_000),
-      body: JSON.stringify({
-        model: AI_MODELS.labelReading,
-        reasoning_effort: "low",
-        max_completion_tokens: 8192,
-        messages: [
-          {
-            role: "system",
-            content: `${SYSTEM_PROMPT}\nResponse language for estimates: ${responseLanguage}.`,
-          },
-          { role: "user", content: userContent },
-        ],
-        response_format: wineResponseFormat,
-      }),
+    const aiRes = await ai.complete({
+      reasoning_effort: "low",
+      max_completion_tokens: 8192,
+      messages: [
+        {
+          role: "system",
+          content: `${SYSTEM_PROMPT}\nResponse language for estimates: ${responseLanguage}.`,
+        },
+        { role: "user", content: userContent },
+      ],
+      response_format: wineResponseFormat,
     });
 
     if (!aiRes.ok) {
-      console.error("analyze-wine gateway failure", aiRes.status);
+      console.error("analyze-wine provider failure", aiRes.status);
       if (aiRes.status === 429) {
         return json({ error: "Too many requests, please try again shortly." }, 429);
       }
       if (aiRes.status === 402) {
-        return json({ error: "AI credits exhausted. Add credits in workspace." }, 402);
+        return json({ error: "AI service billing is unavailable. Contact support." }, 402);
       }
-      throw new Error(`AI gateway: ${aiRes.status}`);
+      throw new Error(`AI provider: ${aiRes.status}`);
     }
 
     const parsed = completedLabelReading(await aiRes.json());
@@ -255,6 +245,10 @@ Deno.serve(async (req: Request) => {
 
     return json({ wine });
   } catch (e) {
+    if (e instanceof AiConfigurationError) return json({ error: e.message }, 503);
+    if (e instanceof DOMException && e.name === "TimeoutError") {
+      return json({ error: "Wine analysis timed out. Try again shortly." }, 504);
+    }
     console.error("analyze-wine failed");
     const safeError =
       e instanceof Error && e.message === "AI returned invalid label JSON"

@@ -125,8 +125,10 @@ then imports a separately preserved synthetic erasure ledger. Storage deletion i
 simulated using the local platform-contract tables. This is not a hosted backup/PITR
 or physical object-storage recovery certification.
 
-Confirm agreements cover the actual hosted app and AI-gateway flow, not merely the
-Lovable development chat. Record applicable DPAs, subprocessors, model-specific
+Confirm agreements cover the actual hosted app and direct OpenAI/Gemini flow,
+not merely the development tool. The 2026-10-23 standalone source no longer uses
+the Lovable gateway; see `lovable-exit-2026-10-23.md` for cutover boundaries.
+Record applicable DPAs, subprocessors, model-specific
 retention/training terms, locations and lawful international-transfer safeguards.
 An EU database location or a vendor GDPR marketing statement is not sufficient
 proof of the whole chain. No zero-retention or EU-only-processing claim is made.

@@ -7,7 +7,7 @@ import { clientBudgets, clientBudgetIssues } from "./lib/client-budgets.mjs";
 const args = process.argv.slice(2);
 assert.ok(!args.length || (args.length === 1 && args[0] === "--independent"));
 const independent = args.length === 1;
-const output = independent ? "dist/independent-runtime/public" : ".output/public";
+const output = "dist/independent-runtime/public";
 const root = new URL("../", import.meta.url);
 const assets = [];
 for (const name of await readdir(new URL(`${output}/assets/`, root))) {

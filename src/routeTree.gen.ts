@@ -29,6 +29,7 @@ import { Route as ScanRouteImport } from './routes/scan'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as TasteRouteImport } from './routes/taste'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as CellarCollectionRouteImport } from './routes/cellar.collection'
 import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
@@ -142,6 +143,11 @@ const WishlistRoute = WishlistRouteImport.update({
   path: '/wishlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CellarCollectionRoute = CellarCollectionRouteImport.update({
   id: '/collection',
   path: '/collection',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
+  '/api/health': typeof ApiHealthRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/u/$username': typeof UUsernameRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
+  '/api/health': typeof ApiHealthRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/u/$username': typeof UUsernameRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
+  '/api/health': typeof ApiHealthRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/u/$username': typeof UUsernameRoute
@@ -333,6 +342,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/taste'
     | '/wishlist'
+    | '/api/health'
     | '/cellar/collection'
     | '/cellar/overview'
     | '/u/$username'
@@ -367,6 +377,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/taste'
     | '/wishlist'
+    | '/api/health'
     | '/cellar/collection'
     | '/cellar/overview'
     | '/u/$username'
@@ -401,6 +412,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/taste'
     | '/wishlist'
+    | '/api/health'
     | '/cellar/collection'
     | '/cellar/overview'
     | '/u/$username'
@@ -436,6 +448,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
   WishlistRoute: typeof WishlistRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   UUsernameRoute: typeof UUsernameRoute
   WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
@@ -587,6 +600,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WishlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cellar/collection': {
       id: '/cellar/collection'
       path: '/collection'
@@ -723,6 +743,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
   WishlistRoute: WishlistRoute,
+  ApiHealthRoute: ApiHealthRoute,
   UUsernameRoute: UUsernameRoute,
   WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,

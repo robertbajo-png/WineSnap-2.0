@@ -12,7 +12,6 @@ export default tseslint.config(
       ".output",
       ".vinxi",
       "node_modules.release-backup",
-      "src/integrations/supabase/previewAuthStorage.ts",
       "src/integrations/supabase/types.ts",
     ],
   },

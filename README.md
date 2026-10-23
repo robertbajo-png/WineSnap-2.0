@@ -6,11 +6,16 @@ Scan a wine label (or type the wine), get producer, grape, flavour profile and f
 
 - TanStack Start (React 19, Vite 8) — file routes in `src/routes`
 - Tailwind v4 via `src/styles.css`
-- Lovable Cloud (Postgres + Auth + Storage) — client in `src/integrations/supabase`
-- AI: the six AI Edge Functions use Lovable's gateway. Source defaults in
-  `supabase/functions/_shared/aiModels.ts` are `openai/gpt-6.1-sol` for label/text
-  analysis and `google/gemini-3.8-flash` for the other AI actions. These are
-  configured gateway identifiers, not proof of a deployed or supported model.
+- Owner-controlled Node runtime (Nitro); no Lovable build/editor dependency.
+- Supabase (Postgres + Auth + Storage) — client in `src/integrations/supabase`.
+- AI: six Edge Functions call OpenAI or Gemini directly using server-only owned
+  keys. Defaults in `supabase/functions/_shared/aiModels.ts`: `gpt-6.1-sol` for
+  label/text analysis, `gemini-3.8-flash` for other AI actions. Real provider access
+  and deployed responses still require staging verification.
+
+Development continues in Codex. See [the Lovable exit and cutover guide](docs/lovable-exit-2026-10-23.md)
+for configuration and remaining infrastructure/data migration. The old published
+service is not automatically migrated by these source changes.
 
 ## Key surfaces
 
@@ -65,15 +70,23 @@ then removed without deleting unrelated caches. Bump the worker version at relea
 ## Scripts
 
 ```bash
-npm run dev         # existing Lovable-compatible dev server
+npm run dev         # standalone dev server; deliberate public config required
 npm run check       # typecheck, ESLint, Vitest and production build
 npm run test:bundle # compressed client-asset size budget, after a build
 npm run test:security # reject high/critical production dependency advisories
 npm run test:database # disposable CI PostgreSQL only, never production
-npm run build:independent:check # synthetic Node-runtime check, not a live app
+npm run build:check # synthetic Node-runtime check, never deploy this artifact
 npm run test:independent
+npm start           # real Node artifact; runtime secrets supplied by hosting
 npm run dev:chef    # isolated culinary prototype, not the WineSnap app
 ```
+
+Public build settings: `config/independent/.env.example`. Server settings:
+`config/independent/server.env.example`. AI secrets: `supabase/functions/.env.example`.
+The old root production `.env` is no longer tracked or loaded by the build.
+`npm run check` requires a deliberate real public configuration for its final
+build; CI uses `build:check` instead. Deploy the whole `dist/independent-runtime`
+artifact, not just static assets. A non-root Docker recipe is included.
 
 ## Known limitations
 

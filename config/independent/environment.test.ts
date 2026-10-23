@@ -36,6 +36,8 @@ describe("independent build configuration", () => {
       SUPABASE_SERVICE_ROLE_KEY: "private-canary",
       VITE_UNKNOWN_SECRET: "private-canary",
       LOVABLE_API_KEY: "private-canary",
+      OPENAI_API_KEY: "private-canary",
+      GEMINI_API_KEY: "private-canary",
     });
     expect(values).toEqual(input);
     expect(
@@ -84,7 +86,7 @@ describe("independent build configuration", () => {
     ).toBe("true");
   });
 
-  it("keeps the alternate build separate from the original and Chef prototype", () => {
+  it("uses the standalone build by default and keeps the Chef prototype separate", () => {
     const config = readFileSync("vite.independent.config.ts", "utf8");
     expect(config).not.toContain("@lovable");
     expect(config).toContain('preset: "node_server"');
@@ -100,7 +102,12 @@ describe("independent build configuration", () => {
       'realpathSync(fileURLToPath(new URL("./node_modules", import.meta.url)))',
     );
     expect(config).toContain("fs: { strict: true, allow: [root, dependencies] }");
-    expect(readFileSync("vite.config.ts", "utf8")).toContain("@lovable.dev/vite-tanstack-config");
+    expect(readFileSync("vite.config.ts", "utf8")).toContain('from "./vite.independent.config.ts"');
+    const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+    expect(Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("@lovable")]),
+    );
+    expect(manifest.scripts.start).toBe("node dist/independent-runtime/server/index.mjs");
     expect(readFileSync("prototypes/chef/vite.config.ts", "utf8")).toContain("dist/chef-prototype");
   });
 });

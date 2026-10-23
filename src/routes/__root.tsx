@@ -1,6 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { AppUpdate } from "@/components/AppUpdate";
-import { HostBadgeSpace } from "@/components/HostBadgeSpace";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 
@@ -53,13 +52,11 @@ export const Route = createRootRoute({
       },
       {
         property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png",
+        content: "/icon-512.png",
       },
       {
         name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png",
+        content: "/icon-512.png",
       },
     ],
     links: [
@@ -100,7 +97,6 @@ function RootComponent() {
     <I18nProvider>
       <Outlet />
       <AppUpdate />
-      <HostBadgeSpace />
     </I18nProvider>
   );
 }

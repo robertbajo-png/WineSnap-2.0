@@ -2,6 +2,11 @@
 
 Date: 2026-10-20. Feature-branch candidate only; no production cutover.
 
+Historical preparation record. On 2026-10-23 the standalone configuration became
+the default build and direct-provider AI replaced the gateway in source. See
+`lovable-exit-2026-10-23.md` for current configuration and unresolved cutover gates.
+Statements below about retaining the original default describe the earlier step.
+
 ## What This Step Changes
 
 The existing WineSnap application now has an alternative, explicit Vite/TanStack

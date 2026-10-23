@@ -78,7 +78,8 @@ async function checkServer(configuredCron, artifact) {
     SUPABASE_URL: fixtureUrl,
     SUPABASE_PUBLISHABLE_KEY: fixtureKey,
     SUPABASE_SERVICE_ROLE_KEY: canary,
-    LOVABLE_API_KEY: canary,
+    OPENAI_API_KEY: canary,
+    GEMINI_API_KEY: canary,
   });
   if (configuredCron) env.CRON_SECRET = canary;
   let logs = "";
@@ -134,6 +135,11 @@ async function checkServer(configuredCron, artifact) {
       await delay(250);
     }
     assert(ready, `Server did not start: ${logs}`);
+    // Liveness only: no DB/provider calls and no environment or user information.
+    const health = await request("/api/health");
+    assert.equal(health.response.status, 200);
+    assert.deepEqual(JSON.parse(health.body), { status: "ok" });
+    assert.equal(health.response.headers.get("cache-control"), "no-store");
 
     if (!configuredCron) {
       for (const path of ["/", "/login", "/privacy", "/scan", "/cellar", "/ask"]) {

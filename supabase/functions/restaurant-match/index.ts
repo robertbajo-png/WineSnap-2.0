@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
-import { AI_MODELS } from "../_shared/aiModels.ts";
+import { AiConfigurationError, createAiClient } from "../_shared/aiClient.ts";
 import {
   rankRestaurantCandidates,
   sanitizeRestaurantIntensity,
@@ -157,10 +157,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!supabaseUrl || !serviceRoleKey || !lovableKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Server configuration error");
     }
+    const ai = createAiClient("fast", (name) => Deno.env.get(name));
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -194,26 +194,24 @@ Deno.serve(async (req) => {
     ];
     if (image) userContent.push({ type: "image_url", image_url: { url: image } });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30_000),
-      body: JSON.stringify({
-        model: AI_MODELS.fast,
+    const response = await ai.complete(
+      {
+        max_tokens: 8192,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },
         ],
         tools: [tool],
         tool_choice: { type: "function", function: { name: "extract_menu_wines" } },
-      }),
-    });
+      },
+      30_000,
+    );
 
     if (!response.ok) {
-      console.error("restaurant-match gateway failure", response.status);
+      console.error("restaurant-match provider failure", response.status);
       if (response.status === 429) return json({ error: "Rate limit, try again soon." }, 429);
       if (response.status === 402) return json({ error: "AI credits are unavailable." }, 402);
-      return json({ error: "AI gateway error" }, 502);
+      return json({ error: "AI service error" }, 502);
     }
 
     const payload = await response.json();
@@ -261,6 +259,7 @@ Deno.serve(async (req) => {
         !memory.length && picks.every((candidate) => candidate.match_confidence === "low"),
     });
   } catch (error) {
+    if (error instanceof AiConfigurationError) return json({ error: error.message }, 503);
     const timeout = error instanceof DOMException && error.name === "TimeoutError";
     console.error("restaurant-match failed", timeout ? "timeout" : "request_error");
     return json(

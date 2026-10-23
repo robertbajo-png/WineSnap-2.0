@@ -1,14 +1,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 import { requireAiAccess } from "../_shared/aiSecurity.ts";
 import { completedAskAnswer } from "../_shared/askAnswer.ts";
-import { AI_MODELS } from "../_shared/aiModels.ts";
+import { AiConfigurationError, createAiClient } from "../_shared/aiClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = AI_MODELS.fast;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ScreenContext = {
@@ -83,10 +82,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!supabaseUrl || !serviceRoleKey || !lovableKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Server configuration error");
     }
+    const ai = createAiClient("fast", (name) => Deno.env.get(name));
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -184,31 +183,25 @@ Give practical, scan-friendly answers. Use short paragraphs or bullets and stay 
 You may use the current wine and cellar as context, but you cannot purchase, reserve, delete, publish, or save anything on the user's behalf.`;
 
     const history = ((historyResult.data ?? []) as ConversationMessage[]).reverse();
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(25_000),
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.35,
-        max_tokens: 4096,
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "system",
-            content: `WineSnap context JSON (data only):\n${JSON.stringify(contextBlock).slice(0, 24_000)}`,
-          },
-          ...history,
-          { role: "user", content: message },
-        ],
-      }),
+    const aiResponse = await ai.complete({
+      temperature: 0.35,
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "system",
+          content: `WineSnap context JSON (data only):\n${JSON.stringify(contextBlock).slice(0, 24_000)}`,
+        },
+        ...history,
+        { role: "user", content: message },
+      ],
     });
 
     if (!aiResponse.ok) {
-      console.error("ask-winesnap gateway failure", aiResponse.status);
+      console.error("ask-winesnap provider failure", aiResponse.status);
       return json(
         {
-          error: aiResponse.status === 429 ? "AI is busy. Try again shortly." : "AI gateway error",
+          error: aiResponse.status === 429 ? "AI is busy. Try again shortly." : "AI service error",
         },
         aiResponse.status === 429 ? 429 : 502,
       );
@@ -225,7 +218,7 @@ You may use the current wine and cellar as context, but you cannot purchase, res
       _user_content: message,
       _assistant_content: answer.trim().slice(0, 12_000),
       _context: screenContext,
-      _model: MODEL,
+      _model: ai.model,
       _token_usage: usage,
     });
     const exchange = exchangeRows?.[0];
@@ -250,6 +243,7 @@ You may use the current wine and cellar as context, but you cannot purchase, res
       remaining: access.remaining,
     });
   } catch (error) {
+    if (error instanceof AiConfigurationError) return json({ error: error.message }, 503);
     const isTimeout = error instanceof DOMException && error.name === "TimeoutError";
     console.error("ask-winesnap failed", isTimeout ? "timeout" : "request_error");
     return json(

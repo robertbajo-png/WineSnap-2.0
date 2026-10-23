@@ -1,0 +1,19 @@
+# Allow only build inputs. No local credentials, test reports or browser profiles.
+**
+!package.json
+!package-lock.json
+!tsconfig.json
+!vite.config.ts
+!vite.independent.config.ts
+!config/
+!config/independent/
+!config/independent/environment.ts
+!src/
+!src/**
+!public/
+!public/**
+!supabase/
+!supabase/functions/
+!supabase/functions/_shared/
+!supabase/functions/_shared/recommendationScoring.ts
+!supabase/functions/_shared/restaurantRanking.ts

@@ -1,5 +1,10 @@
 # WineSnap Release Candidate, 2026-10-22
 
+Historical checkpoint. The owner requested a Lovable exit on 2026-10-23; the
+standalone Node build is now the default and source AI calls providers directly.
+See `lovable-exit-2026-10-23.md` for current verification and migration boundaries.
+The production NO-GO below is not superseded by source decoupling alone.
+
 ## Decision
 
 **NO-GO for production publication at this checkpoint.** The source candidate has
