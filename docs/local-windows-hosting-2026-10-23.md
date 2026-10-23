@@ -2,7 +2,9 @@
 
 Date: 2026-10-23. Local test installation, not a production migration.
 Later update: user-logon startup and an email-protected temporary Internet
-tunnel are installed. AI key provisioning remains a separate owner decision.
+tunnel are installed. Later the same day, the owner approved an existing OpenAI
+key and real text/image scanning was accepted in the local app. Gemini is not
+configured. Production remains unchanged.
 
 ## Machine Check
 
@@ -32,17 +34,19 @@ and their wines were not copied into this installation. A production account
 is not automatically an account in this separate test backend.
 
 The launcher reads the existing Windows-user-encrypted test credential file,
-checks its project and private ACL, and uses only its public/publishable key.
-It never converts the stored admin credential to plaintext. Docker receives no
-service-role, provider or cron key. No plaintext key file is created, and the
-Docker build context remains allowlisted. The Compose environment file is
-explicitly empty to avoid loading a checkout-root `.env`.
+checks its project and private ACL, and uses only its public/publishable key for
+the build and normal runtime environment. After startup, the separately scoped
+AI configurator reads the approved encrypted OpenAI and test backend credentials
+and pipes them into a private RAM-only container file. They are never build
+arguments, Docker environment variables, command-line values or host plaintext
+files. The Docker build context remains allowlisted. The Compose environment
+file is explicitly empty to avoid loading a checkout-root `.env`.
 
 The price scheduler is not provisioned. Admin-dependent Node operations are
 not enabled by supplying an admin key. Privacy rollout flags stay off. The
-previously verified test image proxy is on. No live AI request or provider
-credential configuration has been completed. The test dashboard confirms that
-neither `OPENAI_API_KEY` nor `GEMINI_API_KEY` is configured. The existing direct
+previously verified test image proxy is on. OpenAI scanning now runs on the local
+Node server; it does not require a hosted `analyze-wine` function or provider key
+in Supabase. No OpenAI/Gemini secret was uploaded to the test dashboard. The direct
 provider code can be bundled with `scripts/prepare-test-ai-functions.mjs` for
 six standalone dashboard files under ignored `dist/test-ai-functions`. This
 performs no network deployment or inference. A dashboard deployment attempt
@@ -88,8 +92,9 @@ From the repository root in PowerShell 7:
 ```
 
 Start builds/rebuilds the image, brings up only the `winesnap-local` Compose
-project and waits for health. Stop/Status/Restart/Verify do not require reading
-the key file. They verify the container's project and scope labels before
+project and waits for health. Stop/Status/Verify do not read encrypted credentials.
+Start/Restart/Resume restore the approved AI settings when its encrypted store
+exists. They verify the container's project and scope labels before
 operating. Every command pins the local `desktop-linux` named-pipe engine;
 inherited remote Docker/Compose configuration is not used.
 
@@ -104,7 +109,8 @@ Docker Desktop's global AutoStart setting was not changed. The separate
 `WineSnap Local Test.lnk` in this user's Windows Startup folder launches
 `start-local-windows-session.ps1` hidden after sign-in. It starts Docker Desktop
 if needed, waits for the local Linux engine and resumes only the previously
-installed WineSnap app and tunnel. Resume does not build or read credentials.
+installed WineSnap app and tunnel. Resume does not build; the launcher restores
+the approved AI credentials from this Windows user's encrypted stores.
 No administrator privilege, saved password, scheduled task or automatic Windows
 login is required. No power setting, firewall rule or router port was changed.
 The actual shortcut was launched after stopping both WineSnap containers; its
@@ -179,9 +185,10 @@ Verified on this installed container:
 - All 526 unit tests in 75 files, TypeScript and ESLint pass. The separate
   synthetic Node build, portable runtime smoke and client budget also pass.
 
-Camera tests use synthetic Chromium media, not a physical mobile camera. AI
-requests are deliberately blocked in the browser suites; this is not live AI
-or production acceptance. No Windows reboot or remote-phone access was tested.
+Those earlier camera tests use synthetic Chromium media, not a physical mobile
+camera. AI requests are deliberately blocked in those browser suites; their
+results alone are not live AI or production acceptance. The separate later live
+OpenAI checks are recorded below. No Windows reboot or remote-phone access was tested.
 Ignored evidence: `dist/local-windows-ui-report.json`,
 `dist/local-windows-image-mobile-report.json` and `dist/image-browser-*.png`.
 
@@ -192,7 +199,65 @@ Ignored evidence: `dist/local-windows-ui-report.json`,
 - No paid resource, production tunnel, real-user data import or main-branch merge.
 - No changes to unrelated Docker containers or their restart settings.
 
-This completes a local app-server installation, not the outstanding production
-cutover, independently owned production backend, real AI acceptance or
+This completes a local app-server installation and real OpenAI scan acceptance,
+not the outstanding production cutover, independently owned production backend,
+Gemini acceptance or
 off-device disaster-recovery backup. See `lovable-exit-2026-10-23.md` and
 `lovable-migration-checkpoint-2026-10-23.md` for those separate gates.
+
+## Live OpenAI Scan Acceptance
+
+`VITE_LOCAL_AI_ENABLED=true` selects a same-origin `/api/ai/analyze-wine` route
+only in the local Windows build. Both build and server refuse other backend
+projects; the default and synthetic builds keep it off. The browser sends only
+the ordinary signed-in user's JWT, never a provider or admin key. No hosted or
+Lovable gateway fallback exists.
+
+The Node route and Edge function share the same label-reader implementation
+and auth/quota guard. Each accepted inference checks the user with Supabase Auth,
+rejects an unavailable/erasing account and consumes the existing atomic database
+quota (20 scans per 300 seconds). Input has byte/type/field limits, arbitrary
+image URLs and provider overrides are refused. Responses are `no-store` with no
+cross-origin permission. The OpenAI destination and `gpt-6.1-sol` model are fixed,
+output is strict-schema JSON, timeout is 45 seconds, `store:false`, with no retry
+or provider/model fallback.
+
+The approved key remains DPAPI-encrypted on Windows. A child process receives it
+through stdin and installs `/tmp/winesnap-ai/credentials.json` inside the
+container's existing tmpfs (directory 0700, file 0600, checked owner). The test
+backend admin key is used only by this AI adapter, not placed in the Node process
+environment; other admin-dependent routes remain unconfigured. Docker/root and
+the Windows owner necessarily control the running host; RAM-only storage is not
+protection against an already compromised host.
+
+```powershell
+./scripts/configure-local-windows-ai.ps1 -Action Check
+# Live, billable API acceptance using disposable test users; cleans them afterward:
+./scripts/configure-local-windows-ai.ps1 -Action Test
+```
+
+Real acceptance passed: anonymous and invalid JWT requests return 401; the
+existing OpenAI key can access the pinned model; actual mobile text scanning and
+the approved original `54456874_400.webp` image both return 200 through the local
+app. The image reads Zehn Morgen, Chardonnay/Weisser Burgunder and vintage 2023.
+The raw label year is `20 23`, which the app correctly normalizes to 2023; the
+first test's overly strict raw-string assertion was corrected, not the reader.
+There are no hosted AI requests, saved wines, unexpected browser errors or
+cleanup failures. Mobile and desktop result screenshots were visually checked.
+Restart plus automatic credential restoration and a safe configuration check
+also passed. This is not a physical-phone camera test or an Internet/PIN test.
+
+Ignored evidence: `dist/local-windows-ai-report.json`,
+`dist/local-ai-text-mobile.png`, `dist/local-ai-image-mobile.png`,
+`dist/local-ai-image-desktop.png`. The full unit suite, lint, typecheck, Docker
+build, synthetic portable Node runtime and client budget pass.
+
+RAM credentials disappear on container restart. The supported Start/Restart/
+Resume commands (including the user-logon shortcut) restore them without input.
+A Docker-only automatic restart during an already-running Windows session fails
+closed until that launcher is rerun. No reboot was performed.
+
+OpenAI scanning is ready in this local test installation. Chat, recommendations,
+restaurant matching and preference extraction retain their existing Gemini
+contracts and still need a separately approved Gemini key/deployment. This is
+not full AI-feature acceptance or a production release.

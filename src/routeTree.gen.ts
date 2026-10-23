@@ -35,6 +35,7 @@ import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as WShareIdRouteImport } from './routes/w.$shareId'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
+import { Route as ApiAiAnalyzeWineRouteImport } from './routes/api/ai/analyze-wine'
 import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
@@ -173,6 +174,11 @@ const WineIdRoute = WineIdRouteImport.update({
   path: '/wine/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiAnalyzeWineRoute = ApiAiAnalyzeWineRouteImport.update({
+  id: '/api/ai/analyze-wine',
+  path: '/api/ai/analyze-wine',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WineIdEditRoute = WineIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -348,6 +357,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-wine'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-wine'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-wine'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -452,6 +464,7 @@ export interface RootRouteChildren {
   UUsernameRoute: typeof UUsernameRoute
   WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
+  ApiAiAnalyzeWineRoute: typeof ApiAiAnalyzeWineRoute
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
   ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
   ApiPublicHooksRefreshCellarValuesRoute: typeof ApiPublicHooksRefreshCellarValuesRoute
@@ -642,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai/analyze-wine': {
+      id: '/api/ai/analyze-wine'
+      path: '/api/ai/analyze-wine'
+      fullPath: '/api/ai/analyze-wine'
+      preLoaderRoute: typeof ApiAiAnalyzeWineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wine/$id/edit': {
       id: '/wine/$id/edit'
       path: '/edit'
@@ -747,6 +767,7 @@ const rootRouteChildren: RootRouteChildren = {
   UUsernameRoute: UUsernameRoute,
   WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
+  ApiAiAnalyzeWineRoute: ApiAiAnalyzeWineRoute,
   ApiPublicHooksCheckWishlistPricesRoute:
     ApiPublicHooksCheckWishlistPricesRoute,
   ApiPublicHooksMatchSystembolagetRoute: ApiPublicHooksMatchSystembolagetRoute,

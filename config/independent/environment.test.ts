@@ -30,6 +30,23 @@ describe("independent build configuration", () => {
     ).toThrow("VITE_SUPABASE_PUBLISHABLE_KEY");
   });
 
+  it("limits local AI to the approved test backend and disables it in offline checks", () => {
+    expect(() =>
+      independentEnvironment("production", { ...input, VITE_LOCAL_AI_ENABLED: "true" }),
+    ).toThrow("WineSnap-test");
+    expect(
+      independentEnvironment("production", {
+        ...input,
+        VITE_SUPABASE_URL: "https://pzniyupmgwvlldvztzqh.supabase.co",
+        VITE_LOCAL_AI_ENABLED: "true",
+      }).VITE_LOCAL_AI_ENABLED,
+    ).toBe("true");
+    expect(
+      independentEnvironment("runtime-check", { VITE_LOCAL_AI_ENABLED: "true" })
+        .VITE_LOCAL_AI_ENABLED,
+    ).toBe("false");
+  });
+
   it("only forwards the known public allowlist", () => {
     const values = independentEnvironment("production", {
       ...input,

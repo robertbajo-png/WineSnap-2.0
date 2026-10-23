@@ -12,6 +12,7 @@ import { useT, useI18n } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
 import { createSaveGuard } from "@/lib/tastingNotes";
 import { scanFailure } from "@/lib/scanFailure";
+import { analyzeWine } from "@/lib/analyzeWine";
 import {
   checkImageInput,
   createAttemptGuard,
@@ -187,9 +188,7 @@ function ScanPage() {
     setAnalysisError(null);
     setStage("analyzing");
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { text: q, language: lang },
-      });
+      const { data, error } = await analyzeWine({ text: q, language: lang });
       if (!guard.isCurrent(attempt)) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -253,9 +252,7 @@ function ScanPage() {
       });
       if (!guard.isCurrent(attempt)) return;
 
-      const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { imageBase64: base64, mimeType, language: lang },
-      });
+      const { data, error } = await analyzeWine({ imageBase64: base64, mimeType, language: lang });
       if (!guard.isCurrent(attempt)) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

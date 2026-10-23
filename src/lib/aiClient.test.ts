@@ -150,13 +150,15 @@ describe("Edge migration integrity", () => {
     "wine-suggestions",
     "extract-preference-signals",
   ])("keeps %s valid, authenticated, rate-limited and gateway-free", (name) => {
-    const path = `supabase/functions/${name}/index.ts`;
+    const path = `supabase/functions/${name}/${name === "analyze-wine" ? "handler" : "index"}.ts`;
     const source = readFileSync(path, "utf8");
     const tree = ts.createSourceFile(path, source, ts.ScriptTarget.ES2022, true);
     expect((tree as typeof tree & { parseDiagnostics: unknown[] }).parseDiagnostics).toEqual([]);
-    expect(source.indexOf("await requireAiAccess(")).toBeLessThan(
-      source.indexOf('createAiClient("'),
+    const guard = source.indexOf(
+      name === "analyze-wine" ? "await dependencies.requireAccess(" : "await requireAiAccess(",
     );
+    expect(guard).toBeGreaterThanOrEqual(0);
+    expect(guard).toBeLessThan(source.indexOf('createAiClient("'));
     expect(source).toContain("instanceof AiConfigurationError");
     expect(source).toContain("503");
     expect(source).not.toMatch(/ai\.gateway\.lovable|LOVABLE_API_KEY/);

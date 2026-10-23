@@ -73,7 +73,7 @@ function Test-LocalContainer($Container) {
   $health = Invoke-WebRequest "$app/api/health" -TimeoutSec 15 -NoProxy
   if ($health.StatusCode -ne 200 -or $health.Headers.'Cache-Control' -notcontains 'no-store' -or
       ($health.Content | ConvertFrom-Json).status -ne 'ok') { throw 'Health endpoint check failed.' }
-  Write-Host 'Verified: healthy, loopback only, non-root, read-only, 768 MB limit, no admin/provider keys.'
+  Write-Host 'Verified: healthy, loopback only, non-root, read-only, 768 MB limit, no admin/provider environment variables.'
 }
 
 try {
@@ -132,6 +132,10 @@ try {
     Start-Sleep -Seconds 2
   } while ([DateTime]::UtcNow -lt $deadline)
   Test-LocalContainer $container
+  if (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'WineSnapHosting/ai-keys.clixml') -PathType Leaf) {
+    & (Join-Path $PSScriptRoot 'configure-local-windows-ai.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'The app is healthy but local AI configuration failed.' }
+  }
   Write-Host "WineSnap is running at $app (test environment, not production)."
 } finally {
   $publicValue = $null

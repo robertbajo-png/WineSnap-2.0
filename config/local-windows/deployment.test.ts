@@ -13,12 +13,14 @@ describe("local Windows hosting boundaries", () => {
       web.environment.SUPABASE_PUBLISHABLE_KEY,
     );
     expect(web.build.args.VITE_WINE_IMAGE_PROXY_ENABLED).toBe("true");
+    expect(web.build.args.VITE_LOCAL_AI_ENABLED).toBe("true");
     expect(web.build.args.VITE_PRIVACY_CONTROLS_ENABLED).toBe("false");
     expect(web.build.args.VITE_PRIVACY_OPERATIONS_VERIFIED).toBe("false");
     expect(Object.keys(web.environment).sort()).toEqual([
       "NODE_OPTIONS",
       "SUPABASE_PUBLISHABLE_KEY",
       "SUPABASE_URL",
+      "WINESNAP_LOCAL_AI_ENABLED",
     ]);
     expect(JSON.stringify(web)).not.toMatch(
       /mervdrbnwgreaifobasw|sb_secret_|SERVICE_ROLE|OPENAI_API_KEY|GEMINI_API_KEY/,
@@ -48,12 +50,29 @@ describe("local Windows hosting boundaries", () => {
     expect(launcher).toContain("Refusing to operate on an unrelated container.");
   });
 
-  it("reuses public encrypted configuration without unlocking the admin credential", () => {
+  it("keeps secrets out of Compose, build arguments and process arguments", () => {
     expect(launcher).toContain("Import-Clixml -LiteralPath $keyPath");
     expect(launcher).toContain("$stored.Publishable.GetNetworkCredential()");
     expect(launcher).not.toContain("$stored.Secret.GetNetworkCredential()");
     expect(launcher).not.toMatch(/Read-Host|Set-NetFirewall|powercfg|Set-Content/);
     expect(launcher).toContain("$start.Environment.Clear()");
     expect(launcher).toContain("--env-file");
+  });
+
+  it("installs approved AI credentials through stdin into private container RAM only", () => {
+    const configure = readFileSync("scripts/configure-local-windows-ai.ps1", "utf8");
+    const install = readFileSync("config/local-windows/install-ai-credentials.mjs", "utf8");
+    expect(configure).toContain("$start.RedirectStandardInput = $true");
+    expect(configure).toContain("$process.StandardInput.Write($payload)");
+    expect(configure).toContain("$start.Environment.Clear()");
+    expect(configure).toContain("WineSnapHosting/ai-keys.clixml");
+    expect(configure).not.toMatch(
+      /Set-Content|Export-Clixml|ArgumentList.Add\(\$payload\)|Write-Host \$payload/,
+    );
+    expect(install).toContain('const directory = "/tmp/winesnap-ai"');
+    expect(install).toContain("mode: 0o700");
+    expect(install).toContain('mode: 0o600, flag: "wx"');
+    expect(install).toContain("stat.uid !== process.getuid()");
+    expect(launcher).toContain("configure-local-windows-ai.ps1");
   });
 });

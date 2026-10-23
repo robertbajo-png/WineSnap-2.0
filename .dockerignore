@@ -17,3 +17,10 @@
 !supabase/functions/_shared/
 !supabase/functions/_shared/recommendationScoring.ts
 !supabase/functions/_shared/restaurantRanking.ts
+!supabase/functions/_shared/aiAccess.ts
+!supabase/functions/_shared/aiClient.ts
+!supabase/functions/_shared/aiModels.ts
+!supabase/functions/analyze-wine/
+!supabase/functions/analyze-wine/handler.ts
+!supabase/functions/analyze-wine/labelValidation.ts
+!supabase/functions/analyze-wine/labelResponse.ts

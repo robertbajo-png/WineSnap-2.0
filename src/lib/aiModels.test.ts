@@ -53,7 +53,6 @@ function loadLabelReader(
   denied?: Response,
   environment: Record<string, string | undefined> = { OPENAI_API_KEY: "synthetic-test-key" },
 ) {
-  let handler: Handler | undefined;
   const fetch = vi.fn(
     async (_url: string | URL | Request, _init?: RequestInit) => providerResponse,
   );
@@ -64,25 +63,21 @@ function loadLabelReader(
       createAiClient: (workload: keyof typeof AI_MODELS) =>
         createAiClient(workload, (name) => environment[name], fetch),
     },
-    "../_shared/aiSecurity.ts": { requireAiAccess },
     "./labelValidation.ts": labelValidation,
     "./labelResponse.ts": labelResponse,
   };
-  const source = read("supabase/functions/analyze-wine/index.ts");
+  const source = read("supabase/functions/analyze-wine/handler.ts");
+  const exported: { createLabelReader?: (dependencies: unknown) => Handler } = {};
 
-  // Execute the actual Deno handler in isolation; only auth and HTTP are mocked.
+  // Execute the actual shared label handler; only auth and HTTP are mocked.
   const { outputText } = transpileModule(source, {
     compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
   });
   runInNewContext(outputText, {
-    exports: {},
+    exports: exported,
     require: (path: string) => {
       if (!(path in imports)) throw new Error(`Unexpected Edge import: ${path}`);
       return imports[path];
-    },
-    Deno: {
-      env: { get: (name: string) => environment[name] },
-      serve: (callback: Handler) => (handler = callback),
     },
     Request,
     Response,
@@ -91,6 +86,10 @@ function loadLabelReader(
     AbortSignal,
     fetch,
     console: { error: vi.fn() },
+  });
+  const handler = exported.createLabelReader?.({
+    env: (name: string) => environment[name],
+    requireAccess: requireAiAccess,
   });
   if (!handler) throw new Error("Label reader did not register a handler");
 

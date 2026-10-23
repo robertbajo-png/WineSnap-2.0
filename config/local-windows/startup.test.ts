@@ -15,7 +15,7 @@ describe("Windows user-logon startup and protected test tunnel", () => {
     expect(startup).not.toMatch(/ExecutionPolicy|RunAs|Highest|SYSTEM|Password|HKLM/);
   });
 
-  it("resumes installed containers without rebuilding or unlocking keys at logon", () => {
+  it("resumes installed containers without rebuilding; the launcher restores approved AI credentials", () => {
     expect(launcher).toContain("'Restart', 'Resume'");
     expect(session).toContain("-Action Resume");
     expect(session).toContain("--context desktop-linux info");
