@@ -2,6 +2,12 @@
 
 Date: 2026-10-23. Source candidate; production cutover has NOT occurred.
 
+Later checkpoint on the same date: the original project is accessible again.
+Its WineSnap GitHub sync is disconnected, and real database/Auth and image
+exports have been downloaded, encrypted and rehearsed locally. See
+`lovable-migration-checkpoint-2026-10-23.md`. New production hosting/backend and
+owned AI access are still not provisioned; the old public service remains intact.
+
 The owner requested that WineSnap leave Lovable and continue in Codex. Codex is
 the development environment, not the production host, database or model runtime.
 No further development or verification is delegated to Lovable.
@@ -109,9 +115,10 @@ itself is not verified unless recorded below.
 
 ## Current Boundaries
 
-- Source decoupling does not disconnect the external GitHub installation, switch
-  DNS/hosting, cancel billing or delete the Lovable project. None of those remote
-  changes has been performed. The published `wine-scene-snap.lovable.app` site
+- The WineSnap project's two-way GitHub sync is now disconnected and confirmed
+  in the project UI. The account-wide GitHub installation was not removed, so
+  other projects remain unaffected. DNS/hosting, billing and the Lovable project
+  itself were not changed. The published `wine-scene-snap.lovable.app` site
   remains the old service during migration.
 - `WineSnap-test` (`pzniyupmgwvlldvztzqh`) remains disposable test infrastructure,
   not a replacement production database. Existing encrypted test keys are reused
@@ -121,6 +128,10 @@ itself is not verified unless recorded below.
 - A new hosting/domain account has not been provisioned or purchased. Existing
   privacy/backup/scheduler/device production gates still apply. Migration is not
   certified complete until the data and actual deployed system pass acceptance.
+- The signed-in Supabase organization cannot create a third free project: its
+  two-project allowance is already used. No existing project was paused,
+  deleted, upgraded or repurposed. This is an observed account limit, not an
+  inferred deployment failure.
 
 ## Verification on 2026-10-23
 
