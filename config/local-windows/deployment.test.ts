@@ -22,7 +22,9 @@ describe("local Windows hosting boundaries", () => {
       "SUPABASE_URL",
       "WINESNAP_LOCAL_AI_ENABLED",
       "WINESNAP_LOCAL_OPERATIONS_ENABLED",
+      "WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED",
     ]);
+    expect(web.environment.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED).toBe("true");
     expect(JSON.stringify(web)).not.toMatch(
       /mervdrbnwgreaifobasw|sb_secret_|SERVICE_ROLE|OPENAI_API_KEY|GEMINI_API_KEY/,
     );

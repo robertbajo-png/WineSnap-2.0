@@ -1,4 +1,4 @@
-import { lookupRetailCandidates } from "./retailCatalog.server";
+import { lookupRetailCandidates, warmLocalRetailCatalog } from "./retailCatalog.server";
 import type { WishlistPriceRow } from "./wishlistPrices.server";
 import { getOperationsAdmin, operationsCredentials } from "./localCredentials.server";
 
@@ -38,6 +38,7 @@ export const wishlistPriceDependencies = {
     return (data ?? []) as unknown as WishlistPriceRow[];
   },
   lookup: lookupRetailCandidates,
+  warm: warmLocalRetailCatalog,
   async save(row: WishlistPriceRow, patch: Record<string, unknown>) {
     const supabaseAdmin = await getOperationsAdmin();
     let query = supabaseAdmin

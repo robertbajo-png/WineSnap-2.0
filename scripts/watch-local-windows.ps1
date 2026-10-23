@@ -61,7 +61,7 @@ try {
       )) {
         $statusFile = Join-Path $statePath $job.File
         $last = if (Test-Path -LiteralPath $statusFile) { Get-Content -LiteralPath $statusFile -Raw | ConvertFrom-Json } else { $null }
-        if (Test-LocalJobDue $last $job.Hours) {
+        if (($state.credentialsRestored -and $job.Action -eq 'Maintain') -or (Test-LocalJobDue $last $job.Hours)) {
           & (Join-Path $PSScriptRoot 'run-local-windows-operations.ps1') -Action $job.Action | Out-Null
           if ($LASTEXITCODE -ne 0) { $state[$job.Action.ToLowerInvariant() + 'Failed'] = $true }
         }

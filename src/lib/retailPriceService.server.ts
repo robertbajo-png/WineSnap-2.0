@@ -62,7 +62,7 @@ export function createRetailPriceHandler(deps: Dependencies) {
                 bottle_ml: bottleMl,
                 market_price: candidate.price,
                 market_price_currency: candidate.currency,
-                market_price_source: "bolaget.io",
+                market_price_source: candidate.source ?? "bolaget.io",
                 market_price_checked_at: attemptedAt,
                 systembolaget_id: candidate.productNumber,
                 systembolaget_url: `https://www.systembolaget.se/produkt/vin/${candidate.productNumber}`,

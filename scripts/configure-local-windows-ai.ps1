@@ -1,4 +1,4 @@
-param([ValidateSet('Install', 'Check', 'Test', 'TestGemini', 'TestFeatures')][string]$Action = 'Install')
+param([ValidateSet('Install', 'Check', 'Test', 'TestGemini', 'TestFeatures', 'TestPrices')][string]$Action = 'Install')
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'PowerShell 7 on Windows is required.' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -10,7 +10,7 @@ $aiKeys = $null
 $payload = $null
 $process = $null
 $phase = 'engine'
-$isTest = $Action -in @('Test', 'TestGemini', 'TestFeatures')
+$isTest = $Action -in @('Test', 'TestGemini', 'TestFeatures', 'TestPrices')
 
 function Read-PrivateStore([string]$Path) {
   foreach ($item in @((Split-Path -Parent $Path), $Path)) {
@@ -55,7 +55,8 @@ try {
   $installer = [IO.File]::ReadAllText((Join-Path $root 'config/local-windows/install-ai-credentials.mjs'))
   if ($isTest) {
     $start.FileName = Join-Path $HOME '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
-    $entry = if ($Action -eq 'TestFeatures') { 'check-local-windows-features.mjs' } elseif ($Action -eq 'TestGemini') { 'check-local-windows-gemini.mjs' } else { 'check-local-windows-ai.mjs' }
+    $entry = if ($Action -in @('TestFeatures', 'TestPrices')) { 'check-local-windows-features.mjs' } elseif ($Action -eq 'TestGemini') { 'check-local-windows-gemini.mjs' } else { 'check-local-windows-ai.mjs' }
+    if ($Action -eq 'TestPrices') { $start.Environment['WINESNAP_FEATURE_SCOPE'] = 'prices' }
     $start.ArgumentList.Add((Join-Path $PSScriptRoot $entry))
   } else {
     foreach ($argument in @('--context', 'desktop-linux', 'exec', '-i', $name, 'node', '--input-type=module', '--eval', $installer)) {
@@ -103,7 +104,7 @@ try {
   $result = $rawOutput | ConvertFrom-Json
   $errors.GetAwaiter().GetResult() | Out-Null
   if ($isTest) {
-    $report = if ($Action -eq 'TestFeatures') { 'dist/local-windows-features-report.json' } elseif ($Action -eq 'TestGemini') { 'dist/local-windows-gemini-report.json' } else { 'dist/local-windows-ai-report.json' }
+    $report = if ($Action -eq 'TestPrices') { 'dist/local-windows-prices-report.json' } elseif ($Action -eq 'TestFeatures') { 'dist/local-windows-features-report.json' } elseif ($Action -eq 'TestGemini') { 'dist/local-windows-gemini-report.json' } else { 'dist/local-windows-ai-report.json' }
     [pscustomobject]@{ completed=[bool]$result.completed; project=$project; report=$report } | ConvertTo-Json -Compress
     if ($process.ExitCode -ne 0 -or -not $result.completed) { exit 1 }
     exit 0

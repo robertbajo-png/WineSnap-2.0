@@ -19,6 +19,7 @@
         "SUPABASE_URL": "https://pzniyupmgwvlldvztzqh.supabase.co",
         "WINESNAP_LOCAL_AI_ENABLED": "true",
         "WINESNAP_LOCAL_OPERATIONS_ENABLED": "true",
+        "WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED": "true",
         "SUPABASE_PUBLISHABLE_KEY": "${WINESNAP_LOCAL_PUBLISHABLE_KEY:?Use scripts/run-local-windows.ps1}",
         "NODE_OPTIONS": "--max-old-space-size=384"
       },

@@ -5,6 +5,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
 assert.equal(process.argv.length, 2);
+assert.ok(!process.env.WINESNAP_FEATURE_SCOPE || process.env.WINESNAP_FEATURE_SCOPE === "prices");
+const pricesOnly = process.env.WINESNAP_FEATURE_SCOPE === "prices";
+const reportFile = pricesOnly
+  ? "local-windows-prices-report.json"
+  : "local-windows-features-report.json";
 const project = "pzniyupmgwvlldvztzqh";
 const origin = `https://${project}.supabase.co`;
 const app = "http://127.0.0.1:5210";
@@ -16,11 +21,21 @@ for await (const chunk of process.stdin) {
 const keys = JSON.parse(raw);
 raw = "";
 assert.equal(keys.project, project);
-const report = { project, completed: false, checks: [], cleanupFailures: 0, outstanding: [] };
+const report = {
+  project,
+  scope: pricesOnly ? "prices" : "features",
+  completed: false,
+  checks: [],
+  cleanupFailures: 0,
+  outstanding: [],
+  ...(pricesOnly
+    ? { notCovered: ["Live AI availability", "Privacy/reset/recovery acceptance"] }
+    : {}),
+};
 const save = async () => {
   await mkdir(new URL("../dist/", import.meta.url), { recursive: true });
   await writeFile(
-    new URL("../dist/local-windows-features-report.json", import.meta.url),
+    new URL(`../dist/${reportFile}`, import.meta.url),
     JSON.stringify({ ...report, checkedAt: new Date().toISOString() }, null, 2),
   );
 };
@@ -172,24 +187,25 @@ try {
       404,
     );
   });
-  await check("real Gemini preference extraction persists owner-only evidence", async () => {
-    const response = await call(
-      "/api/ai/extract-preference-signals",
-      { tastingNoteId: note.id },
-      owner.session.access_token,
-    );
-    assert.equal(response.status, 200);
-    const result = await response.json();
-    assert.ok(result.signals.length > 0);
-    const signals = ok(
-      await owner.client.from("taste_signals").select("id").eq("user_id", owner.id),
-    );
-    assert.ok(signals.length > 0);
-    assert.deepEqual(
-      ok(await peer.client.from("taste_signals").select("id").eq("user_id", owner.id)),
-      [],
-    );
-  });
+  if (!pricesOnly)
+    await check("real Gemini preference extraction persists owner-only evidence", async () => {
+      const response = await call(
+        "/api/ai/extract-preference-signals",
+        { tastingNoteId: note.id },
+        owner.session.access_token,
+      );
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.ok(result.signals.length > 0);
+      const signals = ok(
+        await owner.client.from("taste_signals").select("id").eq("user_id", owner.id),
+      );
+      assert.ok(signals.length > 0);
+      assert.deepEqual(
+        ok(await peer.client.from("taste_signals").select("id").eq("user_id", owner.id)),
+        [],
+      );
+    });
   const { chromium } = await import(
     pathToFileURL(
       `${process.env.USERPROFILE}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs`,
@@ -220,41 +236,42 @@ try {
     await page.getByRole("button", { name: /^(Sign In|Logga in)$/i }).click();
     await page.waitForURL(app + "/", { timeout: 20000 });
   });
-  await check(
-    "real restaurant analysis uses the local route and renders on mobile and desktop",
-    async () => {
-      await page.goto(app + "/restaurant");
-      await page
-        .locator("#restaurant-menu")
-        .fill(
-          "Zehn Morgen Chardonnay & Weisser Burgunder 2023, Nahe, Germany, 450 SEK\nDr. Loosen Riesling 2023, Mosel, Germany, 550 SEK",
-        );
-      const pending = page.waitForResponse((r) => r.url() === app + "/api/ai/restaurant-match", {
-        timeout: 90000,
-      });
-      await page.getByRole("button", { name: /Analysera|Analyze|Hitta|Find/i }).click();
-      const response = await pending;
-      assert.equal(response.status(), 200);
-      const result = await response.json();
-      assert.ok(result.picks.length > 0);
-      await page.getByText(result.picks[0].wine_name, { exact: false }).first().waitFor();
-      for (const [name, viewport] of [
-        ["mobile", { width: 390, height: 844 }],
-        ["desktop", { width: 1440, height: 1000 }],
-      ]) {
-        await page.setViewportSize(viewport);
-        assert.equal(
-          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
-          false,
-        );
-        await page.screenshot({
-          path: fileURLToPath(new URL(`../dist/local-restaurant-${name}.png`, import.meta.url)),
-          fullPage: true,
+  if (!pricesOnly)
+    await check(
+      "real restaurant analysis uses the local route and renders on mobile and desktop",
+      async () => {
+        await page.goto(app + "/restaurant");
+        await page
+          .locator("#restaurant-menu")
+          .fill(
+            "Zehn Morgen Chardonnay & Weisser Burgunder 2023, Nahe, Germany, 450 SEK\nDr. Loosen Riesling 2023, Mosel, Germany, 550 SEK",
+          );
+        const pending = page.waitForResponse((r) => r.url() === app + "/api/ai/restaurant-match", {
+          timeout: 90000,
         });
-      }
-      await page.setViewportSize({ width: 390, height: 844 });
-    },
-  );
+        await page.getByRole("button", { name: /Analysera|Analyze|Hitta|Find/i }).click();
+        const response = await pending;
+        assert.equal(response.status(), 200);
+        const result = await response.json();
+        assert.ok(result.picks.length > 0);
+        await page.getByText(result.picks[0].wine_name, { exact: false }).first().waitFor();
+        for (const [name, viewport] of [
+          ["mobile", { width: 390, height: 844 }],
+          ["desktop", { width: 1440, height: 1000 }],
+        ]) {
+          await page.setViewportSize(viewport);
+          assert.equal(
+            await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+            false,
+          );
+          await page.screenshot({
+            path: fileURLToPath(new URL(`../dist/local-restaurant-${name}.png`, import.meta.url)),
+            fullPage: true,
+          });
+        }
+        await page.setViewportSize({ width: 390, height: 844 });
+      },
+    );
   await check("cellar refresh is owner-scoped and persists an honest catalog result", async () => {
     const input = { action: "refresh", wineIds: [wine.id] };
     const stranger = await call(
@@ -285,6 +302,127 @@ try {
     assert.equal(updated.retail_price_status, result.status);
     assert.ok(updated.retail_price_attempted_at);
   });
+  await check(
+    "live mirror prices persist with exact identity and accurate source attribution",
+    async () => {
+      const proposal = ok(
+        await owner.client
+          .from("wines")
+          .select("retail_price_candidates")
+          .eq("id", wine.id)
+          .single(),
+      ).retail_price_candidates;
+      const hit = proposal?.candidates?.find(
+        (candidate) =>
+          candidate.source === "susbolaget.emrik.org" && candidate.vintage && candidate.volumeMl,
+      );
+      assert.ok(hit, "A current public source product is required; do not invent a fixture quote");
+      const identity = {
+        producer: hit.producer,
+        wine_name: hit.name,
+        vintage: hit.vintage,
+        bottle_ml: hit.volumeMl,
+        country: hit.country,
+        systembolaget_id: hit.productNumber,
+      };
+      const exact = ok(
+        await owner.client
+          .from("wines")
+          .insert({
+            ...identity,
+            user_id: owner.id,
+            quantity: 1,
+            wine_type: "white",
+            is_public: false,
+          })
+          .select("id")
+          .single(),
+      );
+      const response = await call(
+        "/api/public/hooks/refresh-cellar-values",
+        { action: "refresh", wineIds: [exact.id] },
+        owner.session.access_token,
+      );
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).results[0].status, "matched");
+      const persisted = ok(
+        await owner.client
+          .from("wines")
+          .select("market_price,market_price_source,retail_price_match")
+          .eq("id", exact.id)
+          .single(),
+      );
+      assert.equal(persisted.market_price, hit.price);
+      assert.equal(persisted.market_price_source, hit.source);
+      assert.equal(persisted.retail_price_match.sourceAsOf, hit.sourceAsOf);
+      assert.notEqual(wine.vintage, hit.vintage);
+      assert.equal(report.catalogResult, "review");
+      report.liveRetailQuote = {
+        productNumber: hit.productNumber,
+        vintage: hit.vintage,
+        price: hit.price,
+        source: hit.source,
+        sourceAsOf: hit.sourceAsOf,
+      };
+      await page.goto(app + "/cellar/overview");
+      const details = page.locator("details").filter({ hasText: hit.source });
+      await details.locator("summary").click();
+      await details
+        .getByText(new RegExp(hit.source.replaceAll(".", "\\.")))
+        .first()
+        .waitFor();
+      for (const [name, viewport] of [
+        ["mobile", { width: 390, height: 844 }],
+        ["desktop", { width: 1440, height: 1000 }],
+      ]) {
+        await page.setViewportSize(viewport);
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+          false,
+        );
+        await page.screenshot({
+          path: fileURLToPath(new URL(`../dist/local-retail-${name}.png`, import.meta.url)),
+          fullPage: true,
+        });
+      }
+      await page.setViewportSize({ width: 390, height: 844 });
+      const wish = ok(
+        await owner.client
+          .from("wishlist")
+          .insert({
+            ...identity,
+            user_id: owner.id,
+            notify_on_drop: true,
+            price_currency: "SEK",
+            target_price: hit.price + 1,
+          })
+          .select("id")
+          .single(),
+      );
+      for (const triggered of [1, 0]) {
+        const response = await call(
+          "/api/public/hooks/refresh-wishlist-prices",
+          { ids: [wish.id] },
+          owner.session.access_token,
+        );
+        assert.equal(response.status, 200);
+        const result = await response.json();
+        assert.equal(result.failed, 0);
+        assert.equal(result.triggered, triggered);
+      }
+      const storedWish = ok(
+        await owner.client
+          .from("wishlist")
+          .select("price_source,last_checked_price")
+          .eq("id", wish.id)
+          .single(),
+      );
+      assert.equal(storedWish.price_source, hit.source);
+      assert.equal(storedWish.last_checked_price, hit.price);
+      ok(await owner.client.from("wishlist").delete().eq("id", wish.id));
+      ok(await owner.client.from("wines").delete().eq("id", exact.id));
+    },
+  );
   await check("wishlist refresh is wired to the local authenticated backend", async () => {
     const row = ok(
       await owner.client
@@ -307,136 +445,142 @@ try {
     assert.equal(result.checked, 1);
     assert.equal(result.unmatched, 1);
   });
-  await check(
-    "private export contains only the owner and complete image bytes are readable",
-    async () => {
-      const response = await call("/api/privacy/privacy-export", {}, owner.session.access_token);
-      assert.equal(response.status, 200);
-      assert.equal(response.headers.get("cache-control"), "no-store");
-      const result = await response.json();
-      assert.equal(result.account.id, owner.id);
-      assert.equal(result.tables.wines.length, 1);
-      assert.equal(result.files.length, 1);
-      const file = await backendFetch(result.files[0].signedUrl);
-      assert.equal(file.status, 200);
-      assert.deepEqual(Buffer.from(await file.arrayBuffer()), bytes);
-      assert.ok(!JSON.stringify(result).includes(peer.email));
-    },
-  );
-  await check("reset memory removes signals but preserves wines and notes", async () => {
-    await page.goto(app + "/me");
-    await page.getByRole("button", { name: /Nollställ smakminnet|Reset taste memory/ }).click();
-    const dialog = page.getByRole("alertdialog");
-    const confirm = dialog.getByRole("button", { name: /^(Nollställ|Reset)$/ });
-    assert.equal(await confirm.isDisabled(), true);
-    await dialog.getByRole("checkbox").check();
-    const pending = page.waitForResponse((r) => r.url() === app + "/api/privacy/privacy-controls");
-    await confirm.click();
-    const response = await pending;
-    assert.equal(response.status(), 200);
-    assert.equal((await response.json()).complete, true);
-    await dialog.waitFor({ state: "hidden" });
-    assert.deepEqual(ok(await owner.client.from("taste_signals").select("id")), []);
-    assert.equal(ok(await owner.client.from("wines").select("id")).length, 1);
-    assert.equal(ok(await owner.client.from("tasting_notes").select("id")).length, 1);
-  });
-  await check(
-    "profile export downloads embedded image bytes with readable mobile and desktop controls",
-    async () => {
-      const downloading = page.waitForEvent("download");
-      await page.getByRole("button", { name: /Exportera mina uppgifter|Export my data/ }).click();
-      const download = await downloading;
-      const data = JSON.parse(await readFile(await download.path(), "utf8"));
-      assert.equal(data.account.id, owner.id);
-      assert.equal(data.files.length, 1);
-      assert.deepEqual(Buffer.from(data.files[0].base64, "base64"), bytes);
-      assert.ok(!JSON.stringify(data).includes("signedUrl"));
-      for (const [name, viewport] of [
-        ["mobile", { width: 390, height: 844 }],
-        ["desktop", { width: 1440, height: 1000 }],
-      ]) {
-        await page.setViewportSize(viewport);
-        assert.equal(
-          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
-          false,
+  if (!pricesOnly) {
+    await check(
+      "private export contains only the owner and complete image bytes are readable",
+      async () => {
+        const response = await call("/api/privacy/privacy-export", {}, owner.session.access_token);
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get("cache-control"), "no-store");
+        const result = await response.json();
+        assert.equal(result.account.id, owner.id);
+        assert.equal(result.tables.wines.length, 1);
+        assert.equal(result.files.length, 1);
+        const file = await backendFetch(result.files[0].signedUrl);
+        assert.equal(file.status, 200);
+        assert.deepEqual(Buffer.from(await file.arrayBuffer()), bytes);
+        assert.ok(!JSON.stringify(result).includes(peer.email));
+      },
+    );
+    await check("reset memory removes signals but preserves wines and notes", async () => {
+      await page.goto(app + "/me");
+      await page.getByRole("button", { name: /Nollställ smakminnet|Reset taste memory/ }).click();
+      const dialog = page.getByRole("alertdialog");
+      const confirm = dialog.getByRole("button", { name: /^(Nollställ|Reset)$/ });
+      assert.equal(await confirm.isDisabled(), true);
+      await dialog.getByRole("checkbox").check();
+      const pending = page.waitForResponse(
+        (r) => r.url() === app + "/api/privacy/privacy-controls",
+      );
+      await confirm.click();
+      const response = await pending;
+      assert.equal(response.status(), 200);
+      assert.equal((await response.json()).complete, true);
+      await dialog.waitFor({ state: "hidden" });
+      assert.deepEqual(ok(await owner.client.from("taste_signals").select("id")), []);
+      assert.equal(ok(await owner.client.from("wines").select("id")).length, 1);
+      assert.equal(ok(await owner.client.from("tasting_notes").select("id")).length, 1);
+    });
+    await check(
+      "profile export downloads embedded image bytes with readable mobile and desktop controls",
+      async () => {
+        const downloading = page.waitForEvent("download");
+        await page.getByRole("button", { name: /Exportera mina uppgifter|Export my data/ }).click();
+        const download = await downloading;
+        const data = JSON.parse(await readFile(await download.path(), "utf8"));
+        assert.equal(data.account.id, owner.id);
+        assert.equal(data.files.length, 1);
+        assert.deepEqual(Buffer.from(data.files[0].base64, "base64"), bytes);
+        assert.ok(!JSON.stringify(data).includes("signedUrl"));
+        for (const [name, viewport] of [
+          ["mobile", { width: 390, height: 844 }],
+          ["desktop", { width: 1440, height: 1000 }],
+        ]) {
+          await page.setViewportSize(viewport);
+          assert.equal(
+            await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+            false,
+          );
+          await page.screenshot({
+            path: fileURLToPath(new URL(`../dist/local-privacy-${name}.png`, import.meta.url)),
+            fullPage: true,
+          });
+        }
+        await page.setViewportSize({ width: 390, height: 844 });
+      },
+    );
+    await check(
+      "local recovery grant changes the synthetic user's password without sending email",
+      async () => {
+        const recovery = ok(
+          await admin.auth.admin.generateLink({
+            type: "recovery",
+            email: peer.email,
+            options: { redirectTo: app + "/reset-password" },
+          }),
         );
-        await page.screenshot({
-          path: fileURLToPath(new URL(`../dist/local-privacy-${name}.png`, import.meta.url)),
-          fullPage: true,
+        const action = new URL(recovery.properties.action_link);
+        assert.equal(action.origin, origin);
+        assert.equal(action.searchParams.get("redirect_to"), app + "/reset-password");
+        const verified = await fetch(action, {
+          redirect: "manual",
+          signal: AbortSignal.timeout(20000),
         });
-      }
-      await page.setViewportSize({ width: 390, height: 844 });
-    },
-  );
-  await check(
-    "local recovery grant changes the synthetic user's password without sending email",
-    async () => {
-      const recovery = ok(
-        await admin.auth.admin.generateLink({
-          type: "recovery",
-          email: peer.email,
-          options: { redirectTo: app + "/reset-password" },
-        }),
-      );
-      const action = new URL(recovery.properties.action_link);
-      assert.equal(action.origin, origin);
-      assert.equal(action.searchParams.get("redirect_to"), app + "/reset-password");
-      const verified = await fetch(action, {
-        redirect: "manual",
-        signal: AbortSignal.timeout(20000),
-      });
-      assert.equal(verified.status, 303);
-      const destination = new URL(verified.headers.get("location"));
-      assert.equal(destination.origin, app);
-      assert.equal(destination.pathname, "/reset-password");
-      const reset = await browser.newContext({ viewport: { width: 390, height: 844 } });
-      const recoveryPage = await reset.newPage();
-      await recoveryPage.goto(destination.href);
-      const password = randomUUID() + randomUUID();
-      await recoveryPage.locator("#new-password").fill(password);
-      await recoveryPage.locator("#confirm-password").fill(password);
-      await recoveryPage.locator('button[type="submit"]').click();
-      await recoveryPage.waitForURL(app + "/", { timeout: 20000 });
-      ok(
-        await createClient(origin, keys.publishable, options).auth.signInWithPassword({
-          email: peer.email,
-          password,
-        }),
-      );
-      await reset.close();
-      report.outstanding.push(
-        "Custom SMTP is off in WineSnap-test; real email delivery is not accepted. The default sender is team-only.",
-      );
-    },
-  );
-  await check("erasure removes image before Auth and blocks the old session", async () => {
-    await page.getByRole("button", { name: /Radera mitt konto|Delete my account/ }).click();
-    const dialog = page.getByRole("alertdialog");
-    const confirm = dialog.getByRole("button", { name: /^(Radera kontot|Delete account)$/ });
-    assert.equal(await confirm.isDisabled(), true);
-    await dialog.getByRole("checkbox").check();
-    const pending = page.waitForResponse((r) => r.url() === app + "/api/privacy/privacy-controls");
-    await confirm.click();
-    const response = await pending;
-    assert.equal(response.status(), 200);
-    assert.equal((await response.json()).complete, true);
-    owner.deleted = true;
-    assert.equal((await admin.auth.admin.getUserById(owner.id)).data.user, null);
-    assert.deepEqual(
-      ok(await admin.rpc("privacy_account_storage_objects", { _user_id: owner.id, _limit: 200 })),
-      [],
+        assert.equal(verified.status, 303);
+        const destination = new URL(verified.headers.get("location"));
+        assert.equal(destination.origin, app);
+        assert.equal(destination.pathname, "/reset-password");
+        const reset = await browser.newContext({ viewport: { width: 390, height: 844 } });
+        const recoveryPage = await reset.newPage();
+        await recoveryPage.goto(destination.href);
+        const password = randomUUID() + randomUUID();
+        await recoveryPage.locator("#new-password").fill(password);
+        await recoveryPage.locator("#confirm-password").fill(password);
+        await recoveryPage.locator('button[type="submit"]').click();
+        await recoveryPage.waitForURL(app + "/", { timeout: 20000 });
+        ok(
+          await createClient(origin, keys.publishable, options).auth.signInWithPassword({
+            email: peer.email,
+            password,
+          }),
+        );
+        await reset.close();
+        report.outstanding.push(
+          "Custom SMTP is off in WineSnap-test; real email delivery is not accepted. The default sender is team-only.",
+        );
+      },
     );
-    assert.notEqual(
-      (
-        await call(
-          "/api/ai/extract-preference-signals",
-          { tastingNoteId: note.id },
-          owner.session.access_token,
-        )
-      ).status,
-      200,
-    );
-  });
+    await check("erasure removes image before Auth and blocks the old session", async () => {
+      await page.getByRole("button", { name: /Radera mitt konto|Delete my account/ }).click();
+      const dialog = page.getByRole("alertdialog");
+      const confirm = dialog.getByRole("button", { name: /^(Radera kontot|Delete account)$/ });
+      assert.equal(await confirm.isDisabled(), true);
+      await dialog.getByRole("checkbox").check();
+      const pending = page.waitForResponse(
+        (r) => r.url() === app + "/api/privacy/privacy-controls",
+      );
+      await confirm.click();
+      const response = await pending;
+      assert.equal(response.status(), 200);
+      assert.equal((await response.json()).complete, true);
+      owner.deleted = true;
+      assert.equal((await admin.auth.admin.getUserById(owner.id)).data.user, null);
+      assert.deepEqual(
+        ok(await admin.rpc("privacy_account_storage_objects", { _user_id: owner.id, _limit: 200 })),
+        [],
+      );
+      assert.notEqual(
+        (
+          await call(
+            "/api/ai/extract-preference-signals",
+            { tastingNoteId: note.id },
+            owner.session.access_token,
+          )
+        ).status,
+        200,
+      );
+    });
+  }
   await check(
     "no private keys in markup, unexpected browser errors or hosted AI/privacy calls",
     async () => {

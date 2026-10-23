@@ -37,6 +37,7 @@ type Dependencies = {
   authenticate: (request: Request) => Promise<string | null>;
   load: (userId: string | null, ids?: string[]) => Promise<WishlistPriceRow[]>;
   lookup: (wine: RetailWine) => Promise<RetailCandidate[]>;
+  warm?: () => Promise<void>;
   save: (row: WishlistPriceRow, patch: Record<string, unknown>) => Promise<boolean>;
   now?: () => number;
 };
@@ -50,6 +51,7 @@ export function createWishlistPriceHandler(deps: Dependencies, mode: "cron" | "m
         if (!secret) return json({ error: "Scheduler not configured" }, { status: 503 });
         if (request.headers.get("x-cron-secret") !== secret)
           return json({ error: "Unauthorized" }, { status: 401 });
+        await deps.warm?.();
       } else {
         userId = await deps.authenticate(request);
         if (!userId) return json({ error: "Unauthorized" }, { status: 401 });
@@ -101,7 +103,7 @@ export function createWishlistPriceHandler(deps: Dependencies, mode: "cron" | "m
               const saved = await deps.save(row, {
                 last_checked_price: hit.price,
                 last_checked_at: at,
-                price_source: "bolaget.io",
+                price_source: hit.source ?? "bolaget.io",
                 last_checked_currency: "SEK",
                 retail_price_match: {
                   ...hit,

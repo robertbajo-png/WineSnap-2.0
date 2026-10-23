@@ -135,6 +135,9 @@ try {
   if (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'WineSnapHosting/ai-keys.clixml') -PathType Leaf) {
     & (Join-Path $PSScriptRoot 'configure-local-windows-ai.ps1')
     if ($LASTEXITCODE -ne 0) { throw 'The app is healthy but local AI configuration failed.' }
+    # Warm the public price index before normal browser requests, including empty test cellars.
+    & (Join-Path $PSScriptRoot 'run-local-windows-operations.ps1') -Action Maintain | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'Local maintenance or catalog warmup is incomplete. Check maintain-status.json.' }
   }
   Write-Host "WineSnap is running at $app (test environment, not production)."
 } finally {

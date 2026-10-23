@@ -287,7 +287,7 @@ const en = {
   "overview.addPrices": "Add purchase prices to track value",
   "overview.marketValue": "Retail price reference",
   "overview.marketValueDesc":
-    "Verified retail prices from the last 30 days, via bolaget.io. Not resale values or investment returns.",
+    "Verified retail reference prices from a community catalog mirror. Not resale values or investment returns.",
   "prices.coverage": "wines with a current, verified price",
   "prices.fresh": "Current",
   "prices.old": "Older / not rechecked",
@@ -311,6 +311,7 @@ const en = {
   "prices.unknownYear": "Vintage not stated",
   "prices.unknownSize": "Bottle size not stated",
   "prices.attempted": "Latest attempt",
+  "prices.source": "Catalog source",
   "prices.product": "Catalog product",
   "prices.bottleMl": "Bottle size (ml)",
   "prices.invalidSize": "Enter a whole bottle size between 50 and 30,000 ml, or leave it empty.",
@@ -1057,7 +1058,7 @@ const sv: Record<keyof typeof en, string> = {
   "overview.addPrices": "Lägg till inköpspris för att se värde",
   "overview.marketValue": "Butiksprisreferens",
   "overview.marketValueDesc":
-    "Verifierade butikspriser från de senaste 30 dagarna, via bolaget.io. Inte andrahandsvärden eller investeringsavkastning.",
+    "Verifierade butikspriser via en communityspegel av sortimentet. Inte andrahandsvärden eller investeringsavkastning.",
   "prices.coverage": "viner med aktuellt, verifierat pris",
   "prices.fresh": "Aktuellt",
   "prices.old": "Äldre / ej omkontrollerat",
@@ -1081,6 +1082,7 @@ const sv: Record<keyof typeof en, string> = {
   "prices.unknownYear": "Årgång ej angiven",
   "prices.unknownSize": "Flaskstorlek ej angiven",
   "prices.attempted": "Senaste försök",
+  "prices.source": "Sortimentskälla",
   "prices.product": "Sortimentsprodukt",
   "prices.bottleMl": "Flaskstorlek (ml)",
   "prices.invalidSize": "Ange en hel flaskstorlek mellan 50 och 30 000 ml, eller lämna tomt.",
