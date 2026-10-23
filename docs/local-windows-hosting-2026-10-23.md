@@ -48,6 +48,24 @@ six standalone dashboard files under ignored `dist/test-ai-functions`. This
 performs no network deployment or inference. A dashboard deployment attempt
 for `analyze-wine` was not confirmed successful; do not treat it as installed.
 
+The owner chose to reuse an existing OpenAI key and explicitly approved hidden
+local entry with Windows-user-encrypted persistence at
+`%LOCALAPPDATA%\WineSnapHosting\ai-keys.clixml`. The interactive helper
+`scripts/store-local-openai-key.ps1` accepts no secret argument, uses a hidden
+SecureString prompt and exports a DPAPI-protected PSCredential with test-only
+project metadata. The directory and file have owner/SYSTEM-only ACLs; redirected
+paths are refused. No plaintext env file, global environment setting, key
+creation, upload or provider call is performed. Entry must happen in the private
+local window, never in chat. Reopening is possible with the same script.
+
+`./scripts/store-local-openai-key.ps1 -Check` reports only whether the private
+test key store exists and decrypts into the expected credential type. It never
+prints the key or checks API validity. `-SelfTest` verifies encrypted storage
+and ACLs using a clearly synthetic key in a separate temporary file, then
+removes that file without reading/replacing the real key store. The storage
+self-test and three focused regression tests pass. Starting the private prompt
+does not mean that a key has been entered or that AI is active.
+
 ## Operation
 
 From the repository root in PowerShell 7:
