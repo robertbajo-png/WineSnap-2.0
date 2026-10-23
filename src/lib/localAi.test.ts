@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createAiAccessGuard } from "../../supabase/functions/_shared/aiAccess";
-import { handleLocalLabelReading } from "./localAi.server";
+import { handleLocalAi, handleLocalLabelReading } from "./localAi.server";
 
 const doubles = vi.hoisted(() => ({
   lstat: vi.fn(),
@@ -177,5 +177,112 @@ describe("shared Edge/Node AI access guard", () => {
   });
   it("fails closed on quota errors", async () => {
     expect(((await guard(true, null, new Error("private")).call()) as Response).status).toBe(500);
+  });
+});
+
+describe("local Gemini chat and recommendation boundary", () => {
+  const names = ["ask-winesnap", "taste-suggestions", "wine-suggestions"] as const;
+  const owner = "b10ec3dc-4751-41aa-ab93-a628eb2f1fd7";
+  const wineId = "efc0c97c-248d-4549-ac62-7ab0f7fcd4c4";
+  function client(data: Record<string, unknown[]> = {}) {
+    const filters: unknown[][] = [];
+    const rpc = vi.fn(async (name: string) => ({
+      data: name === "privacy_account_active" ? true : [{ allowed: true, remaining: 9 }],
+      error: null,
+    }));
+    const from = vi.fn((table: string) => {
+      const rows = data[table] ?? [];
+      const result = { data: rows, error: null };
+      const chain: object = new Proxy(
+        {},
+        {
+          get: (_, method) => {
+            if (method === "maybeSingle")
+              return async () => ({ data: rows[0] ?? null, error: null });
+            if (method === "then")
+              return Promise.resolve(result).then.bind(Promise.resolve(result));
+            return (...args: unknown[]) => {
+              if (method === "eq") filters.push([table, ...args]);
+              return chain;
+            };
+          },
+        },
+      );
+      return chain;
+    });
+    doubles.createClient.mockReturnValue({
+      auth: { getUser: async () => ({ data: { user: { id: owner } }, error: null }) },
+      rpc,
+      from,
+    });
+    return { filters, rpc, from };
+  }
+  it.each(names)("keeps %s off outside the explicit local runtime", async (name) => {
+    vi.stubEnv("WINESNAP_LOCAL_AI_ENABLED", "false");
+    expect((await handleLocalAi(request(), name)).status).toBe(503);
+    expect(doubles.readFile).not.toHaveBeenCalled();
+  });
+  it.each(names)("rejects anonymous %s before secrets are read", async (name) => {
+    expect((await handleLocalAi(request({}, { authorization: "" }), name)).status).toBe(401);
+    expect(doubles.readFile).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["ask-winesnap", { message: "a".repeat(2001) }],
+    ["ask-winesnap", { message: "Wine", conversationId: "not-a-uuid" }],
+    ["ask-winesnap", { message: "Wine", userId: "foreign" }],
+    ["taste-suggestions", { model: "attacker-selected-model" }],
+    ["wine-suggestions", { wineId: "not-a-uuid" }],
+  ] as const)("rejects unsupported %s input before database/provider calls", async (name, body) => {
+    expect((await handleLocalAi(request(body), name)).status).toBe(400);
+    expect(doubles.createClient).not.toHaveBeenCalled();
+  });
+  it("does not fall back to OpenAI when Gemini is missing", async () => {
+    client();
+    const send = vi.fn();
+    vi.stubGlobal("fetch", send);
+    const response = await handleLocalAi(request({ message: "Wine" }), "ask-winesnap");
+    expect(response.status).toBe(503);
+    expect(send).not.toHaveBeenCalled();
+    expect(await response.text()).not.toContain(keys.openai);
+  });
+  it("refuses a foreign conversation before calling Gemini", async () => {
+    doubles.readFile.mockResolvedValue(
+      JSON.stringify({ ...keys, gemini: "synthetic-google-key-never-real" }),
+    );
+    const database = client();
+    const send = vi.fn();
+    vi.stubGlobal("fetch", send);
+    const response = await handleLocalAi(
+      request({ message: "Wine", conversationId: wineId }),
+      "ask-winesnap",
+    );
+    expect(response.status).toBe(404);
+    expect(database.filters).toContainEqual(["ai_conversations", "user_id", owner]);
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("refuses a foreign private wine before calling Gemini", async () => {
+    doubles.readFile.mockResolvedValue(
+      JSON.stringify({ ...keys, gemini: "synthetic-google-key-never-real" }),
+    );
+    client({ wines: [{ id: wineId, user_id: "other-owner", is_public: false }] });
+    const send = vi.fn();
+    vi.stubGlobal("fetch", send);
+    const response = await handleLocalAi(request({ wineId }), "wine-suggestions");
+    expect(response.status).toBe(404);
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("preserves quota denial and Retry-After without spending provider credits", async () => {
+    const database = client();
+    database.rpc.mockImplementation(async (name: string) => ({
+      data: name === "privacy_account_active" ? true : [{ allowed: false, remaining: 0 }],
+      error: null,
+    }));
+    const send = vi.fn();
+    vi.stubGlobal("fetch", send);
+    const response = await handleLocalAi(request({ language: "sv" }), "taste-suggestions");
+    expect(response.status).toBe(429);
+    expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(send).not.toHaveBeenCalled();
   });
 });

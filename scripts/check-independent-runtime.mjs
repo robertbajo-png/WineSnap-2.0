@@ -140,17 +140,19 @@ async function checkServer(configuredCron, artifact) {
     assert.equal(health.response.status, 200);
     assert.deepEqual(JSON.parse(health.body), { status: "ok" });
     assert.equal(health.response.headers.get("cache-control"), "no-store");
-    const localAi = await request("/api/ai/analyze-wine", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: "{}",
-    });
-    assert.equal(
-      localAi.response.status,
-      503,
-      "Test-only AI must stay disabled outside its explicit runtime",
-    );
-    assert.equal(localAi.response.headers.get("cache-control"), "no-store");
+    for (const name of ["analyze-wine", "ask-winesnap", "taste-suggestions", "wine-suggestions"]) {
+      const localAi = await request(`/api/ai/${name}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      assert.equal(
+        localAi.response.status,
+        503,
+        "Test-only AI must stay disabled outside its explicit runtime",
+      );
+      assert.equal(localAi.response.headers.get("cache-control"), "no-store");
+    }
 
     if (!configuredCron) {
       for (const path of ["/", "/login", "/privacy", "/scan", "/cellar", "/ask"]) {

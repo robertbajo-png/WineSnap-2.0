@@ -150,7 +150,7 @@ describe("Edge migration integrity", () => {
     "wine-suggestions",
     "extract-preference-signals",
   ])("keeps %s valid, authenticated, rate-limited and gateway-free", (name) => {
-    const path = `supabase/functions/${name}/${name === "analyze-wine" ? "handler" : "index"}.ts`;
+    const path = `supabase/functions/${name}/${["analyze-wine", "ask-winesnap", "taste-suggestions", "wine-suggestions"].includes(name) ? "handler" : "index"}.ts`;
     const source = readFileSync(path, "utf8");
     const tree = ts.createSourceFile(path, source, ts.ScriptTarget.ES2022, true);
     expect((tree as typeof tree & { parseDiagnostics: unknown[] }).parseDiagnostics).toEqual([]);

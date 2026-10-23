@@ -3,8 +3,9 @@
 Date: 2026-10-23. Local test installation, not a production migration.
 Later update: user-logon startup and an email-protected temporary Internet
 tunnel are installed. Later the same day, the owner approved an existing OpenAI
-key and real text/image scanning was accepted in the local app. Gemini is not
-configured. Production remains unchanged.
+key and real text/image scanning was accepted in the local app. A subsequent
+Gemini transport is installed locally, but live acceptance is blocked by the
+supplied Gemini key being rejected by Google. Production remains unchanged.
 
 ## Machine Check
 
@@ -257,7 +258,66 @@ Resume commands (including the user-logon shortcut) restore them without input.
 A Docker-only automatic restart during an already-running Windows session fails
 closed until that launcher is rerun. No reboot was performed.
 
-OpenAI scanning is ready in this local test installation. Chat, recommendations,
-restaurant matching and preference extraction retain their existing Gemini
-contracts and still need a separately approved Gemini key/deployment. This is
-not full AI-feature acceptance or a production release.
+OpenAI scanning is ready in this local test installation. Chat and recommendation
+transport is now installed as described below. Restaurant matching and preference
+extraction retain their hosted Gemini contracts and are not enabled by this change.
+This is not full AI-feature acceptance or a production release.
+
+## Local Gemini Chat and Recommendations
+
+The same explicit test-only switch now routes `ask-winesnap`, `taste-suggestions`
+and `wine-suggestions` to fixed same-origin Node endpoints. Default/production
+builds keep their existing Edge transport. No hosted function was deployed and
+no provider key was uploaded to Supabase or Lovable. The existing Edge functions
+and Node routes share each handler rather than duplicate its prompts, queries,
+conversation persistence, verified identity catalog or deterministic ranking.
+
+The shared auth/privacy/atomic-quota guard remains before provider calls. Quotas
+remain 20 chat, 10 personal-recommendation and 15 similar-wine requests per user
+per 300 seconds. Only the verified user ID controls database access. Foreign
+conversations and private reference wines are rejected. Node input schemas are
+strict, with UUID validation, a 2000-character chat limit, a 32 KB request-byte
+limit and no caller-selected user, provider, model or destination. Responses
+are non-cacheable without cross-origin permission. No automatic fallback to
+OpenAI or Lovable is introduced.
+
+Gemini remains pinned to `gemini-3.8-flash` at Google's fixed OpenAI-compatible
+endpoint, with low reasoning, bounded output and a 25-second provider timeout.
+The deprecated chat temperature override was removed; recommendation function
+calling contracts remain intact. See Google's
+[compatibility reference](https://ai.google.dev/gemini-api/docs/openai) and
+[3.8 migration guidance](https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.8).
+
+The owner approved hidden Gemini entry into the same Windows-encrypted store.
+`store-local-openai-key.ps1 -Provider Gemini -Window` preserves the OpenAI slot;
+the default remains OpenAI for existing callers. Both provider storage self-tests
+pass without touching real credentials. Provisioning carries the optional Gemini
+slot through stdin into the existing private tmpfs file, never build arguments,
+process environment, command-line values or host plaintext files. `Check` reports
+presence only, explicitly not API validity.
+
+```powershell
+./scripts/store-local-openai-key.ps1 -Provider Gemini -Window
+./scripts/configure-local-windows-ai.ps1
+./scripts/configure-local-windows-ai.ps1 -Action TestGemini
+```
+
+Current evidence: 580 unit tests, TypeScript, ESLint, the actual local Docker
+build, synthetic portable Node runtime and client budget pass. All three actual
+local Gemini endpoints reject anonymous and invalid JWT requests with 401 and
+`no-store`. The live chat attempt reaches Google, which returns HTTP 400; WineSnap
+returns a safe 502 and does not save a failed exchange. A separate fixed Google
+model-metadata request confirms `INVALID_ARGUMENT` / invalid API key. No key or
+raw Google error text was printed. The first two synthetic users and their wine
+were removed with zero cleanup failures.
+The OpenAI suite was rerun against the combined local transport: actual text and
+the original bottle image both pass, with zero browser errors or cleanup failures.
+
+Positive live chat, continuation and both recommendation flows are NOT accepted
+yet. A valid Gemini key must replace the rejected value in the private dialog;
+then rerun the live suite. That suite verifies the stored model, private-history
+RLS, foreign-conversation/reference denial, mobile/desktop rendering, absence of
+hosted AI calls and cleanup. Do not call mocked tests or key presence live success.
+Safe ignored evidence is `dist/local-windows-gemini-report.json`; successful
+screenshots are written to `dist/local-gemini-*.png` only after the corresponding
+checks reach those steps. No production data, deployment or DNS was changed.

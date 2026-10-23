@@ -6,7 +6,9 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8"
 
 describe("Ask WineSnap backend contracts", () => {
   const migration = read("supabase/migrations/20260925090000_add_ask_winesnap.sql");
-  const source = read("supabase/functions/ask-winesnap/index.ts");
+  const source =
+    read("supabase/functions/ask-winesnap/index.ts") +
+    read("supabase/functions/ask-winesnap/handler.ts");
 
   it("stores private conversations and server-authored messages", () => {
     expect(migration).toContain("CREATE TABLE public.ai_conversations");

@@ -3,6 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createAiAccessGuard } from "../../supabase/functions/_shared/aiAccess";
 import { createLabelReader } from "../../supabase/functions/analyze-wine/handler";
+import { createHandler as createAsk } from "../../supabase/functions/ask-winesnap/handler";
+import { createHandler as createTasteSuggestions } from "../../supabase/functions/taste-suggestions/handler";
+import { createHandler as createWineSuggestions } from "../../supabase/functions/wine-suggestions/handler";
+import type { LocalAiFunction } from "./aiTransport";
 
 export const localAiProject = "pzniyupmgwvlldvztzqh";
 const origin = `https://${localAiProject}.supabase.co`;
@@ -15,6 +19,10 @@ const credentialsSchema = z
     publishable: z.string().regex(/^sb_publishable_[A-Za-z0-9_-]+$/),
     secret: z.string().regex(/^sb_secret_[A-Za-z0-9_-]+$/),
     openai: z.string().regex(/^sk-[A-Za-z0-9_-]{20,4093}$/),
+    gemini: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{20,4096}$/)
+      .optional(),
   })
   .strict();
 const inputSchema = z
@@ -34,6 +42,27 @@ const inputSchema = z
   .strict()
   .refine((input) => input.text || input.imageBase64);
 const cacheHeaders = { "Cache-Control": "no-store", "CDN-Cache-Control": "no-store" };
+const language = z.enum(["sv", "en"]).optional();
+const schemas = {
+  "analyze-wine": inputSchema,
+  "ask-winesnap": z
+    .object({
+      message: z.string().trim().min(1).max(2000),
+      conversationId: z.string().uuid().nullable().optional(),
+      language,
+      context: z
+        .object({
+          source: z.enum(["ask", "wine", "recommendation", "cellar"]),
+          route: z.string().max(160).startsWith("/"),
+          wineId: z.string().uuid().optional(),
+        })
+        .strict()
+        .optional(),
+    })
+    .strict(),
+  "taste-suggestions": z.object({ language }).strict(),
+  "wine-suggestions": z.object({ language, wineId: z.string().uuid() }).strict(),
+};
 
 async function loadCredentials() {
   for (const path of [directory, credentialFile]) {
@@ -50,8 +79,8 @@ async function loadCredentials() {
   return credentialsSchema.parse(JSON.parse(await readFile(credentialFile, "utf8")));
 }
 
-async function readInput(request: Request) {
-  const limit = 18_100_000;
+async function readInput(request: Request, name: LocalAiFunction) {
+  const limit = name === "analyze-wine" ? 18_100_000 : 32_000;
   if (Number(request.headers.get("content-length")) > limit) return null;
   const reader = request.body?.getReader();
   if (!reader) return null;
@@ -68,7 +97,7 @@ async function readInput(request: Request) {
       }
       chunks.push(value);
     }
-    return inputSchema.safeParse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+    return schemas[name].safeParse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
   } catch {
     return null;
   } finally {
@@ -77,11 +106,12 @@ async function readInput(request: Request) {
 }
 
 // This adapter is opt-in and test-only. It does not enable unrelated admin routes.
-export async function handleLocalLabelReading(request: Request) {
+export async function handleLocalAi(request: Request, name: LocalAiFunction) {
   const json = (error: string, status: number) =>
     Response.json({ error }, { status, headers: cacheHeaders });
   if (process.env.WINESNAP_LOCAL_AI_ENABLED !== "true" || process.env.SUPABASE_URL !== origin)
     return json("Local AI is not enabled", 503);
+  if (!Object.hasOwn(schemas, name)) return json("Unknown AI function", 404);
   if (request.method !== "POST") return json("Method not allowed", 405);
   if (!/^Bearer \S+$/.test(request.headers.get("authorization") ?? ""))
     return json("Unauthorized", 401);
@@ -91,7 +121,7 @@ export async function handleLocalLabelReading(request: Request) {
     return json("JSON required", 415);
   try {
     const keys = await loadCredentials();
-    const input = await readInput(request);
+    const input = await readInput(request, name);
     if (!input?.success) return json("Invalid or oversized wine input", 400);
     const environment: Record<string, string> = {
       SUPABASE_URL: origin,
@@ -99,6 +129,8 @@ export async function handleLocalLabelReading(request: Request) {
       SUPABASE_SERVICE_ROLE_KEY: keys.secret,
       OPENAI_API_KEY: keys.openai,
       OPENAI_LABEL_MODEL: "gpt-6.1-sol",
+      GEMINI_FAST_MODEL: "gemini-3.8-flash",
+      ...(keys.gemini ? { GEMINI_API_KEY: keys.gemini } : {}),
     };
     const env = (name: string) => environment[name];
     const guardedFetch: typeof fetch = (url, init) =>
@@ -114,7 +146,22 @@ export async function handleLocalLabelReading(request: Request) {
         global: { fetch: guardedFetch },
       }),
     );
-    const response = await createLabelReader({ env, requireAccess: access })(
+    const dependencies = {
+      env,
+      requireAccess: access,
+      createClient: (
+        url: string,
+        key: string,
+        options: { auth: { persistSession: false; autoRefreshToken: false } },
+      ) => createClient(url, key, { ...options, global: { fetch: guardedFetch } }),
+    };
+    const handler = {
+      "analyze-wine": createLabelReader,
+      "ask-winesnap": createAsk,
+      "taste-suggestions": createTasteSuggestions,
+      "wine-suggestions": createWineSuggestions,
+    }[name](dependencies);
+    const response = await handler(
       new Request(request.url, {
         method: "POST",
         headers: { authorization: request.headers.get("authorization")! },
@@ -130,3 +177,5 @@ export async function handleLocalLabelReading(request: Request) {
     return json("Local AI is unavailable", 503);
   }
 }
+
+export const handleLocalLabelReading = (request: Request) => handleLocalAi(request, "analyze-wine");

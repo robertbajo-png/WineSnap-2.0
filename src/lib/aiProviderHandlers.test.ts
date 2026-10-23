@@ -66,13 +66,18 @@ function loadHandler(
     "../_shared/restaurantRanking.ts": restaurantRanking,
   };
   let handler: Handler | undefined;
-  const source = readFileSync(`supabase/functions/${name}/index.ts`, "utf8");
+  const shared = ["ask-winesnap", "taste-suggestions", "wine-suggestions"].includes(name);
+  const exported: { createHandler?: (dependencies: unknown) => Handler } = {};
+  const source = readFileSync(
+    `supabase/functions/${name}/${shared ? "handler" : "index"}.ts`,
+    "utf8",
+  );
   runInNewContext(
     transpileModule(source, {
       compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
     }).outputText,
     {
-      exports: {},
+      exports: exported,
       require: (path: string) => {
         if (!(path in imports)) throw new Error(`Unexpected Edge import: ${path}`);
         return imports[path];
@@ -85,6 +90,12 @@ function loadHandler(
       console: { error: vi.fn() },
     },
   );
+  if (shared)
+    handler = exported.createHandler?.({
+      env,
+      requireAccess: requireAiAccess,
+      createClient: () => ({ from }),
+    });
   if (!handler) throw new Error("Missing Edge handler");
   return {
     fetcher,
@@ -129,6 +140,10 @@ describe.each(cases)("%s direct AI handler", (name, body) => {
       );
       const payload = JSON.parse(String(api.fetcher.mock.calls[0][1]?.body));
       expect(payload.model).toBe("gemini-3.8-flash");
+      if (["ask-winesnap", "taste-suggestions", "wine-suggestions"].includes(name)) {
+        expect(payload.reasoning_effort).toBe("low");
+        expect(payload).not.toHaveProperty("temperature");
+      }
       if (name !== "ask-winesnap") expect(payload.tool_choice.type).toBe("function");
     },
   );

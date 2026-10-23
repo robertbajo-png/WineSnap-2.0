@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 
 const input = readFileSync("scripts/store-local-openai-key.ps1", "utf8");
 
-describe("existing OpenAI key local input", () => {
+describe("existing provider key local input", () => {
   it("requires hidden interactive input and never accepts a secret argument", () => {
-    expect(input).toContain("param([switch]$Check, [switch]$SelfTest, [switch]$Window)");
+    expect(input).toContain("[ValidateSet('OpenAI', 'Gemini')][string]$Provider = 'OpenAI'");
     expect(input).toContain("[Console]::IsInputRedirected");
     expect(input).toContain("[Console]::IsOutputRedirected");
-    expect(input).toContain("Read-Host 'OPENAI_API_KEY (hidden)' -AsSecureString");
+    expect(input).toContain('Read-Host "$keyName (hidden)" -AsSecureString');
     expect(input).toContain("$field.UseSystemPasswordChar = $true");
     expect(input).toContain("$field.Clear()");
     expect(input).toContain("$form.ShowDialog()");
@@ -23,7 +23,9 @@ describe("existing OpenAI key local input", () => {
     expect(input).toContain("Export-Clixml -LiteralPath $temporary");
     expect(input).toContain("$acl.SetAccessRuleProtection($true, $false)");
     expect(input).toContain("ReparsePoint");
-    expect(input).toContain("[pscredential]::new('OPENAI_API_KEY', $inputKey)");
+    expect(input).toContain("[pscredential]::new($keyName, $inputKey)");
+    expect(input).toContain("Add-Member -NotePropertyName $Provider");
+    expect(input).toContain("'GEMINI_API_KEY'");
     expect(input).not.toMatch(/Set-Content|WriteAllText|ConvertFrom-SecureString/);
   });
 

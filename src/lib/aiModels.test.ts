@@ -113,8 +113,8 @@ function loadLabelReader(
 describe("Direct provider workload routing", () => {
   it.each([
     "supabase/functions/extract-preference-signals/index.ts",
-    "supabase/functions/wine-suggestions/index.ts",
-    "supabase/functions/taste-suggestions/index.ts",
+    "supabase/functions/wine-suggestions/handler.ts",
+    "supabase/functions/taste-suggestions/handler.ts",
     "supabase/functions/restaurant-match/index.ts",
   ])("uses the direct Flash client in %s", (path) => {
     const source = read(path);
@@ -127,7 +127,7 @@ describe("Direct provider workload routing", () => {
   });
 
   it("stores the same model ID that Ask actually requests", () => {
-    const source = read("supabase/functions/ask-winesnap/index.ts");
+    const source = read("supabase/functions/ask-winesnap/handler.ts");
     expect(source).toContain('createAiClient("fast",');
     expect(source).toContain("await ai.complete(");
     expect(source).toContain("_model: ai.model,");

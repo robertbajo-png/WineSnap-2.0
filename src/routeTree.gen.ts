@@ -36,6 +36,9 @@ import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as WShareIdRouteImport } from './routes/w.$shareId'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as ApiAiAnalyzeWineRouteImport } from './routes/api/ai/analyze-wine'
+import { Route as ApiAiAskWinesnapRouteImport } from './routes/api/ai/ask-winesnap'
+import { Route as ApiAiTasteSuggestionsRouteImport } from './routes/api/ai/taste-suggestions'
+import { Route as ApiAiWineSuggestionsRouteImport } from './routes/api/ai/wine-suggestions'
 import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
 import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
 import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
@@ -179,6 +182,21 @@ const ApiAiAnalyzeWineRoute = ApiAiAnalyzeWineRouteImport.update({
   path: '/api/ai/analyze-wine',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiAskWinesnapRoute = ApiAiAskWinesnapRouteImport.update({
+  id: '/api/ai/ask-winesnap',
+  path: '/api/ai/ask-winesnap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiTasteSuggestionsRoute = ApiAiTasteSuggestionsRouteImport.update({
+  id: '/api/ai/taste-suggestions',
+  path: '/api/ai/taste-suggestions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiWineSuggestionsRoute = ApiAiWineSuggestionsRouteImport.update({
+  id: '/api/ai/wine-suggestions',
+  path: '/api/ai/wine-suggestions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WineIdEditRoute = WineIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -247,6 +265,9 @@ export interface FileRoutesByFullPath {
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
+  '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
+  '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -283,6 +304,9 @@ export interface FileRoutesByTo {
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
+  '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
+  '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -320,6 +344,9 @@ export interface FileRoutesById {
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
+  '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
+  '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -358,6 +385,9 @@ export interface FileRouteTypes {
     | '/w/$shareId'
     | '/wine/$id'
     | '/api/ai/analyze-wine'
+    | '/api/ai/ask-winesnap'
+    | '/api/ai/taste-suggestions'
+    | '/api/ai/wine-suggestions'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -394,6 +424,9 @@ export interface FileRouteTypes {
     | '/w/$shareId'
     | '/wine/$id'
     | '/api/ai/analyze-wine'
+    | '/api/ai/ask-winesnap'
+    | '/api/ai/taste-suggestions'
+    | '/api/ai/wine-suggestions'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -430,6 +463,9 @@ export interface FileRouteTypes {
     | '/w/$shareId'
     | '/wine/$id'
     | '/api/ai/analyze-wine'
+    | '/api/ai/ask-winesnap'
+    | '/api/ai/taste-suggestions'
+    | '/api/ai/wine-suggestions'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -465,6 +501,9 @@ export interface RootRouteChildren {
   WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
   ApiAiAnalyzeWineRoute: typeof ApiAiAnalyzeWineRoute
+  ApiAiAskWinesnapRoute: typeof ApiAiAskWinesnapRoute
+  ApiAiTasteSuggestionsRoute: typeof ApiAiTasteSuggestionsRoute
+  ApiAiWineSuggestionsRoute: typeof ApiAiWineSuggestionsRoute
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
   ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
   ApiPublicHooksRefreshCellarValuesRoute: typeof ApiPublicHooksRefreshCellarValuesRoute
@@ -662,6 +701,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiAnalyzeWineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai/ask-winesnap': {
+      id: '/api/ai/ask-winesnap'
+      path: '/api/ai/ask-winesnap'
+      fullPath: '/api/ai/ask-winesnap'
+      preLoaderRoute: typeof ApiAiAskWinesnapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/taste-suggestions': {
+      id: '/api/ai/taste-suggestions'
+      path: '/api/ai/taste-suggestions'
+      fullPath: '/api/ai/taste-suggestions'
+      preLoaderRoute: typeof ApiAiTasteSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/wine-suggestions': {
+      id: '/api/ai/wine-suggestions'
+      path: '/api/ai/wine-suggestions'
+      fullPath: '/api/ai/wine-suggestions'
+      preLoaderRoute: typeof ApiAiWineSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wine/$id/edit': {
       id: '/wine/$id/edit'
       path: '/edit'
@@ -768,6 +828,9 @@ const rootRouteChildren: RootRouteChildren = {
   WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
   ApiAiAnalyzeWineRoute: ApiAiAnalyzeWineRoute,
+  ApiAiAskWinesnapRoute: ApiAiAskWinesnapRoute,
+  ApiAiTasteSuggestionsRoute: ApiAiTasteSuggestionsRoute,
+  ApiAiWineSuggestionsRoute: ApiAiWineSuggestionsRoute,
   ApiPublicHooksCheckWishlistPricesRoute:
     ApiPublicHooksCheckWishlistPricesRoute,
   ApiPublicHooksMatchSystembolagetRoute: ApiPublicHooksMatchSystembolagetRoute,

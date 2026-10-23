@@ -25,7 +25,11 @@ try {
       !/^sb_publishable_[A-Za-z0-9_-]+$/.test(value.publishable ?? "") ||
       !/^sb_secret_[A-Za-z0-9_-]+$/.test(value.secret ?? "") ||
       !/^sk-[A-Za-z0-9_-]{20,4093}$/.test(value.openai ?? "") ||
-      Object.keys(value).sort().join(",") !== "openai,project,publishable,secret,version"
+      (value.gemini !== undefined && !/^[A-Za-z0-9_-]{20,4096}$/.test(value.gemini)) ||
+      Object.keys(value)
+        .filter((key) => key !== "gemini")
+        .sort()
+        .join(",") !== "openai,project,publishable,secret,version"
     )
       throw new Error();
     await mkdir(directory, { mode: 0o700, recursive: true });
@@ -48,7 +52,13 @@ try {
   if (stored.project !== project || !stored.openai || !stored.secret || !stored.publishable)
     throw new Error();
   console.log(
-    JSON.stringify({ configured: true, project, provider: "OpenAI", model: "gpt-6.1-sol" }),
+    JSON.stringify({
+      configured: true,
+      project,
+      provider: "OpenAI",
+      model: "gpt-6.1-sol",
+      geminiConfigured: Boolean(stored.gemini),
+    }),
   );
 } catch {
   console.error("Local test AI credential configuration failed. No key values reported.");

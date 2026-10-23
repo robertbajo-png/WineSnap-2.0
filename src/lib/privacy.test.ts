@@ -157,7 +157,9 @@ describe("privacy source contracts", () => {
       "restaurant-match",
       "extract-preference-signals",
     ]) {
-      const code = read(`supabase/functions/${name}/index.ts`);
+      const code = read(
+        `supabase/functions/${name}/${["analyze-wine", "ask-winesnap", "taste-suggestions", "wine-suggestions"].includes(name) ? "handler" : "index"}.ts`,
+      );
       expect(code).not.toMatch(
         /console\.error\([^;]*(?:\.message|\.slice\(|response\.text\(|, error\)|, e\))/,
       );

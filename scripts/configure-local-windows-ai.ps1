@@ -1,4 +1,4 @@
-param([ValidateSet('Install', 'Check', 'Test')][string]$Action = 'Install')
+param([ValidateSet('Install', 'Check', 'Test', 'TestGemini')][string]$Action = 'Install')
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'PowerShell 7 on Windows is required.' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -10,6 +10,7 @@ $aiKeys = $null
 $payload = $null
 $process = $null
 $phase = 'engine'
+$isTest = $Action -in @('Test', 'TestGemini')
 
 function Read-PrivateStore([string]$Path) {
   foreach ($item in @((Split-Path -Parent $Path), $Path)) {
@@ -52,9 +53,10 @@ try {
     if ($value) { $start.Environment[$key] = $value }
   }
   $installer = [IO.File]::ReadAllText((Join-Path $root 'config/local-windows/install-ai-credentials.mjs'))
-  if ($Action -eq 'Test') {
+  if ($isTest) {
     $start.FileName = Join-Path $HOME '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
-    $start.ArgumentList.Add((Join-Path $PSScriptRoot 'check-local-windows-ai.mjs'))
+    $entry = if ($Action -eq 'TestGemini') { 'check-local-windows-gemini.mjs' } else { 'check-local-windows-ai.mjs' }
+    $start.ArgumentList.Add((Join-Path $PSScriptRoot $entry))
   } else {
     foreach ($argument in @('--context', 'desktop-linux', 'exec', '-i', $name, 'node', '--input-type=module', '--eval', $installer)) {
       $start.ArgumentList.Add($argument)
@@ -73,12 +75,18 @@ try {
       $aiKeys.OpenAI -isnot [pscredential] -or $aiKeys.OpenAI.UserName -ne 'OPENAI_API_KEY') {
       throw 'Expected the approved encrypted test credentials.'
     }
-    $payload = @{
+    if ($aiKeys.Gemini -and ($aiKeys.Gemini -isnot [pscredential] -or $aiKeys.Gemini.UserName -ne 'GEMINI_API_KEY')) {
+      throw 'Unexpected encrypted Gemini credential type.'
+    }
+    $values = @{
       version=1; project=$project;
       publishable=$testKeys.Publishable.GetNetworkCredential().Password.Trim();
       secret=$testKeys.Secret.GetNetworkCredential().Password.Trim();
       openai=$aiKeys.OpenAI.GetNetworkCredential().Password.Trim()
-    } | ConvertTo-Json -Compress
+    }
+    if ($aiKeys.Gemini -is [pscredential]) { $values.gemini = $aiKeys.Gemini.GetNetworkCredential().Password.Trim() }
+    $payload = $values | ConvertTo-Json -Compress
+    $values.Clear()
   }
   $phase = 'local_process'
   $process = [Diagnostics.Process]::Start($start)
@@ -87,22 +95,23 @@ try {
   if ($payload) { $process.StandardInput.Write($payload) }
   $process.StandardInput.Close()
   $payload = $null
-  $timeout = if ($Action -eq 'Test') { 300000 } else { 30000 }
+  $timeout = if ($isTest) { 300000 } else { 30000 }
   if (-not $process.WaitForExit($timeout)) { $process.Kill(); throw 'Local AI operation timed out.' }
   $phase = 'runtime_installation'
   $rawOutput = $output.GetAwaiter().GetResult()
-  if ($process.ExitCode -ne 0 -and $Action -ne 'Test') { throw 'Local runtime rejected credential installation.' }
+  if ($process.ExitCode -ne 0 -and -not $isTest) { throw 'Local runtime rejected credential installation.' }
   $result = $rawOutput | ConvertFrom-Json
   $errors.GetAwaiter().GetResult() | Out-Null
-  if ($Action -eq 'Test') {
-    [pscustomobject]@{ completed=[bool]$result.completed; project=$project; report='dist/local-windows-ai-report.json' } | ConvertTo-Json -Compress
+  if ($isTest) {
+    $report = if ($Action -eq 'TestGemini') { 'dist/local-windows-gemini-report.json' } else { 'dist/local-windows-ai-report.json' }
+    [pscustomobject]@{ completed=[bool]$result.completed; project=$project; report=$report } | ConvertTo-Json -Compress
     if ($process.ExitCode -ne 0 -or -not $result.completed) { exit 1 }
     exit 0
   }
   if ($process.ExitCode -ne 0 -or $result.configured -ne $true -or $result.project -ne $project) {
     throw 'Local credential installation failed.'
   }
-  [pscustomobject]@{ configured=$true; project=$project; provider='OpenAI'; model='gpt-6.1-sol'; apiValidityChecked=$false } | ConvertTo-Json -Compress
+  [pscustomobject]@{ configured=$true; project=$project; provider='OpenAI'; model='gpt-6.1-sol'; geminiConfigured=[bool]$result.geminiConfigured; apiValidityChecked=$false } | ConvertTo-Json -Compress
 } catch {
   Write-Host "Local AI configuration failed at $phase. No keys reported; production was not contacted."
   exit 1
@@ -112,4 +121,5 @@ try {
   if ($start) { $start.Environment.Clear() }
   if ($testKeys) { $testKeys.Publishable.Password.Dispose(); $testKeys.Secret.Password.Dispose() }
   if ($aiKeys) { $aiKeys.OpenAI.Password.Dispose() }
+  if ($aiKeys -and $aiKeys.Gemini -is [pscredential]) { $aiKeys.Gemini.Password.Dispose() }
 }

@@ -24,3 +24,12 @@
 !supabase/functions/analyze-wine/handler.ts
 !supabase/functions/analyze-wine/labelValidation.ts
 !supabase/functions/analyze-wine/labelResponse.ts
+!supabase/functions/_shared/askAnswer.ts
+!supabase/functions/_shared/aiRuntime.ts
+!supabase/functions/_shared/suggestionCatalog.ts
+!supabase/functions/ask-winesnap/
+!supabase/functions/ask-winesnap/handler.ts
+!supabase/functions/taste-suggestions/
+!supabase/functions/taste-suggestions/handler.ts
+!supabase/functions/wine-suggestions/
+!supabase/functions/wine-suggestions/handler.ts

@@ -30,6 +30,7 @@ import {
 import { WineDetailSkeleton } from "@/components/Skeleton";
 import { AromaProfileTabs } from "@/components/AromaProfileTabs";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/aiTransport";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT, useI18n } from "@/i18n";
@@ -137,9 +138,7 @@ function WineDetailPage() {
     setSuggestLoading(true);
     setSuggestError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("wine-suggestions", {
-        body: { wineId: w.id, language: lang },
-      });
+      const { data, error } = await invokeAi("wine-suggestions", { wineId: w.id, language: lang });
       if (error) throw error;
       const payload = data as { error?: string; suggestions?: Suggestion[] } | null;
       if (payload?.error) throw new Error(payload.error);
