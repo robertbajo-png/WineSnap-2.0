@@ -46,8 +46,8 @@ notes describe previous checkpoints.
    acceptance checks, not something a desktop test proves.
 6. **Local recovery, maintenance and encrypted snapshots are installed.**
    The user-logon launcher starts a single-instance hidden watcher. It checks
-   the installed running WineSnap container, pauses 60 seconds between checks and restores
-   approved RAM-only credentials after a container restart. It does not start
+   the installed running WineSnap container, pauses 60 seconds between checks
+   and restores approved RAM-only credentials after a container restart. It does not start
    an intentionally stopped app, change Docker globally or touch other
    containers. Maintenance runs hourly; application snapshots run daily. Failed
    jobs retry after ten minutes and write safe status reports. Windows reboot,
@@ -79,8 +79,8 @@ test backend and encrypts before host persistence. Snapshots live outside Git in
 `%LOCALAPPDATA%\WineSnapHosting\backups`, with owner/SYSTEM-only permissions.
 Each operation prunes snapshots older than seven days, including when the
 following backup fails; at most seven snapshots are retained. No cleanup runs
-while this Windows session is off. Verification decrypts the snapshot, checks its project and all 20
-table sections, and checks SHA-256 for each included image. The live fixture
+while this Windows session is off. Verification decrypts the snapshot, checks
+its project and all 20 table sections, and checks SHA-256 for each included image. The live fixture
 snapshot includes a real uploaded test image and passes this roundtrip.
 
 This is **an application data snapshot, not a full PostgreSQL/Supabase backup**:
@@ -124,7 +124,13 @@ availability. A zero-row price job does not prove that the catalog is reachable.
 
 ## Acceptance Evidence
 
-- 622 unit tests, TypeScript and ESLint pass.
+- All 622 unit cases are verified; TypeScript and full-project ESLint pass.
+  The initial complete unit run passed. A later two-worker Windows run passed
+  621 cases while SQL-file inventory exceeded its default five-second timeout
+  under load; all five inventory-suite cases pass in a focused rerun with a
+  bounded 30-second test timeout. Assertions and production timeouts are unchanged.
+  For resource-limited Windows verification use
+  `vitest run --maxWorkers=2 --testTimeout=30000`.
 - All eleven local Gemini chat/recommendation scenarios and the real OpenAI
   text/original-image scan suite also pass after the controlled restart.
 - 19 actual local feature scenarios pass, including real Gemini restaurant and
