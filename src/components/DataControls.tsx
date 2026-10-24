@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { clearKitchenCache } from "@/features/kitchen/storage";
 import { kitchenEnabled } from "@/features/kitchen/feature";
 import { chefEnabled } from "@/features/chef/feature";
+import { mealsEnabled } from "@/features/meals/feature";
 export function DataControls() {
   const { user } = useAuth();
   const { lang, t } = useI18n();
@@ -234,13 +235,17 @@ export function DataControls() {
                 ? sv
                   ? "Kontot stängs och källare, bilder, delningar och historik raderas. Det går inte att ångra. Exportera uppgifterna först om du vill behålla dem. Leverantörskopior hanteras enligt integritetsinformationen."
                   : "Your account closes and cellar, images, shares and history are erased. This cannot be undone. Export your data first to keep it. Provider copies follow the privacy information."
-                : chefEnabled
+                : mealsEnabled
                   ? sv
-                    ? "Vin- och matminne samt tidigare Chef-samtal och osparade förslag tas bort. Recept, matlagningshistorik, viner och betyg behålls. Äldre matlagningsfeedback återanalyseras inte automatiskt."
-                    : "Wine and food memory, previous Chef conversations and unsaved drafts are removed. Recipes, cooking history, wines and ratings remain. Older cooking feedback is not automatically reanalyzed."
-                  : sv
-                    ? "Inlärda preferenser och rekommendationsfeedback tas bort. Viner, betyg och dina angivna preferenser behålls. Nya aktiviteter kan bygga ett nytt smakminne."
-                    : "Learned preferences and recommendation feedback are removed. Wines, ratings and stated preferences stay. New activity can build new taste memory."}
+                    ? "Vin- och matminne, Chef-samtal, osparade förslag och matönskemål i dina egna matprofiler tas bort. Hushåll, profilnamn, recept, måltidshistorik, viner och betyg behålls. Andras matprofiler ändras inte."
+                    : "Wine and food memory, Chef chats, unsaved drafts and preferences in your own diner profiles are removed. Households, profile names, recipes, meal history, wines and ratings remain. Other people's profiles are not changed."
+                  : chefEnabled
+                    ? sv
+                      ? "Vin- och matminne samt tidigare Chef-samtal och osparade förslag tas bort. Recept, matlagningshistorik, viner och betyg behålls. Äldre matlagningsfeedback återanalyseras inte automatiskt."
+                      : "Wine and food memory, previous Chef conversations and unsaved drafts are removed. Recipes, cooking history, wines and ratings remain. Older cooking feedback is not automatically reanalyzed."
+                    : sv
+                      ? "Inlärda preferenser och rekommendationsfeedback tas bort. Viner, betyg och dina angivna preferenser behålls. Nya aktiviteter kan bygga ett nytt smakminne."
+                      : "Learned preferences and recommendation feedback are removed. Wines, ratings and stated preferences stay. New activity can build new taste memory."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label className="flex min-h-12 items-center gap-3 text-base">

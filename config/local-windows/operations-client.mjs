@@ -82,11 +82,13 @@ try {
     const json = async (path, init) => JSON.parse((await read(path, init)).toString());
     const data = {
       version:
-        process.env.WINESNAP_AI_CHEF_ENABLED === "true"
-          ? 3
-          : process.env.WINESNAP_COOKING_CORE_ENABLED === "true"
-            ? 2
-            : 1,
+        process.env.WINESNAP_MEALS_ENABLED === "true"
+          ? 4
+          : process.env.WINESNAP_AI_CHEF_ENABLED === "true"
+            ? 3
+            : process.env.WINESNAP_COOKING_CORE_ENABLED === "true"
+              ? 2
+              : 1,
       project,
       createdAt: new Date().toISOString(),
       tables: {},
@@ -122,7 +124,7 @@ try {
       ...(data.version >= 2
         ? ["kitchen_recipes", "kitchen_recipe_versions", "cooking_sessions", "cooking_feedback"]
         : []),
-      ...(data.version === 3
+      ...(data.version >= 3
         ? [
             "food_memory_state",
             "food_signals",
@@ -130,6 +132,15 @@ try {
             "chef_conversations",
             "chef_messages",
             "chef_requests",
+          ]
+        : []),
+      ...(data.version >= 4
+        ? [
+            "kitchen_households",
+            "kitchen_household_members",
+            "kitchen_household_invites",
+            "kitchen_diners",
+            "meal_wine_links",
           ]
         : []),
     ];

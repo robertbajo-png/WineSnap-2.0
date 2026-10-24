@@ -429,7 +429,7 @@ try {
       );
       const backup = JSON.parse(raw);
       assert.equal(backup.completed, true);
-      assert.ok([24, 30].includes(backup.verifiedTables));
+      assert.ok([24, 30, 35].includes(backup.verifiedTables));
       const restored = await wait(
         async () =>
           JSON.parse(

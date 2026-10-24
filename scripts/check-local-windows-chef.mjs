@@ -474,7 +474,7 @@ try {
     assert.ok(tombstones.every((t) => /^[a-f0-9]{64}$/.test(t.value_hash)));
   });
   await check(
-    "encrypted v3 backup restores all 30 sections including synthetic Chef rows",
+    "encrypted v4 backup restores all 35 sections including synthetic Chef rows",
     async () => {
       const id = randomUUID();
       ok(
@@ -503,10 +503,10 @@ try {
       );
       const backup = await powershell("./run-local-windows-operations.ps1", ["-Action", "Backup"]);
       assert.equal(backup.completed, true);
-      assert.equal(backup.verifiedTables, 30);
+      assert.equal(backup.verifiedTables, 35);
       const restored = await powershell("./rehearse-local-windows-snapshot.ps1");
       assert.equal(restored.completed, true);
-      assert.equal(restored.tables, 30);
+      assert.equal(restored.tables, 35);
       assert.equal(restored.accounts, 2);
       assert.equal(restored.fullDatabaseBackup, false);
       assert.equal(restored.cleanupCompleted, true);

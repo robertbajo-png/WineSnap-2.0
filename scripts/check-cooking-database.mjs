@@ -107,6 +107,18 @@ try {
     ),
   );
   phase = "ownership_versions_sessions_erasure";
+  await execute(
+    await readFile(
+      new URL("../supabase/tests/step14_meals_households.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  await execute(
+    await readFile(
+      new URL("../supabase/tests/meals_households.local.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   const result = await execute(
     await readFile(new URL("../supabase/tests/cooking_core.local.sql", import.meta.url), "utf8"),
   );

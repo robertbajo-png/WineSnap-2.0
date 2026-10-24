@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -62,6 +62,16 @@ import { chefEnabled } from "../chef/api";
 import { ChefPanel, type ChefOpening } from "../chef/ChefPanel";
 import { FoodMemoryPanel } from "../chef/FoodMemoryPanel";
 import { emptyChefContext } from "../chef/domain";
+import { mealsEnabled } from "../meals/feature";
+const PairingPanel = lazy(() =>
+  import("../meals/PairingPanel").then((m) => ({ default: m.PairingPanel })),
+);
+const FamilyPanel = lazy(() =>
+  import("../meals/FamilyPanel").then((m) => ({ default: m.FamilyPanel })),
+);
+const MealHistoryPanel = lazy(() =>
+  import("../meals/MealHistoryPanel").then((m) => ({ default: m.MealHistoryPanel })),
+);
 
 const unitLabel: Record<(typeof units)[number], string> = {
   g: "g",
@@ -532,6 +542,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const [chefEpoch, setChefEpoch] = useState(0);
   const [selected, setSelected] = useState<RecipeVersion | null>(null);
   const [selectedPast, setSelectedPast] = useState<LocalSession | null>(null);
+  const [pairingRecipe, setPairingRecipe] = useState<RecipeVersion | undefined>();
+  const [mealSession, setMealSession] = useState<string>();
   const [servings, setServings] = useState(2);
   const [search, setSearch] = useState("");
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -559,9 +571,13 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   }, [ready, cacheOwner]);
   useEffect(() => {
     const route = () => {
-      const hash = window.location.hash.slice(1);
+      const hash = window.location.hash.slice(1).split("?")[0];
       setTab(
-        hash === "cook" || (chefEnabled && ["chef", "memory"].includes(hash)) ? hash : "library",
+        hash === "cook" ||
+          (chefEnabled && ["chef", "memory"].includes(hash)) ||
+          (mealsEnabled && ["pairings", "family", "meals"].includes(hash))
+          ? hash
+          : "library",
       );
     };
     route();
@@ -585,7 +601,9 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     setSelectedPast(null);
     setSelected(null);
     setHistory(null);
-    window.location.hash = ["cook", "chef", "memory"].includes(next) ? next : "recipes";
+    window.location.hash = ["cook", "chef", "memory", "pairings", "family", "meals"].includes(next)
+      ? next
+      : "recipes";
     setTab(next);
   };
   const openRecipe = (version: RecipeVersion) => {
@@ -676,6 +694,28 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             </>
           )}
         </nav>
+        {mealsEnabled && (
+          <div className="k-extra-nav">
+            <label>
+              <span className="sr-only">Fler vyer i köket</span>
+              <select
+                value={["pairings", "family", "meals"].includes(tab) ? tab : ""}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setPairingRecipe(undefined);
+                    setMealSession(undefined);
+                    navigate(e.target.value);
+                  }
+                }}
+              >
+                <option value="">Mer i köket…</option>
+                <option value="pairings">Mat & vin</option>
+                <option value="family">Familj</option>
+                <option value="meals">Måltider & vin</option>
+              </select>
+            </label>
+          </div>
+        )}
         <div className="k-status" role="status">
           {offline ? (
             <CloudOff size={16} />
@@ -749,6 +789,24 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           </section>
         ) : (
           <>
+            <Suspense fallback={<p aria-busy="true">Öppnar…</p>}>
+              {mealsEnabled && tab === "pairings" && (
+                <PairingPanel
+                  owner={owner}
+                  versions={cache.versions}
+                  initial={pairingRecipe}
+                  onOpen={(document, version) => (version ? openRecipe(version) : edit(document))}
+                />
+              )}
+              {mealsEnabled && tab === "family" && <FamilyPanel owner={owner} />}
+              {mealsEnabled && tab === "meals" && (
+                <MealHistoryPanel
+                  owner={owner}
+                  sessions={cache.history}
+                  initialSession={mealSession}
+                />
+              )}
+            </Suspense>
             {chefEnabled && tab === "chef" && (
               <ChefPanel
                 key={`${owner}:${chefEpoch}`}
@@ -945,6 +1003,19 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                 </p>
                 <h1>{selected.document.title}</h1>
                 <p className="k-description">{selected.document.description}</p>
+                {mealsEnabled && (
+                  <button
+                    className="k-text"
+                    disabled={offline}
+                    onClick={() => {
+                      setPairingRecipe(selected);
+                      navigate("pairings");
+                    }}
+                  >
+                    <Wine size={18} />
+                    Vin till maten
+                  </button>
+                )}
                 {chefEnabled && (
                   <button
                     className="k-text"
@@ -1155,6 +1226,19 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                     </h2>
                     {local.feedback?.rating && <p>Betyg: {local.feedback.rating} av 5</p>}
                     {local.feedback?.note && <p>{local.feedback.note}</p>}
+                    {mealsEnabled && state.status === "completed" && (
+                      <button
+                        className="k-secondary"
+                        disabled={offline || local.dirty}
+                        onClick={() => {
+                          setMealSession(local.id);
+                          navigate("meals");
+                        }}
+                      >
+                        <Wine size={18} />
+                        Registrera vin till måltiden
+                      </button>
+                    )}
                     <button className="k-primary" onClick={() => navigate("library")}>
                       <BookOpen size={18} />
                       Till kokboken

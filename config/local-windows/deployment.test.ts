@@ -25,6 +25,7 @@ describe("local Windows hosting boundaries", () => {
       "WINESNAP_LOCAL_AI_ENABLED",
       "WINESNAP_LOCAL_OPERATIONS_ENABLED",
       "WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED",
+      "WINESNAP_MEALS_ENABLED",
     ]);
     expect(web.environment.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED).toBe("true");
     expect(web.environment.WINESNAP_AI_CHEF_ENABLED).toBe("true");
@@ -67,8 +68,9 @@ describe("local Windows hosting boundaries", () => {
   });
   it("allows encrypted snapshot v3 at both write and verification boundaries", () => {
     const operations = readFileSync("scripts/run-local-windows-operations.ps1", "utf8");
-    expect(operations).toContain("$result.version -notin @(1,2,3)");
-    expect(operations).toContain("$snapshot.version -notin @(1,2,3)");
+    expect(operations).toContain("$result.version -notin @(1,2,3,4)");
+    expect(operations).toContain("$snapshot.version -notin @(1,2,3,4)");
+    expect(operations).toContain("$snapshot.version -eq 4) {35}");
     expect(operations).toContain("$snapshot.version -eq 3) {30}");
   });
 

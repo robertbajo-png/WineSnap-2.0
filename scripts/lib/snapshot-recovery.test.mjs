@@ -28,6 +28,18 @@ function fixture() {
   };
 }
 describe("private application snapshot rehearsal", () => {
+  it("requires all 35 sections in v4 without changing legacy versions", () => {
+    const snapshot = fixture();
+    snapshot.version = 4;
+    for (const table of snapshotTablesFor(4)) snapshot.tables[table] ??= [];
+    expect(validateSnapshot(snapshot)).toBe(snapshot);
+    expect(snapshotTablesFor(4)).toHaveLength(35);
+    expect(snapshotRestoreSql(snapshot)).toContain("public.kitchen_household_invites");
+    expect(snapshotRestoreSql(snapshot)).toContain("public.meal_wine_links");
+    delete snapshot.tables.kitchen_diners;
+    expect(() => validateSnapshot(snapshot)).toThrow();
+    expect([1, 2, 3].map((v) => snapshotTablesFor(v).length)).toEqual([20, 24, 30]);
+  });
   it("requires all six Chef sections in v3 and keeps v1/v2 compatible", () => {
     const snapshot = fixture();
     snapshot.version = 3;

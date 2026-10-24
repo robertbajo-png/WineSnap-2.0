@@ -4,6 +4,7 @@ import { useI18n } from "@/i18n";
 import { privacyInformationComplete, siteInformation } from "@/lib/siteInformation";
 import { privacyControlsEnabled } from "@/lib/privacyControls";
 import { chefEnabled } from "@/features/chef/feature";
+import { mealsEnabled } from "@/features/meals/feature";
 export const Route = createFileRoute("/privacy")({
   head: () => ({ meta: [{ title: "Privacy | WineSnap" }] }),
   component: PrivacyPage,
@@ -62,6 +63,13 @@ function PrivacyPage() {
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
         <h2 className="font-display text-xl">{sv ? "Uppgifter och användning" : "Data and use"}</h2>
+        {mealsEnabled && (
+          <p>
+            {sv
+              ? "I testköket kan du skapa privata matprofiler för vuxna och barn med namn eller smeknamn och vanliga matönskemål, utan födelsedatum eller hälsouppgifter. Endast uttryckligen delade profiler visas för hushållets inbjudna vuxna; andra privata uppgifter och vinkällare delas inte. Du ska ha rätt att lämna och dela en annan persons uppgifter. Barnprofiler får inte vuxnas kostval automatiskt och används inte för vinförslag. Profiler och registrerade måltidsbetyg sparas tills du raderar dem eller kontot. Måltidsbetyg skapar inte smakminne automatiskt. Radering av ett hushåll gör övriga medlemmars profiler privata, inte raderade. Inbjudningar är engångskoder i 48 timmar och gallras senast genom aktiv körning efter ytterligare sju dagar. Matprofiler skickas inte till AI. Export omfattar egna profiler, medlemskap, hushåll och registreringar. Global nollställning av minnet tömmer även önskemålen i egna matprofiler; namn och historik behålls. Delning kan återkallas; redan lästa uppgifter kan inte tas tillbaka från mottagaren."
+              : "The test kitchen supports private adult and child diner profiles using a name or nickname and ordinary food preferences, without dates of birth or health details. Only explicitly shared profiles are visible to invited adults in a household; private memory and cellars are not shared. You must have authority to provide and share another person's data. Adult diets are not automatically applied to children, and child profiles do not receive wine suggestions. Profiles and recorded meal ratings remain until deleted or the account is erased; ratings do not automatically create taste memory. Removing a household makes peers' profiles private, rather than deleting them. Invitations are single-use 48-hour codes cleaned by active maintenance after another seven days. Profiles are not sent to AI. Export includes owned profiles, memberships, households and meal records. Global memory reset also clears preferences in owned profiles while retaining names and history. Sharing can be revoked, but information already read cannot be recalled from recipients."}
+          </p>
+        )}
         {chefEnabled && (
           <p>
             {sv

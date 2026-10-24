@@ -64,6 +64,15 @@ export function createHandler(dependencies: PrivacyDependencies) {
             ]
           : []),
         "follows",
+        ...(env("MEALS_ENABLED") === "true"
+          ? [
+              "kitchen_households",
+              "kitchen_household_members",
+              "kitchen_household_invites",
+              "kitchen_diners",
+              "meal_wine_links",
+            ]
+          : []),
         "user_taste_similarity",
         "ai_rate_limits",
       ]) {

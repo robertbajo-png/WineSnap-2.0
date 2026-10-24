@@ -458,6 +458,15 @@ automatic resource deletion and production cutover require separate decisions.
 
 ## Next Approved-Work Boundary
 
+### Local Progress, 2026-10-25
+
+Phases 2, 3 and now 4 have implementations in the actual local WineSnap-test app,
+not in production. Phase 4's delivered scope, independent gates and verification
+are documented in [the pairing/household report](meals-households-2026-10-25.md).
+The core release gate above remains open for full-platform recovery access,
+physical-device and operational/legal acceptance plus explicit cutover approval.
+Optional phases 5-7 are not implied by local phase-4 completion.
+
 This inventory does not start phase 1, replace dependencies, import KetoLens,
 provision resources or authorize production deployment. Recommended next step:
 review the scope and approve an isolated culinary design prototype, while owner

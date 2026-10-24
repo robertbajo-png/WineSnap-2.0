@@ -10,6 +10,7 @@ export const publicEnvironmentKeys = [
   "VITE_LOCAL_AI_ENABLED",
   "VITE_COOKING_CORE_ENABLED",
   "VITE_AI_CHEF_ENABLED",
+  "VITE_MEALS_ENABLED",
   "VITE_PRIVACY_LEGAL_BASIS",
   "VITE_PRIVACY_RETENTION",
 ] as const;
@@ -25,6 +26,7 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       VITE_LOCAL_AI_ENABLED: "false",
       VITE_COOKING_CORE_ENABLED: "false",
       VITE_AI_CHEF_ENABLED: "false",
+      VITE_MEALS_ENABLED: "false",
     };
   }
 
@@ -37,6 +39,8 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       throw new Error(`Independent build requires ${key}; see config/independent/.env.example`);
   }
   const url = new URL(values.VITE_SUPABASE_URL);
+  if (values.VITE_MEALS_ENABLED === "true" && values.VITE_AI_CHEF_ENABLED !== "true")
+    throw new Error("Meals require the verified test cooking and privacy runtime");
   if (
     values.VITE_AI_CHEF_ENABLED === "true" &&
     (values.VITE_COOKING_CORE_ENABLED !== "true" || values.VITE_LOCAL_AI_ENABLED !== "true")

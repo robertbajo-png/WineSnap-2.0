@@ -22,6 +22,12 @@ export function createHandler(dependencies: PrivacyDependencies) {
       });
       if (error) throw new Error("retention_error");
       let chefRetention: { moreWork?: boolean } | null = null;
+      let mealsRetention: { moreWork?: boolean } | null = null;
+      if (env("MEALS_ENABLED") === "true") {
+        const meals = await admin.rpc("run_meals_retention", { _execute: execute });
+        if (meals.error) throw new Error("meals_retention_error");
+        mealsRetention = meals.data;
+      }
       if (env("AI_CHEF_ENABLED") === "true") {
         const chef = await admin.rpc("run_chef_retention", { _execute: execute });
         if (chef.error) throw new Error("chef_retention_error");
@@ -61,12 +67,14 @@ export function createHandler(dependencies: PrivacyDependencies) {
         {
           retention,
           ...(chefRetention ? { chef_retention: chefRetention } : {}),
+          ...(mealsRetention ? { meals_retention: mealsRetention } : {}),
           orphan_candidates: orphans.length,
           completed,
           failures,
           more_work:
             retention?.more_batches_required === true ||
             chefRetention?.moreWork === true ||
+            mealsRetention?.moreWork === true ||
             orphans.length >= 100 ||
             queueAtLimit,
         },

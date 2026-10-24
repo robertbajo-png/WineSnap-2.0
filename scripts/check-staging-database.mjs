@@ -184,6 +184,7 @@ try {
   for (const file of [
     "supabase/tests/cooking_core.local.sql",
     "supabase/tests/chef_memory.local.sql",
+    "supabase/tests/meals_households.local.sql",
   ]) {
     stage = file;
     const source = await readFile(resolve(root, file), "utf8");

@@ -107,3 +107,7 @@ artifact, not just static assets. A non-root Docker recipe is included.
   and [direct AI Chef with inspectable Food Memory](docs/ai-chef-food-memory-2026-10-24.md)
   at `/kitchen`. These features remain independently gated to WineSnap-test, not
   production. The separate illustrative prototype is not the running app.
+- [Food/wine pairing, household preferences and meal history](docs/meals-households-2026-10-25.md)
+  are available in the actual local test kitchen, with independent build/database
+  gates. Invitations share only explicitly selected diner profiles, never a peer's
+  cellar or Food Memory. Snapshot v4 includes all 35 application tables.

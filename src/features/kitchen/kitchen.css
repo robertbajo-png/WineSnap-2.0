@@ -736,3 +736,18 @@
     padding: 8px 6px;
   }
 }
+.k-extra-nav {
+  display: flex;
+  justify-content: flex-end;
+  margin: 12px 0;
+}
+.k-extra-nav select {
+  min-height: 48px;
+  max-width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  background: #fff;
+  color: #263b30;
+  border: 1px solid #91a498;
+  border-radius: 6px;
+}

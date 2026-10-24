@@ -75,6 +75,7 @@ export async function handleLocalPrivacy(request: Request, name: LocalPrivacyFun
           KITCHEN_CORE_ENABLED:
             process.env.WINESNAP_COOKING_CORE_ENABLED === "true" ? "true" : "false",
           AI_CHEF_ENABLED: process.env.WINESNAP_AI_CHEF_ENABLED === "true" ? "true" : "false",
+          MEALS_ENABLED: process.env.WINESNAP_MEALS_ENABLED === "true" ? "true" : "false",
         })[key],
     });
     const response = await handler(
