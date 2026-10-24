@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AiConfigurationError, createAiClient } from "../../supabase/functions/_shared/aiClient";
 
 const values: Record<string, string> = {
@@ -9,6 +9,134 @@ const values: Record<string, string> = {
 };
 const environment = (name: string) => values[name];
 const send = () => vi.fn<typeof fetch>().mockResolvedValue(Response.json({ choices: [] }));
+
+const retryEnvironment = (name: string) =>
+  ({
+    ...values,
+    SUPABASE_URL: "https://pzniyupmgwvlldvztzqh.supabase.co",
+    GEMINI_TRANSIENT_RETRY_ENABLED: "true",
+  })[name];
+
+describe("bounded local Gemini retry", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("retries a transient 503 with identical destination, key, payload and total deadline", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ choices: [] }));
+    const pending = createAiClient("fast", retryEnvironment, fetcher).complete({ messages: [] });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect((await pending).status).toBe(200);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[1]).toEqual(fetcher.mock.calls[0]);
+    expect(fetcher.mock.calls[0][1]?.signal).toBe(fetcher.mock.calls[1][1]?.signal);
+    expect(fetcher.mock.calls[0][0]).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    );
+  });
+
+  it("stops after two retries and leaves the final failure readable", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => new Response("busy", { status: 503 }));
+    const pending = createAiClient("fast", retryEnvironment, fetcher).complete({ messages: [] });
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(await (await pending).text()).toBe("busy");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([400, 401, 402, 403, 404, 429, 500, 502, 504])(
+    "does not retry status %s or charge for another model",
+    async (status) => {
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status }));
+      expect(
+        (await createAiClient("fast", retryEnvironment, fetcher).complete({ messages: [] })).status,
+      ).toBe(status);
+      expect(fetcher).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("honors Retry-After only when it fits the existing deadline", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("busy", { status: 503, headers: { "retry-after": "120" } }));
+    const response = await createAiClient("fast", retryEnvironment, fetcher).complete({
+      messages: [],
+    });
+    expect(await response.text()).toBe("busy");
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("waits for a fitting Retry-After HTTP date without resetting the budget", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-24T12:00:00Z"));
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 503,
+          headers: { "retry-after": "Sat, 24 Oct 2026 12:00:05 GMT" },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ choices: [] }));
+    const pending = createAiClient("fast", retryEnvironment, fetcher).complete({ messages: [] });
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect((await pending).status).toBe(200);
+  });
+
+  it("cancels backoff immediately when the original deadline expires", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 503 }));
+    const pending = createAiClient("fast", retryEnvironment, fetcher).complete({ messages: [] });
+    const rejected = expect(pending).rejects.toMatchObject({ name: "TimeoutError" });
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort(new DOMException("deadline", "TimeoutError"));
+    await rejected;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("never retries a network timeout or a successful but malformed answer", async () => {
+    const timeout = new DOMException("deadline", "TimeoutError");
+    const failed = vi.fn<typeof fetch>().mockRejectedValue(timeout);
+    await expect(
+      createAiClient("fast", retryEnvironment, failed).complete({ messages: [] }),
+    ).rejects.toBe(timeout);
+    expect(failed).toHaveBeenCalledOnce();
+    const success = vi.fn<typeof fetch>().mockResolvedValue(new Response("not JSON"));
+    await createAiClient("fast", retryEnvironment, success).complete({ messages: [] });
+    expect(success).toHaveBeenCalledOnce();
+  });
+
+  it("leaves defaults and all OpenAI calls unchanged and refuses unapproved backends", async () => {
+    for (const [task, env] of [
+      ["fast", environment],
+      ["labelReading", retryEnvironment],
+    ] as const) {
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 503 }));
+      await createAiClient(task, env, fetcher).complete({ messages: [] });
+      expect(fetcher).toHaveBeenCalledOnce();
+    }
+    expect(() =>
+      createAiClient("fast", (name) =>
+        name === "SUPABASE_URL" ? "https://other.example.test" : retryEnvironment(name),
+      ),
+    ).toThrow(AiConfigurationError);
+  });
+});
 
 describe("owned AI transport", () => {
   it.each([

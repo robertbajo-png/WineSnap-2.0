@@ -3,7 +3,9 @@
 Date: 2026-10-23. Applies only to the Windows app at
 http://127.0.0.1:5210/ and hosted WineSnap-test
 (`pzniyupmgwvlldvztzqh`). Production hosting, DNS, accounts, storage and database
-remain unchanged. This is the latest local status; earlier same-day migration
+remain unchanged. This is a historical checkpoint. The
+[2026-10-24 follow-up](local-windows-follow-up-2026-10-24.md) supersedes its
+Gemini availability and snapshot-restore status; earlier same-day migration
 notes describe previous checkpoints.
 
 ## Six Work Items

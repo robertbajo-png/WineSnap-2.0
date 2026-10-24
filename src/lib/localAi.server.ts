@@ -125,6 +125,7 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
       OPENAI_API_KEY: keys.openai,
       OPENAI_LABEL_MODEL: "gpt-6.1-sol",
       GEMINI_FAST_MODEL: "gemini-3.8-flash",
+      GEMINI_TRANSIENT_RETRY_ENABLED: "true",
       ...(keys.gemini ? { GEMINI_API_KEY: keys.gemini } : {}),
     };
     const env = (name: string) => environment[name];

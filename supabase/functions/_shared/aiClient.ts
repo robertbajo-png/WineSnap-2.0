@@ -28,15 +28,62 @@ const providers = {
   },
 } as const;
 
+function waitForRetry(delay: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    signal.throwIfAborted();
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    }, delay);
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
+async function sendGeminiWithRetry(
+  send: typeof fetch,
+  endpoint: string,
+  init: RequestInit,
+  budget: number,
+) {
+  const started = Date.now();
+  const signal = init.signal!;
+  for (let attempt = 0; ; attempt++) {
+    signal.throwIfAborted();
+    const response = await send(endpoint, init);
+    if (response.status !== 503 || attempt === 2) return response;
+    const hint = response.headers.get("retry-after");
+    const retryAfter =
+      hint === null
+        ? 0
+        : /^\d+(?:\.\d+)?$/.test(hint)
+          ? Number(hint) * 1000
+          : Math.max(0, Date.parse(hint) - Date.now());
+    const delay = Math.max(
+      1000 * 2 ** attempt + Math.floor(Math.random() * 250),
+      Number.isFinite(retryAfter) ? retryAfter : 0,
+    );
+    // Never extend the original deadline, retry another provider, or replay a successful answer.
+    if (Date.now() - started + delay >= budget) return response;
+    await response.body?.cancel();
+    await waitForRetry(delay, signal);
+  }
+}
+
 export function createAiClient(workload: Workload, env: Environment, send: typeof fetch = fetch) {
   const provider = providers[workload];
   const key = env(provider.key)?.trim();
   const model = env(provider.model)?.trim() || AI_MODELS[workload];
+  const retryGemini = workload === "fast" && env("GEMINI_TRANSIENT_RETRY_ENABLED") === "true";
   if (
     !key ||
     /\s/.test(key) ||
     !model.startsWith(provider.prefix) ||
-    !/^[a-zA-Z0-9._-]{1,128}$/.test(model)
+    !/^[a-zA-Z0-9._-]{1,128}$/.test(model) ||
+    (retryGemini && env("SUPABASE_URL") !== "https://pzniyupmgwvlldvztzqh.supabase.co")
   ) {
     throw new AiConfigurationError();
   }
@@ -47,8 +94,8 @@ export function createAiClient(workload: Workload, env: Environment, send: typeo
       if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 45_000) {
         throw new Error("Invalid AI timeout");
       }
-      // Preserve existing strict-schema/tool contracts, bound output and never retry
-      // or silently change provider. OpenAI storage is explicitly disabled.
+      // Preserve schema/tool contracts. Retry is an explicit local-test-only opt-in.
+      // OpenAI storage is disabled and its calls are never retried or rerouted.
       const tokenField = workload === "labelReading" ? "max_completion_tokens" : "max_tokens";
       const budget = body[tokenField] ?? (workload === "labelReading" ? 8192 : 4096);
       if (typeof budget !== "number" || !Number.isInteger(budget) || budget < 1 || budget > 8192) {
@@ -66,14 +113,17 @@ export function createAiClient(workload: Workload, env: Environment, send: typeo
       } else {
         delete payload.max_completion_tokens;
       }
-      return send(provider.endpoint, {
+      const init: RequestInit = {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         signal: AbortSignal.timeout(timeoutMs),
         redirect: "error",
         cache: "no-store",
         body: JSON.stringify(payload),
-      });
+      };
+      return retryGemini
+        ? sendGeminiWithRetry(send, provider.endpoint, init, timeoutMs)
+        : send(provider.endpoint, init);
     },
   };
 }
