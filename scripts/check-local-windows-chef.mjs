@@ -398,7 +398,7 @@ try {
     await page
       .getByLabel("Din fråga", { exact: true })
       .fill(
-        "Ge ett kort förslag på en vardagsrätt med min bekräftade favoritingrediens basilika. Använd en kort punktlista.",
+        "Ge ett kort förslag på en vardagsrätt med min bekräftade favoritingrediens basilika. Använd en rubrik på nivå tre (###) följt av en kort punktlista.",
       );
     const request = page.waitForResponse(
       (r) => r.url() === app + "/api/chef" && r.request().method() === "POST",
@@ -410,10 +410,18 @@ try {
     assert.ok(result.model);
     await page.locator(".chef-message.assistant").waitFor();
     assert.ok(await page.locator(".chef-message.assistant .chat-answer").innerText());
-    assert.equal(
-      (await new AxeBuilder({ page }).include(".kitchen").analyze()).violations.length,
-      0,
-    );
+    const answerAudit = await new AxeBuilder({ page }).include(".kitchen").analyze();
+    report.answerAudit = answerAudit.violations.map((v) => ({
+      id: v.id,
+      targets: v.nodes.map((n) => n.target),
+      details: v.nodes.map((n) => n.failureSummary),
+    }));
+    if (answerAudit.violations.length)
+      await page.screenshot({
+        path: fileURLToPath(new URL("answer-audit-failure.png", output)),
+        fullPage: true,
+      });
+    assert.equal(answerAudit.violations.length, 0);
     await page.screenshot({
       path: fileURLToPath(new URL("chef-answer-1440.png", output)),
       fullPage: true,

@@ -154,6 +154,28 @@ Fresh acceptance on 2026-10-24:
 Safe generated acceptance reports remain in ignored `dist/`; no synthetic login
 credentials are committed or retained in normal logs. Production was not contacted.
 
+### Security Follow-Up, 2026-10-25
+
+The first pushed revision passed GitHub Database Safety, but Quality correctly
+blocked the existing Zod 3 dependency after the
+[collection-validation advisory](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+The local/test application now pins Zod 4.6.7 and the `tsx` dependency's esbuild
+to patched 0.28.1 for its
+[Windows development-server advisory](https://github.com/advisories/GHSA-g7r4-m6w7-qqqr).
+The audit gate was not weakened. `npm audit --omit=dev --audit-level=high` reports
+zero runtime dependency vulnerabilities. A fresh locked Windows install lives
+in a separate owned dependency directory; the earlier shared install was not edited.
+
+The migration requires explicit string keys for privacy-export dictionaries and a
+complete default Chef context. New regression tests check bounded collection
+failures and default context. Culinary Markdown headings are normalized to level
+two beneath the page heading, while the wine renderer retains its original defaults.
+All 739 unit tests in 89 files pass with the new dependencies; TypeScript, ESLint,
+synthetic/runtime builds, prototype build and client budgets pass. The 17 live
+Chef acceptance checks have also been repeated successfully. Service-worker cache
+version is `2026-10-25-chef-schema-v4`; snapshot format remains v3. No production
+package, setting or data was changed.
+
 Local reproducible commands:
 
 ```powershell

@@ -102,7 +102,10 @@ export const emptyChefContext: ChefContext = {
   sessionId: null,
   sessionRevision: null,
 };
-const common = { requestId: z.string().uuid(), context: chefContextSchema.default({}) };
+const common = {
+  requestId: z.string().uuid(),
+  context: chefContextSchema.default(emptyChefContext),
+};
 export const chefRequestSchema = z.discriminatedUnion("action", [
   z
     .object({

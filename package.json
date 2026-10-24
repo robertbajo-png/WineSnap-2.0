@@ -88,7 +88,7 @@
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
     "world-atlas": "^2.0.2",
-    "zod": "^3.24.2"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
@@ -113,5 +113,10 @@
     "typescript-eslint": "^8.56.1",
     "vite": "8.3.5",
     "vitest": "^5.0.0"
+  },
+  "overrides": {
+    "tsx": {
+      "esbuild": "0.28.1"
+    }
   }
 }

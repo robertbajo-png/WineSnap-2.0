@@ -213,7 +213,7 @@ export function ChefPanel({
             {messages.map((m, i) => (
               <article key={i} className={`chef-message ${m.role}`}>
                 <strong>{m.role === "user" ? "Du" : "AI-kocken"}</strong>
-                <ChatMessageContent role={m.role} content={m.content} />
+                <ChatMessageContent role={m.role} content={m.content} normalizeHeadings />
               </article>
             ))}
           </div>
