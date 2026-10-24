@@ -53,6 +53,16 @@ export function createHandler(dependencies: PrivacyDependencies) {
       for (const table of [
         ...ownedTables,
         ...cookingTables,
+        ...(env("AI_CHEF_ENABLED") === "true"
+          ? [
+              "food_memory_state",
+              "food_signals",
+              "food_memory_tombstones",
+              "chef_conversations",
+              "chef_messages",
+              "chef_requests",
+            ]
+          : []),
         "follows",
         "user_taste_similarity",
         "ai_rate_limits",

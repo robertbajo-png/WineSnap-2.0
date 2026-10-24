@@ -21,6 +21,12 @@ export function createHandler(dependencies: PrivacyDependencies) {
         _execute: execute,
       });
       if (error) throw new Error("retention_error");
+      let chefRetention: { moreWork?: boolean } | null = null;
+      if (env("AI_CHEF_ENABLED") === "true") {
+        const chef = await admin.rpc("run_chef_retention", { _execute: execute });
+        if (chef.error) throw new Error("chef_retention_error");
+        chefRetention = chef.data;
+      }
       const { data: orphans, error: orphanError } = await admin.rpc("privacy_orphan_images", {
         _limit: 100,
       });
@@ -54,11 +60,15 @@ export function createHandler(dependencies: PrivacyDependencies) {
       return privacyJson(
         {
           retention,
+          ...(chefRetention ? { chef_retention: chefRetention } : {}),
           orphan_candidates: orphans.length,
           completed,
           failures,
           more_work:
-            retention?.more_batches_required === true || orphans.length >= 100 || queueAtLimit,
+            retention?.more_batches_required === true ||
+            chefRetention?.moreWork === true ||
+            orphans.length >= 100 ||
+            queueAtLimit,
         },
         failures ? 500 : 200,
       );

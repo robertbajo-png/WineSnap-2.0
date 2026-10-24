@@ -409,7 +409,7 @@ try {
     },
   );
   await check(
-    "v2 encrypted backup includes cooking and automatically restores all 24 table sections",
+    "encrypted backup includes cooking and restores all versioned table sections",
     async () => {
       const pwsh = `${process.env.USERPROFILE}/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe`;
       const raw = await new Promise((resolve, reject) =>
@@ -429,7 +429,7 @@ try {
       );
       const backup = JSON.parse(raw);
       assert.equal(backup.completed, true);
-      assert.equal(backup.verifiedTables, 24);
+      assert.ok([24, 30].includes(backup.verifiedTables));
       const restored = await wait(
         async () =>
           JSON.parse(
@@ -442,7 +442,7 @@ try {
           value.snapshotFile === backup.backupFile && value.completed && value.cleanupCompleted,
         150000,
       );
-      assert.equal(restored.tables, 24);
+      assert.equal(restored.tables, backup.verifiedTables);
       assert.equal(restored.fullDatabaseBackup, false);
     },
   );

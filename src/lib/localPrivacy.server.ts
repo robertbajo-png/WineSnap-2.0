@@ -74,6 +74,7 @@ export async function handleLocalPrivacy(request: Request, name: LocalPrivacyFun
           PRIVACY_CRON_SECRET: keys.privacyCronSecret,
           KITCHEN_CORE_ENABLED:
             process.env.WINESNAP_COOKING_CORE_ENABLED === "true" ? "true" : "false",
+          AI_CHEF_ENABLED: process.env.WINESNAP_AI_CHEF_ENABLED === "true" ? "true" : "false",
         })[key],
     });
     const response = await handler(

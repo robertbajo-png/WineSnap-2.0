@@ -27,7 +27,7 @@ export const snapshotTables = [
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const record = (value) => value && typeof value === "object" && !Array.isArray(value);
 export function snapshotTablesFor(version) {
-  assert.ok([1, 2].includes(version));
+  assert.ok([1, 2, 3].includes(version));
   return version === 1
     ? snapshotTables
     : [
@@ -36,6 +36,16 @@ export function snapshotTablesFor(version) {
         "kitchen_recipe_versions",
         "cooking_sessions",
         "cooking_feedback",
+        ...(version === 3
+          ? [
+              "food_memory_state",
+              "food_signals",
+              "food_memory_tombstones",
+              "chef_conversations",
+              "chef_messages",
+              "chef_requests",
+            ]
+          : []),
       ];
 }
 

@@ -100,11 +100,25 @@ try {
   await execute(
     await readFile(new URL("../supabase/tests/step12_cooking_core.sql", import.meta.url), "utf8"),
   );
+  await execute(
+    await readFile(
+      new URL("../supabase/tests/step13_ai_chef_food_memory.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   phase = "ownership_versions_sessions_erasure";
   const result = await execute(
     await readFile(new URL("../supabase/tests/cooking_core.local.sql", import.meta.url), "utf8"),
   );
   assert.ok(result.includes("cooking_core_acceptance_passed"));
+  phase = "chef_memory_ownership_idempotency_forgetting_erasure";
+  assert.ok(
+    (
+      await execute(
+        await readFile(new URL("../supabase/tests/chef_memory.local.sql", import.meta.url), "utf8"),
+      )
+    ).includes("chef_memory_acceptance_passed"),
+  );
   console.log(
     JSON.stringify({
       passed: true,

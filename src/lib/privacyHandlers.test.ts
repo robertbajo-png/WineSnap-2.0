@@ -167,6 +167,21 @@ describe("actual scheduler handler", () => {
 });
 
 describe("actual owner export handler", () => {
+  it("includes all six private Chef tables only behind the explicit rollout gate", async () => {
+    const enabled = setup("privacy-export", { AI_CHEF_ENABLED: "true" });
+    const result = await (await enabled.call()).json();
+    for (const table of [
+      "food_memory_state",
+      "food_signals",
+      "food_memory_tombstones",
+      "chef_conversations",
+      "chef_messages",
+      "chef_requests",
+    ])
+      expect(result.tables).toHaveProperty(table);
+    const disabled = setup("privacy-export");
+    expect((await (await disabled.call()).json()).tables).not.toHaveProperty("food_signals");
+  });
   it("includes cooking tables only after the explicit verified rollout switch", async () => {
     const enabled = setup("privacy-export", { KITCHEN_CORE_ENABLED: "true" });
     const result = await (await enabled.call()).json();

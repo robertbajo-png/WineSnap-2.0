@@ -20,12 +20,15 @@ describe("local Windows hosting boundaries", () => {
       "NODE_OPTIONS",
       "SUPABASE_PUBLISHABLE_KEY",
       "SUPABASE_URL",
+      "WINESNAP_AI_CHEF_ENABLED",
       "WINESNAP_COOKING_CORE_ENABLED",
       "WINESNAP_LOCAL_AI_ENABLED",
       "WINESNAP_LOCAL_OPERATIONS_ENABLED",
       "WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED",
     ]);
     expect(web.environment.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED).toBe("true");
+    expect(web.environment.WINESNAP_AI_CHEF_ENABLED).toBe("true");
+    expect(web.build.args.VITE_AI_CHEF_ENABLED).toBe("true");
     expect(JSON.stringify(web)).not.toMatch(
       /mervdrbnwgreaifobasw|sb_secret_|SERVICE_ROLE|OPENAI_API_KEY|GEMINI_API_KEY/,
     );
@@ -61,6 +64,12 @@ describe("local Windows hosting boundaries", () => {
     expect(launcher).not.toMatch(/Read-Host|Set-NetFirewall|powercfg|Set-Content/);
     expect(launcher).toContain("$start.Environment.Clear()");
     expect(launcher).toContain("--env-file");
+  });
+  it("allows encrypted snapshot v3 at both write and verification boundaries", () => {
+    const operations = readFileSync("scripts/run-local-windows-operations.ps1", "utf8");
+    expect(operations).toContain("$result.version -notin @(1,2,3)");
+    expect(operations).toContain("$snapshot.version -notin @(1,2,3)");
+    expect(operations).toContain("$snapshot.version -eq 3) {30}");
   });
 
   it("installs approved AI credentials through stdin into private container RAM only", () => {

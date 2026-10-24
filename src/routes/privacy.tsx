@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/i18n";
 import { privacyInformationComplete, siteInformation } from "@/lib/siteInformation";
 import { privacyControlsEnabled } from "@/lib/privacyControls";
+import { chefEnabled } from "@/features/chef/feature";
 export const Route = createFileRoute("/privacy")({
   head: () => ({ meta: [{ title: "Privacy | WineSnap" }] }),
   component: PrivacyPage,
@@ -61,6 +62,13 @@ function PrivacyPage() {
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
         <h2 className="font-display text-xl">{sv ? "Uppgifter och användning" : "Data and use"}</h2>
+        {chefEnabled && (
+          <p>
+            {sv
+              ? "I det lokala testköket sparas även privata recept, receptversioner, matlagningar, feedback och matpreferenser med källunderlag. AI-kocken skickar din fråga, valt recept eller steg och ett begränsat bekräftat matminne till Google Gemini. Feedback skickas för minnesanalys först när du väljer det; tolkningar väntar på ditt godkännande. Allergier och medicinska kostbehov är inte en del av matminnet. I Matminne kan du granska, korrigera, glömma eller nollställa uppgifter. Det rensar även tidigare Chef-samtal och osparade förslag vid korrigering, glömning eller nollställning; recept och matlagningshistorik behålls. En begränsad hashspärr hindrar automatisk återinlärning av en glömd preferens. Chef-anrop och osparade förslag gallras efter 24 timmar, samtal efter 90 dagar med aktiv gallring. Recept och bekräftade matpreferenser behålls tills du tar bort dem eller kontot. Integritetsexport och kontoradering omfattar även dessa uppgifter."
+              : "The local test kitchen also stores private recipes, versions, cooking sessions, feedback and food preferences with evidence. Chef sends your question, selected recipe or step and bounded confirmed food memory to Google Gemini. Feedback is analyzed only when you select it; inferred preferences await confirmation. Food Memory does not support allergies or medical diets. You can inspect, correct, forget or reset memory. Correction, forgetting or reset also clears Chef conversations and unsaved drafts, while recipes and cooking history remain. A limited hash barrier prevents automatic relearning of forgotten preferences. Requests and unsaved drafts are cleaned after 24 hours and conversations after 90 days with active maintenance. Recipes and confirmed preferences remain until removed or the account is erased. Privacy export and erasure include these data."}
+          </p>
+        )}
         <p>
           {sv
             ? "WineSnap sparar kontouppgifter, vinbilder, källare, köp, önskelista, betyg, smakpreferenser och AI-historik för appens funktioner. Frivillig användningsstatistik är avstängd i denna version. Smakminnet drar slutsatser från dina preferenser och aktiviteter för personliga vinförslag, inte för beslut med rättsliga eller liknande betydande konsekvenser. Du kan nollställa det utan att radera dina viner eller betyg."

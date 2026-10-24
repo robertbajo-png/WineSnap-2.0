@@ -26,6 +26,8 @@ import {
   Timer,
   Trash2,
   Wine,
+  Brain,
+  Sparkles,
 } from "lucide-react";
 import {
   Dialog,
@@ -56,6 +58,10 @@ import {
   type LocalSession,
 } from "./domain";
 import "./kitchen.css";
+import { chefEnabled } from "../chef/api";
+import { ChefPanel, type ChefOpening } from "../chef/ChefPanel";
+import { FoodMemoryPanel } from "../chef/FoodMemoryPanel";
+import { emptyChefContext } from "../chef/domain";
 
 const unitLabel: Record<(typeof units)[number], string> = {
   g: "g",
@@ -517,6 +523,13 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const kitchen = useKitchen(owner);
   const { cache, busy, ready, offline, error, conflict } = kitchen;
   const [tab, setTab] = useState("library");
+  const [chefOpening, setChefOpening] = useState<ChefOpening>({
+    mode: "chat",
+    context: emptyChefContext,
+    title: "Ditt kök",
+  });
+  const [chefSource, setChefSource] = useState<RecipeVersion | undefined>();
+  const [chefEpoch, setChefEpoch] = useState(0);
   const [selected, setSelected] = useState<RecipeVersion | null>(null);
   const [selectedPast, setSelectedPast] = useState<LocalSession | null>(null);
   const [servings, setServings] = useState(2);
@@ -545,7 +558,12 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       .catch(() => undefined);
   }, [ready, cacheOwner]);
   useEffect(() => {
-    const route = () => setTab(window.location.hash === "#cook" ? "cook" : "library");
+    const route = () => {
+      const hash = window.location.hash.slice(1);
+      setTab(
+        hash === "cook" || (chefEnabled && ["chef", "memory"].includes(hash)) ? hash : "library",
+      );
+    };
     route();
     window.addEventListener("hashchange", route);
     let wall = Date.now(),
@@ -567,10 +585,11 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     setSelectedPast(null);
     setSelected(null);
     setHistory(null);
-    window.location.hash = next === "cook" ? "cook" : "recipes";
+    window.location.hash = ["cook", "chef", "memory"].includes(next) ? next : "recipes";
     setTab(next);
   };
   const openRecipe = (version: RecipeVersion) => {
+    window.location.hash = "recipes";
     setSelected(version);
     setServings(version.document.servings);
     setHistory(null);
@@ -583,6 +602,12 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       versionId: crypto.randomUUID(),
       revision: version?.revision ?? 0,
     });
+  const openChef = (opening: ChefOpening, source?: RecipeVersion) => {
+    setChefOpening(opening);
+    setChefSource(source);
+    setChefEpoch((epoch) => epoch + 1);
+    navigate("chef");
+  };
   const change = (patch: Partial<CookingState>) => {
     if (state) void kitchen.change({ ...state, ...patch });
   };
@@ -615,7 +640,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
         </Link>
       </header>
       <main className="k-main" id="kitchen-content">
-        <nav className="k-tabs" aria-label="Köket">
+        <nav className={`k-tabs${chefEnabled ? " has-chef" : ""}`} aria-label="Köket">
           <button
             aria-current={tab === "library" ? "page" : undefined}
             onClick={() => navigate("library")}
@@ -630,6 +655,26 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             <CookingPot size={18} />
             Matlagning{cooking && <span className="k-live-dot" aria-label="Pågår" />}
           </button>
+          {chefEnabled && (
+            <>
+              <button
+                aria-current={tab === "chef" ? "page" : undefined}
+                onClick={() =>
+                  openChef({ mode: "chat", context: emptyChefContext, title: "Ditt kök" })
+                }
+              >
+                <ChefHat size={18} />
+                AI-kock
+              </button>
+              <button
+                aria-current={tab === "memory" ? "page" : undefined}
+                onClick={() => navigate("memory")}
+              >
+                <Brain size={18} />
+                Matminne
+              </button>
+            </>
+          )}
         </nav>
         <div className="k-status" role="status">
           {offline ? (
@@ -704,6 +749,30 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           </section>
         ) : (
           <>
+            {chefEnabled && tab === "chef" && (
+              <ChefPanel
+                key={`${owner}:${chefEpoch}`}
+                owner={owner}
+                opening={chefOpening}
+                offline={offline}
+                onReview={(draft) =>
+                  edit(
+                    draft,
+                    chefSource
+                      ? (cache.versions.find((v) => v.recipe_id === chefSource.recipe_id) ??
+                          chefSource)
+                      : undefined,
+                  )
+                }
+              />
+            )}
+            {chefEnabled && tab === "memory" && (
+              <FoodMemoryPanel
+                owner={owner}
+                offline={offline}
+                onChanged={() => setChefEpoch((epoch) => epoch + 1)}
+              />
+            )}
             {tab === "library" && !selected && (
               <>
                 <div className="k-title-row">
@@ -720,6 +789,22 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                     <span>Nytt recept</span>
                   </button>
                 </div>
+                {chefEnabled && (
+                  <button
+                    className="k-text"
+                    disabled={offline || busy}
+                    onClick={() =>
+                      openChef({
+                        mode: "generate",
+                        context: emptyChefContext,
+                        title: "Nytt recept",
+                      })
+                    }
+                  >
+                    <Sparkles size={18} />
+                    Skapa med AI
+                  </button>
+                )}
                 {cooking && (
                   <button className="k-resume" onClick={() => navigate("cook")}>
                     <CookingPot size={22} />
@@ -860,6 +945,25 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                 </p>
                 <h1>{selected.document.title}</h1>
                 <p className="k-description">{selected.document.description}</p>
+                {chefEnabled && (
+                  <button
+                    className="k-text"
+                    disabled={offline || busy}
+                    onClick={() =>
+                      openChef(
+                        {
+                          mode: "adapt",
+                          context: { ...emptyChefContext, recipeVersionId: selected.id },
+                          title: selected.document.title,
+                        },
+                        selected,
+                      )
+                    }
+                  >
+                    <Sparkles size={18} />
+                    Föreslå receptändring
+                  </button>
+                )}
                 <div className="k-actions">
                   <button
                     className="k-primary"
@@ -976,6 +1080,29 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             )}
             {tab === "cook" && local && state && document && step && (
               <div className="k-cook">
+                {chefEnabled && cooking && (
+                  <button
+                    className="k-text"
+                    disabled={offline || busy || local.dirty || !!conflict}
+                    onClick={() =>
+                      openChef(
+                        {
+                          mode: "chat",
+                          context: {
+                            recipeVersionId: local.version.id,
+                            sessionId: local.id,
+                            sessionRevision: local.baseRevision,
+                          },
+                          title: `${document.title} · steg ${state.activeStep + 1}`,
+                        },
+                        local.version,
+                      )
+                    }
+                  >
+                    <ChefHat size={18} />
+                    Fråga AI-kocken
+                  </button>
+                )}
                 <div className="k-cook-heading">
                   <div>
                     <p className="k-eyebrow">

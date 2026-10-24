@@ -1,6 +1,8 @@
 # Local WineSnap Follow-Up
 
 Later development on the same date adds [phase-2 recipes and Cook Mode](cooking-core-2026-10-24.md).
+The latest extension is [phase-3 AI Chef and Food Memory](ai-chef-food-memory-2026-10-24.md),
+including version-3 application snapshots. The older observations below are historical.
 That candidate extends application snapshots to v2 with 24 table sections;
 the v1/20-table results below remain historical acceptance evidence.
 

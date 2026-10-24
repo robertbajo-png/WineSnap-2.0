@@ -29,4 +29,6 @@ Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
 `docs/cooking-core-2026-10-24.md`. Keep the cooking feature gated to WineSnap-test;
 its database gate is independent from UI flags. Snapshots support legacy v1
-(20 tables) and cooking v2 (24 tables); neither is a full platform backup.
+(20 tables), cooking v2 (24 tables), and Chef v3 (30 tables); none is a full
+platform backup. Phase-3 AI Chef and inspectable Food Memory are test-only;
+see `docs/ai-chef-food-memory-2026-10-24.md`. Preserve all independent gates.

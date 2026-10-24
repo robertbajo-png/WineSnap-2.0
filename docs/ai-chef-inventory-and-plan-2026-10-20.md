@@ -6,6 +6,8 @@ Historical inventory. The owner subsequently approved phase 2. See the
 [2026-10-24 cooking-core implementation](cooking-core-2026-10-24.md) and
 [latest local operations](local-windows-follow-up-2026-10-24.md).
 The foundation now uses the standalone Windows Node runtime, not the old build wrapper.
+Phase 3 subsequently adds [live local/test AI Chef and Food Memory](ai-chef-food-memory-2026-10-24.md).
+The original estimates and approval boundaries below remain historical planning.
 
 ## 1. Scope and Evidence
 

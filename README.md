@@ -103,5 +103,7 @@ artifact, not just static assets. A non-root Docker recipe is included.
   hosted verification; do not promise an automatic daily price feed beforehand.
 - Do not move extensions or replay migration ledgers blindly. Preserve existing
   share IDs/defaults and verify actual schema/history before any change.
-- AI Chef is an isolated local prototype, not production recipes, durable cooking
-  sessions or a live culinary AI service.
+- The actual local/test app now has [private recipes and durable Cook Mode](docs/cooking-core-2026-10-24.md)
+  and [direct AI Chef with inspectable Food Memory](docs/ai-chef-food-memory-2026-10-24.md)
+  at `/kitchen`. These features remain independently gated to WineSnap-test, not
+  production. The separate illustrative prototype is not the running app.

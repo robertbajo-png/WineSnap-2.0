@@ -28,6 +28,16 @@ function fixture() {
   };
 }
 describe("private application snapshot rehearsal", () => {
+  it("requires all six Chef sections in v3 and keeps v1/v2 compatible", () => {
+    const snapshot = fixture();
+    snapshot.version = 3;
+    for (const table of snapshotTablesFor(3)) snapshot.tables[table] ??= [];
+    expect(validateSnapshot(snapshot)).toBe(snapshot);
+    expect(snapshotTablesFor(3)).toHaveLength(30);
+    expect(snapshotRestoreSql(snapshot)).toContain("public.food_memory_tombstones");
+    delete snapshot.tables.chef_requests;
+    expect(() => validateSnapshot(snapshot)).toThrow();
+  });
   it("includes all cooking rows in v2 while preserving legacy v1 snapshots", () => {
     const snapshot = fixture();
     snapshot.version = 2;

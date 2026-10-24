@@ -11,6 +11,7 @@
           "VITE_WINE_IMAGE_PROXY_ENABLED": "true",
           "VITE_LOCAL_AI_ENABLED": "true",
           "VITE_COOKING_CORE_ENABLED": "true",
+          "VITE_AI_CHEF_ENABLED": "true",
           "VITE_PRIVACY_CONTROLS_ENABLED": "true",
           "VITE_PRIVACY_OPERATIONS_VERIFIED": "true"
         }
@@ -22,6 +23,7 @@
         "WINESNAP_LOCAL_OPERATIONS_ENABLED": "true",
         "WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED": "true",
         "WINESNAP_COOKING_CORE_ENABLED": "true",
+        "WINESNAP_AI_CHEF_ENABLED": "true",
         "SUPABASE_PUBLISHABLE_KEY": "${WINESNAP_LOCAL_PUBLISHABLE_KEY:?Use scripts/run-local-windows.ps1}",
         "NODE_OPTIONS": "--max-old-space-size=384"
       },

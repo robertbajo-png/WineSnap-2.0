@@ -76,7 +76,7 @@ try {
       $report.completed = [bool]$result.completed
     } else {
       $phase = 'encrypt_snapshot'
-      if ($result.version -notin @(1,2)) { throw 'Unexpected snapshot.' }
+      if ($result.version -notin @(1,2,3)) { throw 'Unexpected snapshot.' }
       $bytes = [Text.Encoding]::UTF8.GetBytes($raw)
       $cipher = [Security.Cryptography.ProtectedData]::Protect($bytes, $null, 'CurrentUser')
       $path = Join-Path $directory ("snapshot-" + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff') + '.dpapi')
@@ -92,8 +92,8 @@ try {
     if (-not $latest -or ($latest.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Expected a local encrypted backup.' }
     $bytes = [Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($latest.FullName), $null, 'CurrentUser')
     $snapshot = [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json -Depth 100
-    $expectedTables = if ($snapshot.version -eq 2) {24} else {20}
-    if ($snapshot.project -ne $project -or $snapshot.version -notin @(1,2) -or @($snapshot.tables.PSObject.Properties).Count -ne $expectedTables) { throw 'Incomplete application snapshot.' }
+    $expectedTables = if ($snapshot.version -eq 3) {30} elseif ($snapshot.version -eq 2) {24} else {20}
+    if ($snapshot.project -ne $project -or $snapshot.version -notin @(1,2,3) -or @($snapshot.tables.PSObject.Properties).Count -ne $expectedTables) { throw 'Incomplete application snapshot.' }
     foreach ($file in $snapshot.files) {
       $content = [Convert]::FromBase64String($file.base64)
       $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($content)).ToLowerInvariant()

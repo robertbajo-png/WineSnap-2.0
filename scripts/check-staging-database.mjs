@@ -180,6 +180,20 @@ try {
   await db`DELETE FROM public.wines WHERE id=${wine} AND user_id=${owner}`;
   await db`DELETE FROM auth.users WHERE id=${owner}`;
   const imageProxyFiles = [];
+  const cookingAcceptanceFiles = [];
+  for (const file of [
+    "supabase/tests/cooking_core.local.sql",
+    "supabase/tests/chef_memory.local.sql",
+  ]) {
+    stage = file;
+    const source = await readFile(resolve(root, file), "utf8");
+    await db.unsafe(source);
+    cookingAcceptanceFiles.push({
+      file,
+      sha256: createHash("sha256").update(source).digest("hex"),
+    });
+  }
+  console.log("PASS private recipes, Cook sessions and Chef memory acceptance (synthetic only)");
   for (const file of [
     "supabase/operations/test-image-proxy-policy.sql",
     "supabase/tests/image_proxy.local.sql",
@@ -209,6 +223,7 @@ try {
       ...inventory.migrations,
       ...inventory.invariants,
       ...imageProxyFiles,
+      ...cookingAcceptanceFiles,
       { file: preflightFile, sha256: createHash("sha256").update(preflightSource).digest("hex") },
     ].map(({ file, sha256 }) => ({
       file,
