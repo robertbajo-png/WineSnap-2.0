@@ -12,6 +12,17 @@ const raw = {
   price: "159,50",
 };
 describe("catalog adapter", () => {
+  it("refuses the local mirror opt-in against any other backend", async () => {
+    vi.stubEnv("WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED", "true");
+    vi.stubEnv("SUPABASE_URL", "https://unapproved.example.test");
+    const fetcher = vi.fn();
+    try {
+      await expect(lookupRetailCandidates(wine, undefined, fetcher)).rejects.toThrow("restricted");
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("combines label parts and reads explicit units and decimal prices", () => {
     expect(parseRetailProduct(raw)).toMatchObject({
       price: 159.5,

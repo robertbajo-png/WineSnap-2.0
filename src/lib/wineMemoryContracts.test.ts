@@ -25,8 +25,10 @@ describe("Wine Memory contracts", () => {
   });
 
   it("routes free-text extraction through the authenticated shared AI guard", () => {
-    const source = read("supabase/functions/extract-preference-signals/index.ts");
-    expect(source).toContain('from "../_shared/aiSecurity.ts"');
+    const source = read("supabase/functions/extract-preference-signals/handler.ts");
+    expect(read("supabase/functions/extract-preference-signals/index.ts")).toContain(
+      'from "../_shared/aiSecurity.ts"',
+    );
     expect(source).toContain("requireAiAccess(req");
     expect(source).toContain('functionName: "extract-preference-signals"');
     expect(source).toContain('admin.rpc("replace_extracted_preference_signals"');

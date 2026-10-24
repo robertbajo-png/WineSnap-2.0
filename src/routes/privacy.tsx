@@ -3,6 +3,8 @@ import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/i18n";
 import { privacyInformationComplete, siteInformation } from "@/lib/siteInformation";
 import { privacyControlsEnabled } from "@/lib/privacyControls";
+import { chefEnabled } from "@/features/chef/feature";
+import { mealsEnabled } from "@/features/meals/feature";
 export const Route = createFileRoute("/privacy")({
   head: () => ({ meta: [{ title: "Privacy | WineSnap" }] }),
   component: PrivacyPage,
@@ -61,6 +63,20 @@ function PrivacyPage() {
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
         <h2 className="font-display text-xl">{sv ? "Uppgifter och användning" : "Data and use"}</h2>
+        {mealsEnabled && (
+          <p>
+            {sv
+              ? "I testköket kan du skapa privata matprofiler för vuxna och barn med namn eller smeknamn och vanliga matönskemål, utan födelsedatum eller hälsouppgifter. Endast uttryckligen delade profiler visas för hushållets inbjudna vuxna; andra privata uppgifter och vinkällare delas inte. Du ska ha rätt att lämna och dela en annan persons uppgifter. Barnprofiler får inte vuxnas kostval automatiskt och används inte för vinförslag. Profiler och registrerade måltidsbetyg sparas tills du raderar dem eller kontot. Måltidsbetyg skapar inte smakminne automatiskt. Radering av ett hushåll gör övriga medlemmars profiler privata, inte raderade. Inbjudningar är engångskoder i 48 timmar och gallras senast genom aktiv körning efter ytterligare sju dagar. Matprofiler skickas inte till AI. Export omfattar egna profiler, medlemskap, hushåll och registreringar. Global nollställning av minnet tömmer även önskemålen i egna matprofiler; namn och historik behålls. Delning kan återkallas; redan lästa uppgifter kan inte tas tillbaka från mottagaren."
+              : "The test kitchen supports private adult and child diner profiles using a name or nickname and ordinary food preferences, without dates of birth or health details. Only explicitly shared profiles are visible to invited adults in a household; private memory and cellars are not shared. You must have authority to provide and share another person's data. Adult diets are not automatically applied to children, and child profiles do not receive wine suggestions. Profiles and recorded meal ratings remain until deleted or the account is erased; ratings do not automatically create taste memory. Removing a household makes peers' profiles private, rather than deleting them. Invitations are single-use 48-hour codes cleaned by active maintenance after another seven days. Profiles are not sent to AI. Export includes owned profiles, memberships, households and meal records. Global memory reset also clears preferences in owned profiles while retaining names and history. Sharing can be revoked, but information already read cannot be recalled from recipients."}
+          </p>
+        )}
+        {chefEnabled && (
+          <p>
+            {sv
+              ? "I det lokala testköket sparas även privata recept, receptversioner, matlagningar, feedback och matpreferenser med källunderlag. AI-kocken skickar din fråga, valt recept eller steg och ett begränsat bekräftat matminne till Google Gemini. Feedback skickas för minnesanalys först när du väljer det; tolkningar väntar på ditt godkännande. Allergier och medicinska kostbehov är inte en del av matminnet. I Matminne kan du granska, korrigera, glömma eller nollställa uppgifter. Det rensar även tidigare Chef-samtal och osparade förslag vid korrigering, glömning eller nollställning; recept och matlagningshistorik behålls. En begränsad hashspärr hindrar automatisk återinlärning av en glömd preferens. Chef-anrop och osparade förslag gallras efter 24 timmar, samtal efter 90 dagar med aktiv gallring. Recept och bekräftade matpreferenser behålls tills du tar bort dem eller kontot. Integritetsexport och kontoradering omfattar även dessa uppgifter."
+              : "The local test kitchen also stores private recipes, versions, cooking sessions, feedback and food preferences with evidence. Chef sends your question, selected recipe or step and bounded confirmed food memory to Google Gemini. Feedback is analyzed only when you select it; inferred preferences await confirmation. Food Memory does not support allergies or medical diets. You can inspect, correct, forget or reset memory. Correction, forgetting or reset also clears Chef conversations and unsaved drafts, while recipes and cooking history remain. A limited hash barrier prevents automatic relearning of forgotten preferences. Requests and unsaved drafts are cleaned after 24 hours and conversations after 90 days with active maintenance. Recipes and confirmed preferences remain until removed or the account is erased. Privacy export and erasure include these data."}
+          </p>
+        )}
         <p>
           {sv
             ? "WineSnap sparar kontouppgifter, vinbilder, källare, köp, önskelista, betyg, smakpreferenser och AI-historik för appens funktioner. Frivillig användningsstatistik är avstängd i denna version. Smakminnet drar slutsatser från dina preferenser och aktiviteter för personliga vinförslag, inte för beslut med rättsliga eller liknande betydande konsekvenser. Du kan nollställa det utan att radera dina viner eller betyg."
@@ -68,8 +84,8 @@ function PrivacyPage() {
         </p>
         <p>
           {sv
-            ? "Bilder och text du skickar för AI-analys behandlas via Lovables AI-gateway och vald AI-leverantör. Konto och appdata hanteras med Supabase och Lovable. Undvik känsliga uppgifter i bilder och frågor. Publika profiler, publika viner och delningslänkar gör avsiktligt valda uppgifter tillgängliga för andra."
-            : "Images and text you submit for AI analysis are processed through Lovable's AI gateway and the selected AI provider. Account and application data are handled using Supabase and Lovable. Avoid sensitive information in images and questions. Public profiles, public wines and share links make intentionally selected data available to others."}
+            ? "I denna fristående version skickas bilder och text för AI-analys direkt från servern till OpenAI (etikettanalys) eller Google Gemini (frågor och rekommendationer), utan Lovables AI-gateway. Konto, databas och sparade bilder hanteras med Supabase; webbappen körs hos den driftleverantör ansvarig anlitar. Faktisk drift och leverantörsvillkor måste verifieras före publicering. Undvik känsliga uppgifter i bilder och frågor. Publika profiler, publika viner och delningslänkar gör avsiktligt valda uppgifter tillgängliga för andra."
+            : "In this standalone version, images and text for AI analysis are sent directly from the server to OpenAI (label analysis) or Google Gemini (questions and recommendations), without Lovable's AI gateway. Account, database and saved images use Supabase; the web app runs with the hosting provider appointed by the operator. Actual deployment and provider terms must be verified before publication. Avoid sensitive information in images and questions. Public profiles, public wines and share links make intentionally selected data available to others."}
         </p>
         <p>
           {siteInformation.legalBasis ??

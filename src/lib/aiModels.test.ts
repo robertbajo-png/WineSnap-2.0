@@ -4,6 +4,7 @@ import { runInNewContext } from "node:vm";
 import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import { AI_MODELS } from "../../supabase/functions/_shared/aiModels";
+import { AiConfigurationError, createAiClient } from "../../supabase/functions/_shared/aiClient";
 import * as labelValidation from "../../supabase/functions/analyze-wine/labelValidation";
 import * as labelResponse from "../../supabase/functions/analyze-wine/labelResponse";
 
@@ -47,38 +48,48 @@ function structuredResponse(payload: unknown = reading) {
   });
 }
 
-function loadLabelReader(gatewayResponse = structuredResponse(), denied?: Response) {
-  let handler: Handler | undefined;
-  const fetch = vi.fn(async (_url: string, _init?: RequestInit) => gatewayResponse);
+function loadLabelReader(
+  providerResponse = structuredResponse(),
+  denied?: Response,
+  environment: Record<string, string | undefined> = { OPENAI_API_KEY: "synthetic-test-key" },
+) {
+  const fetch = vi.fn(
+    async (_url: string | URL | Request, _init?: RequestInit) => providerResponse,
+  );
   const requireAiAccess = vi.fn(async () => denied ?? { userId: "synthetic-test-user" });
   const imports: Record<string, unknown> = {
-    "../_shared/aiModels.ts": { AI_MODELS },
-    "../_shared/aiSecurity.ts": { requireAiAccess },
+    "../_shared/aiClient.ts": {
+      AiConfigurationError,
+      createAiClient: (workload: keyof typeof AI_MODELS) =>
+        createAiClient(workload, (name) => environment[name], fetch),
+    },
     "./labelValidation.ts": labelValidation,
     "./labelResponse.ts": labelResponse,
   };
-  const source = read("supabase/functions/analyze-wine/index.ts");
+  const source = read("supabase/functions/analyze-wine/handler.ts");
+  const exported: { createLabelReader?: (dependencies: unknown) => Handler } = {};
 
-  // Execute the actual Deno handler in isolation; only auth and HTTP are mocked.
+  // Execute the actual shared label handler; only auth and HTTP are mocked.
   const { outputText } = transpileModule(source, {
     compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
   });
   runInNewContext(outputText, {
-    exports: {},
+    exports: exported,
     require: (path: string) => {
       if (!(path in imports)) throw new Error(`Unexpected Edge import: ${path}`);
       return imports[path];
     },
-    Deno: {
-      env: { get: () => "synthetic-test-key" },
-      serve: (callback: Handler) => (handler = callback),
-    },
     Request,
     Response,
     Error,
+    DOMException,
     AbortSignal,
     fetch,
     console: { error: vi.fn() },
+  });
+  const handler = exported.createLabelReader?.({
+    env: (name: string) => environment[name],
+    requireAccess: requireAiAccess,
   });
   if (!handler) throw new Error("Label reader did not register a handler");
 
@@ -99,25 +110,27 @@ function loadLabelReader(gatewayResponse = structuredResponse(), denied?: Respon
   };
 }
 
-describe("Gateway workload routing", () => {
+describe("Direct provider workload routing", () => {
   it.each([
-    "supabase/functions/extract-preference-signals/index.ts",
-    "supabase/functions/wine-suggestions/index.ts",
-    "supabase/functions/taste-suggestions/index.ts",
-    "supabase/functions/restaurant-match/index.ts",
-  ])("uses the shared Flash default in %s", (path) => {
+    "supabase/functions/extract-preference-signals/handler.ts",
+    "supabase/functions/wine-suggestions/handler.ts",
+    "supabase/functions/taste-suggestions/handler.ts",
+    "supabase/functions/restaurant-match/handler.ts",
+  ])("uses the direct Flash client in %s", (path) => {
     const source = read(path);
-    expect(source).toContain("model: AI_MODELS.fast");
-    expect(source).toContain("/v1/chat/completions");
+    expect(source).toContain('createAiClient("fast",');
+    expect(source).toContain("await ai.complete(");
+    expect(source).not.toContain("ai.gateway.lovable.dev");
+    expect(source).not.toContain("LOVABLE_API_KEY");
     expect(source).toContain("tool_choice:");
     expect(source).not.toMatch(/model:\s*["'](?:google|openai)\//);
   });
 
   it("stores the same model ID that Ask actually requests", () => {
-    const source = read("supabase/functions/ask-winesnap/index.ts");
-    expect(source).toContain("const MODEL = AI_MODELS.fast;");
-    expect(source).toContain("model: MODEL,");
-    expect(source).toContain("_model: MODEL,");
+    const source = read("supabase/functions/ask-winesnap/handler.ts");
+    expect(source).toContain('createAiClient("fast",');
+    expect(source).toContain("await ai.complete(");
+    expect(source).toContain("_model: ai.model,");
   });
 });
 
@@ -133,8 +146,9 @@ describe("GPT-6.1 label reader compatibility", () => {
     expect(response.status).toBe(200);
     const [url, init] = reader.fetch.mock.calls[0];
     const body = JSON.parse(String(init?.body));
-    expect(url).toBe("https://ai.gateway.lovable.dev/v1/chat/completions");
-    expect(body.model).toBe("openai/gpt-6.1-sol");
+    expect(url).toBe("https://api.openai.com/v1/chat/completions");
+    expect(body.model).toBe("gpt-6.1-sol");
+    expect(body.store).toBe(false);
     expect(body.reasoning_effort).toBe("low");
     expect(body.max_completion_tokens).toBe(8192);
     expect(body).not.toHaveProperty("tools");
@@ -185,8 +199,8 @@ describe("GPT-6.1 label reader compatibility", () => {
     expect(wine.identity.grape_varieties).toEqual([]);
   });
 
-  it.each([402, 429])("preserves gateway error status %s", async (status) => {
-    const reader = loadLabelReader(new Response("gateway unavailable", { status }));
+  it.each([402, 429])("preserves provider error status %s", async (status) => {
+    const reader = loadLabelReader(new Response("provider unavailable", { status }));
     const response = await reader.call({ text: "Zehn Morgen 2023" });
     expect(response.status).toBe(status);
     expect(await response.json()).toHaveProperty("error");
@@ -201,14 +215,12 @@ describe("GPT-6.1 label reader compatibility", () => {
     expect(await response.json()).toEqual({ error: "AI returned invalid label JSON" });
   });
 
-  it("does not silently switch models when the gateway cannot serve GPT-6.1", async () => {
+  it("does not silently switch models when OpenAI cannot serve GPT-6.1", async () => {
     const reader = loadLabelReader(new Response("Model unavailable", { status: 404 }));
     const response = await reader.call({ text: "Zehn Morgen 2023" });
     expect(response.status).toBe(500);
     expect(reader.fetch).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(reader.fetch.mock.calls[0][1]?.body)).model).toBe(
-      "openai/gpt-6.1-sol",
-    );
+    expect(JSON.parse(String(reader.fetch.mock.calls[0][1]?.body)).model).toBe("gpt-6.1-sol");
   });
 
   it("does not return a wine from a truncated but otherwise valid JSON response", async () => {
@@ -223,7 +235,7 @@ describe("GPT-6.1 label reader compatibility", () => {
   });
 
   it.each([401, 429])(
-    "does not spend gateway credits when the access guard denies with %s",
+    "does not spend provider credits when the access guard denies with %s",
     async (status) => {
       const reader = loadLabelReader(structuredResponse(), new Response("denied", { status }));
       const response = await reader.call({ text: "Zehn Morgen 2023" });
@@ -231,4 +243,14 @@ describe("GPT-6.1 label reader compatibility", () => {
       expect(reader.fetch).not.toHaveBeenCalled();
     },
   );
+
+  it("returns a safe 503 without an owned provider key, never falling back", async () => {
+    const reader = loadLabelReader(structuredResponse(), undefined, {
+      LOVABLE_API_KEY: "old-key-must-not-be-used",
+    });
+    const response = await reader.call({ text: "Zehn Morgen 2023" });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "AI provider is not configured" });
+    expect(reader.fetch).not.toHaveBeenCalled();
+  });
 });

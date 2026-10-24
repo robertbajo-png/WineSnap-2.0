@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck, Loader2, Trash2, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { completePrivacyExport } from "@/lib/privacyExport";
+import { invokePrivacy } from "@/lib/privacyTransport";
 import {
   invokePrivacyAction,
   privacyControlsEnabled,
@@ -23,6 +24,10 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { toast } from "sonner";
+import { clearKitchenCache } from "@/features/kitchen/storage";
+import { kitchenEnabled } from "@/features/kitchen/feature";
+import { chefEnabled } from "@/features/chef/feature";
+import { mealsEnabled } from "@/features/meals/feature";
 export function DataControls() {
   const { user } = useAuth();
   const { lang, t } = useI18n();
@@ -32,6 +37,13 @@ export function DataControls() {
   const [actionError, setActionError] = useState<string | null>(null);
   const actionRunning = useRef(false);
   const sv = lang === "sv";
+  const resetLabel = chefEnabled
+    ? sv
+      ? "Nollställ vin- och matminne"
+      : "Reset wine and food memory"
+    : sv
+      ? "Nollställ smakminnet"
+      : "Reset taste memory";
   const owner = useRef(user?.id);
   owner.current = user?.id;
   const exportData = async () => {
@@ -41,8 +53,7 @@ export function DataControls() {
       const id = user.id;
       let result;
       if (privacyControlsEnabled) {
-        const { data: exportData, error: exportError } =
-          await supabase.functions.invoke("privacy-export");
+        const { data: exportData, error: exportError } = await invokePrivacy("privacy-export");
         if (exportError) throw exportError;
         result = await completePrivacyExport(
           exportData,
@@ -100,6 +111,15 @@ export function DataControls() {
     try {
       const result = await invokePrivacyAction(action, id);
       if (owner.current !== id) throw new Error("Account changed");
+      let localCleanupFailed = false;
+      if (kitchenEnabled) {
+        try {
+          await clearKitchenCache();
+        } catch {
+          localCleanupFailed = true;
+          window.dispatchEvent(new Event("kitchen-storage-error"));
+        }
+      }
       if (action === "delete_account") {
         const { data: current } = await supabase.auth.getSession();
         if (current.session && current.session.user.id !== id) throw new Error("Account changed");
@@ -116,12 +136,22 @@ export function DataControls() {
       } else {
         if (!result.complete) throw new Error("Reset incomplete");
         toast.success(
-          sv
-            ? "Ditt inlärda smakminne är nollställt."
-            : "Your learned taste memory has been reset.",
+          chefEnabled
+            ? sv
+              ? "Ditt vin- och matminne är nollställt."
+              : "Your wine and food memory has been reset."
+            : sv
+              ? "Ditt inlärda smakminne är nollställt."
+              : "Your learned taste memory has been reset.",
         );
       }
       setAction(null);
+      if (localCleanupFailed)
+        toast.error(
+          sv
+            ? "Serveråtgärden är klar, men offlinekopian kunde inte rensas. Rensa webbplatsens lagrade data på enheten."
+            : "The server action completed, but offline data could not be cleared. Clear this site's stored data on the device.",
+        );
     } catch (error) {
       setActionError(
         error instanceof Error && error.message === "reauthentication_required"
@@ -170,7 +200,7 @@ export function DataControls() {
                 className="flex min-h-12 items-center gap-3 text-base disabled:opacity-50"
               >
                 <RotateCcw className="h-5 w-5 text-gold" />
-                {sv ? "Nollställ smakminnet" : "Reset taste memory"}
+                {resetLabel}
               </button>
               <button
                 type="button"
@@ -198,18 +228,24 @@ export function DataControls() {
                 ? sv
                   ? "Radera ditt konto?"
                   : "Delete your account?"
-                : sv
-                  ? "Nollställ smakminnet?"
-                  : "Reset taste memory?"}
+                : `${resetLabel}?`}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-base">
               {action === "delete_account"
                 ? sv
                   ? "Kontot stängs och källare, bilder, delningar och historik raderas. Det går inte att ångra. Exportera uppgifterna först om du vill behålla dem. Leverantörskopior hanteras enligt integritetsinformationen."
                   : "Your account closes and cellar, images, shares and history are erased. This cannot be undone. Export your data first to keep it. Provider copies follow the privacy information."
-                : sv
-                  ? "Inlärda preferenser och rekommendationsfeedback tas bort. Viner, betyg och dina angivna preferenser behålls. Nya aktiviteter kan bygga ett nytt smakminne."
-                  : "Learned preferences and recommendation feedback are removed. Wines, ratings and stated preferences stay. New activity can build new taste memory."}
+                : mealsEnabled
+                  ? sv
+                    ? "Vin- och matminne, Chef-samtal, osparade förslag och matönskemål i dina egna matprofiler tas bort. Hushåll, profilnamn, recept, måltidshistorik, viner och betyg behålls. Andras matprofiler ändras inte."
+                    : "Wine and food memory, Chef chats, unsaved drafts and preferences in your own diner profiles are removed. Households, profile names, recipes, meal history, wines and ratings remain. Other people's profiles are not changed."
+                  : chefEnabled
+                    ? sv
+                      ? "Vin- och matminne samt tidigare Chef-samtal och osparade förslag tas bort. Recept, matlagningshistorik, viner och betyg behålls. Äldre matlagningsfeedback återanalyseras inte automatiskt."
+                      : "Wine and food memory, previous Chef conversations and unsaved drafts are removed. Recipes, cooking history, wines and ratings remain. Older cooking feedback is not automatically reanalyzed."
+                    : sv
+                      ? "Inlärda preferenser och rekommendationsfeedback tas bort. Viner, betyg och dina angivna preferenser behålls. Nya aktiviteter kan bygga ett nytt smakminne."
+                      : "Learned preferences and recommendation feedback are removed. Wines, ratings and stated preferences stay. New activity can build new taste memory."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label className="flex min-h-12 items-center gap-3 text-base">

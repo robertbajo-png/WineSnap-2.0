@@ -9,127 +9,54 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WishlistRouteImport } from './routes/wishlist'
-import { Route as TasteRouteImport } from './routes/taste'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as ScanRouteImport } from './routes/scan'
-import { Route as RestaurantRouteImport } from './routes/restaurant'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as MeRouteImport } from './routes/me'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as FriendsRouteImport } from './routes/friends'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as ForYouRouteImport } from './routes/for-you'
-import { Route as CompareRouteImport } from './routes/compare'
-import { Route as CellarRouteImport } from './routes/cellar'
-import { Route as AskRouteImport } from './routes/ask'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as WineIdRouteImport } from './routes/wine.$id'
-import { Route as WShareIdRouteImport } from './routes/w.$shareId'
-import { Route as UUsernameRouteImport } from './routes/u.$username'
-import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AskRouteImport } from './routes/ask'
+import { Route as CellarRouteImport } from './routes/cellar'
+import { Route as CompareRouteImport } from './routes/compare'
+import { Route as ForYouRouteImport } from './routes/for-you'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as FriendsRouteImport } from './routes/friends'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as KitchenRouteImport } from './routes/kitchen'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MeRouteImport } from './routes/me'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RestaurantRouteImport } from './routes/restaurant'
+import { Route as ScanRouteImport } from './routes/scan'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as TasteRouteImport } from './routes/taste'
+import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as ApiChefRouteImport } from './routes/api/chef'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as CellarCollectionRouteImport } from './routes/cellar.collection'
-import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
-import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
+import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
+import { Route as WShareIdRouteImport } from './routes/w.$shareId'
+import { Route as WineIdRouteImport } from './routes/wine.$id'
+import { Route as ApiAiAnalyzeWineRouteImport } from './routes/api/ai/analyze-wine'
+import { Route as ApiAiAskWinesnapRouteImport } from './routes/api/ai/ask-winesnap'
+import { Route as ApiAiExtractPreferenceSignalsRouteImport } from './routes/api/ai/extract-preference-signals'
+import { Route as ApiAiRestaurantMatchRouteImport } from './routes/api/ai/restaurant-match'
+import { Route as ApiAiTasteSuggestionsRouteImport } from './routes/api/ai/taste-suggestions'
+import { Route as ApiAiWineSuggestionsRouteImport } from './routes/api/ai/wine-suggestions'
+import { Route as ApiPrivacyPrivacyControlsRouteImport } from './routes/api/privacy/privacy-controls'
+import { Route as ApiPrivacyPrivacyExportRouteImport } from './routes/api/privacy/privacy-export'
+import { Route as ApiPrivacyPrivacyMaintenanceRouteImport } from './routes/api/privacy/privacy-maintenance'
 import { Route as WineIdEditRouteImport } from './routes/wine.$id.edit'
-import { Route as ApiPublicHooksRefreshWishlistPricesRouteImport } from './routes/api/public/hooks/refresh-wishlist-prices'
-import { Route as ApiPublicHooksRefreshCellarValuesRouteImport } from './routes/api/public/hooks/refresh-cellar-values'
-import { Route as ApiPublicHooksMatchSystembolagetRouteImport } from './routes/api/public/hooks/match-systembolaget'
+import { Route as WineIdNotesRouteImport } from './routes/wine.$id.notes'
+import { Route as WineIdPairingsRouteImport } from './routes/wine.$id.pairings'
 import { Route as ApiPublicHooksCheckWishlistPricesRouteImport } from './routes/api/public/hooks/check-wishlist-prices'
+import { Route as ApiPublicHooksMatchSystembolagetRouteImport } from './routes/api/public/hooks/match-systembolaget'
+import { Route as ApiPublicHooksRefreshCellarValuesRouteImport } from './routes/api/public/hooks/refresh-cellar-values'
+import { Route as ApiPublicHooksRefreshWishlistPricesRouteImport } from './routes/api/public/hooks/refresh-wishlist-prices'
 
-const WishlistRoute = WishlistRouteImport.update({
-  id: '/wishlist',
-  path: '/wishlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TasteRoute = TasteRouteImport.update({
-  id: '/taste',
-  path: '/taste',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScanRoute = ScanRouteImport.update({
-  id: '/scan',
-  path: '/scan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RestaurantRoute = RestaurantRouteImport.update({
-  id: '/restaurant',
-  path: '/restaurant',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MeRoute = MeRouteImport.update({
-  id: '/me',
-  path: '/me',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FriendsRoute = FriendsRouteImport.update({
-  id: '/friends',
-  path: '/friends',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForYouRoute = ForYouRouteImport.update({
-  id: '/for-you',
-  path: '/for-you',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompareRoute = CompareRouteImport.update({
-  id: '/compare',
-  path: '/compare',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CellarRoute = CellarRouteImport.update({
-  id: '/cellar',
-  path: '/cellar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AskRoute = AskRouteImport.update({
-  id: '/ask',
-  path: '/ask',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -137,14 +64,124 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WineIdRoute = WineIdRouteImport.update({
-  id: '/wine/$id',
-  path: '/wine/$id',
+const AskRoute = AskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CellarRoute = CellarRouteImport.update({
+  id: '/cellar',
+  path: '/cellar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForYouRoute = ForYouRouteImport.update({
+  id: '/for-you',
+  path: '/for-you',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KitchenRoute = KitchenRouteImport.update({
+  id: '/kitchen',
+  path: '/kitchen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RestaurantRoute = RestaurantRouteImport.update({
+  id: '/restaurant',
+  path: '/restaurant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasteRoute = TasteRouteImport.update({
+  id: '/taste',
+  path: '/taste',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WishlistRoute = WishlistRouteImport.update({
+  id: '/wishlist',
+  path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChefRoute = ApiChefRouteImport.update({
+  id: '/api/chef',
+  path: '/api/chef',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CellarCollectionRoute = CellarCollectionRouteImport.update({
+  id: '/collection',
+  path: '/collection',
+  getParentRoute: () => CellarRoute,
+} as any)
+const CellarOverviewRoute = CellarOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => CellarRoute,
+} as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WShareIdRoute = WShareIdRouteImport.update({
@@ -152,24 +189,62 @@ const WShareIdRoute = WShareIdRouteImport.update({
   path: '/w/$shareId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UUsernameRoute = UUsernameRouteImport.update({
-  id: '/u/$username',
-  path: '/u/$username',
+const WineIdRoute = WineIdRouteImport.update({
+  id: '/wine/$id',
+  path: '/wine/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CellarOverviewRoute = CellarOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => CellarRoute,
+const ApiAiAnalyzeWineRoute = ApiAiAnalyzeWineRouteImport.update({
+  id: '/api/ai/analyze-wine',
+  path: '/api/ai/analyze-wine',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const CellarCollectionRoute = CellarCollectionRouteImport.update({
-  id: '/collection',
-  path: '/collection',
-  getParentRoute: () => CellarRoute,
+const ApiAiAskWinesnapRoute = ApiAiAskWinesnapRouteImport.update({
+  id: '/api/ai/ask-winesnap',
+  path: '/api/ai/ask-winesnap',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const WineIdPairingsRoute = WineIdPairingsRouteImport.update({
-  id: '/pairings',
-  path: '/pairings',
+const ApiAiExtractPreferenceSignalsRoute =
+  ApiAiExtractPreferenceSignalsRouteImport.update({
+    id: '/api/ai/extract-preference-signals',
+    path: '/api/ai/extract-preference-signals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAiRestaurantMatchRoute = ApiAiRestaurantMatchRouteImport.update({
+  id: '/api/ai/restaurant-match',
+  path: '/api/ai/restaurant-match',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiTasteSuggestionsRoute = ApiAiTasteSuggestionsRouteImport.update({
+  id: '/api/ai/taste-suggestions',
+  path: '/api/ai/taste-suggestions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiWineSuggestionsRoute = ApiAiWineSuggestionsRouteImport.update({
+  id: '/api/ai/wine-suggestions',
+  path: '/api/ai/wine-suggestions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPrivacyPrivacyControlsRoute =
+  ApiPrivacyPrivacyControlsRouteImport.update({
+    id: '/api/privacy/privacy-controls',
+    path: '/api/privacy/privacy-controls',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPrivacyPrivacyExportRoute = ApiPrivacyPrivacyExportRouteImport.update({
+  id: '/api/privacy/privacy-export',
+  path: '/api/privacy/privacy-export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPrivacyPrivacyMaintenanceRoute =
+  ApiPrivacyPrivacyMaintenanceRouteImport.update({
+    id: '/api/privacy/privacy-maintenance',
+    path: '/api/privacy/privacy-maintenance',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const WineIdEditRoute = WineIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
   getParentRoute: () => WineIdRoute,
 } as any)
 const WineIdNotesRoute = WineIdNotesRouteImport.update({
@@ -177,21 +252,15 @@ const WineIdNotesRoute = WineIdNotesRouteImport.update({
   path: '/notes',
   getParentRoute: () => WineIdRoute,
 } as any)
-const WineIdEditRoute = WineIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
+const WineIdPairingsRoute = WineIdPairingsRouteImport.update({
+  id: '/pairings',
+  path: '/pairings',
   getParentRoute: () => WineIdRoute,
 } as any)
-const ApiPublicHooksRefreshWishlistPricesRoute =
-  ApiPublicHooksRefreshWishlistPricesRouteImport.update({
-    id: '/api/public/hooks/refresh-wishlist-prices',
-    path: '/api/public/hooks/refresh-wishlist-prices',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksRefreshCellarValuesRoute =
-  ApiPublicHooksRefreshCellarValuesRouteImport.update({
-    id: '/api/public/hooks/refresh-cellar-values',
-    path: '/api/public/hooks/refresh-cellar-values',
+const ApiPublicHooksCheckWishlistPricesRoute =
+  ApiPublicHooksCheckWishlistPricesRouteImport.update({
+    id: '/api/public/hooks/check-wishlist-prices',
+    path: '/api/public/hooks/check-wishlist-prices',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksMatchSystembolagetRoute =
@@ -200,10 +269,16 @@ const ApiPublicHooksMatchSystembolagetRoute =
     path: '/api/public/hooks/match-systembolaget',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksCheckWishlistPricesRoute =
-  ApiPublicHooksCheckWishlistPricesRouteImport.update({
-    id: '/api/public/hooks/check-wishlist-prices',
-    path: '/api/public/hooks/check-wishlist-prices',
+const ApiPublicHooksRefreshCellarValuesRoute =
+  ApiPublicHooksRefreshCellarValuesRouteImport.update({
+    id: '/api/public/hooks/refresh-cellar-values',
+    path: '/api/public/hooks/refresh-cellar-values',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksRefreshWishlistPricesRoute =
+  ApiPublicHooksRefreshWishlistPricesRouteImport.update({
+    id: '/api/public/hooks/refresh-wishlist-prices',
+    path: '/api/public/hooks/refresh-wishlist-prices',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -218,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
+  '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
@@ -228,11 +304,22 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
+  '/api/chef': typeof ApiChefRoute
+  '/api/health': typeof ApiHealthRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
+  '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
+  '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
+  '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
+  '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
+  '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
+  '/api/privacy/privacy-maintenance': typeof ApiPrivacyPrivacyMaintenanceRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -252,6 +339,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
+  '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
@@ -262,11 +350,22 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
+  '/api/chef': typeof ApiChefRoute
+  '/api/health': typeof ApiHealthRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
+  '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
+  '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
+  '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
+  '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
+  '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
+  '/api/privacy/privacy-maintenance': typeof ApiPrivacyPrivacyMaintenanceRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -287,6 +386,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
+  '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
@@ -297,11 +397,22 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/taste': typeof TasteRoute
   '/wishlist': typeof WishlistRoute
+  '/api/chef': typeof ApiChefRoute
+  '/api/health': typeof ApiHealthRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
+  '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
+  '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
+  '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
+  '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
+  '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
+  '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
+  '/api/privacy/privacy-maintenance': typeof ApiPrivacyPrivacyMaintenanceRoute
   '/wine/$id/edit': typeof WineIdEditRoute
   '/wine/$id/notes': typeof WineIdNotesRoute
   '/wine/$id/pairings': typeof WineIdPairingsRoute
@@ -323,6 +434,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/friends'
     | '/history'
+    | '/kitchen'
     | '/login'
     | '/me'
     | '/onboarding'
@@ -333,11 +445,22 @@ export interface FileRouteTypes {
     | '/search'
     | '/taste'
     | '/wishlist'
+    | '/api/chef'
+    | '/api/health'
     | '/cellar/collection'
     | '/cellar/overview'
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-wine'
+    | '/api/ai/ask-winesnap'
+    | '/api/ai/extract-preference-signals'
+    | '/api/ai/restaurant-match'
+    | '/api/ai/taste-suggestions'
+    | '/api/ai/wine-suggestions'
+    | '/api/privacy/privacy-controls'
+    | '/api/privacy/privacy-export'
+    | '/api/privacy/privacy-maintenance'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -357,6 +480,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/friends'
     | '/history'
+    | '/kitchen'
     | '/login'
     | '/me'
     | '/onboarding'
@@ -367,11 +491,22 @@ export interface FileRouteTypes {
     | '/search'
     | '/taste'
     | '/wishlist'
+    | '/api/chef'
+    | '/api/health'
     | '/cellar/collection'
     | '/cellar/overview'
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-wine'
+    | '/api/ai/ask-winesnap'
+    | '/api/ai/extract-preference-signals'
+    | '/api/ai/restaurant-match'
+    | '/api/ai/taste-suggestions'
+    | '/api/ai/wine-suggestions'
+    | '/api/privacy/privacy-controls'
+    | '/api/privacy/privacy-export'
+    | '/api/privacy/privacy-maintenance'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -391,6 +526,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/friends'
     | '/history'
+    | '/kitchen'
     | '/login'
     | '/me'
     | '/onboarding'
@@ -401,11 +537,22 @@ export interface FileRouteTypes {
     | '/search'
     | '/taste'
     | '/wishlist'
+    | '/api/chef'
+    | '/api/health'
     | '/cellar/collection'
     | '/cellar/overview'
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-wine'
+    | '/api/ai/ask-winesnap'
+    | '/api/ai/extract-preference-signals'
+    | '/api/ai/restaurant-match'
+    | '/api/ai/taste-suggestions'
+    | '/api/ai/wine-suggestions'
+    | '/api/privacy/privacy-controls'
+    | '/api/privacy/privacy-export'
+    | '/api/privacy/privacy-maintenance'
     | '/wine/$id/edit'
     | '/wine/$id/notes'
     | '/wine/$id/pairings'
@@ -426,6 +573,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FriendsRoute: typeof FriendsRoute
   HistoryRoute: typeof HistoryRoute
+  KitchenRoute: typeof KitchenRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -436,9 +584,20 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   TasteRoute: typeof TasteRoute
   WishlistRoute: typeof WishlistRoute
+  ApiChefRoute: typeof ApiChefRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   UUsernameRoute: typeof UUsernameRoute
   WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
+  ApiAiAnalyzeWineRoute: typeof ApiAiAnalyzeWineRoute
+  ApiAiAskWinesnapRoute: typeof ApiAiAskWinesnapRoute
+  ApiAiExtractPreferenceSignalsRoute: typeof ApiAiExtractPreferenceSignalsRoute
+  ApiAiRestaurantMatchRoute: typeof ApiAiRestaurantMatchRoute
+  ApiAiTasteSuggestionsRoute: typeof ApiAiTasteSuggestionsRoute
+  ApiAiWineSuggestionsRoute: typeof ApiAiWineSuggestionsRoute
+  ApiPrivacyPrivacyControlsRoute: typeof ApiPrivacyPrivacyControlsRoute
+  ApiPrivacyPrivacyExportRoute: typeof ApiPrivacyPrivacyExportRoute
+  ApiPrivacyPrivacyMaintenanceRoute: typeof ApiPrivacyPrivacyMaintenanceRoute
   ApiPublicHooksCheckWishlistPricesRoute: typeof ApiPublicHooksCheckWishlistPricesRoute
   ApiPublicHooksMatchSystembolagetRoute: typeof ApiPublicHooksMatchSystembolagetRoute
   ApiPublicHooksRefreshCellarValuesRoute: typeof ApiPublicHooksRefreshCellarValuesRoute
@@ -447,130 +606,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/wishlist': {
-      id: '/wishlist'
-      path: '/wishlist'
-      fullPath: '/wishlist'
-      preLoaderRoute: typeof WishlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/taste': {
-      id: '/taste'
-      path: '/taste'
-      fullPath: '/taste'
-      preLoaderRoute: typeof TasteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scan': {
-      id: '/scan'
-      path: '/scan'
-      fullPath: '/scan'
-      preLoaderRoute: typeof ScanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/restaurant': {
-      id: '/restaurant'
-      path: '/restaurant'
-      fullPath: '/restaurant'
-      preLoaderRoute: typeof RestaurantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/me': {
-      id: '/me'
-      path: '/me'
-      fullPath: '/me'
-      preLoaderRoute: typeof MeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/friends': {
-      id: '/friends'
-      path: '/friends'
-      fullPath: '/friends'
-      preLoaderRoute: typeof FriendsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/for-you': {
-      id: '/for-you'
-      path: '/for-you'
-      fullPath: '/for-you'
-      preLoaderRoute: typeof ForYouRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/compare': {
-      id: '/compare'
-      path: '/compare'
-      fullPath: '/compare'
-      preLoaderRoute: typeof CompareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cellar': {
-      id: '/cellar'
-      path: '/cellar'
-      fullPath: '/cellar'
-      preLoaderRoute: typeof CellarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ask': {
-      id: '/ask'
-      path: '/ask'
-      fullPath: '/ask'
-      preLoaderRoute: typeof AskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -580,18 +620,172 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/wine/$id': {
-      id: '/wine/$id'
-      path: '/wine/$id'
-      fullPath: '/wine/$id'
-      preLoaderRoute: typeof WineIdRouteImport
+    '/ask': {
+      id: '/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cellar': {
+      id: '/cellar'
+      path: '/cellar'
+      fullPath: '/cellar'
+      preLoaderRoute: typeof CellarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/for-you': {
+      id: '/for-you'
+      path: '/for-you'
+      fullPath: '/for-you'
+      preLoaderRoute: typeof ForYouRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kitchen': {
+      id: '/kitchen'
+      path: '/kitchen'
+      fullPath: '/kitchen'
+      preLoaderRoute: typeof KitchenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/restaurant': {
+      id: '/restaurant'
+      path: '/restaurant'
+      fullPath: '/restaurant'
+      preLoaderRoute: typeof RestaurantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/taste': {
+      id: '/taste'
+      path: '/taste'
+      fullPath: '/taste'
+      preLoaderRoute: typeof TasteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wishlist': {
+      id: '/wishlist'
+      path: '/wishlist'
+      fullPath: '/wishlist'
+      preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chef': {
+      id: '/api/chef'
+      path: '/api/chef'
+      fullPath: '/api/chef'
+      preLoaderRoute: typeof ApiChefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cellar/collection': {
+      id: '/cellar/collection'
+      path: '/collection'
+      fullPath: '/cellar/collection'
+      preLoaderRoute: typeof CellarCollectionRouteImport
+      parentRoute: typeof CellarRoute
+    }
+    '/cellar/overview': {
+      id: '/cellar/overview'
+      path: '/overview'
+      fullPath: '/cellar/overview'
+      preLoaderRoute: typeof CellarOverviewRouteImport
+      parentRoute: typeof CellarRoute
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/w/$shareId': {
@@ -601,32 +795,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WShareIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/u/$username': {
-      id: '/u/$username'
-      path: '/u/$username'
-      fullPath: '/u/$username'
-      preLoaderRoute: typeof UUsernameRouteImport
+    '/wine/$id': {
+      id: '/wine/$id'
+      path: '/wine/$id'
+      fullPath: '/wine/$id'
+      preLoaderRoute: typeof WineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cellar/overview': {
-      id: '/cellar/overview'
-      path: '/overview'
-      fullPath: '/cellar/overview'
-      preLoaderRoute: typeof CellarOverviewRouteImport
-      parentRoute: typeof CellarRoute
+    '/api/ai/analyze-wine': {
+      id: '/api/ai/analyze-wine'
+      path: '/api/ai/analyze-wine'
+      fullPath: '/api/ai/analyze-wine'
+      preLoaderRoute: typeof ApiAiAnalyzeWineRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/cellar/collection': {
-      id: '/cellar/collection'
-      path: '/collection'
-      fullPath: '/cellar/collection'
-      preLoaderRoute: typeof CellarCollectionRouteImport
-      parentRoute: typeof CellarRoute
+    '/api/ai/ask-winesnap': {
+      id: '/api/ai/ask-winesnap'
+      path: '/api/ai/ask-winesnap'
+      fullPath: '/api/ai/ask-winesnap'
+      preLoaderRoute: typeof ApiAiAskWinesnapRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/wine/$id/pairings': {
-      id: '/wine/$id/pairings'
-      path: '/pairings'
-      fullPath: '/wine/$id/pairings'
-      preLoaderRoute: typeof WineIdPairingsRouteImport
+    '/api/ai/extract-preference-signals': {
+      id: '/api/ai/extract-preference-signals'
+      path: '/api/ai/extract-preference-signals'
+      fullPath: '/api/ai/extract-preference-signals'
+      preLoaderRoute: typeof ApiAiExtractPreferenceSignalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/restaurant-match': {
+      id: '/api/ai/restaurant-match'
+      path: '/api/ai/restaurant-match'
+      fullPath: '/api/ai/restaurant-match'
+      preLoaderRoute: typeof ApiAiRestaurantMatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/taste-suggestions': {
+      id: '/api/ai/taste-suggestions'
+      path: '/api/ai/taste-suggestions'
+      fullPath: '/api/ai/taste-suggestions'
+      preLoaderRoute: typeof ApiAiTasteSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai/wine-suggestions': {
+      id: '/api/ai/wine-suggestions'
+      path: '/api/ai/wine-suggestions'
+      fullPath: '/api/ai/wine-suggestions'
+      preLoaderRoute: typeof ApiAiWineSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/privacy-controls': {
+      id: '/api/privacy/privacy-controls'
+      path: '/api/privacy/privacy-controls'
+      fullPath: '/api/privacy/privacy-controls'
+      preLoaderRoute: typeof ApiPrivacyPrivacyControlsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/privacy-export': {
+      id: '/api/privacy/privacy-export'
+      path: '/api/privacy/privacy-export'
+      fullPath: '/api/privacy/privacy-export'
+      preLoaderRoute: typeof ApiPrivacyPrivacyExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/privacy-maintenance': {
+      id: '/api/privacy/privacy-maintenance'
+      path: '/api/privacy/privacy-maintenance'
+      fullPath: '/api/privacy/privacy-maintenance'
+      preLoaderRoute: typeof ApiPrivacyPrivacyMaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wine/$id/edit': {
+      id: '/wine/$id/edit'
+      path: '/edit'
+      fullPath: '/wine/$id/edit'
+      preLoaderRoute: typeof WineIdEditRouteImport
       parentRoute: typeof WineIdRoute
     }
     '/wine/$id/notes': {
@@ -636,25 +879,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdNotesRouteImport
       parentRoute: typeof WineIdRoute
     }
-    '/wine/$id/edit': {
-      id: '/wine/$id/edit'
-      path: '/edit'
-      fullPath: '/wine/$id/edit'
-      preLoaderRoute: typeof WineIdEditRouteImport
+    '/wine/$id/pairings': {
+      id: '/wine/$id/pairings'
+      path: '/pairings'
+      fullPath: '/wine/$id/pairings'
+      preLoaderRoute: typeof WineIdPairingsRouteImport
       parentRoute: typeof WineIdRoute
     }
-    '/api/public/hooks/refresh-wishlist-prices': {
-      id: '/api/public/hooks/refresh-wishlist-prices'
-      path: '/api/public/hooks/refresh-wishlist-prices'
-      fullPath: '/api/public/hooks/refresh-wishlist-prices'
-      preLoaderRoute: typeof ApiPublicHooksRefreshWishlistPricesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/refresh-cellar-values': {
-      id: '/api/public/hooks/refresh-cellar-values'
-      path: '/api/public/hooks/refresh-cellar-values'
-      fullPath: '/api/public/hooks/refresh-cellar-values'
-      preLoaderRoute: typeof ApiPublicHooksRefreshCellarValuesRouteImport
+    '/api/public/hooks/check-wishlist-prices': {
+      id: '/api/public/hooks/check-wishlist-prices'
+      path: '/api/public/hooks/check-wishlist-prices'
+      fullPath: '/api/public/hooks/check-wishlist-prices'
+      preLoaderRoute: typeof ApiPublicHooksCheckWishlistPricesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/match-systembolaget': {
@@ -664,11 +900,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksMatchSystembolagetRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/check-wishlist-prices': {
-      id: '/api/public/hooks/check-wishlist-prices'
-      path: '/api/public/hooks/check-wishlist-prices'
-      fullPath: '/api/public/hooks/check-wishlist-prices'
-      preLoaderRoute: typeof ApiPublicHooksCheckWishlistPricesRouteImport
+    '/api/public/hooks/refresh-cellar-values': {
+      id: '/api/public/hooks/refresh-cellar-values'
+      path: '/api/public/hooks/refresh-cellar-values'
+      fullPath: '/api/public/hooks/refresh-cellar-values'
+      preLoaderRoute: typeof ApiPublicHooksRefreshCellarValuesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/refresh-wishlist-prices': {
+      id: '/api/public/hooks/refresh-wishlist-prices'
+      path: '/api/public/hooks/refresh-wishlist-prices'
+      fullPath: '/api/public/hooks/refresh-wishlist-prices'
+      preLoaderRoute: typeof ApiPublicHooksRefreshWishlistPricesRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -713,6 +956,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   FriendsRoute: FriendsRoute,
   HistoryRoute: HistoryRoute,
+  KitchenRoute: KitchenRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   OnboardingRoute: OnboardingRoute,
@@ -723,9 +967,20 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   TasteRoute: TasteRoute,
   WishlistRoute: WishlistRoute,
+  ApiChefRoute: ApiChefRoute,
+  ApiHealthRoute: ApiHealthRoute,
   UUsernameRoute: UUsernameRoute,
   WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
+  ApiAiAnalyzeWineRoute: ApiAiAnalyzeWineRoute,
+  ApiAiAskWinesnapRoute: ApiAiAskWinesnapRoute,
+  ApiAiExtractPreferenceSignalsRoute: ApiAiExtractPreferenceSignalsRoute,
+  ApiAiRestaurantMatchRoute: ApiAiRestaurantMatchRoute,
+  ApiAiTasteSuggestionsRoute: ApiAiTasteSuggestionsRoute,
+  ApiAiWineSuggestionsRoute: ApiAiWineSuggestionsRoute,
+  ApiPrivacyPrivacyControlsRoute: ApiPrivacyPrivacyControlsRoute,
+  ApiPrivacyPrivacyExportRoute: ApiPrivacyPrivacyExportRoute,
+  ApiPrivacyPrivacyMaintenanceRoute: ApiPrivacyPrivacyMaintenanceRoute,
   ApiPublicHooksCheckWishlistPricesRoute:
     ApiPublicHooksCheckWishlistPricesRoute,
   ApiPublicHooksMatchSystembolagetRoute: ApiPublicHooksMatchSystembolagetRoute,

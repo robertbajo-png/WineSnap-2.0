@@ -35,6 +35,12 @@ function worker() {
             "winesnap-pages-2026-10-03",
             "winesnap-assets-2026-10-10-scan-errors",
             "winesnap-pages-2026-10-10-scan-errors",
+            "winesnap-assets-2026-10-13-privacy-controls",
+            "winesnap-pages-2026-10-13-privacy-controls",
+            "winesnap-assets-2026-10-21-revocable-images",
+            "winesnap-pages-2026-10-21-revocable-images",
+            "winesnap-assets-2026-10-22-release-candidate",
+            "winesnap-pages-2026-10-22-release-candidate",
             ...currentCaches,
           ],
           delete: remove,
@@ -51,6 +57,51 @@ function worker() {
 }
 
 describe("release service worker", () => {
+  it("prepares only the marked generic cooking shell, without cookies or account HTML", async () => {
+    const { listeners, cache, fetcher } = worker();
+    const response = new Response('<meta name="winesnap-kitchen-shell" content="public-v1">');
+    Object.defineProperty(response, "url", { value: "https://wine.example/kitchen" });
+    fetcher.mockResolvedValueOnce(response);
+    let completed: Promise<unknown> | undefined;
+    listeners.get("message")?.({
+      data: "PREPARE_KITCHEN",
+      waitUntil: (promise: Promise<unknown>) => {
+        completed = promise;
+      },
+    });
+    await completed;
+    expect(fetcher).toHaveBeenCalledWith("/kitchen", {
+      credentials: "omit",
+      cache: "no-store",
+    });
+    expect(cache.put).toHaveBeenCalledWith("/kitchen", response);
+    cache.put.mockClear();
+    const privatePage = new Response("private account HTML");
+    Object.defineProperty(privatePage, "url", { value: "https://wine.example/kitchen" });
+    fetcher.mockResolvedValueOnce(privatePage);
+    listeners.get("message")?.({
+      data: "PREPARE_KITCHEN",
+      waitUntil: (promise: Promise<unknown>) => {
+        completed = promise;
+      },
+    });
+    await completed;
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+  it("serves the generic cooking shell on offline kitchen navigation only", async () => {
+    const { listeners, fetcher, match } = worker();
+    fetcher.mockRejectedValueOnce(new Error("offline"));
+    match.mockImplementation(async (url: string) => new Response(url));
+    let response: Promise<Response> | undefined;
+    listeners.get("fetch")?.({
+      request: { method: "GET", url: "https://wine.example/kitchen", mode: "navigate" },
+      respondWith: (promise: Promise<Response>) => {
+        response = promise;
+      },
+    });
+    expect(await (await response!).text()).toBe("/kitchen");
+    expect(match).toHaveBeenCalledWith("/kitchen");
+  });
   it("waits for an explicit update action instead of replacing an unsaved screen", async () => {
     const { listeners, cache, skipWaiting } = worker();
     let installed: Promise<unknown> | undefined;
@@ -60,7 +111,7 @@ describe("release service worker", () => {
       },
     });
     await installed;
-    expect(cache.addAll).toHaveBeenCalledWith(["/offline.html"]);
+    expect(cache.addAll).toHaveBeenCalledWith(["/offline.html", "/icon-512.png"]);
     expect(skipWaiting).not.toHaveBeenCalled();
     listeners.get("message")?.({ data: "SKIP_WAITING" });
     expect(skipWaiting).toHaveBeenCalledOnce();
@@ -99,6 +150,12 @@ describe("release service worker", () => {
       "winesnap-pages-2026-10-03",
       "winesnap-assets-2026-10-10-scan-errors",
       "winesnap-pages-2026-10-10-scan-errors",
+      "winesnap-assets-2026-10-13-privacy-controls",
+      "winesnap-pages-2026-10-13-privacy-controls",
+      "winesnap-assets-2026-10-21-revocable-images",
+      "winesnap-pages-2026-10-21-revocable-images",
+      "winesnap-assets-2026-10-22-release-candidate",
+      "winesnap-pages-2026-10-22-release-candidate",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });
@@ -113,4 +170,17 @@ describe("release service worker", () => {
     listeners.get("fetch")?.({ request: { method: "GET", url, mode: "cors" }, respondWith });
     expect(respondWith).not.toHaveBeenCalled();
   });
+
+  it.each(["POST", "PUT", "DELETE", "HEAD"])(
+    "does not intercept %s image/API requests",
+    (method) => {
+      const { listeners } = worker();
+      const respondWith = vi.fn();
+      listeners.get("fetch")?.({
+        request: { method, url: "https://wine.example/api/wine-image", mode: "cors" },
+        respondWith,
+      });
+      expect(respondWith).not.toHaveBeenCalled();
+    },
+  );
 });
