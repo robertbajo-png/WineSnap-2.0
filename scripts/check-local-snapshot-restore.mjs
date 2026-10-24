@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
-import { snapshotProject, snapshotRestoreSql, validateSnapshot } from "./lib/snapshot-recovery.mjs";
+import {
+  snapshotProject,
+  snapshotRestoreSql,
+  validateSnapshot,
+  snapshotTablesFor,
+} from "./lib/snapshot-recovery.mjs";
 
 assert.equal(process.argv.length, 2);
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
@@ -141,7 +146,7 @@ try {
   await command(psql, schema);
   phase = "restore";
   const result = JSON.parse((await command(psql, snapshotRestoreSql(snapshot))).trim());
-  assert.equal(result.tables, 20);
+  assert.equal(result.tables, snapshotTablesFor(snapshot.version).length);
   Object.assign(report, result, { completed: true });
 } catch {
   report.failure = "isolated_application_restore_failed";

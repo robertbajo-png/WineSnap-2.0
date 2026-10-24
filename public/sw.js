@@ -1,5 +1,5 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "2026-10-23-local-retail";
+const VERSION = "2026-10-24-cooking-core-v2";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -27,6 +27,20 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
+  if (event.data === "PREPARE_KITCHEN")
+    event.waitUntil(
+      (async () => {
+        const response = await fetch("/kitchen", {
+          credentials: "omit",
+          cache: "no-store",
+        });
+        if (!response.ok || new URL(response.url).origin !== self.location.origin) return;
+        const html = await response.clone().text();
+        // Only this deliberately generic SSR shell is cacheable, never an authenticated page/API.
+        if (/name="winesnap-kitchen-shell"\s+content="public-v1"/.test(html))
+          await (await caches.open(PAGE_CACHE)).put("/kitchen", response);
+      })().catch(() => undefined),
+    );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -41,7 +55,12 @@ self.addEventListener("fetch", (event) => {
   // Never persist account pages or old HTML that references deleted asset hashes.
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req).catch(async () => (await caches.match(OFFLINE_URL)) || Response.error()),
+      fetch(req).catch(
+        async () =>
+          (url.pathname === "/kitchen" && (await caches.match("/kitchen"))) ||
+          (await caches.match(OFFLINE_URL)) ||
+          Response.error(),
+      ),
     );
     return;
   }

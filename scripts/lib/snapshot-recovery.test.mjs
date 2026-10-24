@@ -5,6 +5,7 @@ import {
   snapshotTables,
   validateSnapshot,
   snapshotRestoreSql,
+  snapshotTablesFor,
 } from "./snapshot-recovery.mjs";
 
 function fixture() {
@@ -27,6 +28,16 @@ function fixture() {
   };
 }
 describe("private application snapshot rehearsal", () => {
+  it("includes all cooking rows in v2 while preserving legacy v1 snapshots", () => {
+    const snapshot = fixture();
+    snapshot.version = 2;
+    for (const table of snapshotTablesFor(2)) snapshot.tables[table] ??= [];
+    expect(validateSnapshot(snapshot)).toBe(snapshot);
+    expect(snapshotTablesFor(2)).toHaveLength(24);
+    expect(snapshotRestoreSql(snapshot)).toContain("public.cooking_feedback");
+    delete snapshot.tables.cooking_sessions;
+    expect(() => validateSnapshot(snapshot)).toThrow();
+  });
   it("accepts the exact versioned table contract and real byte hashes", () => {
     const snapshot = fixture();
     expect(validateSnapshot(snapshot)).toBe(snapshot);

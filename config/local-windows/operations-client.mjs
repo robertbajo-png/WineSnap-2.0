@@ -81,7 +81,7 @@ try {
     };
     const json = async (path, init) => JSON.parse((await read(path, init)).toString());
     const data = {
-      version: 1,
+      version: process.env.WINESNAP_COOKING_CORE_ENABLED === "true" ? 2 : 1,
       project,
       createdAt: new Date().toISOString(),
       tables: {},
@@ -114,6 +114,9 @@ try {
       "collector_lots",
       "account_erasure_jobs",
       "privacy_erasure_receipts",
+      ...(data.version === 2
+        ? ["kitchen_recipes", "kitchen_recipe_versions", "cooking_sessions", "cooking_feedback"]
+        : []),
     ];
     for (const table of tables) {
       const order =

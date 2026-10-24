@@ -8,6 +8,28 @@ const input = {
 };
 
 describe("independent build configuration", () => {
+  it("keeps cooking disabled outside test and requires verified privacy operations", () => {
+    expect(
+      independentEnvironment("runtime-check", { VITE_COOKING_CORE_ENABLED: "true" })
+        .VITE_COOKING_CORE_ENABLED,
+    ).toBe("false");
+    expect(() =>
+      independentEnvironment("production", { ...input, VITE_COOKING_CORE_ENABLED: "true" }),
+    ).toThrow("WineSnap-test");
+    const cooking = {
+      ...input,
+      VITE_SUPABASE_URL: "https://pzniyupmgwvlldvztzqh.supabase.co",
+      VITE_COOKING_CORE_ENABLED: "true",
+    };
+    expect(() => independentEnvironment("production", cooking)).toThrow("privacy");
+    expect(
+      independentEnvironment("production", {
+        ...cooking,
+        VITE_PRIVACY_CONTROLS_ENABLED: "true",
+        VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
+      }).VITE_COOKING_CORE_ENABLED,
+    ).toBe("true");
+  });
   it("ignores even inherited production values in runtime-check mode", () => {
     const values = independentEnvironment("runtime-check", {
       ...input,

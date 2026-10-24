@@ -57,6 +57,51 @@ function worker() {
 }
 
 describe("release service worker", () => {
+  it("prepares only the marked generic cooking shell, without cookies or account HTML", async () => {
+    const { listeners, cache, fetcher } = worker();
+    const response = new Response('<meta name="winesnap-kitchen-shell" content="public-v1">');
+    Object.defineProperty(response, "url", { value: "https://wine.example/kitchen" });
+    fetcher.mockResolvedValueOnce(response);
+    let completed: Promise<unknown> | undefined;
+    listeners.get("message")?.({
+      data: "PREPARE_KITCHEN",
+      waitUntil: (promise: Promise<unknown>) => {
+        completed = promise;
+      },
+    });
+    await completed;
+    expect(fetcher).toHaveBeenCalledWith("/kitchen", {
+      credentials: "omit",
+      cache: "no-store",
+    });
+    expect(cache.put).toHaveBeenCalledWith("/kitchen", response);
+    cache.put.mockClear();
+    const privatePage = new Response("private account HTML");
+    Object.defineProperty(privatePage, "url", { value: "https://wine.example/kitchen" });
+    fetcher.mockResolvedValueOnce(privatePage);
+    listeners.get("message")?.({
+      data: "PREPARE_KITCHEN",
+      waitUntil: (promise: Promise<unknown>) => {
+        completed = promise;
+      },
+    });
+    await completed;
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+  it("serves the generic cooking shell on offline kitchen navigation only", async () => {
+    const { listeners, fetcher, match } = worker();
+    fetcher.mockRejectedValueOnce(new Error("offline"));
+    match.mockImplementation(async (url: string) => new Response(url));
+    let response: Promise<Response> | undefined;
+    listeners.get("fetch")?.({
+      request: { method: "GET", url: "https://wine.example/kitchen", mode: "navigate" },
+      respondWith: (promise: Promise<Response>) => {
+        response = promise;
+      },
+    });
+    expect(await (await response!).text()).toBe("/kitchen");
+    expect(match).toHaveBeenCalledWith("/kitchen");
+  });
   it("waits for an explicit update action instead of replacing an unsaved screen", async () => {
     const { listeners, cache, skipWaiting } = worker();
     let installed: Promise<unknown> | undefined;

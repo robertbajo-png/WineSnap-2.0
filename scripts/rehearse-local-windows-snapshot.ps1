@@ -39,7 +39,7 @@ try {
   $start.UseShellExecute=$false; $start.CreateNoWindow=$true
   $start.RedirectStandardInput=$true; $start.RedirectStandardOutput=$true; $start.RedirectStandardError=$true
   $start.Environment.Clear()
-  foreach($key in @('PATH','SystemRoot','WINDIR','SystemDrive','ProgramData','ALLUSERSPROFILE','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP')) {
+  foreach($key in @('PATH','PATHEXT','COMSPEC','SystemRoot','WINDIR','SystemDrive','ProgramData','ALLUSERSPROFILE','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP')) {
     $value=[Environment]::GetEnvironmentVariable($key)
     if ($value) {$start.Environment[$key]=$value}
   }

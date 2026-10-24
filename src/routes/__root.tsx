@@ -2,6 +2,7 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { AppUpdate } from "@/components/AppUpdate";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
+import { KitchenAccountCleanup } from "@/features/kitchen/KitchenAccountCleanup";
 
 import appCss from "../styles.css?url";
 
@@ -96,6 +97,7 @@ function RootComponent() {
   return (
     <I18nProvider>
       <Outlet />
+      <KitchenAccountCleanup />
       <AppUpdate />
     </I18nProvider>
   );

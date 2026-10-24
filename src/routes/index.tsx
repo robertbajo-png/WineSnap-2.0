@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Sparkles, UtensilsCrossed } from "lucide-react";
+import { Sparkles, UtensilsCrossed, ChefHat } from "lucide-react";
+import { kitchenEnabled } from "@/features/kitchen/feature";
 import { AppShell } from "@/components/AppShell";
 import { useT } from "@/i18n";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,6 +62,15 @@ function HomePage() {
         </div>
 
         <div className="px-5 pt-4">
+          {kitchenEnabled && (
+            <Link
+              to="/kitchen"
+              className="mb-3 flex min-h-12 items-center justify-center gap-2 border-y border-white/10 text-base text-gold"
+            >
+              <ChefHat size={20} />
+              Köket
+            </Link>
+          )}
           <ul className="grid grid-cols-2 divide-x divide-white/10 border-y border-white/10">
             <li className="min-w-0">
               <Link

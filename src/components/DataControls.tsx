@@ -24,6 +24,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { toast } from "sonner";
+import { clearKitchenCache } from "@/features/kitchen/storage";
+import { kitchenEnabled } from "@/features/kitchen/feature";
 export function DataControls() {
   const { user } = useAuth();
   const { lang, t } = useI18n();
@@ -100,6 +102,15 @@ export function DataControls() {
     try {
       const result = await invokePrivacyAction(action, id);
       if (owner.current !== id) throw new Error("Account changed");
+      let localCleanupFailed = false;
+      if (kitchenEnabled) {
+        try {
+          await clearKitchenCache();
+        } catch {
+          localCleanupFailed = true;
+          window.dispatchEvent(new Event("kitchen-storage-error"));
+        }
+      }
       if (action === "delete_account") {
         const { data: current } = await supabase.auth.getSession();
         if (current.session && current.session.user.id !== id) throw new Error("Account changed");
@@ -122,6 +133,12 @@ export function DataControls() {
         );
       }
       setAction(null);
+      if (localCleanupFailed)
+        toast.error(
+          sv
+            ? "Serveråtgärden är klar, men offlinekopian kunde inte rensas. Rensa webbplatsens lagrade data på enheten."
+            : "The server action completed, but offline data could not be cleared. Clear this site's stored data on the device.",
+        );
     } catch (error) {
       setActionError(
         error instanceof Error && error.message === "reauthentication_required"

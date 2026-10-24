@@ -167,6 +167,19 @@ describe("actual scheduler handler", () => {
 });
 
 describe("actual owner export handler", () => {
+  it("includes cooking tables only after the explicit verified rollout switch", async () => {
+    const enabled = setup("privacy-export", { KITCHEN_CORE_ENABLED: "true" });
+    const result = await (await enabled.call()).json();
+    for (const table of [
+      "kitchen_recipes",
+      "kitchen_recipe_versions",
+      "cooking_sessions",
+      "cooking_feedback",
+    ])
+      expect(result.tables).toHaveProperty(table);
+    const disabled = setup("privacy-export");
+    expect((await (await disabled.call()).json()).tables).not.toHaveProperty("kitchen_recipes");
+  });
   it("includes owner-filtered social and quota rows without reading other profiles", async () => {
     const api = setup("privacy-export");
     const response = await api.call({ userId: "stranger" });

@@ -2,6 +2,11 @@
 
 Date: 2026-10-20. Status: source inventory completed; proposals await approval.
 
+Historical inventory. The owner subsequently approved phase 2. See the
+[2026-10-24 cooking-core implementation](cooking-core-2026-10-24.md) and
+[latest local operations](local-windows-follow-up-2026-10-24.md).
+The foundation now uses the standalone Windows Node runtime, not the old build wrapper.
+
 ## 1. Scope and Evidence
 
 Reviewed GitHub `main` at `50b49c9f95be209831432eb67c619abf1e716b2a`

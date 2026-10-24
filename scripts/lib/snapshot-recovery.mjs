@@ -26,15 +26,27 @@ export const snapshotTables = [
 ];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const record = (value) => value && typeof value === "object" && !Array.isArray(value);
+export function snapshotTablesFor(version) {
+  assert.ok([1, 2].includes(version));
+  return version === 1
+    ? snapshotTables
+    : [
+        ...snapshotTables,
+        "kitchen_recipes",
+        "kitchen_recipe_versions",
+        "cooking_sessions",
+        "cooking_feedback",
+      ];
+}
 
 export function validateSnapshot(snapshot) {
   assert.ok(record(snapshot));
-  assert.equal(snapshot.version, 1);
+  const tables = snapshotTablesFor(snapshot.version);
   assert.equal(snapshot.project, snapshotProject);
   assert.ok(Number.isFinite(Date.parse(snapshot.createdAt)));
   assert.ok(record(snapshot.tables));
-  assert.deepEqual(Object.keys(snapshot.tables).sort(), [...snapshotTables].sort());
-  for (const table of snapshotTables) {
+  assert.deepEqual(Object.keys(snapshot.tables).sort(), [...tables].sort());
+  for (const table of tables) {
     const rows = snapshot.tables[table];
     assert.ok(Array.isArray(rows) && rows.length <= 20000);
     assert.ok(rows.every((row) => record(row) && Object.keys(row).length <= 150));
@@ -97,7 +109,7 @@ export function snapshotRestoreSql(input) {
     "BEGIN; SET search_path=public,extensions; SET session_replication_role=replica;",
     `INSERT INTO auth.users SELECT * FROM jsonb_populate_recordset(NULL::auth.users,${json(accounts)});`,
   ];
-  for (const table of snapshotTables) {
+  for (const table of snapshotTablesFor(snapshot.version)) {
     statements.push(`DO $restore$
       DECLARE value jsonb := ${json(snapshot.tables[table])}; columns text;
       BEGIN
@@ -137,7 +149,7 @@ export function snapshotRestoreSql(input) {
       PERFORM lo_unlink(object);
     END $image$;`);
   }
-  statements.push(`COMMIT; SELECT json_build_object('tables',20,'accounts',${accounts.length},
+  statements.push(`COMMIT; SELECT json_build_object('tables',${snapshotTablesFor(snapshot.version).length},'accounts',${accounts.length},
     'rows',${Object.values(snapshot.tables).reduce((count, rows) => count + rows.length, 0)},'files',${snapshot.files.length});`);
   return statements.join("\n");
 }

@@ -19,6 +19,7 @@ import { Route as ForYouRouteImport } from './routes/for-you'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as KitchenRouteImport } from './routes/kitchen'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -100,6 +101,11 @@ const FriendsRoute = FriendsRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KitchenRoute = KitchenRouteImport.update({
+  id: '/kitchen',
+  path: '/kitchen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
+  '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
@@ -325,6 +332,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
+  '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
@@ -370,6 +378,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/friends': typeof FriendsRoute
   '/history': typeof HistoryRoute
+  '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/onboarding': typeof OnboardingRoute
@@ -416,6 +425,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/friends'
     | '/history'
+    | '/kitchen'
     | '/login'
     | '/me'
     | '/onboarding'
@@ -460,6 +470,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/friends'
     | '/history'
+    | '/kitchen'
     | '/login'
     | '/me'
     | '/onboarding'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/friends'
     | '/history'
+    | '/kitchen'
     | '/login'
     | '/me'
     | '/onboarding'
@@ -549,6 +561,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FriendsRoute: typeof FriendsRoute
   HistoryRoute: typeof HistoryRoute
+  KitchenRoute: typeof KitchenRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -648,6 +661,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kitchen': {
+      id: '/kitchen'
+      path: '/kitchen'
+      fullPath: '/kitchen'
+      preLoaderRoute: typeof KitchenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -916,6 +936,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   FriendsRoute: FriendsRoute,
   HistoryRoute: HistoryRoute,
+  KitchenRoute: KitchenRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   OnboardingRoute: OnboardingRoute,

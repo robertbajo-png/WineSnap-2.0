@@ -1,5 +1,9 @@
 # Local WineSnap Follow-Up
 
+Later development on the same date adds [phase-2 recipes and Cook Mode](cooking-core-2026-10-24.md).
+That candidate extends application snapshots to v2 with 24 table sections;
+the v1/20-table results below remain historical acceptance evidence.
+
 Date: 2026-10-24. Scope: the Windows app at http://127.0.0.1:5210/
 and WineSnap-test (`pzniyupmgwvlldvztzqh`) only. No production deployment,
 database operation, credential change or Lovable task occurred.

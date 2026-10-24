@@ -46,7 +46,17 @@ export function createHandler(dependencies: PrivacyDependencies) {
       const tables: Record<string, unknown[]> = {};
       let total = 0;
       let totalBytes = 0;
-      for (const table of [...ownedTables, "follows", "user_taste_similarity", "ai_rate_limits"]) {
+      const cookingTables =
+        env("KITCHEN_CORE_ENABLED") === "true"
+          ? ["kitchen_recipes", "kitchen_recipe_versions", "cooking_sessions", "cooking_feedback"]
+          : [];
+      for (const table of [
+        ...ownedTables,
+        ...cookingTables,
+        "follows",
+        "user_taste_similarity",
+        "ai_rate_limits",
+      ]) {
         const rows: Record<string, unknown>[] = [];
         for (let from = 0; ; from += 500) {
           let query = admin.from(table).select("*");

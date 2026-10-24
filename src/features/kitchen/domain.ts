@@ -41,6 +41,8 @@ export const recipeSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    if (new TextEncoder().encode(JSON.stringify(value)).length > 60 * 1024)
+      ctx.addIssue({ code: "custom", message: "Recipe is too large" });
     for (const list of [value.ingredients, value.steps])
       if (new Set(list.map((item) => item.id)).size !== list.length)
         ctx.addIssue({ code: "custom", message: "Duplicate identifiers" });

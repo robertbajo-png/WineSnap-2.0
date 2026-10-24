@@ -20,6 +20,7 @@ describe("local Windows hosting boundaries", () => {
       "NODE_OPTIONS",
       "SUPABASE_PUBLISHABLE_KEY",
       "SUPABASE_URL",
+      "WINESNAP_COOKING_CORE_ENABLED",
       "WINESNAP_LOCAL_AI_ENABLED",
       "WINESNAP_LOCAL_OPERATIONS_ENABLED",
       "WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED",
@@ -69,6 +70,7 @@ describe("local Windows hosting boundaries", () => {
     expect(configure).toContain("$process.StandardInput.Write($payload)");
     expect(configure).toContain("$start.Environment.Clear()");
     expect(configure).toContain("'SystemDrive'");
+    expect(configure).toContain("'PATHEXT'");
     expect(configure).toContain("WineSnapHosting/ai-keys.clixml");
     expect(configure).not.toMatch(
       /Set-Content|Export-Clixml|ArgumentList.Add\(\$payload\)|Write-Host \$payload/,

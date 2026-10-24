@@ -72,6 +72,8 @@ export async function handleLocalPrivacy(request: Request, name: LocalPrivacyFun
           PRIVACY_DELETION_ENABLED: "true",
           PRIVACY_MAINTENANCE_ENABLED: "true",
           PRIVACY_CRON_SECRET: keys.privacyCronSecret,
+          KITCHEN_CORE_ENABLED:
+            process.env.WINESNAP_COOKING_CORE_ENABLED === "true" ? "true" : "false",
         })[key],
     });
     const response = await handler(
