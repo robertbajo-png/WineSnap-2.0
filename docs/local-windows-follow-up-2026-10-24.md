@@ -62,6 +62,21 @@ Accepted restore fixtures:
   row and 0 images; sandbox cleanup confirmed.
 - No rehearsal containers remained after final verification.
 
+The installed Windows watcher now rehearses every newly completed application
+snapshot automatically. The status records the encrypted snapshot's filename,
+so an older successful restore cannot stand in for the latest copy. For the
+same copy, successful checks repeat daily and failed checks back off for ten
+minutes. A failed backup is not accepted as a new restore source. The watcher
+retains separate maintenance, backup and restore results plus `jobsHealthy`;
+app process health alone does not mark those jobs successful.
+
+This automatic path was accepted with a fresh 2026-10-24 snapshot: all 20 table
+sections, 1 application row, no accounts/images, and confirmed sandbox cleanup.
+Only the owner-scoped watcher was restarted to load the new schedule; the app
+and its credentials were not restarted or changed. Eight additional PowerShell
+self-checks cover snapshot correlation, initial/daily scheduling, failure
+backoff and unsafe names without starting jobs or accessing credentials.
+
 **This is not a full PostgreSQL/Supabase backup or disaster-recovery acceptance.**
 The report explicitly sets `fullDatabaseBackup=false`. Auth password hashes,
 identities, a working sign-in service, platform configuration and the Storage
@@ -101,8 +116,8 @@ rehearsal do not remove this requirement. Production must remain intact.
 
 ## Verification
 
-- All 666 unit tests across 83 files pass, including 16 bounded-retry cases and
-  9 snapshot-validation/SQL-generation cases.
+- All 668 unit tests across 83 files pass, including 16 bounded-retry cases,
+  9 snapshot-validation/SQL-generation cases and watcher-boundary regressions.
 - Full-project ESLint and TypeScript pass.
 - Synthetic offline build, standalone Node runtime smoke checks and client
   bundle budget pass. Synthetic artifacts were not deployed.

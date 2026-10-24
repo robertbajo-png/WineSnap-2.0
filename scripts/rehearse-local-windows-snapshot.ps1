@@ -18,6 +18,7 @@ try {
   $resolved = [IO.Path]::GetFullPath($SnapshotFile)
   if (-not $resolved.StartsWith($base,[StringComparison]::OrdinalIgnoreCase) -or
     [IO.Path]::GetFileName($resolved) -notmatch '^snapshot-\d{8}-\d{9}\.dpapi$') {throw 'Unexpected snapshot path.'}
+  $report.snapshotFile = [IO.Path]::GetFileName($resolved)
   $file = Get-Item -LiteralPath $resolved -Force
   if ($file.Length -gt 100MB) {throw 'Unexpected snapshot size.'}
   $owner = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value

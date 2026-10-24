@@ -101,4 +101,20 @@ describe("Windows maintenance and application backup boundaries", () => {
     expect(code).not.toContain("[DateTime]::Parse($last.checkedAt)");
     expect(code).not.toMatch(/docker restart|docker start|Read-Host|Stop-Process/);
   });
+  it("automatically rehearses each new encrypted snapshot and preserves separate job health", () => {
+    const code = readFileSync("scripts/watch-local-windows.ps1", "utf8");
+    expect(code).toContain("Test-LocalRestoreDue $backup $restore");
+    expect(code).toContain("rehearse-local-windows-snapshot.ps1");
+    expect(code).toContain("$Restore.snapshotFile -ne $Backup.backupFile");
+    expect(code).toContain("Test-LocalJobDue $Restore 24 $Now");
+    expect(code).toContain("$restore.cleanupCompleted");
+    expect(code).toContain("$state.jobsHealthy = $false");
+    expect(code).toContain("fullDatabaseBackup=$false");
+  });
+  it("records only the encrypted snapshot filename for restore correlation", () => {
+    const code = readFileSync("scripts/rehearse-local-windows-snapshot.ps1", "utf8");
+    expect(code).toContain("$report.snapshotFile = [IO.Path]::GetFileName($resolved)");
+    expect(code).not.toContain("$report.snapshotFile = $resolved");
+    expect(code).not.toMatch(/Read-Host|SUPABASE_DB_PASSWORD|SMTP_PASSWORD/);
+  });
 });
