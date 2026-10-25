@@ -205,6 +205,7 @@ async function checkServer(configuredCron, artifact) {
         assert.equal(response.status, 200, `SSR failed at ${path}`);
         assert.match(body, /<html/);
         assert.match(body, /<script/);
+        assert.doesNotMatch(body, /fonts\.(?:googleapis|gstatic)\.com/);
       }
       const { response: missing } = await request("/independent-check-not-a-real-route");
       assert.equal(missing.status, 404);
@@ -218,7 +219,13 @@ async function checkServer(configuredCron, artifact) {
         assert.equal(response.status, 200, `Missing asset ${asset}`);
         assert(body.length > 0);
       }
-      for (const path of ["/sw.js", "/offline.html", "/icon-512.png"]) {
+      for (const path of [
+        "/sw.js",
+        "/offline.html",
+        "/icon-512.png",
+        "/fonts/Inter-OFL.txt",
+        "/fonts/Cormorant-Garamond-OFL.txt",
+      ]) {
         const { response } = await request(path);
         assert.equal(response.status, 200, `Missing public file ${path}`);
       }

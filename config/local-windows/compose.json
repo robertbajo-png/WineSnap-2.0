@@ -15,7 +15,8 @@
           "VITE_MEALS_ENABLED": "true",
           "VITE_RECIPE_NUTRITION_ENABLED": "true",
           "VITE_PRIVACY_CONTROLS_ENABLED": "true",
-          "VITE_PRIVACY_OPERATIONS_VERIFIED": "true"
+          "VITE_PRIVACY_OPERATIONS_VERIFIED": "true",
+          "VITE_PRIVACY_SUPPLIERS_VERIFIED": "false"
         }
       },
       "ports": [{ "target": 3000, "published": "5210", "host_ip": "127.0.0.1", "protocol": "tcp" }],

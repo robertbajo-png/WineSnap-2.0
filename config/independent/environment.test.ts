@@ -35,12 +35,14 @@ describe("independent build configuration", () => {
       ...input,
       VITE_PRIVACY_CONTROLS_ENABLED: "true",
       VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
+      VITE_PRIVACY_SUPPLIERS_VERIFIED: "true",
       VITE_WINE_IMAGE_PROXY_ENABLED: "true",
       VITE_SUPPORT_EMAIL: "not-public@example.invalid",
     });
     expect(values.VITE_SUPABASE_URL).toBe("https://example.invalid");
     expect(values.VITE_PRIVACY_CONTROLS_ENABLED).toBe("false");
     expect(values.VITE_PRIVACY_OPERATIONS_VERIFIED).toBe("false");
+    expect(values.VITE_PRIVACY_SUPPLIERS_VERIFIED).toBe("false");
     expect(values.VITE_WINE_IMAGE_PROXY_ENABLED).toBe("false");
     expect(values).not.toHaveProperty("VITE_SUPPORT_EMAIL");
   });

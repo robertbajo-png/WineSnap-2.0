@@ -46,6 +46,8 @@ function worker() {
             "winesnap-pages-2026-10-22-release-candidate",
             "winesnap-assets-2026-10-25-recipe-nutrition",
             "winesnap-pages-2026-10-25-recipe-nutrition",
+            "winesnap-assets-2026-10-25-privacy-review",
+            "winesnap-pages-2026-10-25-privacy-review",
             ...currentCaches,
           ],
           delete: remove,
@@ -163,6 +165,8 @@ describe("release service worker", () => {
       "winesnap-pages-2026-10-22-release-candidate",
       "winesnap-assets-2026-10-25-recipe-nutrition",
       "winesnap-pages-2026-10-25-recipe-nutrition",
+      "winesnap-assets-2026-10-25-privacy-review",
+      "winesnap-pages-2026-10-25-privacy-review",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });

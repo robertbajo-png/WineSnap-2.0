@@ -42,3 +42,7 @@ confirmation and EU/US distinctions. No automatic child diet or health tracking.
 Current security/privacy release gates and data-flow inventory:
 `docs/security-privacy-review-2026-10-25.md`. Passing test suites is not public
 release approval or proof of supplier contracts, full recovery or legal compliance.
+Supplier account evidence and draft processing/risk records:
+`docs/supplier-privacy-review-2026-10-25.md`. Keep supplier release sign-off separate
+from working export/erasure. Fonts ship locally with their OFL notices; do not
+restore external font/CDN requests or imply zero-retention/EU-only AI processing.

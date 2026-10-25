@@ -22,8 +22,8 @@ function PrivacyPage() {
       {!privacyInformationComplete && (
         <p role="alert" className="mt-4 border-l-2 border-gold pl-3 text-base">
           {sv
-            ? "Dataskyddsupplägget nedan är beslutat. Drift, leverantörsvillkor och återstående uppgifter är ännu inte fullständigt verifierade inför offentlig release."
-            : "The privacy policy below is approved. Deployment, provider terms and remaining details are not yet fully verified for public release."}
+            ? "Beskrivningen nedan visar appens dataskyddsupplägg. Drift, leverantörskonton, avtal och återstående uppgifter är ännu inte fullständigt verifierade inför offentlig release."
+            : "The information below describes the app's privacy arrangements. Deployment, supplier accounts, agreements and remaining details are not yet fully verified for public release."}
         </p>
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
@@ -118,8 +118,8 @@ function PrivacyPage() {
         </p>
         <p>
           {sv
-            ? "Gränssnittets typsnitt hämtas från Google Fonts. Din webbläsare kontaktar då Google och lämnar tekniska anslutningsuppgifter som IP-adress; appen skickar inte kontots innehåll med typsnittsanropet. Lokal drift innebär inte att alla externa anslutningar upphör."
-            : "Interface fonts are loaded from Google Fonts. Your browser contacts Google and supplies technical connection data such as an IP address; the app does not send account contents with the font request. Local hosting does not eliminate all external connections."}
+            ? "Gränssnittets typsnitt levereras från appens egen adress, utan anrop till Google Fonts eller en extern typsnitts-CDN. Lokal drift innebär däremot inte att konto-, AI- och internetfunktionerna slutar använda sina leverantörer."
+            : "Interface fonts are served from the app's own origin, without requests to Google Fonts or an external font CDN. Local hosting does not eliminate the suppliers used for account, AI and internet features."}
         </p>
         <p>
           {siteInformation.retention ??
@@ -137,6 +137,38 @@ function PrivacyPage() {
             ? "En begränsad raderingsjournal med konto-ID och tidpunkter sparas under handläggningen och 30 dagar efter slutförd radering för att förhindra återkomst från säkerhetskopior. Journalen är inte åtkomlig för andra användare."
             : "A limited erasure ledger containing account ID and timestamps is kept during processing and for 30 days after completed erasure to prevent recovery from backups. Other users cannot access the ledger."}
         </p>
+        <h2 className="font-display text-xl">
+          {sv ? "Leverantörer och överföringar" : "Suppliers and transfers"}
+        </h2>
+        <p>
+          {sv
+            ? "Appens egen gallring raderar inte automatiskt leverantörernas säkerhetsloggar. OpenAI beskriver normalt upp till 30 dagars missbruksloggning, med undantag bland annat för säkerhet och lagkrav. Google beskriver 55 dagars missbrukskontroll för Gemini; separat projektloggning och sparade dataset kan ha andra tider. Faktiska kontoinställningar och tillämpliga avtal måste bekräftas. Nollagring eller enbart EU-behandling utlovas inte."
+            : "App cleanup does not automatically erase suppliers' security logs. OpenAI describes default abuse monitoring of up to 30 days, with exceptions including safety and legal requirements. Google describes 55-day Gemini abuse monitoring; optional project logs and saved datasets can follow different periods. Actual account settings and applicable agreements must be confirmed. Zero retention or EU-only processing is not promised."}
+        </p>
+        <p>
+          {sv
+            ? "När den valfria skyddade testtunneln används hanterar Cloudflare anslutning, trafik och e-postkontrollen före appen. Vid direkt lokal användning går apptrafiken inte genom den tunneln. Supabase och AI-leverantörerna kan använda underleverantörer och behandla data utanför EU/EES. Ansvarig ska före offentlig release verifiera mottagare, avtal, lagring och stöd för överföring. Kontakta ansvarig för information om tillämpliga skyddsåtgärder och hur du får en kopia."
+            : "When the optional protected test tunnel is used, Cloudflare handles connections, traffic and email authentication before the app. Direct loopback use does not send app traffic through that tunnel. Supabase and the AI providers may use subprocessors and process data outside the EEA. Before public release, the operator must verify recipients, agreements, retention and transfer safeguards. Contact the operator for information about applicable safeguards and how to obtain a copy."}
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          {[
+            ["Supabase", "https://supabase.com/legal/customer-resources/data-processing-addendum"],
+            ["OpenAI", "https://developers.openai.com/api/docs/guides/your-data"],
+            ["Google Gemini", "https://ai.google.dev/gemini-api/docs/usage-policies"],
+            ["Cloudflare", "https://www.cloudflare.com/cloudflare-customer-dpa/"],
+          ].map(([name, href]) => (
+            <li key={name}>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center text-gold"
+              >
+                {name} {sv ? "dataskyddsinformation" : "data protection information"}
+              </a>
+            </li>
+          ))}
+        </ul>
         <a
           href="https://www.imy.se/privatperson/dataskydd/dina-rattigheter/"
           target="_blank"

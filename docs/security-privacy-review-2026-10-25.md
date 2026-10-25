@@ -4,6 +4,11 @@ Date: 2026-10-25. Scope: the standalone Windows application at
 http://127.0.0.1:5210/ and disposable WineSnap-test
 (`pzniyupmgwvlldvztzqh`). Production was not accessed or changed.
 
+The subsequent [supplier and privacy follow-up](supplier-privacy-review-2026-10-25.md)
+removes external font requests and separates supplier approval from the already
+tested export/erasure operations. The verification counts below describe this
+earlier security checkpoint, not that follow-up's additional tests.
+
 **Decision: continue isolated acceptance testing; do not approve public release
 or production cutover yet.** Technical tests cannot establish that operator
 contracts, lawful bases, international transfers or actual provider settings
@@ -47,8 +52,10 @@ of the source corrections above. Disposable acceptance accounts are separate.
    actual retention, processor agreements and international-transfer safeguards.
    Verify the real Supabase region, contracts, Google project billing and OpenAI
    project data controls; the presence of an API key is not evidence of any of
-   these. Keep `VITE_PRIVACY_OPERATIONS_VERIFIED` false until the operational and
-   supplier checks are complete. Do not bypass the warning by filling text alone.
+   these. Keep `VITE_PRIVACY_SUPPLIERS_VERIFIED` false until supplier checks are
+   complete. The separate operations flag may be true for tested export/erasure
+   in WineSnap-test; it is not supplier approval. Do not bypass the warning by
+   filling text alone.
 2. **Adult access and child-data assessment.** Review service audience and adult
    access controls before offering Gemini-backed features publicly. A household
    checkbox or a child diner record is not proof of an adequate age/access model.

@@ -1,7 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { isPrivacyInformationComplete, resolveSiteInformation } from "./siteInformation";
+import {
+  isPrivacyInformationComplete,
+  isPrivacyInformationVerified,
+  resolveSiteInformation,
+} from "./siteInformation";
 
 describe("public site information", () => {
+  it.each([undefined, "false", "TRUE", "1", " true "])(
+    "does not turn working operations into supplier approval: %s",
+    (suppliers) => {
+      const info = resolveSiteInformation({
+        VITE_PRIVACY_RETENTION: "Test retention",
+        VITE_PRIVACY_LEGAL_BASIS: "Test basis",
+      });
+      expect(isPrivacyInformationComplete(info)).toBe(true);
+      expect(isPrivacyInformationVerified(info, "true", suppliers)).toBe(false);
+    },
+  );
+  it("requires complete text, operational acceptance and separate supplier sign-off", () => {
+    const info = resolveSiteInformation({
+      VITE_PRIVACY_RETENTION: "Test retention",
+      VITE_PRIVACY_LEGAL_BASIS: "Test basis",
+    });
+    expect(isPrivacyInformationVerified(info, "false", "true")).toBe(false);
+    expect(isPrivacyInformationVerified(resolveSiteInformation({}), "true", "true")).toBe(false);
+    expect(isPrivacyInformationVerified(info, "true", "true")).toBe(true);
+  });
   it("uses the approved operator and postal address without inventing legal details", () => {
     const info = resolveSiteInformation({});
     expect(info).toEqual({

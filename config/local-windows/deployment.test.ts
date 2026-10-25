@@ -16,6 +16,7 @@ describe("local Windows hosting boundaries", () => {
     expect(web.build.args.VITE_LOCAL_AI_ENABLED).toBe("true");
     expect(web.build.args.VITE_PRIVACY_CONTROLS_ENABLED).toBe("true");
     expect(web.build.args.VITE_PRIVACY_OPERATIONS_VERIFIED).toBe("true");
+    expect(web.build.args.VITE_PRIVACY_SUPPLIERS_VERIFIED).toBe("false");
     expect(Object.keys(web.environment).sort()).toEqual([
       "NODE_OPTIONS",
       "SUPABASE_PUBLISHABLE_KEY",
