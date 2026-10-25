@@ -201,7 +201,11 @@ describe("bounded local evidence reader", () => {
       expect((await readBoundedJson(path)).state).toBe("missing");
       await writeFile(path, '\uFEFF{"version":1}');
       expect((await readBoundedJson(path)).value).toEqual({ version: 1 });
-      for (const text of ["not JSON synthetic-private-canary", " ".repeat(65537)]) {
+      for (const text of [
+        "not JSON synthetic-private-canary",
+        " ".repeat(65537),
+        Buffer.from([0xc3, 0x28]),
+      ]) {
         await writeFile(path, text);
         const result = await readBoundedJson(path);
         expect(result).toEqual({ value: null, state: "unreadable_or_invalid" });

@@ -16,9 +16,14 @@ export async function readBoundedJson(path) {
     const info = await file.stat();
     if (!info.isFile() || info.size > 65536) throw new Error("invalid_file");
     const bytes = Buffer.alloc(65537);
-    const { bytesRead } = await file.read(bytes, 0, bytes.length, 0);
-    if (bytesRead > 65536) throw new Error("invalid_file");
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, bytesRead));
+    let length = 0;
+    while (length < bytes.length) {
+      const { bytesRead } = await file.read(bytes, length, bytes.length - length, length);
+      if (bytesRead === 0) break;
+      length += bytesRead;
+    }
+    if (length > 65536 || length < info.size) throw new Error("invalid_file");
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, length));
     return { value: JSON.parse(text.replace(/^\uFEFF/, "")) };
   } catch (error) {
     return { value: null, state: error.code === "ENOENT" ? "missing" : "unreadable_or_invalid" };
