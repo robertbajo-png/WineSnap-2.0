@@ -122,6 +122,9 @@ rehearsal do not remove this requirement. Production must remain intact.
 
 ## Verification
 
+The verification below describes the original 2026-10-24 follow-up. The later
+platform-recovery rehearsal is recorded separately at the end of this file.
+
 - All 668 unit tests across 83 files pass, including 16 bounded-retry cases,
   9 snapshot-validation/SQL-generation cases and watcher-boundary regressions.
 - Full-project ESLint and TypeScript pass.
@@ -137,3 +140,116 @@ hourly maintenance remain installed. A real Windows reboot, physical-phone
 camera/install acceptance and the owner email-PIN tunnel flow are not newly
 verified by this follow-up. The app still uses hosted WineSnap-test for
 Auth/data/Storage; it is not a fully offline or fully self-hosted Supabase stack.
+
+## Real Platform Recovery Rehearsal 2026-10-25
+
+The hosted test project's complete backup is still blocked by unavailable
+PostgreSQL access. A new, independent local rehearsal now closes the earlier
+mocked-platform test gap: it dumps and restores a real PostgreSQL database with
+real Supabase Auth password hashes/identities, roles, grants, RLS policies and
+Storage metadata, then restores the actual image bytes through Storage HTTP.
+Its source contains only newly generated synthetic data, never hosted users.
+
+Run from PowerShell 7 on this Windows host:
+
+```powershell
+./scripts/rehearse-local-platform-recovery.ps1
+# Or repeat recovery from an existing encrypted synthetic archive:
+./scripts/rehearse-local-platform-recovery.ps1 -BackupFile $approvedPlatformFixturePath
+```
+
+The installed local images are PostgreSQL `17-bookworm`, Supabase Auth
+`v2.197.0`, Storage API `v1.81.0`, and the existing WineSnap Node image used only
+as an HTTP probe. The service versions match the official
+[self-hosting compose source](https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml)
+reviewed on 2026-10-25. Image tags resolve to immutable local IDs, which are bound
+into the encrypted archive and checked again on recovery. Missing or changed
+images fail closed; the script does not silently pull different versions.
+
+The wrapper creates a source sandbox, generates two example.test accounts,
+one private bottle image, a legacy-shaped sharing ID and a retained erasure
+receipt. Auth and Storage initialize their own platform schemas. WineSnap's
+application migrations and existing test-only image access gate are applied to
+this empty synthetic source only. No mocked platform SQL is used.
+
+After source checks, the writer services stop. An unfiltered custom-format
+`pg_dump` and separate `pg_dumpall --roles-only --no-role-passwords` are captured
+in memory, along with actual downloaded image bytes. Database role passwords
+are newly generated fixture secrets, restored explicitly; Auth user password
+hashes are part of the database dump. There is no password reset or credentials
+copied from hosted projects. The source sandbox is deleted before recovery starts.
+
+The archive is encrypted with Windows DPAPI CurrentUser under
+`%LOCALAPPDATA%\WineSnapHosting\platform-recovery`, readable only by the owner
+and SYSTEM, with seven-copy/seven-day retention. The freshly written encrypted
+copy is read back and checked before restore. Existing-copy mode accepts only
+bounded, non-redirected files directly in that private directory. Plaintext
+archives, passwords and SQL/service diagnostics are never printed, passed in
+host command arguments or written to a Windows plaintext file.
+
+Recovery creates another fresh database and restores roles plus the complete
+archive transactionally with stop-on-error. It does not replay application
+migrations to reconstruct the destination schema. Table/RLS, policy and grant
+catalog hashes must match before services restart. Real Storage uploads recover
+file bytes; Storage-generated object versions/timestamps may change on upsert,
+so this is not a byte-identical physical-volume or point-in-time restore.
+
+Both sandboxes have internal-only Docker networking, no host ports or bind
+mounts, non-root processes, read-only roots, temporary RAM-backed data, dropped
+capabilities, no-new-privileges and resource limits. They have no production URL,
+real provider keys, SMTP configuration or route to a hosted database. Container
+logs are disabled. Cleanup is invocation-specific, with an outer timeout cleanup;
+there is no broad Docker prune. The live WineSnap container, watcher and public
+backend are not stopped, reset or deployed.
+
+Successful checks include:
+
+- Two original-password logins and two incorrect-password rejections after restore.
+- Actual password hashes and Auth identities, plus owner-versus-peer database RLS.
+- Legacy share ID and the retained erasure receipt preserved.
+- One image restored with matching SHA-256; both users and anonymous direct
+  label downloads remain blocked by the actual test image policy.
+- A separately captured erasure receipt newer than the SQL archive is imported,
+  the existing recovery SQL blocks the restored owner, and actual Storage/Auth
+  API deletion removes its image/account while preserving the peer and receipt.
+- Verified sandbox cleanup; no restored data is exposed through the live app.
+
+Only sanitized status is saved in
+`%LOCALAPPDATA%\WineSnapHosting\platform-recovery-status.json`.
+`localPlatformRehearsalVerified=true` means this synthetic test passed.
+`hostedTestExport=false` and `fullPlatformRecoveryVerified=false` remain explicit;
+no release gate or operator attestation is upgraded by it.
+
+### Remaining Full Backup Requirements
+
+The actual hosted WineSnap-test project still needs an approved PostgreSQL
+connection and existing database password, plus independently protected Storage
+files and a current external erasure ledger. API keys alone are insufficient.
+No broader credential stores were searched and no database password was reset.
+The new runner intentionally accepts no remote connection argument; importing a
+hosted dump requires a separately reviewed acquisition/compatibility path.
+
+Match PostgreSQL/Auth/Storage versions and preserve managed-schema customizations,
+migration history, extension dependencies and encrypted-data root keys. The
+official [CLI backup/restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
+describes connection and encryption-key requirements. Storage bytes are separate
+from a database backup, per the [backup documentation](https://supabase.com/docs/guides/platform/backups).
+Auth settings, API/SMTP/provider secrets, Edge Functions, Realtime, schedules and
+platform settings need their own approved recovery inventory; a database-only
+[project clone](https://supabase.com/docs/guides/platform/clone-project) does not
+automatically recover all of them.
+
+CurrentUser DPAPI on this same computer is not portable/off-device disaster
+recovery. A separately approved destination, portable encryption/key custody,
+restore on a different machine, latest-erasure reconciliation, measured RPO/RTO
+and rollback acceptance remain required. No paid project, off-site upload,
+production operation or new background schedule was created by this rehearsal.
+
+Verification on 2026-10-25: fresh encrypted archive recovery and repeated recovery
+from that saved archive both pass, including newer-erasure reconciliation and
+cleanup. All 886 unit tests in 94 files pass (21 new recovery regressions), plus
+TypeScript, ESLint, standalone synthetic build/runtime, Chef prototype build and
+the unchanged 109,762-byte largest compressed client script. A fresh actual
+WineSnap-test application snapshot also restores all 35 table sections, ten
+retained rows, zero accounts and zero files, using the existing mocked-platform
+snapshot path. That separate result is not relabeled as a hosted platform dump.

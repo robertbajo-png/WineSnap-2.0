@@ -51,3 +51,10 @@ restore external font/CDN requests or imply zero-retention/EU-only AI processing
 release remains blocked. See `docs/release-readiness-2026-10-25.md`. Never create
 operator attestations, copy credentials into evidence or treat local application
 backup/restore success as full platform recovery. It is not a deploy command.
+
+`scripts/rehearse-local-platform-recovery.ps1` is a separate synthetic local
+PostgreSQL/Auth/Storage rehearsal, not a hosted WineSnap-test export. Always use
+the PowerShell DPAPI wrapper: the private Node helper's create output contains
+synthetic password hashes, passwords and signing material. No hosted URL is
+accepted; never generalize it to production or claim portable/off-device recovery.
+See the 2026-10-25 addendum in `docs/local-windows-follow-up-2026-10-24.md`.
