@@ -191,6 +191,17 @@ async function checkServer(configuredCron, artifact) {
     if (!configuredCron) {
       for (const path of ["/", "/login", "/privacy", "/scan", "/cellar", "/ask"]) {
         const { response, body } = await request(path);
+        assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+        assert.equal(response.headers.get("x-frame-options"), "DENY");
+        assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+        assert.equal(
+          response.headers.get("permissions-policy"),
+          "camera=(self), microphone=(), geolocation=()",
+        );
+        assert.equal(
+          response.headers.get("content-security-policy"),
+          "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
+        );
         assert.equal(response.status, 200, `SSR failed at ${path}`);
         assert.match(body, /<html/);
         assert.match(body, /<script/);

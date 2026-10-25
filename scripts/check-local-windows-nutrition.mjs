@@ -326,6 +326,28 @@ try {
     await peerContext.close();
     assert.deepEqual(report.browserErrors, []);
   });
+  await check("page lifecycle clears temporary diet state and ingredient mappings", async () => {
+    for (const event of ["pagehide", "pageshow"]) {
+      await page.getByLabel("Keto", { exact: true }).check();
+      await page.getByLabel("Recept för kolhydratberäkning").selectOption(tomato.id);
+      await page.locator("#ingredient-0-food").selectOption("slv:364");
+      await page.getByLabel("Egen gräns, g per portion (valfri)").fill("3.7");
+      await page.evaluate(
+        (type) => window.dispatchEvent(new PageTransitionEvent(type, { persisted: true })),
+        event,
+      );
+      await page.waitForFunction(() => document.querySelector('input[value="standard"]')?.checked);
+      assert.equal(await summary().count(), 0);
+      await page.getByLabel("Keto", { exact: true }).check();
+      assert.equal(await page.getByLabel("Egen gräns, g per portion (valfri)").inputValue(), "");
+      assert.equal(await page.locator("#ingredient-0-food").inputValue(), "");
+    }
+    await page.goto(app + "/privacy");
+    await page.goBack();
+    await page.getByLabel("Standard", { exact: true }).waitFor();
+    assert.equal(await page.getByLabel("Standard", { exact: true }).isChecked(), true);
+    assert.deepEqual(report.browserErrors, []);
+  });
   report.completed = true;
 } catch {
   process.exitCode = 1;

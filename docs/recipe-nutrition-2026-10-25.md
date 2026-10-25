@@ -85,7 +85,7 @@ explicitly requested real Gemini adaptation, not a mocked nutrition model.
 node scripts/refresh-nutrition-reference.mjs --update # maintainer-only public import
 npm run typecheck
 npm run lint
-npm test -- --maxWorkers=1 --pool=threads
+npm test -- --maxWorkers=2 --testTimeout=30000
 npm run build:check
 node scripts/check-independent-runtime.mjs
 node scripts/check-client-budget.mjs

@@ -30,6 +30,11 @@ import {
 } from "./localCredentials.server";
 
 const headers = { "Cache-Control": "no-store", "CDN-Cache-Control": "no-store" };
+// A bounded tripwire for common pasted credentials, not a general-purpose DLP filter.
+const containsCredential = (text: string) =>
+  /\b(?:sk-(?:proj-)?[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i.test(
+    text,
+  );
 class ChefFailure extends Error {
   constructor(
     public status: number,
@@ -150,12 +155,7 @@ export function createChefHandler(deps: ChefDependencies) {
       const input = parsed.data;
       const prompt =
         input.action === "chat" ? input.message : input.action === "extract" ? "" : input.prompt;
-      if (
-        /\b(?:sk-(?:proj-)?[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]+)\b/.test(
-          prompt,
-        )
-      )
-        return fail("remove_secret", 400);
+      if (containsCredential(prompt)) return fail("remove_secret", 400);
       ({ admin, owner } = await deps.authorize(request.headers.get("authorization")!.slice(7)));
       const access = await admin.rpc("chef_user_active", { u: owner });
       databaseFailure(access.error);
@@ -170,7 +170,11 @@ export function createChefHandler(deps: ChefDependencies) {
         cr: input.action === "chat" ? input.conversationRevision : null,
       });
       databaseFailure(claim.error);
-      if (claim.data?.cached) return Response.json(claim.data.cached, { headers });
+      if (claim.data?.cached) {
+        if (containsCredential(JSON.stringify(claim.data.cached)))
+          return fail("chef_invalid_answer", 502);
+        return Response.json(claim.data.cached, { headers });
+      }
       claimed = true;
       const context = await contextFor(admin, input, owner);
       let feedback: Record<string, unknown> | null = null;
@@ -230,7 +234,13 @@ export function createChefHandler(deps: ChefDependencies) {
         24000
       )
         throw new ChefFailure(413, "context_too_large");
-      if (sensitiveFood.test(contextText)) throw new ChefFailure(422, "sensitive_feedback");
+      if (containsCredential(contextText) || history.some((m) => containsCredential(m.content)))
+        throw new ChefFailure(400, "remove_secret");
+      if (
+        sensitiveFood.test(contextText) ||
+        history.some((m) => m.role === "user" && sensitiveFood.test(m.content))
+      )
+        throw new ChefFailure(422, "sensitive_feedback");
       const started = Date.now();
       let result: Record<string, unknown>,
         candidates: unknown[] = [];
@@ -311,6 +321,7 @@ export function createChefHandler(deps: ChefDependencies) {
           reader.releaseLock();
         }
         const content = completionContent(JSON.parse(Buffer.concat(parts).toString("utf8")));
+        if (containsCredential(content.content)) throw new ChefFailure(502, "chef_invalid_answer");
         result = {
           model: completed.model,
           inputTokens: content.usage?.prompt_tokens ?? null,
@@ -345,6 +356,8 @@ export function createChefHandler(deps: ChefDependencies) {
           result.draft = draft;
         }
       }
+      if (containsCredential(JSON.stringify({ result, candidates })))
+        throw new ChefFailure(502, "chef_invalid_answer");
       result.durationMs = Date.now() - started;
       const finish = await admin.rpc("chef_finish_request", {
         u: owner,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, ChefHat, RotateCcw, Scale } from "lucide-react";
 import type { RecipeDocument, RecipeVersion } from "../kitchen/domain";
 import { recipeImages } from "../kitchen/catalog";
@@ -22,6 +22,41 @@ const format = (n: number | null) =>
 const numeric = (value: string) =>
   value.trim() === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
 export function NutritionPage({
+  versions,
+  initial,
+  initialServings,
+  onAdapt,
+}: {
+  versions: RecipeVersion[];
+  initial?: RecipeVersion;
+  initialServings?: number;
+  onAdapt?: (version: RecipeVersion, prompt: string) => void;
+}) {
+  const [epoch, reset] = useState(0);
+  useEffect(() => {
+    // A restored browser page can retain React state even without browser storage.
+    const clear = () => reset((value) => value + 1);
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) clear();
+    };
+    window.addEventListener("pagehide", clear);
+    window.addEventListener("pageshow", restore);
+    return () => {
+      window.removeEventListener("pagehide", clear);
+      window.removeEventListener("pageshow", restore);
+    };
+  }, []);
+  return (
+    <NutritionView
+      key={epoch}
+      versions={versions}
+      initial={initial}
+      initialServings={initialServings}
+      onAdapt={onAdapt}
+    />
+  );
+}
+function NutritionView({
   versions,
   initial,
   initialServings,

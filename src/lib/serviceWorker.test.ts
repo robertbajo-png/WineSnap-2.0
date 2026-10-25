@@ -7,9 +7,12 @@ function worker() {
   const remove = vi.fn().mockResolvedValue(true);
   const claim = vi.fn();
   const skipWaiting = vi.fn();
+  const assetMatch = vi.fn().mockResolvedValue(undefined);
   const cache = {
     addAll: vi.fn().mockResolvedValue(undefined),
     put: vi.fn().mockResolvedValue(undefined),
+    match: assetMatch,
+    delete: vi.fn().mockResolvedValue(true),
   };
   const match = vi.fn().mockResolvedValue(new Response("offline"));
   const fetcher = vi.fn().mockResolvedValue(new Response("account HTML"));
@@ -41,6 +44,8 @@ function worker() {
             "winesnap-pages-2026-10-21-revocable-images",
             "winesnap-assets-2026-10-22-release-candidate",
             "winesnap-pages-2026-10-22-release-candidate",
+            "winesnap-assets-2026-10-25-recipe-nutrition",
+            "winesnap-pages-2026-10-25-recipe-nutrition",
             ...currentCaches,
           ],
           delete: remove,
@@ -53,7 +58,7 @@ function worker() {
       },
     ),
   );
-  return { listeners, remove, claim, skipWaiting, cache, match, fetcher };
+  return { listeners, remove, claim, skipWaiting, cache, match, fetcher, assetMatch };
 }
 
 describe("release service worker", () => {
@@ -156,6 +161,8 @@ describe("release service worker", () => {
       "winesnap-pages-2026-10-21-revocable-images",
       "winesnap-assets-2026-10-22-release-candidate",
       "winesnap-pages-2026-10-22-release-candidate",
+      "winesnap-assets-2026-10-25-recipe-nutrition",
+      "winesnap-pages-2026-10-25-recipe-nutrition",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });
@@ -164,11 +171,89 @@ describe("release service worker", () => {
     "https://wine.example/api/private",
     "https://wine.example/_serverFn/test",
     "https://storage.example/private.jpg",
+    "https://wine.example/private/photo.jpg",
+    "https://wine.example/avatar.png",
+    "https://wine.example/assets/photo.webp?token=synthetic",
   ])("does not intercept API or external storage requests: %s", (url) => {
     const { listeners } = worker();
     const respondWith = vi.fn();
     listeners.get("fetch")?.({ request: { method: "GET", url, mode: "cors" }, respondWith });
     expect(respondWith).not.toHaveBeenCalled();
+  });
+
+  function assetResponse(headers: HeadersInit = {}) {
+    const response = new Response("public asset", { headers });
+    Object.defineProperty(response, "type", { value: "basic" });
+    return response;
+  }
+  async function fetchAsset(test: ReturnType<typeof worker>, authorization = false) {
+    let response: Promise<Response> | undefined;
+    let completed: Promise<unknown> | undefined;
+    test.listeners.get("fetch")?.({
+      request: {
+        method: "GET",
+        url: "https://wine.example/assets/app-hash.js",
+        mode: "cors",
+        headers: new Headers(authorization ? { Authorization: "Bearer synthetic" } : {}),
+      },
+      respondWith: (promise: Promise<Response>) => {
+        response = promise;
+      },
+      waitUntil: (promise: Promise<unknown>) => {
+        completed = promise;
+      },
+    });
+    await response;
+    await completed;
+  }
+  it("caches only public build assets and fetches them without cookies", async () => {
+    const test = worker();
+    test.fetcher.mockResolvedValueOnce(
+      assetResponse({ "Cache-Control": "public, max-age=31536000, immutable" }),
+    );
+    await fetchAsset(test);
+    expect(test.fetcher).toHaveBeenCalledWith(expect.anything(), { credentials: "omit" });
+    expect(test.cache.put).toHaveBeenCalledOnce();
+    expect(test.match).not.toHaveBeenCalled();
+  });
+  it("keeps public offline assets available without consulting other caches", async () => {
+    const test = worker();
+    test.assetMatch.mockResolvedValueOnce(assetResponse());
+    test.fetcher.mockRejectedValueOnce(new Error("offline"));
+    await fetchAsset(test);
+    expect(test.assetMatch).toHaveBeenCalledOnce();
+    expect(test.match).not.toHaveBeenCalled();
+    expect(test.cache.put).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["Cache-Control", "private, max-age=60"],
+    ["Cache-Control", "no-store"],
+    ["Cache-Control", "no-cache"],
+    ["Vary", "Accept-Encoding, Cookie"],
+    ["Vary", "Authorization, Accept-Encoding"],
+    ["Vary", "*"],
+  ])("honors private response caching boundaries: %s %s", async (name, value) => {
+    const headers = { [name]: value };
+    const test = worker();
+    test.fetcher.mockResolvedValueOnce(assetResponse(headers));
+    test.assetMatch.mockResolvedValueOnce(assetResponse(headers));
+    await fetchAsset(test);
+    expect(test.cache.put).not.toHaveBeenCalled();
+    expect(test.cache.delete).toHaveBeenCalledOnce();
+  });
+  it("does not intercept requests carrying an authorization header", async () => {
+    const test = worker();
+    await fetchAsset(test, true);
+    expect(test.fetcher).not.toHaveBeenCalled();
+    expect(test.cache.put).not.toHaveBeenCalled();
+  });
+  it("does not cache redirected assets", async () => {
+    const test = worker();
+    const response = assetResponse();
+    Object.defineProperty(response, "redirected", { value: true });
+    test.fetcher.mockResolvedValueOnce(response);
+    await fetchAsset(test);
+    expect(test.cache.put).not.toHaveBeenCalled();
   });
 
   it.each(["POST", "PUT", "DELETE", "HEAD"])(

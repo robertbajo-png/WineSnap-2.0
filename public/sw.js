@@ -1,8 +1,18 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "2026-10-25-recipe-nutrition";
+const VERSION = "2026-10-25-privacy-review";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const publicIcons = new Set(["/icon-512.png", "/favicon.png"]);
+function cacheableAsset(response) {
+  return (
+    response.ok &&
+    response.type === "basic" &&
+    !response.redirected &&
+    !/\b(?:private|no-store|no-cache)\b/i.test(response.headers.get("Cache-Control") || "") &&
+    !/(?:^|,)\s*(?:authorization|cookie|\*)\s*(?:,|$)/i.test(response.headers.get("Vary") || "")
+  );
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -65,14 +75,25 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: cache first, refresh in background.
-  if (/\.(js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)) {
-    const network = fetch(req).then(async (res) => {
-      if (res.ok && res.type === "basic")
-        await (await caches.open(ASSET_CACHE)).put(req, res.clone());
+  // Only public build assets, never an arbitrary private URL with an image suffix.
+  if (
+    !url.search &&
+    !req.headers?.has("authorization") &&
+    (publicIcons.has(url.pathname) ||
+      (url.pathname.startsWith("/assets/") &&
+        /\.(js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)))
+  ) {
+    const network = fetch(req, { credentials: "omit" }).then(async (res) => {
+      if (cacheableAsset(res)) await (await caches.open(ASSET_CACHE)).put(req, res.clone());
+      else await (await caches.open(ASSET_CACHE)).delete(req);
       return res;
     });
     event.waitUntil(network.catch(() => undefined));
-    event.respondWith(caches.match(req).then((cached) => cached || network));
+    event.respondWith(
+      caches.open(ASSET_CACHE).then(async (cache) => {
+        const cached = await cache.match(req);
+        return cached && cacheableAsset(cached) ? cached : network;
+      }),
+    );
   }
 });

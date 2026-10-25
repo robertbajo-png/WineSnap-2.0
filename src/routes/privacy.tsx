@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/i18n";
 import { privacyInformationComplete, siteInformation } from "@/lib/siteInformation";
 import { privacyControlsEnabled } from "@/lib/privacyControls";
+import { kitchenEnabled } from "@/features/kitchen/feature";
 import { chefEnabled } from "@/features/chef/feature";
 import { mealsEnabled } from "@/features/meals/feature";
 import { nutritionEnabled } from "@/features/nutrition/feature";
@@ -85,6 +86,20 @@ function PrivacyPage() {
               : "The local test kitchen also stores private recipes, versions, cooking sessions, feedback and food preferences with evidence. Chef sends your question, selected recipe or step and bounded confirmed food memory to Google Gemini. Feedback is analyzed only when you select it; inferred preferences await confirmation. Food Memory does not support allergies or medical diets. You can inspect, correct, forget or reset memory. Correction, forgetting or reset also clears Chef conversations and unsaved drafts, while recipes and cooking history remain. A limited hash barrier prevents automatic relearning of forgotten preferences. Requests and unsaved drafts are cleaned after 24 hours and conversations after 90 days with active maintenance. Recipes and confirmed preferences remain until removed or the account is erased. Privacy export and erasure include these data."}
           </p>
         )}
+        {chefEnabled && (
+          <p>
+            {sv
+              ? "För att följa ett Chef-samtal kan även upp till tolv tidigare meddelanden skickas med. Kontroller för vanliga nyckelformat och vissa medicinska uttryck minskar oavsiktlig delning, men upptäcker inte alla känsliga uppgifter. Ange inte lösenord, nycklar eller hälsouppgifter i frågor, recept eller feedback."
+              : "Up to twelve previous messages may also be sent to continue a Chef conversation. Checks for common credential formats and some medical terms reduce accidental disclosure but cannot detect all sensitive information. Do not put passwords, keys or health information in questions, recipes or feedback."}
+          </p>
+        )}
+        {kitchenEnabled && (
+          <p>
+            {sv
+              ? "För Cook Mode kan egna recept och matlagningar finnas i webbläsarens IndexedDB som en kontobunden offlinekopia, med högst 24 timmar sedan senaste åtkomstkontroll. Den rensas vid utloggning och kontobyte. Den är inte separat krypterad av appen; använd inte en gemensam webbläsarprofil för privata uppgifter. Kostkalkylatorns tillfälliga val ingår inte i offlinekopian och nollställs även vid återställning av sidan från webbläsarens bakåt-historik."
+              : "Cook Mode can keep owned recipes and cooking sessions in browser IndexedDB as an account-scoped offline copy, for up to 24 hours since the last access check. It is cleared on logout and account change. The app does not separately encrypt it; do not use a shared browser profile for private data. Temporary recipe-calculator choices are not part of that copy and also reset when a page is restored from browser back history."}
+          </p>
+        )}
         <p>
           {sv
             ? "WineSnap sparar kontouppgifter, vinbilder, källare, köp, önskelista, betyg, smakpreferenser och AI-historik för appens funktioner. Frivillig användningsstatistik är avstängd i denna version. Smakminnet drar slutsatser från dina preferenser och aktiviteter för personliga vinförslag, inte för beslut med rättsliga eller liknande betydande konsekvenser. Du kan nollställa det utan att radera dina viner eller betyg."
@@ -100,6 +115,11 @@ function PrivacyPage() {
             (sv
               ? "Rättslig grund: avtal för behandling som är nödvändig för tjänstens begärda funktioner. Begränsad säkerhets- och missbruksbekämpning avses stödjas på berättigat intresse efter dokumenterad intresseavvägning. Det innebär inte tillstånd att använda uppgifterna för andra ändamål."
               : "Legal basis: contract for processing necessary for requested service features. Limited security and abuse prevention is intended to rely on legitimate interests after a documented balancing assessment. This does not permit use for unrelated purposes.")}
+        </p>
+        <p>
+          {sv
+            ? "Gränssnittets typsnitt hämtas från Google Fonts. Din webbläsare kontaktar då Google och lämnar tekniska anslutningsuppgifter som IP-adress; appen skickar inte kontots innehåll med typsnittsanropet. Lokal drift innebär inte att alla externa anslutningar upphör."
+            : "Interface fonts are loaded from Google Fonts. Your browser contacts Google and supplies technical connection data such as an IP address; the app does not send account contents with the font request. Local hosting does not eliminate all external connections."}
         </p>
         <p>
           {siteInformation.retention ??

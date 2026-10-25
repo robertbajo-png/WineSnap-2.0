@@ -42,6 +42,19 @@ export default defineConfig(({ mode, command }) => {
               preset: "node_server",
               buildDir: "node_modules/.nitro-independent",
               output: { dir: output, serverDir: `${output}/server`, publicDir: `${output}/public` },
+              routeRules: {
+                "/**": {
+                  headers: {
+                    "X-Content-Type-Options": "nosniff",
+                    "X-Frame-Options": "DENY",
+                    "Referrer-Policy": "no-referrer",
+                    "Permissions-Policy": "camera=(self), microphone=(), geolocation=()",
+                    // Inline hydration still needs a separately tested nonce/hash policy.
+                    "Content-Security-Policy":
+                      "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
+                  },
+                },
+              },
             }),
           ]
         : []),

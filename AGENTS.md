@@ -38,3 +38,7 @@ or infer permission to read another member's cellar, recipes or private memory.
 Recipe nutrition is a test-only, opt-in view calculation with no persisted dietary
 profile. See `docs/recipe-nutrition-2026-10-25.md`; preserve unknowns, source/state
 confirmation and EU/US distinctions. No automatic child diet or health tracking.
+
+Current security/privacy release gates and data-flow inventory:
+`docs/security-privacy-review-2026-10-25.md`. Passing test suites is not public
+release approval or proof of supplier contracts, full recovery or legal compliance.

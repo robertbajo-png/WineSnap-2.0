@@ -28,13 +28,15 @@ export class ChefError extends Error {
         ? "Dagens eller periodens AI-gräns är nådd. Försök senare."
         : status === 409
           ? "Underlaget har ändrats eller anropet pågår redan. Hämta på nytt innan ett nytt försök."
-          : code === "sensitive_feedback"
-            ? "Medicinska uppgifter och allergier kan inte läggas i matminnet."
-            : status === 422
-              ? "Frågan behöver separat säkerhetsgranskning. AI-förslaget sparades inte."
-              : status === 401 || status === 403
-                ? "Logga in igen eller kontrollera att AI-kocken är aktiverad i testmiljön."
-                : "AI-tjänsten kunde inte slutföra anropet. Inget recept eller minne har ändrats.",
+          : code === "remove_secret"
+            ? "Underlaget verkar innehålla en hemlig nyckel. Ta bort den ur frågan, receptet eller samtalet innan du försöker igen."
+            : code === "sensitive_feedback"
+              ? "Underlaget verkar innehålla medicinska uppgifter eller allergier och kan inte skickas till AI-kocken eller matminnet."
+              : status === 422
+                ? "Frågan behöver separat säkerhetsgranskning. AI-förslaget sparades inte."
+                : status === 401 || status === 403
+                  ? "Logga in igen eller kontrollera att AI-kocken är aktiverad i testmiljön."
+                  : "AI-tjänsten kunde inte slutföra anropet. Inget recept eller minne har ändrats.",
     );
   }
 }
