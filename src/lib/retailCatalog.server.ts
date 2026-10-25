@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { retailCandidateSchema, type RetailCandidate, type RetailWine } from "./retailPrices";
 import { createRetailMirror } from "./retailMirror.server";
+import { approvedLocalBackend } from "./backendScope";
 
 const catalogRecord = z.record(z.string(), z.unknown());
 function text(value: unknown) {
@@ -43,13 +44,13 @@ export function parseRetailProduct(input: unknown): RetailCandidate | null {
 const mirrorLookup = createRetailMirror(parseRetailProduct);
 export async function warmLocalRetailCatalog() {
   if (process.env.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED !== "true") return;
-  if (process.env.SUPABASE_URL !== "https://pzniyupmgwvlldvztzqh.supabase.co")
+  if (!approvedLocalBackend(process.env))
     throw new Error("Retail mirror is restricted to WineSnap-test");
   await mirrorLookup.warm();
 }
 if (
   process.env.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED === "true" &&
-  process.env.SUPABASE_URL === "https://pzniyupmgwvlldvztzqh.supabase.co"
+  approvedLocalBackend(process.env)
 ) {
   // Public catalog only; user wine names are never sent to this community service.
   const warm = () => {
@@ -72,7 +73,7 @@ export async function lookupRetailCandidates(
   fetcher = fetch,
 ): Promise<RetailCandidate[]> {
   if (process.env.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED === "true") {
-    if (process.env.SUPABASE_URL !== "https://pzniyupmgwvlldvztzqh.supabase.co")
+    if (!approvedLocalBackend(process.env))
       throw new Error("Retail mirror is restricted to WineSnap-test");
     return mirrorLookup(wine, productNumber);
   }

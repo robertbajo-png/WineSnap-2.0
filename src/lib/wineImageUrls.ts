@@ -11,7 +11,9 @@ export async function downloadWineImage(path: string, signal: AbortSignal) {
     if (error || signal.aborted) return null;
     // FunctionsClient decodes image/* responses as text; preserve the binary body.
     const response = await fetch(
-      new URL("/functions/v1/wine-image", import.meta.env.VITE_SUPABASE_URL),
+      import.meta.env.VITE_OWNED_BACKEND_ENABLED === "true"
+        ? new URL("/api/wine-image", window.location.origin)
+        : new URL("/functions/v1/wine-image", import.meta.env.VITE_SUPABASE_URL),
       {
         method: "POST",
         body: JSON.stringify({ path }),

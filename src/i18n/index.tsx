@@ -183,6 +183,7 @@ const en = {
   "login.hasAccount": "Have an account? Sign in",
   "login.created": "Account created — sign in.",
   "login.forgot": "Forgot password?",
+  "login.localInbox": "Local inbox",
 
   // Password reset
   "reset.forgotTitle": "Reset password",
@@ -959,6 +960,7 @@ const sv: Record<keyof typeof en, string> = {
   "login.hasAccount": "Har du redan konto? Logga in",
   "login.created": "Konto skapat — logga in.",
   "login.forgot": "Glömt lösenord?",
+  "login.localInbox": "Lokal inkorg",
 
   "reset.forgotTitle": "Återställ lösenord",
   "reset.forgotSub": "Ange din e-postadress så skickar vi en återställningslänk.",

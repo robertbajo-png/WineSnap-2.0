@@ -6,6 +6,7 @@ COPY . .
 
 # Only public browser settings are build arguments. Never pass server secrets here.
 ARG VITE_SUPABASE_URL
+ARG VITE_OWNED_BACKEND_ENABLED=false
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_PRIVACY_CONTROLS_ENABLED=false
 ARG VITE_PRIVACY_OPERATIONS_VERIFIED=false

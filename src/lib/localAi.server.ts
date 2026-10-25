@@ -9,9 +9,9 @@ import { createHandler as createRestaurantMatch } from "../../supabase/functions
 import { createHandler as createPreferenceSignals } from "../../supabase/functions/extract-preference-signals/handler";
 import type { LocalAiFunction } from "./aiTransport";
 
-import { loadCredentials, localAiProject } from "./localCredentials.server";
+import { loadCredentials } from "./localCredentials.server";
+import { approvedLocalBackend } from "./backendScope";
 export { localAiProject } from "./localCredentials.server";
-const origin = `https://${localAiProject}.supabase.co`;
 const inputSchema = z
   .object({
     text: z.string().trim().min(3).max(12_000).optional(),
@@ -102,9 +102,10 @@ async function readInput(request: Request, name: LocalAiFunction) {
 
 // This adapter is opt-in and test-only. It does not enable unrelated admin routes.
 export async function handleLocalAi(request: Request, name: LocalAiFunction) {
+  const origin = approvedLocalBackend(process.env);
   const json = (error: string, status: number) =>
     Response.json({ error }, { status, headers: cacheHeaders });
-  if (process.env.WINESNAP_LOCAL_AI_ENABLED !== "true" || process.env.SUPABASE_URL !== origin)
+  if (process.env.WINESNAP_LOCAL_AI_ENABLED !== "true" || !origin)
     return json("Local AI is not enabled", 503);
   if (!Object.hasOwn(schemas, name)) return json("Unknown AI function", 404);
   if (request.method !== "POST") return json("Method not allowed", 405);
@@ -122,7 +123,7 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
       SUPABASE_URL: origin,
       SUPABASE_ANON_KEY: keys.publishable,
       SUPABASE_SERVICE_ROLE_KEY: keys.secret,
-      OPENAI_API_KEY: keys.openai,
+      ...(keys.openai ? { OPENAI_API_KEY: keys.openai } : {}),
       OPENAI_LABEL_MODEL: "gpt-6.1-sol",
       GEMINI_FAST_MODEL: "gemini-3.8-flash",
       GEMINI_TRANSIENT_RETRY_ENABLED: "true",

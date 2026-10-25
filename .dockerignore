@@ -8,6 +8,8 @@
 !config/
 !config/independent/
 !config/independent/environment.ts
+!supabase/functions/wine-image/
+!supabase/functions/wine-image/handler.ts
 !src/
 !src/**
 !public/

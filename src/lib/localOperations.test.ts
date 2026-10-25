@@ -37,6 +37,52 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("local operations credential scope", () => {
+  it("uses only owned credentials and the fixed local gateway in owned mode", async () => {
+    vi.stubEnv("WINESNAP_OWNED_BACKEND_ENABLED", "true");
+    vi.stubEnv("SUPABASE_URL", "http://winesnap-owned-gateway:8080");
+    const token = (role: string) =>
+      `e30.${Buffer.from(JSON.stringify({ role, ref: "winesnap-owned-local" })).toString("base64url")}.synthetic`;
+    const owned = {
+      ...keys,
+      project: "winesnap-owned-local",
+      publishable: token("anon"),
+      secret: token("service_role"),
+      openai: undefined,
+    };
+    doubles.read.mockResolvedValue(JSON.stringify(owned));
+    await getOperationsAdmin();
+    expect(doubles.createClient).toHaveBeenCalledWith(
+      "http://winesnap-owned-gateway:8080",
+      owned.secret,
+      expect.objectContaining({ global: { fetch: localBackendFetch } }),
+    );
+    doubles.read.mockResolvedValue(JSON.stringify(keys));
+    await expect(operationsCredentials()).rejects.toThrow();
+  });
+  it.each(["WINESNAP_LOCAL_OPERATIONS_ENABLED", "WINESNAP_LOCAL_AI_ENABLED"])(
+    "never falls back to a cloud administrator when owned %s is disabled",
+    async (flag) => {
+      vi.stubEnv("WINESNAP_OWNED_BACKEND_ENABLED", "true");
+      vi.stubEnv("SUPABASE_URL", "http://winesnap-owned-gateway:8080");
+      vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "must-not-fall-back");
+      vi.stubEnv(flag, "false");
+      await expect(getOperationsAdmin()).rejects.toThrow("Owned backend operations disabled");
+      expect(doubles.read).not.toHaveBeenCalled();
+      expect(doubles.createClient).not.toHaveBeenCalled();
+    },
+  );
+  it("blocks hosted requests even when the legacy test origin used to be allowed", async () => {
+    vi.stubEnv("WINESNAP_OWNED_BACKEND_ENABLED", "true");
+    vi.stubEnv("SUPABASE_URL", "http://winesnap-owned-gateway:8080");
+    const send = vi.fn().mockResolvedValue(new Response("{}"));
+    vi.stubGlobal("fetch", send);
+    expect(() =>
+      localBackendFetch("https://pzniyupmgwvlldvztzqh.supabase.co/rest/v1/wines"),
+    ).toThrow();
+    expect(send).not.toHaveBeenCalled();
+    await localBackendFetch("http://winesnap-owned-gateway:8080/rest/v1/wines");
+    expect(send.mock.calls[0][1]).toMatchObject({ redirect: "error", cache: "no-store" });
+  });
   it.each(["https://other.invalid", "https://production.invalid"])(
     "refuses %s even with an inherited admin key",
     async (origin) => {

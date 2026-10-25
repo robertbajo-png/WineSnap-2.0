@@ -1,4 +1,7 @@
+import { approvedCookingBrowser, ownedBrowserOrigin } from "../../src/lib/backendScope";
+
 export const publicEnvironmentKeys = [
+  "VITE_OWNED_BACKEND_ENABLED",
   "VITE_SUPABASE_URL",
   "VITE_SUPABASE_PUBLISHABLE_KEY",
   "VITE_SITE_OPERATOR",
@@ -43,6 +46,8 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       throw new Error(`Independent build requires ${key}; see config/independent/.env.example`);
   }
   const url = new URL(values.VITE_SUPABASE_URL);
+  if (values.VITE_OWNED_BACKEND_ENABLED === "true" && url.origin !== ownedBrowserOrigin)
+    throw new Error("Owned backend must use the exact local gateway");
   if (
     values.VITE_RECIPE_NUTRITION_ENABLED === "true" &&
     values.VITE_COOKING_CORE_ENABLED !== "true"
@@ -57,7 +62,7 @@ export function independentEnvironment(mode: string, input: Record<string, strin
     throw new Error("AI Chef requires the verified local cooking runtime");
   if (
     values.VITE_COOKING_CORE_ENABLED === "true" &&
-    url.href !== "https://pzniyupmgwvlldvztzqh.supabase.co/"
+    !approvedCookingBrowser(values.VITE_SUPABASE_URL, values.VITE_OWNED_BACKEND_ENABLED)
   )
     throw new Error("Cooking core can only use WineSnap-test");
   if (
@@ -68,7 +73,7 @@ export function independentEnvironment(mode: string, input: Record<string, strin
     throw new Error("Cooking core requires verified privacy export and erasure");
   if (
     values.VITE_LOCAL_AI_ENABLED === "true" &&
-    url.href !== "https://pzniyupmgwvlldvztzqh.supabase.co/"
+    !approvedCookingBrowser(values.VITE_SUPABASE_URL, values.VITE_OWNED_BACKEND_ENABLED)
   ) {
     throw new Error("Local AI can only use WineSnap-test");
   }

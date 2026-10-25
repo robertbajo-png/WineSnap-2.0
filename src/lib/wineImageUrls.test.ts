@@ -119,6 +119,18 @@ describe("authenticated wine image downloads", () => {
     expect(download).not.toHaveBeenCalled();
   });
 
+  it("uses only the same-origin proxy for an owned local build", async () => {
+    vi.stubEnv("VITE_WINE_IMAGE_PROXY_ENABLED", "true");
+    vi.stubEnv("VITE_OWNED_BACKEND_ENABLED", "true");
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:5212" } });
+    getSession.mockResolvedValue({ data: { session: null }, error: null });
+    imageFetch.mockResolvedValue(new Response("Denied", { status: 404 }));
+    expect(await downloadWineImage("owner/photo.jpg", new AbortController().signal)).toBeNull();
+    expect(imageFetch.mock.calls[0][0].href).toBe("http://127.0.0.1:5212/api/wine-image");
+    expect(imageFetch.mock.calls[0][1]).toMatchObject({ cache: "no-store", redirect: "error" });
+    expect(download).not.toHaveBeenCalled();
+  });
+
   it("never falls back to direct Storage when the proxy is unavailable or returns JSON", async () => {
     vi.stubEnv("VITE_WINE_IMAGE_PROXY_ENABLED", "true");
     getSession.mockResolvedValue({ data: { session: null }, error: null });

@@ -13,8 +13,11 @@
 - Production data and the existing published site must remain intact until an
   owned destination, complete export, isolated restore and rollback are verified.
   Do not promote the empty test project or blindly replay migration histories.
-- `pzniyupmgwvlldvztzqh` is the approved disposable test project. Test wrappers
-  reuse locally encrypted credentials; never print keys or ask for them in chat.
+- The current Windows installation uses its own empty local backend,
+  `winesnap-owned-local`, through `scripts/run-owned-windows.ps1`.
+  The owner abandoned hosted WineSnap-test (`pzniyupmgwvlldvztzqh`); its old
+  wrappers are historical/manual tools, not the default runtime. Never print
+  keys or ask for them in chat, or silently resume a hosted test connection.
 - Run typecheck, lint, Vitest, synthetic Node build/runtime and client budget.
   Security-sensitive changes need focused regression tests; UI changes need
   desktop/mobile browser verification. Do not equate mocked AI with live AI.
@@ -24,6 +27,10 @@
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
 preparation and must not override the current standalone default.
+The current Windows backend supersedes hosted-test runtime instructions:
+`docs/owned-local-windows-2026-10-25.md`. Operate only exact labelled local
+containers/volumes and fixed loopback ports. Do not delete volumes, regenerate
+lost root credentials, publish a tunnel or import real data automatically.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
@@ -38,6 +45,9 @@ or infer permission to read another member's cellar, recipes or private memory.
 Recipe nutrition is a test-only, opt-in view calculation with no persisted dietary
 profile. See `docs/recipe-nutrition-2026-10-25.md`; preserve unknowns, source/state
 confirmation and EU/US distinctions. No automatic child diet or health tracking.
+The owner separately approved these features on the owned local backend. Its
+explicit build/server flags and database gates are required; this narrow
+exception does not enable any feature on hosted test or production.
 
 Current security/privacy release gates and data-flow inventory:
 `docs/security-privacy-review-2026-10-25.md`. Passing test suites is not public

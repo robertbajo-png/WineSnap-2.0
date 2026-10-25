@@ -2,6 +2,12 @@
 
 Date: 2026-10-23. Source candidate; production cutover has NOT occurred.
 
+2026-10-25 Windows update: the owner abandoned hosted WineSnap-test for local
+use and approved a separate, initially empty PostgreSQL/Auth/Storage backend.
+The active local installation is now on port 5212, not 5210; see
+[Owned Local Windows](owned-local-windows-2026-10-25.md). Earlier hosted-test
+setup below is historical. No production data has been imported or cut over.
+
 Latest local runtime status:
 [Local WineSnap Completion](local-windows-completion-2026-10-23.md).
 It supersedes earlier same-day statements below about missing local AI,
