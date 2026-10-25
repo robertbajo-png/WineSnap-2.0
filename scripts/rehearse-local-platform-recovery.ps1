@@ -149,3 +149,4 @@ try {
 }
 $report | ConvertTo-Json -Depth 8
 if(-not $report.completed) {exit 1}
+exit 0

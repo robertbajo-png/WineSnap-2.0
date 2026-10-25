@@ -202,4 +202,13 @@ describe("local platform recovery boundaries", () => {
     expect(wrapper).toContain("RedirectStandardOutput=$true");
     expect(wrapper).not.toMatch(/& \$docker[^\n]*\bprune\b/);
   });
+  it("returns explicit success to PowerShell callers despite a missing cleanup target", () => {
+    for (const script of [
+      "rehearse-local-platform-recovery.ps1",
+      "rehearse-local-windows-snapshot.ps1",
+    ]) {
+      const source = readFileSync(new URL(`../${script}`, import.meta.url), "utf8");
+      expect(source).toMatch(/if\s*\(-not \$report\.completed\)\s*\{\s*exit 1\s*\}\s*exit 0\s*$/);
+    }
+  });
 });

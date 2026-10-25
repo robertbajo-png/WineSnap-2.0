@@ -247,9 +247,13 @@ production operation or new background schedule was created by this rehearsal.
 
 Verification on 2026-10-25: fresh encrypted archive recovery and repeated recovery
 from that saved archive both pass, including newer-erasure reconciliation and
-cleanup. All 886 unit tests in 94 files pass (21 new recovery regressions), plus
+cleanup. All 887 unit tests in 94 files pass (22 new recovery regressions), plus
 TypeScript, ESLint, standalone synthetic build/runtime, Chef prototype build and
 the unchanged 109,762-byte largest compressed client script. A fresh actual
 WineSnap-test application snapshot also restores all 35 table sections, ten
 retained rows, zero accounts and zero files, using the existing mocked-platform
 snapshot path. That separate result is not relabeled as a hosted platform dump.
+Both restore wrappers return explicit exit code 0 after successful cleanup, so
+a harmless missing-container probe cannot leave a stale native exit code for
+the PowerShell watcher. Failure paths still return 1. Caller-level success was
+checked in addition to the JSON report; the existing test watcher is resumed.

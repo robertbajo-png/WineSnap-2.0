@@ -77,3 +77,4 @@ try {
 }
 $report | ConvertTo-Json -Depth 6
 if (-not $report.completed) {exit 1}
+exit 0
