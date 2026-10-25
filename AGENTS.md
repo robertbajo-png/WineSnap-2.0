@@ -58,3 +58,10 @@ the PowerShell DPAPI wrapper: the private Node helper's create output contains
 synthetic password hashes, passwords and signing material. No hosted URL is
 accepted; never generalize it to production or claim portable/off-device recovery.
 See the 2026-10-25 addendum in `docs/local-windows-follow-up-2026-10-24.md`.
+
+Use `scripts/configure-test-database.ps1` for the separate PostgreSQL credential.
+Its masked Window input saves an existing test password with CurrentUser
+encryption; Check reuses it through private stdin in READ ONLY mode. NetworkCheck
+verifies TLS reachability without authentication, not database/backup acceptance.
+Never use the destructive CI database harness against hosted WineSnap-test,
+substitute API keys for this password, reset it automatically, or weaken TLS.

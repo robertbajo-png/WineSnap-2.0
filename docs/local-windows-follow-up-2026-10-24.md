@@ -257,3 +257,55 @@ Both restore wrappers return explicit exit code 0 after successful cleanup, so
 a harmless missing-container probe cannot leave a stale native exit code for
 the PowerShell watcher. Failure paths still return 1. Caller-level success was
 checked in addition to the JSON report; the existing test watcher is resumed.
+
+## Hosted Test Database Connection Setup
+
+The 2026-10-25 Connect panel for WineSnap-test confirms the session endpoint
+`aws-1-eu-west-1.pooler.supabase.com:5432`, database `postgres`, and user
+`postgres.pzniyupmgwvlldvztzqh`. The only alternative accepted by the new
+connection tool is that test project's exact direct database hostname over IPv6.
+No production hostname, transaction pooler, caller-provided URL or SQL is accepted.
+
+```powershell
+./scripts/configure-test-database.ps1 -Action NetworkCheck
+./scripts/configure-test-database.ps1 -Action Window
+./scripts/configure-test-database.ps1 -Action Check
+./scripts/configure-test-database.ps1 -Action SelfTest
+```
+
+NetworkCheck completes PostgreSQL SSL negotiation and validates the certificate
+without submitting a username, password or SQL. This actual network/TLS check
+passes from the Windows host. It is not an authenticated database connection.
+The public root certificate URL was read from this test project's SSL settings;
+the tool pins its SHA-256, CA status and validity and uses hostname verification.
+Neither client TLS validation nor server SSL settings are disabled or changed.
+See Supabase's [connection and TLS documentation](https://supabase.com/docs/guides/database/connecting-to-postgres#ssl).
+
+Window asks the user for the existing database password in a masked local field,
+then stores a PSCredential using Windows CurrentUser encryption at
+`%LOCALAPPDATA%\WineSnapHosting\database-credentials.clixml`. Owner/SYSTEM-only
+permissions, atomic replacement, bounded input and redirected-path rejection
+protect the store. The isolated encryption self-test passes without reading or
+changing real credentials. Check reuses the saved password without another input.
+An incorrect password remains encrypted for correction; failure is not acceptance.
+
+The actual login probe uses private stdin, a sanitized process environment and
+one TLS-verified connection. It checks database/role identity, a READ ONLY
+transaction, the expected security/meal migration markers and read access to
+Auth, Storage and erasure receipts. It copies no user rows or password hashes.
+Only sanitized status goes to `database-connection-status.json`; raw driver/SQL
+errors, passwords and connection URLs are not logged. `fullBackupCreated` remains
+false: connection setup is not a completed hosted dump or platform recovery.
+
+No password is reset, no role is created, and no remote schema, data, network
+rule, SSL setting or production configuration is changed. If the existing
+password is unknown, the tool returns a handoff requirement instead of guessing
+or attempting a reset. Any test-only reset must be completed by the user in
+the verified WineSnap-test project; existing SQL clients would need updating.
+
+Setup verification: all 915 unit tests in 95 files pass, including 28 connection
+boundary/error-redaction regressions. TypeScript, lint, synthetic build, runtime
+smoke, prototype build and client budget pass. The actual credentialless TLS
+probe and synthetic Windows encryption test pass. Authenticated database access
+and the hosted full dump remain unverified while the private password input is
+pending; a reachable socket is deliberately not reported as database acceptance.
