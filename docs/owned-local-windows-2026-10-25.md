@@ -129,3 +129,21 @@ full DB/image backup passed its roundtrip. Reports live under
 Public release remains separate: production migration and rollback, supplier
 sign-off, real outbound SMTP, public TLS/access controls and independently
 accepted recovery are not implied by this local installation.
+
+## Owner Account and Real Scan
+
+Later on 2026-10-25, the owner entered/submitted their own new password in the
+local registration UI. The local SMTP confirmation link completed normal
+sign-in; no administrator account creation, password reset or credential
+extraction was used. The existing WineSnap OpenAI connection read the approved
+Zehn Morgen original: producer, vintage 2023, Nahe and Chardonnay/Weisser Burgunder
+matched the image. One private wine, one photo row and one Storage object were
+saved under that owner. Browser reload retrieved the stored 400 x 1471 image.
+
+The strict label reader left wine type unclassified rather than claiming an
+inference was label text; the white-wine filter therefore does not include it
+until the type is confirmed. This is not an OCR guarantee for other labels.
+Testing also exposed the photo lightbox being trapped below the bottom nav by
+a page stacking context. It now uses the existing Radix portal/dialog primitives,
+viewport-constrained containment, an accessible close action and focus return.
+No production/hosted-test request or deployment is part of this checkpoint.
