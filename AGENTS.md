@@ -35,3 +35,6 @@ see `docs/ai-chef-food-memory-2026-10-24.md`. Preserve all independent gates.
 Phase-4 pairing, household invitations and private meal history are also test-only;
 see `docs/meals-households-2026-10-25.md`. Never send shared diner profiles to AI
 or infer permission to read another member's cellar, recipes or private memory.
+Recipe nutrition is a test-only, opt-in view calculation with no persisted dietary
+profile. See `docs/recipe-nutrition-2026-10-25.md`; preserve unknowns, source/state
+confirmation and EU/US distinctions. No automatic child diet or health tracking.

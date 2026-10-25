@@ -111,3 +111,7 @@ artifact, not just static assets. A non-root Docker recipe is included.
   are available in the actual local test kitchen, with independent build/database
   gates. Invitations share only explicitly selected diner profiles, never a peer's
   cellar or Food Memory. Snapshot v4 includes all 35 application tables.
+- The optional [recipe nutrition calculator](docs/recipe-nutrition-2026-10-25.md)
+  runs in the local test kitchen only. Standard is default; quantities, reference
+  mapping and comparison limits are temporary. It is not medical advice or a
+  persisted Keto/health profile. Public release remains gated on review.

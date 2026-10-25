@@ -1,4 +1,4 @@
-param([ValidateSet('Install', 'Check', 'Test', 'TestGemini', 'TestFeatures', 'TestPrices', 'TestCooking', 'TestChef', 'TestMeals')][string]$Action = 'Install')
+param([ValidateSet('Install', 'Check', 'Test', 'TestGemini', 'TestFeatures', 'TestPrices', 'TestCooking', 'TestChef', 'TestMeals', 'TestNutrition')][string]$Action = 'Install')
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'PowerShell 7 on Windows is required.' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -10,7 +10,7 @@ $aiKeys = $null
 $payload = $null
 $process = $null
 $phase = 'engine'
-$isTest = $Action -in @('Test', 'TestGemini', 'TestFeatures', 'TestPrices', 'TestCooking', 'TestChef', 'TestMeals')
+$isTest = $Action -in @('Test', 'TestGemini', 'TestFeatures', 'TestPrices', 'TestCooking', 'TestChef', 'TestMeals', 'TestNutrition')
 
 function Read-PrivateStore([string]$Path) {
   foreach ($item in @((Split-Path -Parent $Path), $Path)) {
@@ -56,6 +56,7 @@ try {
   if ($isTest) {
     $start.FileName = Join-Path $HOME '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
     $entry = if ($Action -eq 'TestMeals') { 'check-local-windows-meals.mjs' } elseif ($Action -eq 'TestChef') { 'check-local-windows-chef.mjs' } elseif ($Action -eq 'TestCooking') { 'check-local-windows-cooking.mjs' } elseif ($Action -in @('TestFeatures', 'TestPrices')) { 'check-local-windows-features.mjs' } elseif ($Action -eq 'TestGemini') { 'check-local-windows-gemini.mjs' } else { 'check-local-windows-ai.mjs' }
+    if ($Action -eq 'TestNutrition') { $entry = 'check-local-windows-nutrition.mjs' }
     if ($Action -eq 'TestPrices') { $start.Environment['WINESNAP_FEATURE_SCOPE'] = 'prices' }
     $start.ArgumentList.Add((Join-Path $PSScriptRoot $entry))
   } else {
@@ -105,6 +106,7 @@ try {
   $errors.GetAwaiter().GetResult() | Out-Null
   if ($isTest) {
     $report = if ($Action -eq 'TestMeals') { 'dist/local-windows-meals-report.json' } elseif ($Action -eq 'TestChef') { 'dist/local-windows-chef-report.json' } elseif ($Action -eq 'TestCooking') { 'dist/local-windows-cooking-report.json' } elseif ($Action -eq 'TestPrices') { 'dist/local-windows-prices-report.json' } elseif ($Action -eq 'TestFeatures') { 'dist/local-windows-features-report.json' } elseif ($Action -eq 'TestGemini') { 'dist/local-windows-gemini-report.json' } else { 'dist/local-windows-ai-report.json' }
+    if ($Action -eq 'TestNutrition') { $report = 'dist/local-windows-nutrition-report.json' }
     [pscustomobject]@{ completed=[bool]$result.completed; project=$project; report=$report } | ConvertTo-Json -Compress
     if ($process.ExitCode -ne 0 -or -not $result.completed) { exit 1 }
     exit 0

@@ -28,6 +28,7 @@ import {
   Wine,
   Brain,
   Sparkles,
+  Scale,
 } from "lucide-react";
 import {
   Dialog,
@@ -63,6 +64,10 @@ import { ChefPanel, type ChefOpening } from "../chef/ChefPanel";
 import { FoodMemoryPanel } from "../chef/FoodMemoryPanel";
 import { emptyChefContext } from "../chef/domain";
 import { mealsEnabled } from "../meals/feature";
+import { nutritionEnabled } from "../nutrition/feature";
+const NutritionPage = lazy(() =>
+  import("../nutrition/NutritionPanel").then((m) => ({ default: m.NutritionPage })),
+);
 const PairingPanel = lazy(() =>
   import("../meals/PairingPanel").then((m) => ({ default: m.PairingPanel })),
 );
@@ -544,6 +549,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const [selectedPast, setSelectedPast] = useState<LocalSession | null>(null);
   const [pairingRecipe, setPairingRecipe] = useState<RecipeVersion | undefined>();
   const [mealSession, setMealSession] = useState<string>();
+  const [nutritionVersion, setNutritionVersion] = useState<RecipeVersion>();
+  const [nutritionServings, setNutritionServings] = useState<number>();
   const [servings, setServings] = useState(2);
   const [search, setSearch] = useState("");
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -575,7 +582,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       setTab(
         hash === "cook" ||
           (chefEnabled && ["chef", "memory"].includes(hash)) ||
-          (mealsEnabled && ["pairings", "family", "meals"].includes(hash))
+          (mealsEnabled && ["pairings", "family", "meals"].includes(hash)) ||
+          (nutritionEnabled && hash === "nutrition")
           ? hash
           : "library",
       );
@@ -601,7 +609,15 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     setSelectedPast(null);
     setSelected(null);
     setHistory(null);
-    window.location.hash = ["cook", "chef", "memory", "pairings", "family", "meals"].includes(next)
+    window.location.hash = [
+      "cook",
+      "chef",
+      "memory",
+      "pairings",
+      "family",
+      "meals",
+      "nutrition",
+    ].includes(next)
       ? next
       : "recipes";
     setTab(next);
@@ -694,24 +710,31 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             </>
           )}
         </nav>
-        {mealsEnabled && (
+        {(mealsEnabled || nutritionEnabled) && (
           <div className="k-extra-nav">
             <label>
               <span className="sr-only">Fler vyer i köket</span>
               <select
-                value={["pairings", "family", "meals"].includes(tab) ? tab : ""}
+                value={["pairings", "family", "meals", "nutrition"].includes(tab) ? tab : ""}
                 onChange={(e) => {
                   if (e.target.value) {
                     setPairingRecipe(undefined);
                     setMealSession(undefined);
+                    setNutritionVersion(undefined);
+                    setNutritionServings(undefined);
                     navigate(e.target.value);
                   }
                 }}
               >
                 <option value="">Mer i köket…</option>
-                <option value="pairings">Mat & vin</option>
-                <option value="family">Familj</option>
-                <option value="meals">Måltider & vin</option>
+                {mealsEnabled && (
+                  <>
+                    <option value="pairings">Mat & vin</option>
+                    <option value="family">Familj</option>
+                    <option value="meals">Måltider & vin</option>
+                  </>
+                )}
+                {nutritionEnabled && <option value="nutrition">Receptens kolhydrater</option>}
               </select>
             </label>
           </div>
@@ -790,6 +813,29 @@ function KitchenWorkspace({ owner }: { owner: string }) {
         ) : (
           <>
             <Suspense fallback={<p aria-busy="true">Öppnar…</p>}>
+              {nutritionEnabled && tab === "nutrition" && (
+                <NutritionPage
+                  key={`${owner}:${nutritionVersion?.id ?? "library"}:${nutritionServings ?? ""}`}
+                  versions={cache.versions}
+                  initial={nutritionVersion}
+                  initialServings={nutritionServings}
+                  onAdapt={
+                    chefEnabled && !offline
+                      ? (version, prompt) =>
+                          openChef(
+                            {
+                              mode: "adapt",
+                              context: { ...emptyChefContext, recipeVersionId: version.id },
+                              title: version.document.title,
+                              initialPrompt: prompt,
+                              initialServings: version.document.servings,
+                            },
+                            version,
+                          )
+                      : undefined
+                  }
+                />
+              )}
               {mealsEnabled && tab === "pairings" && (
                 <PairingPanel
                   owner={owner}
@@ -1003,6 +1049,19 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                 </p>
                 <h1>{selected.document.title}</h1>
                 <p className="k-description">{selected.document.description}</p>
+                {nutritionEnabled && (
+                  <button
+                    className="k-text"
+                    onClick={() => {
+                      setNutritionVersion(selected);
+                      setNutritionServings(servings);
+                      navigate("nutrition");
+                    }}
+                  >
+                    <Scale size={18} />
+                    Kolhydrater & ingrediensbyten
+                  </button>
+                )}
                 {mealsEnabled && (
                   <button
                     className="k-text"
@@ -1205,6 +1264,19 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                     </IconButton>
                   )}
                 </div>
+                {nutritionEnabled && (
+                  <button
+                    className="k-text"
+                    onClick={() => {
+                      setNutritionVersion(local.version);
+                      setNutritionServings(state.servings);
+                      navigate("nutrition");
+                    }}
+                  >
+                    <Scale size={18} />
+                    Se receptets kolhydratunderlag
+                  </button>
+                )}
                 {clockChanged && (
                   <p className="k-error" role="alert">
                     Enhetens klocka har ändrats. Kontrollera timerinställningarna.

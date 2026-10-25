@@ -10,6 +10,8 @@ export type ChefOpening = {
   mode: "chat" | "generate" | "adapt";
   context: ChefContext;
   title: string;
+  initialPrompt?: string;
+  initialServings?: number;
 };
 export function ChefPanel({
   owner,
@@ -23,8 +25,8 @@ export function ChefPanel({
   onReview: (draft: RecipeDocument) => void;
 }) {
   const [mode, setMode] = useState(opening.mode);
-  const [prompt, setPrompt] = useState("");
-  const [servings, setServings] = useState(2),
+  const [prompt, setPrompt] = useState(opening.initialPrompt ?? "");
+  const [servings, setServings] = useState(opening.initialServings ?? 2),
     [minutes, setMinutes] = useState(30);
   const [conversation, setConversation] = useState({
     id: crypto.randomUUID() as string,
@@ -223,6 +225,7 @@ export function ChefPanel({
         <label>
           {mode === "chat" ? "Din fråga" : "Vad ska receptet innehålla eller ändra?"}
           <textarea
+            aria-label={mode === "chat" ? "Din fråga" : "Vad ska receptet innehålla eller ändra?"}
             value={prompt}
             required
             maxLength={2000}

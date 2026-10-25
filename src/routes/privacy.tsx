@@ -5,6 +5,7 @@ import { privacyInformationComplete, siteInformation } from "@/lib/siteInformati
 import { privacyControlsEnabled } from "@/lib/privacyControls";
 import { chefEnabled } from "@/features/chef/feature";
 import { mealsEnabled } from "@/features/meals/feature";
+import { nutritionEnabled } from "@/features/nutrition/feature";
 export const Route = createFileRoute("/privacy")({
   head: () => ({ meta: [{ title: "Privacy | WineSnap" }] }),
   component: PrivacyPage,
@@ -63,6 +64,13 @@ function PrivacyPage() {
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
         <h2 className="font-display text-xl">{sv ? "Uppgifter och användning" : "Data and use"}</h2>
+        {nutritionEnabled && (
+          <p>
+            {sv
+              ? "Receptkalkylatorns frivilliga kostläge, gramvikter, etikettvärden och receptgräns används tillfälligt i den öppna vyn. Appen sparar dem inte i konto, webbläsarlagring, matminne eller familjeprofiler. Referenslistan är offentlig livsmedelsdata. Ett ingrediensbyte kan öppnas som en redigerbar fråga till AI-kocken; först när du skickar frågan överförs ingrediensnamn och mängd tillsammans med valt recept enligt AI-kockens regler ovan. Kostläge och receptgräns förs inte över. Kalkylatorn stöder inte hälsomätningar, behandling eller barns kostplanering."
+              : "The optional recipe calculator uses mode, gram weights, label values and recipe comparison limits temporarily in the open view. The app does not save them in the account, browser storage, Food Memory or household profiles. Its reference list is public food data. An ingredient substitution can open an editable Chef request; only submission sends ingredient names and amount with the selected recipe under the Chef rules above. Mode and comparison limit are not transferred. Health measurements, treatment and child dietary planning are not supported."}
+          </p>
+        )}
         {mealsEnabled && (
           <p>
             {sv
