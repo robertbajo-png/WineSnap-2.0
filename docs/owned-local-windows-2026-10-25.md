@@ -59,6 +59,10 @@ Run these scripts using PowerShell 7 from the repository:
 ./scripts/run-owned-windows.ps1 -Action Update
 ./scripts/run-owned-windows.ps1 -Action Backup
 ./scripts/run-owned-windows.ps1 -Action Maintain
+# Disposable local fixtures, no provider calls:
+./scripts/run-owned-windows.ps1 -Action Features
+# Explicit live Gemini acceptance; up to eight AI scenarios:
+./scripts/run-owned-windows.ps1 -Action FeaturesAi
 ```
 
 Start reuses the installed app image; Update deliberately rebuilds the app and
@@ -95,8 +99,9 @@ The app receives only a private RAM file, not server/provider keys in browser
 settings, Docker arguments or its environment. The frontend contains only the
 local anon JWT. AI still sends deliberate AI requests to external providers;
 database locality does not mean offline AI or EU-only processing. Existing AI
-privacy/supplier gates remain independent. This task makes no new live model
-call and does not revalidate provider billing or availability.
+privacy/supplier gates remain independent. Initial backend setup made no live
+model calls. The subsequent scan/feature checkpoints below deliberately use the
+authorized providers; they do not certify future billing or availability.
 
 Backup briefly stops local writers, captures a real custom-format `pg_dump`
 (including Auth hashes and platform schemas), role definitions without role
@@ -147,3 +152,47 @@ Testing also exposed the photo lightbox being trapped below the bottom nav by
 a page stacking context. It now uses the existing Radix portal/dialog primitives,
 viewport-constrained containment, an accessible close action and focus return.
 No production/hosted-test request or deployment is part of this checkpoint.
+
+## Remaining Feature Acceptance
+
+The owned backend passed 19 grouped feature scenarios, including eight live AI
+scenarios. `Features` runs the eleven non-provider groups; `FeaturesAi` explicitly
+adds wine chat/history, grounded personal recommendations, similar wines,
+restaurant text-menu analysis, Chef memory chat with idempotent replay, recipe
+draft generation, adaptation without changing a saved recipe/session, and exact
+feedback-source extraction into pending Food Memory evidence.
+
+The deterministic groups cover owner-scoped cellar editing, notes/aroma
+intensities, wishlist duplicate protection, public sharing/revocation, immutable
+recipe versions and stale-write denial, Cook Mode portions/checklists/timers,
+pause/history/feedback, three distinct meal ratings without inventory mutation,
+Food Memory correction/forget/reset and family membership/sharing revocation.
+The Chef safety tripwire returns without contacting a provider. This verifies a
+technical guard, not the safety of food or medical advice.
+
+Tests create only tagged, synthetic local accounts; deletion checks both exact
+email and run metadata before removing them. They never reuse or reset the real
+owner account, modify operator gates, redirect credentials, invoke a hosted-test
+wrapper or write plaintext sessions/credentials. Cleanup completed with no
+failures. Only counts, check names and sanitized statuses are retained in
+`features-status.json` / `featuresai-status.json` under the private local directory.
+Do not schedule `FeaturesAi`: it intentionally incurs provider requests. Existing
+bounded 503 retry behavior can produce more provider HTTP requests than scenarios.
+
+This run found and fixed an old hosted-test-only retry check in the common AI
+client. The owned server now passes its explicit owned flag; only the exact
+Docker gateway is additionally accepted. Other cloud/loopback targets still fail
+closed. No provider key, model pin, retry count/deadline or production runtime
+configuration changed. Public share taste bars also now reuse the same bounded
+zero-to-ten meter as the rest of WineSnap instead of the old five-point scale.
+
+In the actual owner's browser, cellar producer search and empty results, price
+refresh with an unconfirmed candidate, recipe-editor unit conversion/cancel,
+empty Food Memory and real sommelier chat/history after reload were checked.
+The formatted answer and composer fit a 390 x 844 mobile viewport without
+horizontal overflow or covering bottom navigation. The price candidate was NOT
+manually accepted. No artificial rating or food preference was added to the owner.
+
+These checks do not replace physical-device camera/background-timer tests,
+full offline/multitab acceptance on this new origin, supplier sign-off or an
+independent restore of the new backup format. Public release gates remain open.

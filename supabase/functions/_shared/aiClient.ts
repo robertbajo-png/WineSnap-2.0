@@ -78,12 +78,16 @@ export function createAiClient(workload: Workload, env: Environment, send: typeo
   const key = env(provider.key)?.trim();
   const model = env(provider.model)?.trim() || AI_MODELS[workload];
   const retryGemini = workload === "fast" && env("GEMINI_TRANSIENT_RETRY_ENABLED") === "true";
+  const retryBackendAllowed =
+    env("WINESNAP_OWNED_BACKEND_ENABLED") === "true"
+      ? env("SUPABASE_URL") === "http://winesnap-owned-gateway:8080"
+      : env("SUPABASE_URL") === "https://pzniyupmgwvlldvztzqh.supabase.co";
   if (
     !key ||
     /\s/.test(key) ||
     !model.startsWith(provider.prefix) ||
     !/^[a-zA-Z0-9._-]{1,128}$/.test(model) ||
-    (retryGemini && env("SUPABASE_URL") !== "https://pzniyupmgwvlldvztzqh.supabase.co")
+    (retryGemini && !retryBackendAllowed)
   ) {
     throw new AiConfigurationError();
   }
@@ -94,7 +98,7 @@ export function createAiClient(workload: Workload, env: Environment, send: typeo
       if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 45_000) {
         throw new Error("Invalid AI timeout");
       }
-      // Preserve schema/tool contracts. Retry is an explicit local-test-only opt-in.
+      // Preserve schema/tool contracts. Retry is an explicit isolated-runtime opt-in.
       // OpenAI storage is disabled and its calls are never retried or rerouted.
       const tokenField = workload === "labelReading" ? "max_completion_tokens" : "max_tokens";
       const budget = body[tokenField] ?? (workload === "labelReading" ? 8192 : 4096);

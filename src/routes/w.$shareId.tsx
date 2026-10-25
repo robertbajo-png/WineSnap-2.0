@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Wine, ArrowRight } from "lucide-react";
 import { loadPublicWine, type PublicWine } from "@/lib/publicWine";
 import { WineImage } from "@/components/WineImage";
+import { BarMeter } from "@/components/MeterRow";
 
 export const Route = createFileRoute("/w/$shareId")({
   head: () => ({
@@ -121,16 +122,7 @@ function PublicWinePage() {
             </h2>
             <div className="mt-3 space-y-2">
               {meters.map(([label, val]) => (
-                <div key={label} className="flex items-center gap-3 text-sm">
-                  <span className="w-20 text-muted-foreground">{label}</span>
-                  <div className="relative h-1.5 flex-1 rounded-full bg-white/10">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-burgundy to-gold"
-                      style={{ width: `${Math.round(((val ?? 0) / 5) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="w-6 text-right text-cream">{val ?? "—"}</span>
-                </div>
+                <BarMeter key={label} label={label} value={val} max={10} />
               ))}
             </div>
           </div>

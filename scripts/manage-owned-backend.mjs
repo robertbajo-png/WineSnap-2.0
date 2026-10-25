@@ -19,7 +19,11 @@ import {
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
 const action = process.argv[2];
-assert.ok(["Start", "Verify", "Backup", "Update", "Accept", "Maintain"].includes(action));
+assert.ok(
+  ["Start", "Verify", "Backup", "Update", "Accept", "Features", "FeaturesAi", "Maintain"].includes(
+    action,
+  ),
+);
 assert.equal(process.argv.length, 3);
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
 const baseEnv = Object.fromEntries(
@@ -611,6 +615,17 @@ try {
   }
   phase = "verification";
   await verify();
+  if (["Features", "FeaturesAi"].includes(action)) {
+    const { acceptOwnedFeatures } = await import("./lib/owned-features.mjs");
+    report.features = await acceptOwnedFeatures(keys, {
+      liveAi: action === "FeaturesAi",
+      progress(step) {
+        assert.match(step, /^[a-z_]+$/);
+        phase = `features_${step}`;
+      },
+    });
+    assert.equal(report.features.completed, true);
+  }
   if (action === "Accept") {
     const { acceptOwnedBackend } = await import("./lib/owned-acceptance.mjs");
     report.acceptance = await acceptOwnedBackend(

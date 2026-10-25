@@ -23,6 +23,33 @@ describe("bounded local Gemini retry", () => {
     vi.restoreAllMocks();
   });
 
+  it("accepts only the explicitly enabled owned Docker backend", async () => {
+    const owned = {
+      ...values,
+      WINESNAP_OWNED_BACKEND_ENABLED: "true",
+      SUPABASE_URL: "http://winesnap-owned-gateway:8080",
+      GEMINI_TRANSIENT_RETRY_ENABLED: "true",
+    };
+    const fetcher = send();
+    await createAiClient("fast", (name) => owned[name as keyof typeof owned], fetcher).complete({
+      messages: [],
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+    for (const override of [
+      { WINESNAP_OWNED_BACKEND_ENABLED: "false" },
+      { SUPABASE_URL: "https://production.invalid" },
+      { SUPABASE_URL: "http://localhost:54323" },
+      { SUPABASE_URL: "https://pzniyupmgwvlldvztzqh.supabase.co" },
+      { SUPABASE_URL: "http://winesnap-owned-gateway:8080/path" },
+    ]) {
+      const env = { ...owned, ...override };
+      expect(() =>
+        createAiClient("fast", (name) => env[name as keyof typeof env], fetcher),
+      ).toThrow(AiConfigurationError);
+    }
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
   it("retries a transient 503 with identical destination, key, payload and total deadline", async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0);

@@ -223,6 +223,30 @@ describe("local Gemini chat and recommendation boundary", () => {
     });
     return { filters, rpc, from };
   }
+  it("passes the owned-runtime gate through to the fixed Gemini provider", async () => {
+    vi.stubEnv("WINESNAP_OWNED_BACKEND_ENABLED", "true");
+    vi.stubEnv("SUPABASE_URL", "http://winesnap-owned-gateway:8080");
+    const token = (role: string) =>
+      `e30.${Buffer.from(JSON.stringify({ role, ref: "winesnap-owned-local" })).toString("base64url")}.synthetic`;
+    doubles.readFile.mockResolvedValue(
+      JSON.stringify({
+        ...keys,
+        project: "winesnap-owned-local",
+        publishable: token("anon"),
+        secret: token("service_role"),
+        gemini: "synthetic-google-key-never-real",
+      }),
+    );
+    client();
+    const send = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 502 }));
+    vi.stubGlobal("fetch", send);
+    const response = await handleLocalAi(request({ message: "Suggest a dish" }), "ask-winesnap");
+    expect(response.status).toBe(502);
+    expect(send).toHaveBeenCalledOnce();
+    expect(send.mock.calls[0][0]).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    );
+  });
   it.each(names)("keeps %s off outside the explicit local runtime", async (name) => {
     vi.stubEnv("WINESNAP_LOCAL_AI_ENABLED", "false");
     expect((await handleLocalAi(request(), name)).status).toBe(503);

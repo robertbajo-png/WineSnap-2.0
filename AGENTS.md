@@ -31,6 +31,10 @@ The current Windows backend supersedes hosted-test runtime instructions:
 `docs/owned-local-windows-2026-10-25.md`. Operate only exact labelled local
 containers/volumes and fixed loopback ports. Do not delete volumes, regenerate
 lost root credentials, publish a tunnel or import real data automatically.
+Use `run-owned-windows.ps1 -Action Features` for tagged, disposable backend
+fixtures. `FeaturesAi` is a separate opt-in with up to eight real AI scenarios;
+never schedule it or substitute it for browser/mobile verification. Clean up
+only exact fixture IDs whose email and run metadata match, never real accounts.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
