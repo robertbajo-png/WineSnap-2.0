@@ -21,6 +21,7 @@ supabase/functions/.env
 # Windows-user-encrypted test credentials, never commit even encrypted copies.
 .winesnap-test.keys*.local
 .env.winesnap-test-keys*.local
+.winesnap-release-evidence.local.json
 
 # Wrangler / Cloudflare
 .wrangler/

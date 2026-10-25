@@ -46,3 +46,8 @@ Supplier account evidence and draft processing/risk records:
 `docs/supplier-privacy-review-2026-10-25.md`. Keep supplier release sign-off separate
 from working export/erasure. Fonts ship locally with their OFL notices; do not
 restore external font/CDN requests or imply zero-retention/EU-only AI processing.
+
+`npm run release:check` is a source-only, read-only preflight; exit 2 means
+release remains blocked. See `docs/release-readiness-2026-10-25.md`. Never create
+operator attestations, copy credentials into evidence or treat local application
+backup/restore success as full platform recovery. It is not a deploy command.

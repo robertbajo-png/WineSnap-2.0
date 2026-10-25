@@ -19,6 +19,22 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
+      - name: Keep public release blocked without operator evidence
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { spawnSync } from 'node:child_process';
+          const result = spawnSync(process.execPath, ['scripts/check-release-readiness.mjs'], { encoding: 'utf8' });
+          assert.equal(result.status, 2);
+          const report = JSON.parse(result.stdout);
+          assert.equal(report.releaseReady, false);
+          assert.equal(report.readOnly, true);
+          assert.equal(report.productionTouched, false);
+          assert.ok(report.blockers.includes('operator_evidence_missing'));
+          assert.equal(report.gates.length, 10);
+          assert.ok(report.gates.every(gate => gate.status === 'pending'));
+          console.log('PASS: green CI does not approve public release.');
+          JS
       - name: Build the default Node runtime with synthetic configuration
         run: npm run build:check
         env:

@@ -5,6 +5,10 @@ public supplier documentation. Production was not accessed or changed. No new
 accounts, contracts, subscriptions, billing settings or supplier permissions
 were created or accepted.
 
+The [read-only release preflight](release-readiness-2026-10-25.md) now checks
+recorded acceptance separately from local operational health. No new supplier
+approval or account-specific evidence was established by that follow-up.
+
 **Decision: public release remains blocked on account-specific evidence and
 operator approval.** Document review is complete for the sources listed below;
 it does not establish which terms bind Boleo AI or certify legal compliance.

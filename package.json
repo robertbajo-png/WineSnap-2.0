@@ -21,6 +21,7 @@
     "test:database": "node scripts/check-staging-database.mjs",
     "test:bundle": "node scripts/check-client-budget.mjs",
     "test:security": "npm audit --omit=dev --audit-level=high",
+    "release:check": "node scripts/check-release-readiness.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
