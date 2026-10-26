@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { retryPendingCookingSync } from "./retry";
 import {
   archiveRecipe,
   KitchenError,
@@ -32,6 +33,7 @@ export function useKitchen(owner: string | undefined) {
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState<LocalSession | null>(null);
+  const [retryable, setRetryable] = useState(false);
   const ref = useRef<KitchenCache | null>(null);
   const ownerRef = useRef(owner);
   const running = useRef(false);
@@ -97,9 +99,11 @@ export function useKitchen(owner: string | undefined) {
     setError("");
     try {
       await action(ref.current);
+      if (ownerRef.current === owner && generation.current === current) setRetryable(false);
       return true;
     } catch (cause) {
       if (ownerRef.current === owner && generation.current === current) {
+        setRetryable(cause instanceof KitchenError && cause.kind === "network");
         setError(message(cause));
         if (cause instanceof KitchenError && cause.kind === "unavailable") {
           await clearKitchenCache();
@@ -124,6 +128,7 @@ export function useKitchen(owner: string | undefined) {
     setError("");
     setConflict(null);
     running.current = false;
+    setRetryable(false);
     setBusy(false);
     const valid = () => current === generation.current && ownerRef.current === owner;
     async function load() {
@@ -175,6 +180,7 @@ export function useKitchen(owner: string | undefined) {
           setError(message(cause));
           if (local && cause instanceof KitchenError && cause.kind === "network") {
             update(local);
+            setRetryable(Boolean(local.session?.dirty));
           }
           if (cause instanceof KitchenError && cause.kind === "unavailable") {
             await clearKitchenCache();
@@ -220,6 +226,22 @@ export function useKitchen(owner: string | undefined) {
     // Retry only on a real connection change or a newly loaded session, not on repeated failures.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offline, ready]);
+  useEffect(() => {
+    if (!retryable || !ready || offline || !cache?.session?.dirty || conflict) return;
+    return retryPendingCookingSync({
+      run: () => run(flush),
+      canRun: () =>
+        ownerRef.current === owner &&
+        !!ref.current?.session?.dirty &&
+        !running.current &&
+        navigator.onLine &&
+        document.visibilityState === "visible",
+      focus: window,
+      visibility: document,
+    });
+    // Owner/cache refs guard each attempt; busy renders must not reset the backoff.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retryable, ready, offline, cache?.session?.dirty, conflict, owner]);
   async function change(state: CookingState, feedback: CookingFeedback | null = null) {
     let localSaved = false;
     const synchronized = await run(async (value) => {

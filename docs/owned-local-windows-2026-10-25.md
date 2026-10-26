@@ -344,3 +344,43 @@ synthetic build, independent runtime smoke and client budget. The existing
 owned installation and its watcher were healthy after the rehearsal; no
 restore-labelled containers or networks remained. No production deployment,
 provider request or hosted-test connection was part of this restore checkpoint.
+
+## Owned offline browser acceptance (2026-10-26)
+
+Run `scripts/run-owned-windows.ps1 -Action Offline` manually for the real owned
+app at `http://127.0.0.1:5212`. The owner explicitly approved a separate
+Playwright browser for this test. It does not reuse a normal Chrome session,
+touch production or contact the abandoned hosted test project.
+
+The wrapper verifies the owned stack and waits up to five minutes for its
+operation lock. An administrator-tagged synthetic fixture is recorded in the
+existing private cleanup manifest before setup continues. Cleanup matches its
+exact user ID, synthetic email and administrator-written run metadata. The
+browser is closed and fixture cleanup is attempted in `finally`; after a hard
+process crash, recover with the existing `BrowserCleanup` action. Never schedule
+this acceptance or substitute a real user account.
+
+The browser waits for the app's actual service worker to activate before
+opening Cook Mode. Context-level offline emulation and local request failures
+simulate network loss; neither navigator state nor online/offline events are
+spoofed. Chromium can report `onLine=true` after service-worker navigation, so
+an actual failed health request verifies the outage. Independent SDK reads
+confirm the fixture's server revision remains unchanged throughout offline
+edits, reload and navigation. External and AI requests are blocked.
+
+The nine acceptance groups cover normal login and a generic cached shell,
+offline edits, reload preservation of step/servings/ingredient/paused timer,
+private cellar exclusion, one idempotent reconnect write, both explicit
+conflict choices, desktop layout and logout erasure of the private offline
+copy. The first complete run passed all nine groups, with fixture cleanup,
+zero page errors and zero external requests. Screenshots are under
+`dist/owned-offline`; the credential-free result is saved privately as
+`%LOCALAPPDATA%\WineSnapOwned\offline-status.json`.
+
+The cooking workspace also gains bounded retry after transient network errors
+while pending, visible and still owned by the active account. Delays back off
+from 5 to 30 seconds; returning to the foreground can retry immediately. Every
+attempt retains the session's idempotency key and rechecks server access.
+Conflicts, invalid state and access denial do not qualify for automatic retry;
+closing the workspace removes its timer and event listeners. This does not
+enable background AI, offline wine scanning or guaranteed mobile timer alarms.

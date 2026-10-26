@@ -38,8 +38,8 @@ export function assertFixtureOwner(user, fixture) {
   assert.equal(user.app_metadata?.owned_browser_run, fixture.run);
 }
 
-// Only synthetic fixtures use this reproducible password. It never enters a
-// report or a browser; browser sign-in uses normal mail in the local inbox.
+// Only synthetic fixtures use this reproducible password. Never persist it or
+// include it in a report. Interactive sign-in uses mail in the local inbox.
 export async function ownedBrowserFixture(keys, action, fixture, remember = async () => {}) {
   validateOwnedKeys(keys);
   assert.ok(["prepare", "inspect", "conflict", "memory", "cleanup", "absent"].includes(action));

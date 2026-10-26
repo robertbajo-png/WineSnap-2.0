@@ -45,6 +45,14 @@ Never schedule browser fixture preparation or live AI scenarios.
 `BrowserConflict` can simulate a newer server revision only for the manifest's
 exact synthetic cooking session and recipe version, after all fixture-owner
 checks. It is a backend test operation, not proof that a browser is offline.
+`run-owned-windows.ps1 -Action Offline` is a manual Playwright acceptance against
+only the owned loopback app/API. It waits for the local operation lock, creates
+an administrator-tagged disposable fixture, blocks external/provider requests,
+and checks real browser network loss, reload, reconnect, both conflict choices
+and logout erasure. It always attempts exact-owner cleanup. Do not schedule it,
+reuse a real account/session, or persist browser login state, HARs or traces.
+Screenshots and a credential-free phase marker go under `dist/owned-offline`;
+the sanitized final result is in the private `offline-status.json` report.
 New owned backups use version 2 with the `owned-logical-v1` database/file manifest.
 Use `scripts/rehearse-owned-recovery.ps1` for a same-PC, isolated restore of the
 latest compatible encrypted archive, or `-BackupFile` with an exact archive

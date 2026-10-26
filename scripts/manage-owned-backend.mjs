@@ -29,6 +29,7 @@ assert.ok(
     "Accept",
     "Features",
     "FeaturesAi",
+    "Offline",
     "BrowserPrepare",
     "BrowserInspect",
     "BrowserConflict",
@@ -634,7 +635,7 @@ try {
   }
   phase = "verification";
   await verify();
-  if (action.startsWith("Browser")) {
+  if (action.startsWith("Browser") || action === "Offline") {
     const { ownedBrowserFixture, validateBrowserFixture } =
       await import("./lib/owned-browser-fixture.mjs");
     const manifestPath = join(process.env.LOCALAPPDATA, "WineSnapOwned", "browser-fixture.json");
@@ -647,24 +648,39 @@ try {
       if (error.code !== "ENOENT") throw error;
     }
     phase = `browser_${action.slice(7).toLowerCase()}`;
-    if (action === "BrowserPrepare" && fixture) {
+    if (["BrowserPrepare", "Offline"].includes(action) && fixture) {
       // Refuse to overwrite a live fixture's cleanup manifest.
       const existing = await ownedBrowserFixture(keys, "absent", fixture);
       assert.equal(existing.alreadyClean, true);
     }
-    report.browser = await ownedBrowserFixture(
-      keys,
-      action.slice(7).toLowerCase(),
-      fixture,
-      async (created) => {
-        // The private directory/operation lock belongs to the Windows wrapper.
-        // Keep this cleanup manifest independent of success/failure reports.
-        await writeFile(manifestPath, JSON.stringify(validateBrowserFixture(created)), {
-          flag: fixture ? "w" : "wx",
-          mode: 0o600,
-        });
-      },
-    );
+    const remember = async (created) => {
+      // The private directory/operation lock belongs to the Windows wrapper.
+      // Keep this cleanup manifest independent of success/failure reports.
+      await writeFile(manifestPath, JSON.stringify(validateBrowserFixture(created)), {
+        flag: fixture ? "w" : "wx",
+        mode: 0o600,
+      });
+    };
+    if (action === "Offline") {
+      const { acceptOwnedOffline } = await import("./lib/owned-offline.mjs");
+      report.offline = await acceptOwnedOffline(keys, {
+        fixture,
+        remember,
+        artifactDirectory: fileURLToPath(new URL("../dist/owned-offline", import.meta.url)),
+        progress(step) {
+          assert.match(step, /^[a-z_]+$/);
+          phase = `offline_${step}`;
+        },
+      });
+      assert.equal(report.offline.completed, true);
+    } else {
+      report.browser = await ownedBrowserFixture(
+        keys,
+        action.slice(7).toLowerCase(),
+        fixture,
+        remember,
+      );
+    }
   }
   if (["Features", "FeaturesAi"].includes(action)) {
     const { acceptOwnedFeatures } = await import("./lib/owned-features.mjs");

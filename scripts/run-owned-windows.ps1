@@ -1,4 +1,4 @@
-param([ValidateSet('Start','Verify','Update','Backup','Accept','Features','FeaturesAi','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start')
+param([ValidateSet('Start','Verify','Update','Backup','Accept','Features','FeaturesAi','Offline','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start')
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
 $root=Split-Path -Parent $PSScriptRoot
@@ -38,7 +38,7 @@ function Assert-Private([string]$Path) {
   }
 }
 try {
-  try{$acquired=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$acquired=$true}
+  try{$acquired=$mutex.WaitOne($(if($Action -eq 'Offline'){300000}else{0}))}catch [Threading.AbandonedMutexException]{$acquired=$true}
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
