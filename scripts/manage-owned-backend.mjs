@@ -31,6 +31,7 @@ assert.ok(
     "FeaturesAi",
     "BrowserPrepare",
     "BrowserInspect",
+    "BrowserConflict",
     "BrowserMemory",
     "BrowserCleanup",
     "Maintain",

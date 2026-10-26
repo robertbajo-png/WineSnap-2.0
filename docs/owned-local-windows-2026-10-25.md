@@ -226,6 +226,8 @@ Reusable browser fixtures use these manual commands:
 ```powershell
 ./scripts/run-owned-windows.ps1 -Action BrowserPrepare
 ./scripts/run-owned-windows.ps1 -Action BrowserInspect
+# Simulate a concurrent server update of this exact synthetic session only:
+./scripts/run-owned-windows.ps1 -Action BrowserConflict
 # Optional: one real Gemini extraction scenario, never scheduled.
 ./scripts/run-owned-windows.ps1 -Action BrowserMemory
 # Required after the browser session, including after interrupted testing.
@@ -240,6 +242,14 @@ persisted immediately after account creation and is independent of success or
 failure reports. An active manifest cannot be replaced by another preparation.
 Deletion requires the exact fixture ID, synthetic email and administrator-set
 `app_metadata` run marker. User-editable metadata alone is never accepted.
+
+`BrowserInspect` also reports ingredient-check counts and bounded timer state,
+without returning credentials or raw recipe data. `BrowserConflict` moves only
+the manifest's owned synthetic session to its first step, using that session's
+current expected revision. A mismatched owner/version is rejected before any
+write. It prepares a reconnect-conflict scenario; the browser must separately
+be put offline and its local state/reconnect behavior verified before declaring
+that scenario accepted. No real owner's cooking session is used.
 
 Regression checks cover those cleanup guards, repeated cleanup and failure to
 save a manifest. A live repeat-prepare was deliberately rejected, then inspection

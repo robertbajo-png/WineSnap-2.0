@@ -177,4 +177,66 @@ describe("owned browser fixtures", () => {
     expect(signIn).not.toHaveBeenCalled();
     expect(remove).toHaveBeenCalledExactlyOnceWith(user.id);
   });
+  it("creates a remote conflict only for the exact owned synthetic recipe and revision", async () => {
+    const value = fixture();
+    const state = {
+      status: "running",
+      activeStep: 1,
+      servings: 3,
+      timers: [],
+      checkedIngredientIds: [],
+    };
+    const row = { state, revision: 4, user_id: value.userId, recipe_version_id: value.versionId };
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      single: vi.fn().mockResolvedValue({ data: row, error: null }),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    const rpc = vi.fn().mockResolvedValue({
+      data: { ...row, state: { ...state, activeStep: 0 }, revision: 5 },
+      error: null,
+    });
+    mocks.createClient.mockReturnValue({
+      auth: {
+        admin: {
+          getUserById: vi.fn().mockResolvedValue({
+            data: {
+              user: {
+                id: value.userId,
+                email: value.email,
+                app_metadata: { owned_browser_run: value.run },
+              },
+            },
+            error: null,
+          }),
+        },
+        signInWithPassword: vi.fn().mockResolvedValue({
+          data: { session: { access_token: "synthetic-only" } },
+          error: null,
+        }),
+      },
+      from: vi.fn().mockReturnValue(query),
+      rpc,
+    });
+    const result = await ownedBrowserFixture(keys(), "conflict", value);
+    expect(result).toMatchObject({ step: 0, revision: 5, servings: 3 });
+    expect(rpc).toHaveBeenCalledExactlyOnceWith(
+      "kitchen_save_session",
+      expect.objectContaining({
+        _id: value.sessionId,
+        _version_id: value.versionId,
+        _expected_revision: 4,
+        _state: { ...state, activeStep: 0 },
+        _feedback: null,
+      }),
+    );
+    for (const changed of [{ user_id: randomUUID() }, { recipe_version_id: randomUUID() }]) {
+      rpc.mockClear();
+      query.single.mockResolvedValue({ data: { ...row, ...changed }, error: null });
+      await expect(ownedBrowserFixture(keys(), "conflict", value)).rejects.toThrow();
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  });
 });

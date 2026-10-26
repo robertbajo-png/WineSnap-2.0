@@ -42,7 +42,7 @@ export function assertFixtureOwner(user, fixture) {
 // report or a browser; browser sign-in uses normal mail in the local inbox.
 export async function ownedBrowserFixture(keys, action, fixture, remember = async () => {}) {
   validateOwnedKeys(keys);
-  assert.ok(["prepare", "inspect", "memory", "cleanup", "absent"].includes(action));
+  assert.ok(["prepare", "inspect", "conflict", "memory", "cleanup", "absent"].includes(action));
   assert.equal(typeof remember, "function");
   if (action !== "prepare") validateBrowserFixture(fixture);
   const client = (role) =>
@@ -259,19 +259,46 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
       realAccountsChanged: false,
     };
   }
-  const saved = ok(
+  let saved = ok(
     await app
       .from("cooking_sessions")
-      .select("state,revision")
+      .select("state,revision,user_id,recipe_version_id")
       .eq("id", fixture.sessionId)
       .single(),
   );
+  assert.equal(saved.user_id, fixture.userId);
+  assert.equal(saved.recipe_version_id, fixture.versionId);
+  if (action === "conflict") {
+    assert.ok(["running", "paused"].includes(saved.state.status));
+    saved = ok(
+      await app.rpc("kitchen_save_session", {
+        _id: fixture.sessionId,
+        _version_id: fixture.versionId,
+        _expected_revision: saved.revision,
+        _request_id: randomUUID(),
+        _state: { ...saved.state, activeStep: 0 },
+        _feedback: null,
+      }),
+    );
+  }
   return {
     completed: true,
     step: saved.state.activeStep,
     revision: saved.revision,
     servings: saved.state.servings,
     timers: saved.state.timers.length,
+    checkedIngredients: saved.state.checkedIngredientIds.length,
+    timerStates: saved.state.timers.map((timer) => ({
+      running: timer.deadlineMs !== null,
+      durationMs: timer.durationMs,
+      remainingMs: Math.max(
+        0,
+        Math.min(
+          timer.durationMs,
+          timer.deadlineMs === null ? timer.pausedMs : timer.deadlineMs - Date.now(),
+        ),
+      ),
+    })),
     status: saved.state.status,
   };
 }

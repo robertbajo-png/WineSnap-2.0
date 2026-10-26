@@ -42,6 +42,9 @@ extraction scenario. Always finish with `BrowserCleanup`. The private
 `browser-fixture.json` manifest is independent of status reports; only matching
 ID, synthetic email and administrator-written `app_metadata` allow cleanup.
 Never schedule browser fixture preparation or live AI scenarios.
+`BrowserConflict` can simulate a newer server revision only for the manifest's
+exact synthetic cooking session and recipe version, after all fixture-owner
+checks. It is a backend test operation, not proof that a browser is offline.
 New owned backups use version 2 with the `owned-logical-v1` database/file manifest.
 Use `scripts/rehearse-owned-recovery.ps1` for a same-PC, isolated restore of the
 latest compatible encrypted archive, or `-BackupFile` with an exact archive
