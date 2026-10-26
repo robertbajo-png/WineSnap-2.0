@@ -1,4 +1,4 @@
-param([ValidateSet('Start','Verify','Update','Backup','Accept','Features','FeaturesAi','Maintain')][string]$Action='Start')
+param([ValidateSet('Start','Verify','Update','Backup','Accept','Features','FeaturesAi','BrowserPrepare','BrowserInspect','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start')
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
 $root=Split-Path -Parent $PSScriptRoot

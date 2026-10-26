@@ -35,6 +35,13 @@ Use `run-owned-windows.ps1 -Action Features` for tagged, disposable backend
 fixtures. `FeaturesAi` is a separate opt-in with up to eight real AI scenarios;
 never schedule it or substitute it for browser/mobile verification. Clean up
 only exact fixture IDs whose email and run metadata match, never real accounts.
+For interactive browser acceptance, `BrowserPrepare` creates a separate local
+fixture and sends a normal sign-in link only to the local inbox. `BrowserInspect`
+reads its cooking state; `BrowserMemory` separately makes one live Gemini
+extraction scenario. Always finish with `BrowserCleanup`. The private
+`browser-fixture.json` manifest is independent of status reports; only matching
+ID, synthetic email and administrator-written `app_metadata` allow cleanup.
+Never schedule browser fixture preparation or live AI scenarios.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See

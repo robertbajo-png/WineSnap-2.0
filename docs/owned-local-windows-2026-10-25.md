@@ -196,3 +196,53 @@ manually accepted. No artificial rating or food preference was added to the owne
 These checks do not replace physical-device camera/background-timer tests,
 full offline/multitab acceptance on this new origin, supplier sign-off or an
 independent restore of the new backup format. Public release gates remain open.
+
+## Browser Acceptance Follow-Up, 2026-10-26
+
+The local wine-memory endpoint completed a real Gemini extraction against a
+synthetic tasting note: liking acidity and disliking oak were stored as two
+signals, and anonymous reads were denied. These are Wine Memory signals, not
+Food Memory confirmations. No real owner's preferences were added or reset.
+
+The actual browser also refused a stale Cook Mode write after another tab had
+opened the same session. It displayed the explicit other-tab conflict and
+offered to fetch the update; the server's original step was retained. This is
+not yet a complete offline/reconnect or remote-conflict acceptance.
+
+The public share page was checked at 390 x 844: its six taste bars represented
+5/10, 1/10, 8/10, 6/10, 2/10 and 0/10 as 50%, 10%, 80%, 60%, 20% and 0%. No
+horizontal overflow occurred. Only the disposable synthetic wine was shared;
+the owner's wine remained private.
+
+Reusable browser fixtures use these manual commands:
+
+```powershell
+./scripts/run-owned-windows.ps1 -Action BrowserPrepare
+./scripts/run-owned-windows.ps1 -Action BrowserInspect
+# Optional: one real Gemini extraction scenario, never scheduled.
+./scripts/run-owned-windows.ps1 -Action BrowserMemory
+# Required after the browser session, including after interrupted testing.
+./scripts/run-owned-windows.ps1 -Action BrowserCleanup
+```
+
+Preparation sends a one-use sign-in email only to Mailpit. The backend-only
+helper does not launch a browser or export passwords, sessions or API keys.
+Synthetic passwords are derived in memory with a domain-separated local HMAC;
+they are not saved or typed into a browser. A private cleanup manifest is
+persisted immediately after account creation and is independent of success or
+failure reports. An active manifest cannot be replaced by another preparation.
+Deletion requires the exact fixture ID, synthetic email and administrator-set
+`app_metadata` run marker. User-editable metadata alone is never accepted.
+
+Regression checks cover those cleanup guards, repeated cleanup and failure to
+save a manifest. A live repeat-prepare was deliberately rejected, then inspection
+still retrieved the original session, confirming cleanup information survived.
+Source validation passed: 950 tests in 100 files, lint, TypeScript, synthetic
+build, independent runtime smoke and client budget. The build is not deployed
+over the installed owned app or any cloud site.
+
+The browser tool cannot directly emulate offline mode, and Windows browser
+control previously stopped because it could not safely determine the current
+URL. Full airplane-mode reload/reconnect, device sleep/background alarms and
+physical camera acceptance remain open; unit tests or opening `offline.html`
+must not be described as equivalent to those real-browser/device checks.

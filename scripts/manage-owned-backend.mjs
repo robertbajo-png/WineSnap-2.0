@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, lstat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ownedProject,
@@ -20,9 +21,20 @@ assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
 const action = process.argv[2];
 assert.ok(
-  ["Start", "Verify", "Backup", "Update", "Accept", "Features", "FeaturesAi", "Maintain"].includes(
-    action,
-  ),
+  [
+    "Start",
+    "Verify",
+    "Backup",
+    "Update",
+    "Accept",
+    "Features",
+    "FeaturesAi",
+    "BrowserPrepare",
+    "BrowserInspect",
+    "BrowserMemory",
+    "BrowserCleanup",
+    "Maintain",
+  ].includes(action),
 );
 assert.equal(process.argv.length, 3);
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
@@ -615,6 +627,38 @@ try {
   }
   phase = "verification";
   await verify();
+  if (action.startsWith("Browser")) {
+    const { ownedBrowserFixture, validateBrowserFixture } =
+      await import("./lib/owned-browser-fixture.mjs");
+    const manifestPath = join(process.env.LOCALAPPDATA, "WineSnapOwned", "browser-fixture.json");
+    let fixture;
+    try {
+      const info = await lstat(manifestPath);
+      assert.ok(info.isFile() && !info.isSymbolicLink() && info.size < 16384);
+      fixture = validateBrowserFixture(JSON.parse(await readFile(manifestPath, "utf8")));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    phase = `browser_${action.slice(7).toLowerCase()}`;
+    if (action === "BrowserPrepare" && fixture) {
+      // Refuse to overwrite a live fixture's cleanup manifest.
+      const existing = await ownedBrowserFixture(keys, "absent", fixture);
+      assert.equal(existing.alreadyClean, true);
+    }
+    report.browser = await ownedBrowserFixture(
+      keys,
+      action.slice(7).toLowerCase(),
+      fixture,
+      async (created) => {
+        // The private directory/operation lock belongs to the Windows wrapper.
+        // Keep this cleanup manifest independent of success/failure reports.
+        await writeFile(manifestPath, JSON.stringify(validateBrowserFixture(created)), {
+          flag: fixture ? "w" : "wx",
+          mode: 0o600,
+        });
+      },
+    );
+  }
   if (["Features", "FeaturesAi"].includes(action)) {
     const { acceptOwnedFeatures } = await import("./lib/owned-features.mjs");
     report.features = await acceptOwnedFeatures(keys, {
