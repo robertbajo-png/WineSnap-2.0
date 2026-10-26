@@ -209,6 +209,12 @@ opened the same session. It displayed the explicit other-tab conflict and
 offered to fetch the update; the server's original step was retained. This is
 not yet a complete offline/reconnect or remote-conflict acceptance.
 
+A separate foreground browser check changed two portions to three (400 g became
+600 g), checked the ingredient and started a one-minute timer. After a full
+reload, all three were retained and the timer continued from its remaining time
+rather than restarting. Pause then retained 19 seconds. The 390 x 844 view had no
+horizontal overflow. This does not verify device sleep or a background alarm.
+
 The public share page was checked at 390 x 844: its six taste bars represented
 5/10, 1/10, 8/10, 6/10, 2/10 and 0/10 as 50%, 10%, 80%, 60%, 20% and 0%. No
 horizontal overflow occurred. Only the disposable synthetic wine was shared;
@@ -241,8 +247,10 @@ Source validation passed: 950 tests in 100 files, lint, TypeScript, synthetic
 build, independent runtime smoke and client budget. The build is not deployed
 over the installed owned app or any cloud site.
 
-The browser tool cannot directly emulate offline mode, and Windows browser
-control previously stopped because it could not safely determine the current
-URL. Full airplane-mode reload/reconnect, device sleep/background alarms and
+The browser tool cannot directly emulate offline mode. Windows browser control
+previously stopped because it could not safely determine the current URL; a
+later retry on the identified local Chrome window timed out awaiting computer
+access. No network setting or security protection was changed. Full airplane-mode
+reload/reconnect, device sleep/background alarms and
 physical camera acceptance remain open; unit tests or opening `offline.html`
 must not be described as equivalent to those real-browser/device checks.
