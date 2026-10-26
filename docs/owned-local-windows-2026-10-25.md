@@ -368,11 +368,12 @@ an actual failed health request verifies the outage. Independent SDK reads
 confirm the fixture's server revision remains unchanged throughout offline
 edits, reload and navigation. External and AI requests are blocked.
 
-The nine acceptance groups cover normal login and a generic cached shell,
+The acceptance groups cover normal login and a generic cached shell,
 offline edits, reload preservation of step/servings/ingredient/paused timer,
-private cellar exclusion, one idempotent reconnect write, both explicit
+private cellar exclusion, one idempotent reconnect write, recovery without an
+online event, both explicit
 conflict choices, desktop layout and logout erasure of the private offline
-copy. The first complete run passed all nine groups, with fixture cleanup,
+copy. The initial complete run passed its nine groups, with fixture cleanup,
 zero page errors and zero external requests. Screenshots are under
 `dist/owned-offline`; the credential-free result is saved privately as
 `%LOCALAPPDATA%\WineSnapOwned\offline-status.json`.
@@ -384,3 +385,27 @@ attempt retains the session's idempotency key and rechecks server access.
 Conflicts, invalid state and access denial do not qualify for automatic retry;
 closing the workspace removes its timer and event listeners. This does not
 enable background AI, offline wine scanning or guaranteed mobile timer alarms.
+
+Host-specific verification notes: the broad `Update` control process reached
+its 20-minute ceiling on this Windows machine. Independent HTTP checks then
+confirmed the running app and the new `2026-10-26-cooking-reconnect` service
+worker. The follow-up `Offline` operation performs the normal labelled-stack,
+installation and API checks and restores the web container's private RAM keys
+before testing. No database restore or data-volume replacement was used.
+
+The separate portable Windows/Node-24 synthetic runtime check timed out twice
+on its first health request at the existing 30-second limit. That is not a
+passing local smoke result. The same synthetic Node-runtime check, full test
+suite, lint, typecheck, builds and client budget passed in Ubuntu/Node-22 GitHub
+Quality for commit `dcc2884`; both push and pull-request Quality and Database
+Safety runs were green. The actual owned target is the separately tested Linux
+container, not the copied native-Windows fixture. These results remain separate
+from public release approval and physical-device acceptance.
+
+Post-update acceptance completed at `2026-10-26T22:15:21Z`: all ten browser
+groups passed against the updated owned app, including the internet-outage
+case with no online event. Stack/database/auth/storage/application checks were
+healthy; fixture cleanup completed, page errors and external requests were
+zero, and no real account, production or hosted test was changed. The mobile
+390px and desktop 1440px layouts were checked, including horizontal overflow.
+The focused retry/authorization/offline-boundary run also passed all 18 tests.

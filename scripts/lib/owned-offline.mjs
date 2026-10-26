@@ -242,6 +242,25 @@ export async function acceptOwnedOffline(keys, options) {
     assert.equal(synced.timerStates[0].remainingMs, offlineState.state.timers[0].pausedMs);
     pass("reconnect_syncs_once_without_duplicate_revision");
 
+    phase("silent_reconnect");
+    // Simulate an internet outage with the adapter still online. Restoring
+    // request routing must recover without any injected/native online event.
+    networkBlocked = true;
+    assert.equal(await page.evaluate(() => navigator.onLine), true);
+    await next();
+    await step(3);
+    await visible(status("synkning"));
+    assert.deepEqual(await inspect(), synced);
+    networkBlocked = false;
+    await saved();
+    const recovered = await inspect();
+    assert.equal(recovered.step, 2);
+    assert.equal(recovered.revision, synced.revision + 1);
+    pass("silent_reconnect_retries_without_online_event");
+    await page.getByRole("button", { name: /^F.reg.ende$/ }).click();
+    await step(2);
+    await saved();
+
     for (const choice of ["remote", "local"]) {
       phase(`conflict_${choice}`);
       networkBlocked = true;
