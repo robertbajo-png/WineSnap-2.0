@@ -253,6 +253,9 @@ async function start(
     "none",
     "--tmpfs",
     `/tmp:rw,nosuid,nodev,noexec,size=32m,uid=${user === "postgres" ? 999 : user === "node" ? 1000 : user.split(":")[0]},mode=0700`,
+    ...(service === "db"
+      ? ["--tmpfs", "/var/run/postgresql:rw,nosuid,nodev,noexec,size=1m,uid=999,gid=999,mode=0770"]
+      : []),
     ...mounts.flatMap((mount) => ["--mount", mount]),
     ...(port
       ? (Array.isArray(port) ? port : [port]).flatMap((value) => [
@@ -374,12 +377,15 @@ try {
         "-c",
         "max_connections=60",
         "-c",
-        "unix_socket_directories=/tmp",
+        "unix_socket_directories=/tmp,/var/run/postgresql",
       ],
     });
     // All admin SQL stays on the local container socket, never a remote URL.
     const originalSql = sql;
-    await wait(() => command(["exec", name("db"), "pg_isready", "-h", "/tmp", "-U", "postgres"]));
+    // The vendor init server is socket-only; wait for the final TCP listener.
+    await wait(() =>
+      command(["exec", name("db"), "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]),
+    );
     // psql uses the same private socket, without a host password file.
     phase = "database_identity";
     const hasSchema = (
@@ -786,12 +792,28 @@ try {
       "-",
       ".",
     ]);
+    phase = "backup_manifest";
+    const { inspectOwnedTar, validateOwnedManifest, validateOwnedArchive } =
+      await import("./lib/owned-recovery.mjs");
+    const manifest = {
+      database: validateOwnedManifest(
+        JSON.parse(
+          await sql(
+            await readFile(
+              new URL("../config/owned-windows/backup-manifest.sql", import.meta.url),
+              "utf8",
+            ),
+          ),
+        ),
+      ),
+      files: await inspectOwnedTar(imagesTar),
+    };
     const configuration = { ...keys };
     delete configuration.openai;
     delete configuration.gemini;
     const part = (bytes) => ({ base64: bytes.toString("base64"), sha256: digest(bytes) });
     archive = {
-      version: 1,
+      version: 2,
       project: ownedProject,
       createdAt: new Date().toISOString(),
       configuration,
@@ -800,7 +822,9 @@ try {
       storage: part(imagesTar),
       images,
       writeQuiesced: true,
+      manifest,
     };
+    validateOwnedArchive(archive);
     report.backupIncludesAuthHashes = true;
     report.backupIncludesImageBytes = true;
   }

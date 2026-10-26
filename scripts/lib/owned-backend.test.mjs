@@ -37,6 +37,13 @@ const web = () => ({
   NetworkSettings: { Networks: { [ownedNetwork]: {}, [ownedEgress]: {} } },
 });
 describe("owned Windows backend provisioning", () => {
+  it("keeps the vendor initialization socket and waits for its final server", () => {
+    const source = readFileSync(new URL("../manage-owned-backend.mjs", import.meta.url), "utf8");
+    expect(source).toContain('"unix_socket_directories=/tmp,/var/run/postgresql"');
+    expect(source).toContain("/var/run/postgresql:rw,nosuid,nodev,noexec");
+    expect(source).toMatch(/"pg_isready"[\s,]+"-h"[\s,]+"127\.0\.0\.1"/);
+    expect(source).toContain('"/tmp"');
+  });
   it("requires a separate identity and fresh local-only credentials", () => {
     expect(validateOwnedKeys(keys()).project).toBe(ownedProject);
     for (const mutate of [

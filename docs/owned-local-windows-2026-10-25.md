@@ -112,10 +112,11 @@ as `%LOCALAPPDATA%\WineSnapOwned\backups\owned-*.dpapi`; a decrypt/hash roundtri
 verifies encryption. Retention is seven copies/seven days. Sanitized reports
 contain only filenames, counts and status, never archive or credential payloads.
 
-These are same-PC/current-Windows-user backups. A fully automated restore into
-another isolated instance, off-device recovery, portable key escrow and disaster
-recovery acceptance have NOT been implemented for this new archive format.
-Do not call the earlier synthetic restore harness proof of restoring this dump.
+These are same-PC/current-Windows-user backups. Version 2 now supports the
+isolated restore rehearsal described below. Off-device recovery, portable key
+escrow and a production recovery/cutover procedure have NOT been accepted.
+Do not call the earlier synthetic restore harness proof of restoring this dump;
+the owned rehearsal restores the actual encrypted archive instead.
 The owner explicitly deferred hosted-test export/password setup; it is not a
 prerequisite for using this separate empty local backend.
 
@@ -254,3 +255,82 @@ access. No network setting or security protection was changed. Full airplane-mod
 reload/reconnect, device sleep/background alarms and
 physical camera acceptance remain open; unit tests or opening `offline.html`
 must not be described as equivalent to those real-browser/device checks.
+
+## Actual Owned Backup Restore, 2026-10-26
+
+New owned archives are version 2. They include an `owned-logical-v1` manifest:
+per-table SHA-256 fingerprints over sorted row hashes in all 75 application/platform tables, logical
+column order/types, schema/function/table privileges, policies, roles and role
+memberships, views, sequences, and storage-file names/sizes/content hashes.
+The archive and manifest remain Windows-encrypted; reports contain only counts
+and statuses. New archive files also receive explicit private ACLs.
+
+Logical comparison preserves every live column and privilege. It ignores opaque
+type-descriptor IDs and compacts dropped column-number holes, as `pg_dump` does.
+ACL arrays are compared by grantor, grantee, privilege and grant option rather
+than physical array/OID order. No schema, grant, table or Auth hash is excluded
+to make a failed comparison pass.
+
+Run manually using PowerShell 7:
+
+```powershell
+./scripts/run-owned-windows.ps1 -Action Backup
+./scripts/rehearse-owned-recovery.ps1
+# Or select an exact existing basename, never an arbitrary path:
+./scripts/rehearse-owned-recovery.ps1 -BackupFile owned-20261026-182028679.dpapi
+```
+
+The latter file passed actual restoration: all 75 tables and their row hashes,
+Auth password hashes/identities, grants/policies/functions/role memberships and
+share IDs matched. One restored storage file matched its content hash and was
+downloaded through the restored Storage service; anonymous access was denied.
+A synthetic account created only inside the clone could sign in, was denied for
+a wrong password, and could not read the original private wines with its real
+GoTrue JWT through PostgREST. The owner's password was neither read, entered nor
+reset; matching its stored hash is not a claim that the owner logged into the
+clone. All temporary containers and the network were removed afterward.
+
+The restore wrapper reads only private, bounded, same-user DPAPI archives under
+`%LOCALAPPDATA%\WineSnapOwned\backups`. It passes decrypted bytes through private
+stdin, never a plaintext host file or shell argument. SQL dump parts are hashed
+and validated; storage tar entries are parsed with Python's standard `tarfile`
+without host extraction. Traversal, links, special files, duplicates and size
+overruns fail closed. Python uses the existing bundled runtime, with no package
+install or network dependency. Only compatible version-2 logical manifests are
+accepted; legacy/draft archives are not silently upgraded or marked verified.
+
+The destination uses randomly named, run-labelled, non-root, read-only containers
+on one internal Docker network, with no published ports, no permanent volumes
+and no host data mounts. Database/storage writes exist only in bounded tmpfs.
+It uses pinned images already installed locally and fresh clone DB/JWT secrets;
+source root configuration is validated and discarded, not installed in the
+clone. Provider keys are never loaded. Restore itself does not connect to or
+stop the running owned database/app; creating a new backup briefly quiesces
+writers and resumes them in `finally` as before.
+
+Roles restore under the original `postgres` bootstrap identity. Only the exact
+duplicate `CREATE ROLE postgres` is skipped because `initdb` already created it;
+every ALTER/GRANT failure is fatal. Database restore uses
+`--exit-on-error --single-transaction`. These choices follow the
+[PostgreSQL restore guidance](https://www.postgresql.org/docs/17/backup-dump.html)
+and [pg_restore reference](https://www.postgresql.org/docs/17/app-pgrestore.html).
+The initializer now provides both `/tmp` and the vendor's standard Unix socket
+directory, and waits for final TCP readiness, not its temporary init server.
+The same default-socket support is included for future fresh owned installs;
+an existing DB container/volume is not replaced or reinitialized. See the
+[official entrypoint](https://github.com/docker-library/postgres/blob/master/docker-entrypoint.sh).
+
+Operational boundaries remain: this is a same-PC restore rehearsal, not an
+in-place restore command, portable backup or off-device disaster recovery.
+Before a real replacement is exposed, current erasure receipts must be
+reconciled so an old backup cannot revive deleted accounts. SMTP delivery,
+supplier sign-off, public TLS, rollback/cutover and physical-device acceptance
+remain independent gates. Rehearsal reports are saved privately as
+`%LOCALAPPDATA%\WineSnapOwned\restore-status.json`; do not schedule this test or
+treat it as permission to touch production.
+
+Final source validation passed 972 tests in 101 files, lint, TypeScript, the
+synthetic build, independent runtime smoke and client budget. The existing
+owned installation and its watcher were healthy after the rehearsal; no
+restore-labelled containers or networks remained. No production deployment,
+provider request or hosted-test connection was part of this restore checkpoint.

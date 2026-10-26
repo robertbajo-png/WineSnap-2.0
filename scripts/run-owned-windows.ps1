@@ -109,6 +109,7 @@ try {
     $filename='owned-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'.dpapi'
     $file=Join-Path $backupDirectory $filename
     [IO.File]::WriteAllBytes($file,[Security.Cryptography.ProtectedData]::Protect($bytes,$null,'CurrentUser'))
+    Set-Private $file
     $roundtrip=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($file),$null,'CurrentUser')
     if(-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals([Security.Cryptography.SHA256]::HashData($bytes),[Security.Cryptography.SHA256]::HashData($roundtrip))){throw 'Backup encryption verification failed.'}
     [Array]::Clear($roundtrip,0,$roundtrip.Length)

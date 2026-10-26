@@ -42,6 +42,13 @@ extraction scenario. Always finish with `BrowserCleanup`. The private
 `browser-fixture.json` manifest is independent of status reports; only matching
 ID, synthetic email and administrator-written `app_metadata` allow cleanup.
 Never schedule browser fixture preparation or live AI scenarios.
+New owned backups use version 2 with the `owned-logical-v1` database/file manifest.
+Use `scripts/rehearse-owned-recovery.ps1` for a same-PC, isolated restore of the
+latest compatible encrypted archive, or `-BackupFile` with an exact archive
+basename. It must never restore over the installed stack, expose ports, mount
+permanent data, load provider keys or replay migrations. All clone resources
+must match the random invocation's `owned-backup-rehearsal` labels and are
+removed afterward. This is not portable/off-device or production recovery.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
