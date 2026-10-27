@@ -1,7 +1,9 @@
 import { approvedCookingBrowser, ownedBrowserOrigin } from "../../src/lib/backendScope";
+import { validatedOwnedPublicOrigin } from "../../src/lib/ownedHosting";
 
 export const publicEnvironmentKeys = [
   "VITE_OWNED_BACKEND_ENABLED",
+  "VITE_OWNED_PUBLIC_ORIGIN",
   "VITE_SUPABASE_URL",
   "VITE_SUPABASE_PUBLISHABLE_KEY",
   "VITE_SITE_OPERATOR",
@@ -46,6 +48,11 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       throw new Error(`Independent build requires ${key}; see config/independent/.env.example`);
   }
   const url = new URL(values.VITE_SUPABASE_URL);
+  if (values.VITE_OWNED_PUBLIC_ORIGIN) {
+    if (values.VITE_OWNED_BACKEND_ENABLED !== "true")
+      throw new Error("Public owned routing requires the owned backend");
+    validatedOwnedPublicOrigin(values.VITE_OWNED_PUBLIC_ORIGIN);
+  }
   if (values.VITE_OWNED_BACKEND_ENABLED === "true" && url.origin !== ownedBrowserOrigin)
     throw new Error("Owned backend must use the exact local gateway");
   if (
