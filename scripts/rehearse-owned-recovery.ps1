@@ -2,7 +2,8 @@ param([ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$BackupFile)
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
 $root=Split-Path -Parent $PSScriptRoot
-$directory=Join-Path $env:LOCALAPPDATA 'WineSnapOwned'
+. (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
+$directory=Get-OwnedRuntimeDirectory
 $backups=Join-Path $directory 'backups'
 $docker=Join-Path $env:LOCALAPPDATA 'Programs/DockerDesktop/resources/bin/docker.exe'
 $node=Join-Path $HOME '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
@@ -10,7 +11,7 @@ $id=[guid]::NewGuid().ToString('N').Substring(0,16)
 $prefix="winesnap-owned-restore-$id"
 $report=[ordered]@{project='winesnap-owned-local';completed=$false;productionTouched=$false;hostedTestTouched=$false;cleanupCompleted=$false;portableRecoveryVerified=$false}
 $plain=$null;$process=$null;$phase='private_archive'
-$mutex=[Threading.Mutex]::new($false,"Local\WineSnap-Owned-Operations-$([Security.Principal.WindowsIdentity]::GetCurrent().User.Value)")
+$operationLock=$null
 $acquired=$false
 function Assert-Private([string]$Path,[switch]$AllowInherited) {
   $item=Get-Item -LiteralPath $Path -Force
@@ -24,7 +25,8 @@ function Assert-Private([string]$Path,[switch]$AllowInherited) {
   }
 }
 try {
-  try{$acquired=$mutex.WaitOne(0)}catch [Threading.AbandonedMutexException]{$acquired=$true}
+  $operationLock=Open-OwnedRuntimeLock -Name operation
+  $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Owned operation is already running.'}
   Assert-Private $directory;Assert-Private $backups
   if(-not $BackupFile){$BackupFile=(Get-ChildItem -LiteralPath $backups -File | Where-Object {$_.Name -match '^owned-\d{8}-\d{9}\.dpapi$'} | Sort-Object Name -Descending | Select-Object -First 1).Name}
@@ -50,6 +52,7 @@ try {
   $process.StandardInput.BaseStream.Write($plain,0,$plain.Length);$process.StandardInput.Close()
   [Array]::Clear($plain,0,$plain.Length);$plain=$null
   if(-not $process.WaitForExit(600000)){$process.Kill($true);throw 'Owned restore timed out.'}
+  if(-not [Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)){throw 'Owned restore output did not close.'}
   $raw=$output.GetAwaiter().GetResult();$errors.GetAwaiter().GetResult() | Out-Null
   if($raw.Length -gt 32KB){throw 'Unexpected restore output.'}
   $restored=$raw | ConvertFrom-Json -Depth 8;$raw=$null
@@ -88,9 +91,8 @@ try {
     if(-not $clean){$report.completed=$false}
     $report.checkedAt=[DateTime]::UtcNow.ToString('o')
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $directory 'restore-status.json') -Encoding utf8
-    $mutex.ReleaseMutex()
   }
-  $mutex.Dispose()
+  if($operationLock){$operationLock.Dispose()}
 }
 $report | ConvertTo-Json -Depth 8
 if(-not $report.completed -and -not $report.skipped){exit 1}

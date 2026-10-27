@@ -16,6 +16,7 @@ import {
   ownedToken,
   checkOwnedContainer,
 } from "./lib/owned-backend.mjs";
+import { ownedResumeOrder, planOwnedMigrations } from "./lib/owned-lifecycle.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -23,6 +24,8 @@ const action = process.argv[2];
 assert.ok(
   [
     "Start",
+    "Resume",
+    "RestartApp",
     "Verify",
     "Backup",
     "Update",
@@ -58,6 +61,9 @@ let phase = "input";
 let keys;
 let archive;
 let paused = [];
+const startedAt = performance.now();
+const deadline = startedAt + 16 * 60 * 1000;
+let recovering = false;
 const report = {
   project: ownedProject,
   completed: false,
@@ -70,6 +76,10 @@ const report = {
 };
 const command = (args, input, extraEnv = {}, timeout = 180000) =>
   new Promise((resolve, reject) => {
+    const remaining = recovering
+      ? Math.min(timeout, 15000)
+      : Math.floor(deadline - performance.now());
+    if (remaining <= 0) return reject(new Error("owned_operation_deadline"));
     const child = execFile(
       docker,
       ["--host", "npipe:////./pipe/dockerDesktopLinuxEngine", ...args],
@@ -77,7 +87,7 @@ const command = (args, input, extraEnv = {}, timeout = 180000) =>
         env: { ...baseEnv, ...extraEnv },
         encoding: "buffer",
         maxBuffer: 128 * 1024 * 1024,
-        timeout,
+        timeout: Math.min(timeout, remaining),
         windowsHide: true,
       },
       (error, stdout) =>
@@ -326,7 +336,15 @@ async function verify() {
   assert.equal((await request("/auth/v1/health")).status, 200);
   assert.equal((await request("/storage/v1/status")).status, 200);
   assert.equal((await request("/rest/v1/")).status, 200);
-  assert.equal((await fetch(ownedApp + "/api/health", { redirect: "error" })).status, 200);
+  assert.equal(
+    (
+      await fetch(ownedApp + "/api/health", {
+        redirect: "error",
+        signal: AbortSignal.timeout(5000),
+      })
+    ).status,
+    200,
+  );
   await installWebKeys();
   report.database = true;
   report.auth = true;
@@ -346,14 +364,32 @@ try {
   keys = validateOwnedKeys(JSON.parse(Buffer.concat(chunks).toString()));
   for (const chunk of chunks) chunk.fill(0);
   phase = "local_engine";
-  const context = (await json(["context", "inspect", "desktop-linux"]))[0];
-  assert.equal(context.Endpoints.docker.Host, "npipe:////./pipe/dockerDesktopLinuxEngine");
+  assert.equal(
+    (await command(["version", "--format", "{{.Server.Os}}"], undefined, {}, 10000))
+      .toString()
+      .trim(),
+    "linux",
+  );
   const images = {};
   for (const [service, tag] of Object.entries(ownedServices)) {
     images[service] = (await command(["image", "inspect", tag, "--format", "{{.Id}}"]))
       .toString()
       .trim();
     assert.match(images[service], /^sha256:[a-f0-9]{64}$/);
+  }
+  if (action === "Resume") {
+    phase = "resume_existing_installation";
+    // Require every exact installed container before starting any of them.
+    const containers = [];
+    for (const service of ownedResumeOrder) {
+      const value = await existing(service);
+      assert.ok(value, "Installed container is missing; explicit setup is required");
+      containers.push([service, value]);
+    }
+    for (const [service, value] of containers)
+      if (!value.State.Running) await command(["start", name(service)]);
+    await wait(() => verify());
+    report.resumedExistingInstallation = true;
   }
   if (action === "Start" || action === "Update") {
     phase = "owned_networks_and_volumes";
@@ -514,22 +550,25 @@ try {
     const migrations = (await readdir(new URL("../supabase/migrations/", import.meta.url)))
       .filter((file) => file.endsWith(".sql"))
       .sort();
-    for (const file of migrations) {
-      phase = `migration:${file}`;
-      const source = await readFile(
-        new URL(`../supabase/migrations/${file}`, import.meta.url),
-        "utf8",
+    const sources = [];
+    for (const file of migrations)
+      sources.push({
+        name: file,
+        source: await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"),
+      });
+    const applied = JSON.parse(
+      await sql(
+        "SELECT COALESCE(json_agg(json_build_object('name',name,'sha256',sha256) ORDER BY name),'[]'::json) FROM winesnap_local.migrations",
+      ),
+    );
+    const pending = planOwnedMigrations(sources, applied);
+    for (const item of pending) {
+      phase = `migration:${item.name}`;
+      await sql(
+        `BEGIN;\n${item.source}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES(${literal(item.name)},'${item.sha256}'); COMMIT;`,
       );
-      const checksum = digest(source);
-      const applied = await sql(
-        `SELECT sha256 FROM winesnap_local.migrations WHERE name=${literal(file)}`,
-      );
-      if (applied) assert.equal(applied, checksum);
-      else
-        await sql(
-          `BEGIN;\n${source}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES(${literal(file)},'${checksum}'); COMMIT;`,
-        );
     }
+    report.migrations = { previouslyApplied: applied.length, newlyApplied: pending.length };
     phase = "owned_access_gates";
     const policy = "Wine labels use revocable image proxy";
     const exists = await sql(
@@ -635,10 +674,17 @@ try {
   }
   phase = "verification";
   await verify();
+  if (action === "RestartApp") {
+    phase = "restart_owned_application";
+    await existing("web");
+    await command(["restart", name("web")]);
+    await wait(() => verify());
+    report.restartedApplication = true;
+  }
   if (action.startsWith("Browser") || action === "Offline") {
     const { ownedBrowserFixture, validateBrowserFixture } =
       await import("./lib/owned-browser-fixture.mjs");
-    const manifestPath = join(process.env.LOCALAPPDATA, "WineSnapOwned", "browser-fixture.json");
+    const manifestPath = join(process.env.USERPROFILE, "WineSnapOwned", "browser-fixture.json");
     let fixture;
     try {
       const info = await lstat(manifestPath);
@@ -862,6 +908,7 @@ try {
   report.phase = phase;
   process.exitCode = 1;
 } finally {
+  recovering = true;
   for (const service of paused.reverse()) {
     try {
       await command(["start", name(service)]);
@@ -877,6 +924,7 @@ try {
       report.completed = false;
       process.exitCode = 1;
     }
+  report.elapsedMs = Math.round(performance.now() - startedAt);
   console.log(
     JSON.stringify(
       archive && report.completed

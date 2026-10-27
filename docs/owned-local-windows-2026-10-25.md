@@ -55,7 +55,9 @@ Run these scripts using PowerShell 7 from the repository:
 
 ```powershell
 ./scripts/run-owned-windows.ps1 -Action Start
+./scripts/run-owned-windows.ps1 -Action Resume
 ./scripts/run-owned-windows.ps1 -Action Verify
+./scripts/run-owned-windows.ps1 -Action RestartApp
 ./scripts/run-owned-windows.ps1 -Action Update
 ./scripts/run-owned-windows.ps1 -Action Backup
 ./scripts/run-owned-windows.ps1 -Action Maintain
@@ -72,10 +74,13 @@ and never implicitly pulls a newer service image. Component-version upgrades
 need explicit acceptance, not a blind tag refresh. The installer does not expose
 a general-purpose SQL, Docker, URL or credential argument.
 
-`install-owned-windows-startup.ps1` installs only the current user's labelled
-`WineSnap Local.lnk` startup shortcut. At Windows sign-in it starts Docker if
-needed, starts the local stack, restores RAM credentials and starts the hidden
-watcher. No administrator login or stored Windows password is used.
+`install-owned-windows-startup.ps1` now installs the current user's limited,
+interactive `WineSnap Owned Local` scheduled task. At Windows sign-in it starts
+Docker if needed, resumes the existing stack, restores RAM credentials and runs
+the hidden watcher. A two-minute trigger retries after supervisor termination;
+exclusive physical file locks allow only one active supervisor. No administrator login or stored Windows
+password is used. Only the exact old WineSnap shortcut is retired after task
+verification. See the 2026-10-27 addendum for state migration and recovery checks.
 The watcher verifies every minute, runs privacy/price maintenance hourly and
 creates a backup daily, with ten-minute failure backoff. It does not restart
 services deliberately stopped outside the startup script. Startup after an
@@ -87,14 +92,15 @@ never delete the hosted test project, old credentials or unrelated Docker data.
 
 ## Credentials and Backups
 
-`%LOCALAPPDATA%\WineSnapOwned\backend.dpapi` contains fresh local-only DB/JWT/job
+`%USERPROFILE%\WineSnapOwned\backend.dpapi` contains local-only DB/JWT/job
 credentials, encrypted for the current Windows user with private ACLs. It is not
 a hosted Supabase key. If data volumes exist but this key is missing, setup fails
 closed; do not regenerate it or reset the database. Never print/decrypt it into
 chat, shell output or a plaintext host file.
 
-Already-authorized OpenAI/Gemini slots are reused in memory from the existing
-Windows-encrypted WineSnap provider store. No hosted test API/DB key is imported.
+Already-authorized OpenAI/Gemini slots are reused in memory from the copied
+Windows-encrypted `%USERPROFILE%\WineSnapOwned\ai-keys.clixml`. No hosted test
+API/DB key is imported.
 The app receives only a private RAM file, not server/provider keys in browser
 settings, Docker arguments or its environment. The frontend contains only the
 local anon JWT. AI still sends deliberate AI requests to external providers;
@@ -108,7 +114,7 @@ Backup briefly stops local writers, captures a real custom-format `pg_dump`
 passwords, image-file bytes and local root configuration. It resumes services
 and verifies them in `finally`. Provider keys and inbox messages are excluded.
 Archive bytes pass through private process pipes, then are immediately encrypted
-as `%LOCALAPPDATA%\WineSnapOwned\backups\owned-*.dpapi`; a decrypt/hash roundtrip
+as `%USERPROFILE%\WineSnapOwned\backups\owned-*.dpapi`; a decrypt/hash roundtrip
 verifies encryption. Retention is seven copies/seven days. Sanitized reports
 contain only filenames, counts and status, never archive or credential payloads.
 
@@ -443,3 +449,108 @@ formatter did not finish and was stopped; all other ESLint rules passed in a
 separate run, and standalone Prettier approved all four changed files. No lint
 configuration was weakened. The unchanged GitHub Quality workflow retains full
 integrated lint on Ubuntu/Node-22.
+
+## Windows Supervisor and Internet Preparation (2026-10-27)
+
+The previous AppData location was redirected by the desktop app's MSIX context:
+opening `backend.dpapi` and asking Windows for its final handle path resolved to
+the Codex package's `LocalCache/Local/WineSnapOwned`. Task Scheduler did not see
+that file. This was a real startup failure, not missing user credentials.
+`migrate-owned-windows-state.ps1` copied 28 allowlisted files, including encrypted
+backend/provider state and backups, to `%USERPROFILE%\WineSnapOwned`. Ciphertext
+hashes matched without decrypting the files; owner/SYSTEM-only ACLs were applied.
+Windows handle-path inspection confirmed this destination is not redirected.
+No database/image volume was moved or replaced. Legacy state remains untouched
+for migration rollback; its duplicate backup archives must be included in the
+final retention/cleanup decision before public release.
+
+All owned wrappers and browser-fixture manifests now agree on that physical
+root. `Resume` refuses missing or foreign containers and does not initialize
+volumes, replay migrations or rebuild images. Its actual initial run took about
+15 seconds. `Update` reads the complete migration history once, validates every
+checksum before applying missing entries transactionally, and rejects changed
+or foreign history. The real update passed in about 13 seconds with all 37
+migrations already installed and zero newly applied. `RestartApp` passed in
+about seven seconds; the owned account, wine and image counts remained one each.
+These timings are observations, not performance guarantees under host load.
+
+The supervisor has private cross-session file locks, limited interactive Task
+Scheduler ownership, logon/recovery triggers, private atomic heartbeat reports
+and separate operation deadlines. Child operations wait for a stdin handshake
+until assigned to a kill-on-close Windows job. Closing or terminating the
+supervisor therefore also ends its operation descendants instead of leaving an
+orphaned PowerShell process holding the operation lock. The next resume can
+restart matching services after an interrupted job. These mechanisms follow
+[Windows job-object behavior](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
+
+The task runs at normal process priority, not with elevated user rights. Its
+two-minute recovery trigger may start another short-lived instance, but the
+exclusive private session lock admits only one supervisor. Native job/power
+helpers are compiled during installation into the private runtime directory;
+startup loads only the source/CLR-version-specific assembly after verifying its
+SHA-256 sidecar. Routine startup does not invoke the compiler. Missing or changed
+helpers fail closed and require rerunning the startup installer.
+
+`WineSnap Docker Engine.lnk` in the current user's Startup folder starts the
+already installed Docker Desktop independently and hidden when necessary.
+The WineSnap task only waits for its fixed local Linux engine. Docker Desktop
+is deliberately not a child of the supervisor's kill-on-close job: stopping
+WineSnap must not stop the shared engine or other applications.
+
+While healthy on AC power, the watcher holds a reversible system power request.
+It does not change the global power plan, keep the display on, inhibit manual
+sleep or guarantee service through closing the lid, logout or power loss. The
+request is released when unhealthy/on battery at a watch check, or on process
+exit. See [PowerSetRequest](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-powersetrequest).
+The task needs a signed-in Windows user; no unattended SYSTEM service or Windows
+autologin is installed. Full cold-boot/logon acceptance still requires an actual
+owner-initiated Windows restart.
+
+Crash-recovery acceptance completed at `2026-10-27T21:47:36Z`. Only the verified
+supervisor process (30572) and its operation descendants were terminated at
+`21:43:43Z`; the running data services were not stopped. The existing scheduled
+recovery trigger, without a manual start, launched supervisor 58408. It resumed
+the same installation and completed a fresh healthy watch round with healthy
+maintenance/backup reports and its AC power request active. This verifies
+process-crash recovery, not cold boot, logoff, full-PC failure or public access.
+
+The task still uses the installed Codex-bundled PowerShell and Node executables.
+Their paths must remain available; a runtime replacement or removal requires
+reinstalling the startup entry and matching native helpers. This is a
+current-user desktop installation, not an independent always-on Windows service.
+
+Read-only health check:
+
+```powershell
+./scripts/get-owned-windows-status.ps1
+```
+
+It checks task identity/state, the actual supervisor process, heartbeat freshness
+and job health, without loading keys or contacting a hosted backend. To stop the
+supervisor intentionally for maintenance, disable its exact task before stopping
+it; stopping it alone is followed by the recovery trigger. Re-enable/start the
+same task afterward. Never stop Docker globally or unrelated containers.
+
+Internet preparation uses only the proposed `https://winesnap.boleoai.se`, separate
+from the apex site and the old Lovable production. DNS inspection found Cloudflare
+nameservers and no existing record for this subdomain. No DNS, account or Access
+policy has been changed. Cloudflare login/account acceptance is still required.
+No public tunnel is installed or running for the owned backend.
+
+The optional `VITE_OWNED_PUBLIC_ORIGIN` routes a specifically approved browser
+origin to `/backend` on that same HTTPS origin, preserving the two local app
+origins and the fixed server-side Docker gateway. Synthetic builds ignore it,
+and hosted backends cannot enable it. It is not set in the current owned build.
+The prepared nginx route denies foreign hosts/origins, Auth administration,
+mailbox paths and maintenance hooks. Its real isolated Docker acceptance passed
+13 HTTP routing/denial cases; the temporary container had no published ports and
+was removed. This is not proof of a live TLS certificate or Cloudflare Access.
+
+The pinned connector configuration requires Access JWT validation on the actual
+hostname ingress rule, with a deny catchall, following
+[Cloudflare's Access origin parameters](https://developers.cloudflare.com/api/resources/zero_trust/subresources/tunnels/subresources/cloudflared/).
+Account-specific tunnel credentials, exact owner access, auth redirect settings,
+external denial/authenticated acceptance and persistence remain to be completed
+after authorized dashboard access. Do not use an unprotected or temporary tunnel
+as a substitute, expose the local inbox, enable public registration or certify
+the wider release gates from this preparatory checkpoint.

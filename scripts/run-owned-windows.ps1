@@ -1,12 +1,13 @@
-param([ValidateSet('Start','Verify','Update','Backup','Accept','Features','FeaturesAi','Offline','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start')
+param([ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','Features','FeaturesAi','Offline','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start')
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
 $root=Split-Path -Parent $PSScriptRoot
-$directory=Join-Path $env:LOCALAPPDATA 'WineSnapOwned'
+. (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
+$directory=Get-OwnedRuntimeDirectory
 $store=Join-Path $directory 'backend.dpapi'
 $node=Join-Path $HOME '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
 $docker=Join-Path $env:LOCALAPPDATA 'Programs/DockerDesktop/resources/bin/docker.exe'
-$mutex=[Threading.Mutex]::new($false,"Local\WineSnap-Owned-Operations-$([Security.Principal.WindowsIdentity]::GetCurrent().User.Value)")
+$operationLock=$null
 $acquired=$false;$bytes=$null;$payload=$null;$keys=$null;$provider=$null;$process=$null
 $phase='private_storage'
 $report=[ordered]@{project='winesnap-owned-local';completed=$false;productionTouched=$false;hostedTestTouched=$false;localOnly=$true}
@@ -38,14 +39,16 @@ function Assert-Private([string]$Path) {
   }
 }
 try {
-  try{$acquired=$mutex.WaitOne($(if($Action -eq 'Offline'){300000}else{0}))}catch [Threading.AbandonedMutexException]{$acquired=$true}
-  if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
+  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $(if($Action -eq 'Offline'){300000}else{0})
+  $acquired=[bool]$operationLock
+  if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
   $phase='local_engine'
-  $context=& $docker --host npipe:////./pipe/dockerDesktopLinuxEngine context inspect desktop-linux 2>$null | ConvertFrom-Json
-  if($LASTEXITCODE -ne 0 -or $context[0].Endpoints.docker.Host -ne 'npipe:////./pipe/dockerDesktopLinuxEngine'){throw 'Local Docker Desktop engine required.'}
+  $engine=Test-OwnedDockerEngine
+  $report.engineLinux=$engine
+  if(-not $engine){throw 'Local Docker Desktop Linux engine required.'}
   if(-not (Test-Path -LiteralPath $store -PathType Leaf)) {
     if($Action -notin @('Start','Update')){throw 'Local backend has not been provisioned.'}
     $existing=& $docker --host npipe:////./pipe/dockerDesktopLinuxEngine volume ls --filter 'name=^winesnap-owned-' --format '{{.Name}}'
@@ -68,7 +71,7 @@ try {
   if($keys.project -ne 'winesnap-owned-local' -or $keys.version -ne 1){throw 'Unexpected local backend credentials.'}
   # Reuse only already-authorized WineSnap provider slots. Never import hosted
   # database/API keys, and never copy provider secrets into the new disk store.
-  $providerPath=Join-Path $env:LOCALAPPDATA 'WineSnapHosting/ai-keys.clixml'
+  $providerPath=Join-Path $directory 'ai-keys.clixml'
   if(Test-Path -LiteralPath $providerPath -PathType Leaf) {
     Assert-Private $providerPath
     $provider=Import-Clixml -LiteralPath $providerPath
@@ -96,6 +99,7 @@ try {
   $output=$process.StandardOutput.ReadToEndAsync();$errors=$process.StandardError.ReadToEndAsync()
   $process.StandardInput.Write($payload);$process.StandardInput.Close();$payload=$null
   if(-not $process.WaitForExit(1200000)){$process.Kill($true);throw 'Owned backend operation timed out.'}
+  if(-not [Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)){throw 'Owned operation output did not close.'}
   $raw=$output.GetAwaiter().GetResult();$errors.GetAwaiter().GetResult() | Out-Null
   if($raw.Length -gt 128MB){throw 'Oversized operation result.'}
   $result=$raw | ConvertFrom-Json -Depth 30;$raw=$null
@@ -126,6 +130,9 @@ try {
   }
   if($process.ExitCode -ne 0){$report.completed=$false}
 } catch {
+  $type=$_.Exception.GetType().FullName
+  if($type -match '^[A-Za-z0-9_.]+$'){$report.errorType=$type}
+  $report.failureLine=$_.InvocationInfo.ScriptLineNumber
   $report.completed=$false
   if(-not $report.failure){$report.failure='owned_backend_operation_failed'}
   if(-not $report.phase){$report.phase=$phase}
@@ -138,9 +145,8 @@ try {
   if($acquired){
     $file=Join-Path $directory ($Action.ToLowerInvariant()+'-status.json');Assert-Safe $file
     $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $file -Encoding utf8
-    $mutex.ReleaseMutex()
   }
-  $mutex.Dispose()
+  if($operationLock){$operationLock.Dispose()}
 }
 $report | ConvertTo-Json -Depth 6
 if(-not $report.completed -and -not $report.skipped){exit 1}

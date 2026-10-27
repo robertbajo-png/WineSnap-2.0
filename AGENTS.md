@@ -13,7 +13,7 @@
 - Production data and the existing published site must remain intact until an
   owned destination, complete export, isolated restore and rollback are verified.
   Do not promote the empty test project or blindly replay migration histories.
-- The current Windows installation uses its own empty local backend,
+- The current Windows installation uses its own initially empty local backend,
   `winesnap-owned-local`, through `scripts/run-owned-windows.ps1`.
   The owner abandoned hosted WineSnap-test (`pzniyupmgwvlldvztzqh`); its old
   wrappers are historical/manual tools, not the default runtime. Never print
@@ -31,6 +31,18 @@ The current Windows backend supersedes hosted-test runtime instructions:
 `docs/owned-local-windows-2026-10-25.md`. Operate only exact labelled local
 containers/volumes and fixed loopback ports. Do not delete volumes, regenerate
 lost root credentials, publish a tunnel or import real data automatically.
+Owned runtime state now lives in `%USERPROFILE%\WineSnapOwned`, not the MSIX-
+virtualized `%LOCALAPPDATA%` directory. All owned tools must use this same root;
+the copied provider store is still CurrentUser-encrypted. The old state is kept
+as a migration rollback copy, not an active runtime. Never fall back to generating
+new backend keys when the installed volumes or original credentials exist.
+`get-owned-windows-status.ps1` is the read-only supervisor check. Windows startup
+uses a limited, interactive current-user task with logon and two-minute recovery
+triggers. `Resume` only starts verified existing containers; `RestartApp` only
+restarts the verified web container. Do not reboot Windows as an acceptance test
+without a separate request. Internet preparation targets the separate proposed
+`winesnap.boleoai.se` hostname and is not permission to change the apex site or
+old production. Never resume the historical Quick Tunnel or expose the mailbox.
 Use `run-owned-windows.ps1 -Action Features` for tagged, disposable backend
 fixtures. `FeaturesAi` is a separate opt-in with up to eight real AI scenarios;
 never schedule it or substitute it for browser/mobile verification. Clean up
