@@ -409,3 +409,37 @@ healthy; fixture cleanup completed, page errors and external requests were
 zero, and no real account, production or hosted test was changed. The mobile
 390px and desktop 1440px layouts were checked, including horizontal overflow.
 The focused retry/authorization/offline-boundary run also passed all 18 tests.
+
+## Native Windows smoke readiness (2026-10-27)
+
+The native Windows/Node-24 synthetic smoke reproduced the first-health timeout,
+then passed both runtime variants on a diagnostic rerun. The old readiness
+probe checked the static manifest, which Nitro can serve before initializing
+its lazy application handler. Static readiness was therefore not proof that
+the app had started; the precise cause of the intermittent Windows delay is
+not established.
+
+The checker now waits for `/api/health` within the existing 120-second startup
+budget. Each probe is bounded by the remaining budget; ordinary requests keep
+their 30-second Windows and 10-second non-Windows limits. Only transport failures
+and HTTP 503 are retried during startup. Process exits, unexpected responses and
+security assertions fail immediately. Diagnostics contain only process state,
+log size, error-code names and boolean error markers, never raw server logs.
+Seven regression tests cover dynamic readiness, cold startup, retry boundaries,
+process failure and fail-closed security behavior.
+
+The corrected checker passed both native Windows variants: six SSR routes,
+404, static assets, three authentication guards, an unconfigured cron, and a
+configured cron refusing a missing secret. It uses only a copied synthetic
+artifact on a temporary loopback port, fake credentials and blocked outbound
+fetch. No login, AI request, database write, application deployment or Docker
+operation is part of this check. This resolves the native smoke checkpoint,
+not the separate broad `Update` controller timing note or public release gates.
+
+Post-fix validation passed 990 tests in 104 files, TypeScript, a fresh synthetic
+build, both native runtime variants and the client budget. Both variants also
+passed against the previous synthetic artifact. The local integrated ESLint
+formatter did not finish and was stopped; all other ESLint rules passed in a
+separate run, and standalone Prettier approved all four changed files. No lint
+configuration was weakened. The unchanged GitHub Quality workflow retains full
+integrated lint on Ubuntu/Node-22.

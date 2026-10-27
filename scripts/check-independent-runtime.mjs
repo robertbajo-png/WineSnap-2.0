@@ -5,8 +5,11 @@ import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  IndependentRuntimeRequestError,
+  waitForIndependentRuntime,
+} from "./lib/independent-readiness.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = resolve(root, "dist/independent-runtime");
@@ -111,10 +114,17 @@ async function checkServer(configuredCron, artifact) {
     logs += chunk;
   });
   const closed = new Promise((done) => child.once("close", done));
-  const request = async (path, options) => {
+  const diagnostics = () => ({
+    childState: child.exitCode === null && child.signalCode === null ? "running" : "exited",
+    logBytes: Buffer.byteLength(logs),
+    outboundBlocked: logs.includes("INDEPENDENT_CHECK_OUTBOUND_FETCH_BLOCKED"),
+    errorCodes: [...new Set(logs.match(/\bERR_[A-Z_]+\b/g) ?? [])],
+    unhandledError: /unhandledRejection|uncaughtException/.test(logs),
+  });
+  const request = async (path, options, remainingMs = Infinity) => {
     const started = performance.now();
-    // Portable Windows fixtures import freshly copied modules on their first request.
-    const timeout = process.platform === "win32" ? 30000 : 10000;
+    const requestLimit = process.platform === "win32" ? 30000 : 10000;
+    const timeout = Math.min(requestLimit, remainingMs);
     let response;
     try {
       response = await fetch(`${base}${path}`, {
@@ -123,8 +133,8 @@ async function checkServer(configuredCron, artifact) {
         signal: AbortSignal.timeout(timeout),
       });
     } catch {
-      throw new Error(
-        `Synthetic runtime request failed at ${path} after ${Math.round(performance.now() - started)}ms`,
+      throw new IndependentRuntimeRequestError(
+        `Synthetic runtime request failed at ${path} after ${Math.round(performance.now() - started)}ms: ${JSON.stringify(diagnostics())}`,
       );
     }
     const body = await response.text();
@@ -132,23 +142,17 @@ async function checkServer(configuredCron, artifact) {
     return { response, body };
   };
   try {
-    let ready = false;
-    const readyDeadline = Date.now() + 120000;
-    for (let attempt = 0; attempt < 120 && Date.now() < readyDeadline; attempt++) {
-      if (spawnError) throw spawnError;
-      assert(child.exitCode === null, `Server exited before readiness: ${logs}`);
-      try {
-        const { response } = await request("/manifest.webmanifest");
-        if (response.status === 200) {
-          ready = true;
-          break;
-        }
-      } catch {
-        /* Wait for the listener, without contacting another origin. */
-      }
-      await delay(250);
-    }
-    assert(ready, `Server did not start: ${logs}`);
+    // Static assets can respond before Nitro's lazy app handler has initialized.
+    const readiness = await waitForIndependentRuntime({
+      request,
+      checkProcess() {
+        if (spawnError) throw spawnError;
+        assert(
+          child.exitCode === null && child.signalCode === null,
+          `Server exited before readiness: ${JSON.stringify(diagnostics())}`,
+        );
+      },
+    });
     // Liveness only: no DB/provider calls and no environment or user information.
     const health = await request("/api/health");
     assert.equal(health.response.status, 200);
@@ -256,7 +260,7 @@ async function checkServer(configuredCron, artifact) {
       "The server attempted an outbound fetch",
     );
     console.log(
-      `PASS Node runtime: ${configuredCron ? "configured cron rejects missing secret" : "six SSR routes, 404, static assets, three auth guards and unconfigured cron"}`,
+      `PASS Node runtime: ${configuredCron ? "configured cron rejects missing secret" : "six SSR routes, 404, static assets, three auth guards and unconfigured cron"}; app ready in ${readiness.elapsedMs}ms (${readiness.attempts} health probes)`,
     );
   } finally {
     if (child.exitCode === null && !child.killed) child.kill("SIGTERM");
