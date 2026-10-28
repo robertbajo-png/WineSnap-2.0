@@ -43,6 +43,14 @@ restarts the verified web container. Do not reboot Windows as an acceptance test
 without a separate request. Internet preparation targets the separate proposed
 `winesnap.boleoai.se` hostname and is not permission to change the apex site or
 old production. Never resume the historical Quick Tunnel or expose the mailbox.
+The owner declined card-backed Cloudflare Zero Trust and approved only the separate
+`winesnap-owned-windows` tunnel. It currently has no published route. Its connector
+credential is CurrentUser-encrypted in `internet-tunnel.dpapi` under the owned
+runtime root, not in Git. Card-free Authelia gate preparation is described in the
+2026-10-28 addendum of the owned Windows guide. Do not activate DNS or the tunnel
+until owner credential setup, gate deployment, rollback and end-to-end denial
+checks are complete. Never run `create-owned-gate-key.mjs` directly: it is a
+private stdin/stdout helper whose output includes gate secrets.
 Use `run-owned-windows.ps1 -Action Features` for tagged, disposable backend
 fixtures. `FeaturesAi` is a separate opt-in with up to eight real AI scenarios;
 never schedule it or substitute it for browser/mobile verification. Clean up

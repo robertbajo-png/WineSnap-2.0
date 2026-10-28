@@ -554,3 +554,78 @@ external denial/authenticated acceptance and persistence remain to be completed
 after authorized dashboard access. Do not use an unprotected or temporary tunnel
 as a substitute, expose the local inbox, enable public registration or certify
 the wider release gates from this preparatory checkpoint.
+
+## Card-Free Internet Preparation (2026-10-28)
+
+The owner declined the card-backed Zero Trust activation. No checkout, payment,
+subscription, global DNS, router or existing production setting was changed.
+The account's separate Networking / Tunnels page permits tunnel creation without
+that activation. With explicit owner confirmation, the new
+`winesnap-owned-windows` tunnel was created with ID
+`3c24ecc7-ab97-48dc-95ff-7d72c84918d0`. The dashboard reports **Inactive**, zero
+replicas and **No routes**. Nothing is yet published at `winesnap.boleoai.se`.
+
+`configure-owned-tunnel.ps1` verified the connector token's account and tunnel
+identity and saved it with CurrentUser DPAPI under the owner/SYSTEM-only owned
+runtime directory as `internet-tunnel.dpapi`. Only an RSA-OAEP-SHA256 envelope
+crossed the temporary workspace transfer directory; the temporary private key
+was itself DPAPI-protected, then removed with the public key and ciphertext
+after successful import. No plaintext token file, API management token or
+account-wide Cloudflare certificate was saved. The clipboard was cleared.
+
+The chosen replacement for Cloudflare Access is the self-hosted
+[Authelia cookie-session engine](https://www.authelia.com/integration/proxies/nginx/),
+pinned to official release 4.39.28 by image digest. Preparation lives in
+`scripts/lib/owned-gate.mjs` and `config/owned-windows/gated-internet.conf`.
+The gate has a deny-by-default, exact-hostname, exact-user rule for `robert`.
+It uses a separate password and does not authorize anyone inside WineSnap:
+the app's original authentication, JWTs, RLS and revocable images remain
+independent. This is password-based outer authentication, **not MFA**.
+The two logouts are independent: outer logout blocks network access but does not
+erase WineSnap's existing offline app data. Use WineSnap's own logout as well on
+a shared device; neither this test nor the new gate changes that offline model.
+
+The session cookie is Secure and HttpOnly, SameSite=Lax, scoped only to
+`winesnap.boleoai.se`, expires after two hours and has a 30-minute inactivity
+limit. Remembered sessions and password reset are disabled. The gate uses no
+external identity provider or outbound email; its required account email is a
+non-deliverable placeholder, not the owner's private contact address. Node 24.7+
+provides the standard Argon2id implementation for private password setup; its
+PHC hash was accepted by the actual Authelia login engine. The HTTP proxy uses
+cookies for the outer session without consuming WineSnap's Authorization header.
+
+The real, isolated Docker acceptance passed **26 checks**: anonymous app/API/image
+denial, forged identity and cookie denial, private-auth endpoint denial, foreign
+origin denial, wrong password, owner login, secure cookie flags, authenticated
+proxy routes, admin/mail/maintenance denial, server-side logout and stale-cookie
+rejection, rejection of another valid identity, oversized-login rejection,
+login-rate limiting, and fail-closed behavior when
+Authelia stops. The latter has a two-second connection and five-second response
+deadline. All disposable containers and the private test network were removed.
+The focused source regression run passed all 29 tests in four files, and both
+PowerShell setup scripts passed the native parser.
+There were no published ports, provider/AI calls, real user-data writes or
+permanent gate deployment in this test. Hold the owned operation lock while
+running `scripts/check-owned-gate.mjs` so a concurrent backup cannot pause the
+app during a routing check.
+
+`configure-owned-gate.ps1 -Action Window` is a prepared human-input flow, not a
+command to run automatically after a policy rejection. The security reviewer
+blocked its first launch pending explicit owner consent to the new access
+password and input window. The owner must choose and confirm at least 16
+characters locally. The wrapper sends the password through private stdin to
+`create-owned-gate-key.mjs`, then DPAPI-encrypts only its Argon2id hash and random
+gate keys into `internet-gate.dpapi`. Never launch that Node helper directly or
+print its stdout; it contains secret material. No password window was opened
+and no owner gate credential exists at this checkpoint.
+
+Remaining work before internet activation: obtain the owner-chosen gate password,
+install and verify the permanent gate and its restart behavior, wire the approved
+public browser origin and auth redirects into the owned build, then configure
+only the new tunnel hostname and DNS record. Test actual external HTTPS,
+unauthenticated denial after authenticated requests (including CDN behavior),
+owner access in desktop/mobile browsers and a local rollback. Keep this route
+disabled until those checks pass. No Access-only tunnel configuration may be
+reused with its Access validation silently removed. Broader public release,
+portable recovery, supplier sign-off and actual Windows cold-boot acceptance
+remain separate requirements; this preparation does not certify them.
