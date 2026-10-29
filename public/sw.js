@@ -1,11 +1,23 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "2026-10-13-privacy-controls";
+const VERSION = "2026-10-26-cooking-reconnect";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const publicIcons = new Set(["/icon-512.png", "/favicon.png"]);
+function cacheableAsset(response) {
+  return (
+    response.ok &&
+    response.type === "basic" &&
+    !response.redirected &&
+    !/\b(?:private|no-store|no-cache)\b/i.test(response.headers.get("Cache-Control") || "") &&
+    !/(?:^|,)\s*(?:authorization|cookie|\*)\s*(?:,|$)/i.test(response.headers.get("Vary") || "")
+  );
+}
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(PAGE_CACHE).then((cache) => cache.addAll([OFFLINE_URL])));
+  event.waitUntil(
+    caches.open(PAGE_CACHE).then((cache) => cache.addAll([OFFLINE_URL, "/icon-512.png"])),
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -25,6 +37,20 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
+  if (event.data === "PREPARE_KITCHEN")
+    event.waitUntil(
+      (async () => {
+        const response = await fetch("/kitchen", {
+          credentials: "omit",
+          cache: "no-store",
+        });
+        if (!response.ok || new URL(response.url).origin !== self.location.origin) return;
+        const html = await response.clone().text();
+        // Only this deliberately generic SSR shell is cacheable, never an authenticated page/API.
+        if (/name="winesnap-kitchen-shell"\s+content="public-v1"/.test(html))
+          await (await caches.open(PAGE_CACHE)).put("/kitchen", response);
+      })().catch(() => undefined),
+    );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -39,19 +65,35 @@ self.addEventListener("fetch", (event) => {
   // Never persist account pages or old HTML that references deleted asset hashes.
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req).catch(async () => (await caches.match(OFFLINE_URL)) || Response.error()),
+      fetch(req).catch(
+        async () =>
+          (url.pathname === "/kitchen" && (await caches.match("/kitchen"))) ||
+          (await caches.match(OFFLINE_URL)) ||
+          Response.error(),
+      ),
     );
     return;
   }
 
-  // Static assets: cache first, refresh in background.
-  if (/\.(js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)) {
-    const network = fetch(req).then(async (res) => {
-      if (res.ok && res.type === "basic")
-        await (await caches.open(ASSET_CACHE)).put(req, res.clone());
+  // Only public build assets, never an arbitrary private URL with an image suffix.
+  if (
+    !url.search &&
+    !req.headers?.has("authorization") &&
+    (publicIcons.has(url.pathname) ||
+      (url.pathname.startsWith("/assets/") &&
+        /\.(js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)))
+  ) {
+    const network = fetch(req, { credentials: "omit" }).then(async (res) => {
+      if (cacheableAsset(res)) await (await caches.open(ASSET_CACHE)).put(req, res.clone());
+      else await (await caches.open(ASSET_CACHE)).delete(req);
       return res;
     });
     event.waitUntil(network.catch(() => undefined));
-    event.respondWith(caches.match(req).then((cached) => cached || network));
+    event.respondWith(
+      caches.open(ASSET_CACHE).then(async (cache) => {
+        const cached = await cache.match(req);
+        return cached && cacheableAsset(cached) ? cached : network;
+      }),
+    );
   }
 });

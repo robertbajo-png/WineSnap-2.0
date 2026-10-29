@@ -1,0 +1,210 @@
+.k-tabs.has-chef {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 680px;
+}
+.k-tabs.has-chef button {
+  justify-content: center;
+  font-size: 15px;
+  position: relative;
+}
+.chef-panel {
+  max-width: 760px;
+  margin: 8px auto 0;
+}
+.chef-panel label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+.chef-panel input,
+.chef-panel select,
+.chef-panel textarea {
+  border: 1px solid var(--k-line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 11px 12px;
+  width: 100%;
+  color: var(--k-ink);
+  font: inherit;
+  min-height: 48px;
+}
+.chef-panel textarea {
+  resize: vertical;
+}
+.chef-panel h2 {
+  margin-top: 30px;
+}
+.chef-panel h3 {
+  font-size: 23px;
+  margin: 0;
+}
+.chef-panel form {
+  margin: 20px 0;
+}
+.chef-context {
+  color: var(--k-green);
+  border-left: 3px solid #bb773f;
+  padding-left: 12px;
+  margin-bottom: 20px;
+  overflow-wrap: anywhere;
+}
+.chef-modes {
+  display: flex;
+  border-bottom: 1px solid var(--k-line);
+  gap: 18px;
+}
+.chef-modes button {
+  min-height: 48px;
+  border-bottom: 3px solid transparent;
+}
+.chef-modes [aria-pressed="true"] {
+  border-bottom-color: var(--k-green);
+  font-weight: 600;
+}
+.chef-history {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin-top: 20px;
+}
+.chef-history label {
+  flex: 1;
+  margin-bottom: 0;
+}
+.chef-messages {
+  padding: 14px 0;
+}
+.chef-empty {
+  padding: 24px 0;
+  color: var(--k-muted);
+}
+.chef-message {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--k-line);
+  overflow-wrap: anywhere;
+}
+.chef-message.user {
+  color: #5c3540;
+}
+.chef-message .chat-answer {
+  color: var(--k-ink);
+  font-size: 17px;
+  line-height: 1.7;
+}
+.chef-message .chat-answer h1,
+.chef-message .chat-answer h2,
+.chef-message .chat-answer h3 {
+  font-size: 23px;
+  margin: 18px 0 8px;
+}
+.chef-message .chat-answer a {
+  color: #235d48;
+  text-decoration: underline;
+}
+.chef-message .chat-answer strong,
+.chef-message .chat-answer th {
+  color: var(--k-green);
+}
+.chef-message .chat-answer li::marker {
+  color: #8f5828;
+}
+.chef-message .chat-answer blockquote {
+  color: var(--k-muted);
+}
+.chef-message .chat-answer pre,
+.chef-message .chat-answer code {
+  background: #e8eee9;
+  color: var(--k-ink);
+  font-size: 15px;
+}
+.chef-message .chat-answer table {
+  font-size: 16px;
+}
+.chef-message .chat-answer th,
+.chef-message .chat-answer td {
+  border-color: var(--k-line);
+}
+.chef-meta {
+  color: #56605a;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.chef-draft,
+.food-memory-form,
+.food-memory-feedback {
+  padding: 22px 0;
+  border-top: 1px solid var(--k-line);
+  margin-top: 24px;
+}
+.chef-draft ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 20px;
+  list-style: disc;
+  padding-left: 22px;
+  margin-bottom: 22px;
+}
+.food-memory-list {
+  list-style: none;
+  padding: 0;
+}
+.food-memory-list > li {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--k-line);
+}
+.food-memory-list .k-section-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+.food-memory-list .k-section-title .k-actions {
+  margin: 0;
+  gap: 2px;
+  flex-wrap: nowrap;
+}
+.food-memory-list details > summary {
+  min-height: 44px;
+  padding-top: 8px;
+  cursor: pointer;
+  color: var(--k-green);
+}
+.chef-panel blockquote {
+  border-left: 2px solid #bb773f;
+  padding-left: 14px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.chef-panel blockquote cite {
+  font-size: 14px;
+  color: #56605a;
+  font-style: normal;
+}
+@media (max-width: 540px) {
+  .k-tabs.has-chef button {
+    flex-direction: column;
+    gap: 4px;
+    min-height: 66px;
+    font-size: 13px;
+  }
+  .k-tabs.has-chef .k-live-dot {
+    position: absolute;
+    top: 8px;
+    right: 6px;
+  }
+  .chef-modes {
+    gap: 14px;
+  }
+  .chef-modes button {
+    font-size: 15px;
+  }
+  .food-memory-list .k-section-title {
+    align-items: start;
+  }
+  .chef-draft ul {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,8 +1,12 @@
-import { lookupRetailCandidates } from "./retailCatalog.server";
+import { lookupRetailCandidates, warmLocalRetailCatalog } from "./retailCatalog.server";
 import type { WishlistPriceRow } from "./wishlistPrices.server";
+import { getOperationsAdmin, operationsCredentials } from "./localCredentials.server";
 
 export const wishlistPriceDependencies = {
-  secret: () => process.env.CRON_SECRET,
+  secret: async () =>
+    process.env.WINESNAP_LOCAL_OPERATIONS_ENABLED === "true"
+      ? (await operationsCredentials()).cronSecret
+      : process.env.CRON_SECRET,
   async authenticate(request: Request) {
     const auth = request.headers.get("authorization");
     if (!auth?.startsWith("Bearer ")) return null;
@@ -17,10 +21,16 @@ export const wishlistPriceDependencies = {
     return error ? null : ((data?.claims?.sub as string | undefined) ?? null);
   },
   async load(userId: string | null, ids?: string[]): Promise<WishlistPriceRow[]> {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getOperationsAdmin();
     let query = supabaseAdmin.from("wishlist").select("*");
     if (userId && ids) query = query.eq("user_id", userId).in("id", ids);
-    else query = query.eq("notify_on_drop", true).not("target_price", "is", null);
+    else
+      query = query
+        .eq("notify_on_drop", true)
+        .not("target_price", "is", null)
+        .not("bottle_ml", "is", null)
+        .not("vintage", "is", null)
+        .eq("price_currency", "SEK");
     const { data, error } = await query
       .order("last_checked_at", { ascending: true, nullsFirst: true })
       .limit(userId ? 3 : 2000);
@@ -28,8 +38,9 @@ export const wishlistPriceDependencies = {
     return (data ?? []) as unknown as WishlistPriceRow[];
   },
   lookup: lookupRetailCandidates,
+  warm: warmLocalRetailCatalog,
   async save(row: WishlistPriceRow, patch: Record<string, unknown>) {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getOperationsAdmin();
     let query = supabaseAdmin
       .from("wishlist")
       .update(patch as never)

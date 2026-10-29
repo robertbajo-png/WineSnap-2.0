@@ -7,7 +7,7 @@ function source(relativePath: string) {
 
 describe("recommendation backend contracts", () => {
   it("keeps personal ranking server-side and outside the AI schema", () => {
-    const tasteSuggestions = source("supabase/functions/taste-suggestions/index.ts");
+    const tasteSuggestions = source("supabase/functions/taste-suggestions/handler.ts");
 
     expect(tasteSuggestions).toContain("rankPersonalizedCandidates");
     expect(tasteSuggestions).toContain('.eq("id", access.userId)');
@@ -16,7 +16,7 @@ describe("recommendation backend contracts", () => {
   });
 
   it("loads and authorizes the reference wine before similarity scoring", () => {
-    const wineSuggestions = source("supabase/functions/wine-suggestions/index.ts");
+    const wineSuggestions = source("supabase/functions/wine-suggestions/handler.ts");
 
     expect(wineSuggestions).toContain("scoreWineSimilarity");
     expect(wineSuggestions).toContain("wine.user_id !== access.userId && !wine.is_public");

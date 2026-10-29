@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Wine, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { loadPublicWine, type PublicWine } from "@/lib/publicWine";
 import { WineImage } from "@/components/WineImage";
+import { BarMeter } from "@/components/MeterRow";
 
 export const Route = createFileRoute("/w/$shareId")({
   head: () => ({
@@ -16,30 +17,6 @@ export const Route = createFileRoute("/w/$shareId")({
   component: PublicWinePage,
 });
 
-type PublicWine = {
-  id: string;
-  image_url: string | null;
-  producer: string | null;
-  wine_name: string | null;
-  vintage: number | null;
-  grape_varieties: string[] | null;
-  region: string | null;
-  country: string | null;
-  wine_type: string | null;
-  description: string | null;
-  fruit: number | null;
-  tannin: number | null;
-  acidity: number | null;
-  oak: number | null;
-  sweetness: number | null;
-  body: number | null;
-  primary_notes: string[] | null;
-  secondary_notes: string[] | null;
-  tertiary_notes: string[] | null;
-  serving_temp: string | null;
-  glass_type: string | null;
-};
-
 function PublicWinePage() {
   const { shareId } = Route.useParams();
   const [w, setW] = useState<PublicWine | null>(null);
@@ -48,14 +25,7 @@ function PublicWinePage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("wines")
-        .select(
-          "id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type,description,fruit,tannin,acidity,oak,sweetness,body,primary_notes,secondary_notes,tertiary_notes,serving_temp,glass_type",
-        )
-        .eq("share_id", shareId)
-        .eq("is_public", true)
-        .maybeSingle();
+      const { data } = await loadPublicWine(shareId);
       if (!data) setNotFound(true);
       else setW(data as PublicWine);
       setLoading(false);
@@ -152,16 +122,7 @@ function PublicWinePage() {
             </h2>
             <div className="mt-3 space-y-2">
               {meters.map(([label, val]) => (
-                <div key={label} className="flex items-center gap-3 text-sm">
-                  <span className="w-20 text-muted-foreground">{label}</span>
-                  <div className="relative h-1.5 flex-1 rounded-full bg-white/10">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-burgundy to-gold"
-                      style={{ width: `${Math.round(((val ?? 0) / 5) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="w-6 text-right text-cream">{val ?? "—"}</span>
-                </div>
+                <BarMeter key={label} label={label} value={val} max={10} />
               ))}
             </div>
           </div>

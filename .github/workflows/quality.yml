@@ -15,7 +15,34 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run test:security
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
-      - run: npm run build
+      - name: Keep public release blocked without operator evidence
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { spawnSync } from 'node:child_process';
+          const result = spawnSync(process.execPath, ['scripts/check-release-readiness.mjs'], { encoding: 'utf8' });
+          assert.equal(result.status, 2);
+          const report = JSON.parse(result.stdout);
+          assert.equal(report.releaseReady, false);
+          assert.equal(report.readOnly, true);
+          assert.equal(report.productionTouched, false);
+          assert.ok(report.blockers.includes('operator_evidence_missing'));
+          assert.equal(report.gates.length, 10);
+          assert.ok(report.gates.every(gate => gate.status === 'pending'));
+          console.log('PASS: green CI does not approve public release.');
+          JS
+      - name: Build the default Node runtime with synthetic configuration
+        run: npm run build:check
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: independent-check-private-canary-must-not-be-public
+          OPENAI_API_KEY: independent-check-private-canary-must-not-be-public
+          GEMINI_API_KEY: independent-check-private-canary-must-not-be-public
+          VITE_UNKNOWN_SECRET: independent-check-private-canary-must-not-be-public
+          VITE_SUPABASE_URL: https://production-should-not-be-used.invalid
+      - run: npm run test:independent
+      - run: npm run test:bundle
+      - run: npm run build:chef

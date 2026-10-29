@@ -24,6 +24,32 @@ function setup(overrides = {}) {
   return { deps, request };
 }
 describe("owner-only price refresh", () => {
+  it("persists the actual mirror attribution and source date, not the legacy provider name", async () => {
+    const hit = {
+      ...candidate,
+      source: "susbolaget.emrik.org" as const,
+      sourceAsOf: "2026-10-05T01:00:00Z",
+    };
+    const { deps, request } = setup({ lookup: vi.fn(async () => [hit]) });
+    expect((await request()).body.results[0].status).toBe("matched");
+    expect(deps.save.mock.calls[0][2]).toMatchObject({
+      market_price_source: hit.source,
+      retail_price_match: { sourceAsOf: hit.sourceAsOf },
+    });
+  });
+  it("never caches either owner prices or authorization errors", async () => {
+    for (const authenticate of [async () => "owner", async () => null]) {
+      const { deps } = setup();
+      const response = await createRetailPriceHandler({ ...deps, authenticate })(
+        new Request("http://localhost/price", {
+          method: "POST",
+          body: JSON.stringify({ action: "refresh", wineIds: [wine.id] }),
+        }),
+      );
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("cdn-cache-control")).toBe("no-store");
+    }
+  });
   it("authenticates before validation or spending source requests", async () => {
     const { deps, request } = setup({ authenticate: vi.fn(async () => null) });
     expect((await request()).code).toBe(401);

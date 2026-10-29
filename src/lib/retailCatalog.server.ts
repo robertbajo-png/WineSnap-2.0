@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { retailCandidateSchema, type RetailCandidate, type RetailWine } from "./retailPrices";
+import { createRetailMirror } from "./retailMirror.server";
+import { approvedLocalBackend } from "./backendScope";
 
 const catalogRecord = z.record(z.string(), z.unknown());
 function text(value: unknown) {
@@ -32,12 +34,30 @@ export function parseRetailProduct(input: unknown): RetailCandidate | null {
     producer: text(p.producerName ?? p.producer),
     vintage: numeric(p.vintage),
     volumeMl: volume(p),
-    packaging: text(p.packagingType ?? p.packageType),
+    packaging: text(p.packagingType ?? p.packageType ?? p.packagingLevel1),
     country: text(p.country),
     price: numeric(p.price ?? p.priceInclVat ?? p.salesPrice),
     currency: text(p.currency) ?? "SEK",
   });
   return candidate.success ? candidate.data : null;
+}
+const mirrorLookup = createRetailMirror(parseRetailProduct);
+export async function warmLocalRetailCatalog() {
+  if (process.env.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED !== "true") return;
+  if (!approvedLocalBackend(process.env))
+    throw new Error("Retail mirror is restricted to WineSnap-test");
+  await mirrorLookup.warm();
+}
+if (
+  process.env.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED === "true" &&
+  approvedLocalBackend(process.env)
+) {
+  // Public catalog only; user wine names are never sent to this community service.
+  const warm = () => {
+    void mirrorLookup.warm().catch(() => {});
+  };
+  warm();
+  setInterval(warm, 10 * 60000).unref();
 }
 function products(input: unknown): unknown[] {
   if (Array.isArray(input)) return input.slice(0, 100);
@@ -52,6 +72,11 @@ export async function lookupRetailCandidates(
   productNumber?: string,
   fetcher = fetch,
 ): Promise<RetailCandidate[]> {
+  if (process.env.WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED === "true") {
+    if (!approvedLocalBackend(process.env))
+      throw new Error("Retail mirror is restricted to WineSnap-test");
+    return mirrorLookup(wine, productNumber);
+  }
   const base = "https://api.bolaget.io/v1";
   const urls: string[] = [];
   const id = productNumber ?? wine.systembolaget_id;
@@ -62,7 +87,12 @@ export async function lookupRetailCandidates(
   const signal = AbortSignal.timeout(6000);
   const found = new Map<string, RetailCandidate>();
   for (const url of urls) {
-    const response = await fetcher(url, { headers: { accept: "application/json" }, signal });
+    const response = await fetcher(url, {
+      headers: { accept: "application/json" },
+      signal,
+      redirect: "error",
+      cache: "no-store",
+    });
     if (response.status === 404) continue;
     if (!response.ok) throw new Error("Catalog unavailable");
     const records = products(await response.json());

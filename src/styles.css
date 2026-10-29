@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./assets/fonts/fonts.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -63,8 +64,7 @@
 
 :root {
   --radius: 0.5rem;
-  --host-badge-space: 0px;
-  --bottom-nav-height: calc(5rem + env(safe-area-inset-bottom, 0px) + var(--host-badge-space));
+  --bottom-nav-height: calc(5rem + env(safe-area-inset-bottom, 0px));
 
   /* Mörk lyx — djupt svart med varm underton */
   --background: oklch(0.13 0.008 30);

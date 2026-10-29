@@ -1,8 +1,8 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { AppUpdate } from "@/components/AppUpdate";
-import { HostBadgeSpace } from "@/components/HostBadgeSpace";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
+import { KitchenAccountCleanup } from "@/features/kitchen/KitchenAccountCleanup";
 
 import appCss from "../styles.css?url";
 
@@ -53,22 +53,14 @@ export const Route = createRootRoute({
       },
       {
         property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png",
+        content: "/icon-512.png",
       },
       {
         name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c5735671-5696-4558-88f7-6324302a10f9/id-preview-20080c52--e7f4f18b-eaf5-4c23-b400-576438d8ede8.lovable.app-1777743861412.png",
+        content: "/icon-512.png",
       },
     ],
     links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap",
-      },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", href: "/icon-512.png", type: "image/png" },
@@ -99,8 +91,8 @@ function RootComponent() {
   return (
     <I18nProvider>
       <Outlet />
+      <KitchenAccountCleanup />
       <AppUpdate />
-      <HostBadgeSpace />
     </I18nProvider>
   );
 }

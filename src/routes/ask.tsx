@@ -17,6 +17,7 @@ import { ChatMessageContent } from "@/components/ChatMessageContent";
 import { ChatViewport } from "@/components/ChatViewport";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/aiTransport";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, useT } from "@/i18n";
@@ -169,13 +170,11 @@ function AskWineSnapPage() {
     setError(null);
 
     try {
-      const { data, error: functionError } = await supabase.functions.invoke("ask-winesnap", {
-        body: {
-          conversationId: activeId,
-          message: text,
-          context,
-          language: lang,
-        },
+      const { data, error: functionError } = await invokeAi("ask-winesnap", {
+        conversationId: activeId,
+        message: text,
+        context,
+        language: lang,
       });
       if (functionError) throw functionError;
       if (data?.error) throw new Error(data.error);

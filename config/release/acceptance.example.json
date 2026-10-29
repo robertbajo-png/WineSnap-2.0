@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "candidateCommit": null,
+  "appOrigin": null,
+  "backendProject": null,
+  "approvals": {
+    "supabase": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "openai": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "gemini": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "hosting": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "privacy": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "audience": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "recovery": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "email": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "acceptance": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null },
+    "rollout": { "status": "pending", "reviewedAt": null, "reviewer": null, "reference": null }
+  }
+}
