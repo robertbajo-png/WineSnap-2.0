@@ -17,6 +17,7 @@ import {
   checkOwnedContainer,
 } from "./lib/owned-backend.mjs";
 import { ownedResumeOrder, planOwnedMigrations } from "./lib/owned-lifecycle.mjs";
+import { selectOwnedPublicOrigin } from "./lib/owned-public-origin.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -226,6 +227,7 @@ async function start(
     args = [],
     entrypoint,
     configHash,
+    publicOrigin,
   } = {},
 ) {
   let found = await existing(service);
@@ -244,6 +246,7 @@ async function start(
     name(service),
     ...labelArgs(),
     ...(configHash ? ["--label", `winesnap.config=${configHash}`] : []),
+    ...(publicOrigin ? ["--label", `winesnap.public-origin=${publicOrigin}`] : []),
     "--network",
     ownedNetwork,
     "--restart",
@@ -377,6 +380,14 @@ try {
       .trim();
     assert.match(images[service], /^sha256:[a-f0-9]{64}$/);
   }
+  const installedWeb = await existing("web");
+  const originSettings = selectOwnedPublicOrigin({
+    requested: process.env.WINESNAP_OWNED_PUBLIC_ORIGIN,
+    reset: process.env.WINESNAP_OWNED_ORIGIN_RESET,
+    installed: installedWeb?.Config.Labels["winesnap.public-origin"] ?? "",
+    action,
+  });
+  report.browserPublicOrigin = originSettings.origin || null;
   if (action === "Resume") {
     phase = "resume_existing_installation";
     // Require every exact installed container before starting any of them.
@@ -481,22 +492,19 @@ try {
     });
     phase = "auth";
     await start("auth", images.auth, {
-      configHash: digest("owned-auth-v2-authenticated-default"),
+      configHash: digest(originSettings.authConfig),
       env: {
         GOTRUE_API_HOST: "0.0.0.0",
         GOTRUE_API_PORT: "9999",
         GOTRUE_DB_DRIVER: "postgres",
         GOTRUE_DB_DATABASE_URL: dbUrl("supabase_auth_admin"),
         GOTRUE_DB_NAMESPACE: "auth",
-        API_EXTERNAL_URL: ownedApi,
-        GOTRUE_SITE_URL: ownedApp,
-        GOTRUE_URI_ALLOW_LIST: ownedApp + "/**,http://localhost:5212/**",
+        ...originSettings.auth,
         GOTRUE_JWT_SECRET: keys.jwtSecret,
         GOTRUE_JWT_AUD: "authenticated",
         GOTRUE_JWT_DEFAULT_GROUP_NAME: "authenticated",
         GOTRUE_JWT_EXP: "3600",
         GOTRUE_JWT_ADMIN_ROLES: "service_role",
-        GOTRUE_JWT_ISSUER: ownedApi + "/auth/v1",
         GOTRUE_EXTERNAL_EMAIL_ENABLED: "true",
         GOTRUE_MAILER_AUTOCONFIRM: "false",
         GOTRUE_DISABLE_SIGNUP: "false",
@@ -613,6 +621,7 @@ try {
     let web = await existing("web");
     if (!web || action === "Update") {
       const flags = {
+        ...originSettings.build,
         VITE_OWNED_BACKEND_ENABLED: "true",
         VITE_SUPABASE_URL: ownedApi,
         VITE_SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
@@ -650,6 +659,7 @@ try {
     phase = "web_start";
     await start("web", webImage, {
       user: "node",
+      publicOrigin: originSettings.origin,
       memory: "768m",
       port: "5212:3000",
       env: {

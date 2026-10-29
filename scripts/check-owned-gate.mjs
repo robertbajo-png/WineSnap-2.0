@@ -17,6 +17,7 @@ const scope = "owned-gate-check";
 const network = `winesnap-owned-gate-check-${run}`;
 const gate = `${network}-auth`;
 const proxy = `${network}-proxy`;
+const volume = `${network}-state`;
 const configPath = fileURLToPath(
   new URL("../config/owned-windows/gated-internet.conf", import.meta.url),
 );
@@ -32,6 +33,7 @@ const labelArgs = ["--label", `winesnap.scope=${scope}`, "--label", `winesnap.ch
 let phase = "owned_validation";
 const resources = [];
 let networkCreated = false;
+let volumeCreated = false;
 const command = (args, input, timeout = 30000) =>
   new Promise((resolve, reject) => {
     const child = execFile(
@@ -86,14 +88,46 @@ try {
   passwordBytes.fill(0);
   const users = ownedGateUsers(hash);
   users.users.intruder = { ...users.users.robert, displayname: "Denied test identity", groups: [] };
-  const config = ownedGateConfiguration({
-    sessionSecret: randomBytes(32).toString("hex"),
-    storageKey: randomBytes(32).toString("hex"),
-    resetSecret: randomBytes(32).toString("hex"),
-  });
+  const config = ownedGateConfiguration(
+    {
+      sessionSecret: randomBytes(32).toString("hex"),
+      storageKey: randomBytes(32).toString("hex"),
+      resetSecret: randomBytes(32).toString("hex"),
+    },
+    { persistent: true },
+  );
   phase = "isolated_vendor_service";
   networkCreated = true;
   await command(["network", "create", "--internal", ...labelArgs, network]);
+  await command(["volume", "create", ...labelArgs, volume]);
+  volumeCreated = true;
+  await command([
+    "run",
+    "--rm",
+    ...labelArgs,
+    "--network",
+    "none",
+    "--read-only",
+    "--user",
+    "0",
+    "--log-driver",
+    "none",
+    "--cap-drop",
+    "ALL",
+    "--cap-add",
+    "CHOWN",
+    "--cap-add",
+    "FOWNER",
+    "--security-opt",
+    "no-new-privileges:true",
+    "--mount",
+    `type=volume,source=${volume},target=/data`,
+    "--entrypoint",
+    "/bin/sh",
+    ownedGateImage,
+    "-c",
+    "chown 1000:1000 /data && chmod 700 /data",
+  ]);
   resources.push(gate);
   await command([
     "create",
@@ -113,6 +147,8 @@ try {
     "1",
     "--tmpfs",
     "/tmp:rw,nosuid,nodev,noexec,size=32m,uid=1000,gid=1000,mode=0700",
+    "--mount",
+    `type=volume,source=${volume},target=/var/lib/authelia`,
     "--entrypoint",
     "/bin/sh",
     ownedGateImage,
@@ -120,27 +156,30 @@ try {
     "while [ ! -f /tmp/gate/ready ]; do sleep 0.2; done; exec authelia --config /tmp/gate/configuration.yml",
   ]);
   await command(["start", gate]);
-  await command(["exec", gate, "mkdir", "-p", "/tmp/gate"]);
-  for (const [file, content] of [
-    ["configuration.yml", config],
-    ["users.json", users],
-  ])
-    await command(
-      ["exec", "--interactive", gate, "/bin/sh", "-c", `umask 077; cat > /tmp/gate/${file}`],
-      JSON.stringify(content),
-    );
+  async function injectConfiguration() {
+    await command(["exec", gate, "mkdir", "-p", "/tmp/gate"]);
+    for (const [file, content] of [
+      ["configuration.yml", config],
+      ["users.json", users],
+    ])
+      await command(
+        ["exec", "--interactive", gate, "/bin/sh", "-c", `umask 077; cat > /tmp/gate/${file}`],
+        JSON.stringify(content),
+      );
+    const validation = await command([
+      "exec",
+      gate,
+      "authelia",
+      "config",
+      "validate",
+      "--config",
+      "/tmp/gate/configuration.yml",
+    ]);
+    assert.ok(!/Configuration parsed and loaded with errors/.test(validation));
+    await command(["exec", gate, "touch", "/tmp/gate/ready"]);
+  }
   phase = "vendor_configuration_validation";
-  const validation = await command([
-    "exec",
-    gate,
-    "authelia",
-    "config",
-    "validate",
-    "--config",
-    "/tmp/gate/configuration.yml",
-  ]);
-  assert.ok(!/Configuration parsed and loaded with errors/.test(validation));
-  await command(["exec", gate, "touch", "/tmp/gate/ready"]);
+  await injectConfiguration();
   resources.push(proxy);
   await command([
     "create",
@@ -225,6 +264,38 @@ try {
   );
   assert.ok([500, 502, 503].includes(denied.status));
   report.checks++;
+  phase = "restart_without_ram_credentials_denied";
+  await command(["start", gate]);
+  const empty = await command([
+    "exec",
+    gate,
+    "/bin/sh",
+    "-c",
+    "test ! -e /tmp/gate/ready && test -s /var/lib/authelia/gate.sqlite3 && echo preserved",
+  ]);
+  assert.equal(empty.trim(), "preserved");
+  report.checks++;
+  const failClosedProbe = `import http from 'node:http';http.get(${JSON.stringify(`http://${proxy}:8080/api/health`)},{headers:{Host:'winesnap.boleoai.se'}},r=>{r.resume();console.log(JSON.stringify({status:r.statusCode}));});`;
+  const emptyDenied = JSON.parse(
+    await command(
+      ["exec", "--interactive", "winesnap-owned-web", "node", "--input-type=module"],
+      failClosedProbe,
+    ),
+  );
+  assert.ok([500, 502, 503].includes(emptyDenied.status));
+  report.checks++;
+  phase = "restart_configuration_reinjection";
+  await injectConfiguration();
+  const restarted = JSON.parse(
+    await command(
+      ["exec", "--interactive", "winesnap-owned-web", "node", "--input-type=module"],
+      `import http from 'node:http';const get=p=>new Promise((resolve,reject)=>{const q=http.get(${JSON.stringify(`http://${proxy}:8080`)}+p,{headers:{Host:'winesnap.boleoai.se'},timeout:5000},r=>{r.resume();resolve(r.statusCode);});q.on('error',reject);q.on('timeout',()=>q.destroy(new Error()));});let ready=false;for(let i=0;i<30;i++){try{ready=(await get('/gate/api/health'))===200;}catch{}if(ready)break;await new Promise(r=>setTimeout(r,500));}console.log(JSON.stringify({ready,denied:ready&&(await get('/api/health'))===302}));`,
+    ),
+  );
+  assert.equal(restarted.ready, true);
+  assert.equal(restarted.denied, true);
+  report.checks++;
+  report.restartWithPersistentState = true;
   report.completed = true;
 } catch {
   report.failure = "owned_gate_check_not_accepted";
@@ -247,6 +318,10 @@ try {
         found.Mounts.every(
           (m) =>
             m.Type === "tmpfs" ||
+            (name === gate &&
+              m.Type === "volume" &&
+              m.Name === volume &&
+              m.Destination === "/var/lib/authelia") ||
             (name === proxy &&
               m.Type === "bind" &&
               m.RW === false &&
@@ -255,6 +330,19 @@ try {
         ),
       );
       await command(["rm", "--force", name]);
+    } catch {
+      clean = false;
+    }
+  }
+  if (volumeCreated) {
+    try {
+      const found = JSON.parse(await command(["volume", "inspect", volume]))[0];
+      assert.equal(found.Name, volume);
+      assert.equal(found.Labels["winesnap.scope"], scope);
+      assert.equal(found.Labels["winesnap.check"], run);
+      assert.equal(found.Driver, "local");
+      assert.ok(!found.Options || Object.keys(found.Options).length === 0);
+      await command(["volume", "rm", volume]);
     } catch {
       clean = false;
     }

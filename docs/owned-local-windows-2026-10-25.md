@@ -629,3 +629,74 @@ disabled until those checks pass. No Access-only tunnel configuration may be
 reused with its Access validation silently removed. Broader public release,
 portable recovery, supplier sign-off and actual Windows cold-boot acceptance
 remain separate requirements; this preparation does not certify them.
+
+## Private Gate Lifecycle Preparation (2026-10-29)
+
+This is a source-and-fixture checkpoint, **not an installed public service**.
+No owner password has been created, no permanent gate/connector installed, and
+no DNS or production setting changed. The masked password-window confirmation
+remains pending. No private input window was launched in this continuation.
+
+`scripts/run-owned-ingress.ps1` now wraps private ingress operations with the
+same owned operation lock and Windows kill-on-close child containment. It
+decrypts the existing backend identity and, only for install/resume/restart,
+the owner-created gate store. It never reads provider or tunnel credentials.
+`Status` is read-only; `Verify` does not start stopped resources or inject keys.
+`Stop` does not need the gate credential. `Install` is the only action that can
+create missing private resources; resume/restart refuse a missing installation.
+There is no connector, DNS action, published port or volume-delete command in
+this controller. It is not yet connected to the Windows supervisor.
+
+The prepared topology contains an internal gate network, an internal ingress
+network and a proxy attached to the existing owned egress network for app/API
+access. The gate has no egress or direct database connection. Every managed
+resource must have the exact installation/component labels. Container image,
+command, config fingerprint, user, read-only root, resource limits, capabilities,
+networks, mounts and absence of published ports are checked before lifecycle
+operations. Drift causes refusal, not deletion or replacement of a foreign
+resource. Failed installation can leave private partial resources for inspection;
+there is deliberately no automatic destructive cleanup of permanent state.
+
+Production-shaped gate configuration places SQLite regulation state in the
+separate `winesnap-owned-gate-state` volume. Its root is owned by UID 1000 with
+mode 0700. The user file, password hash and gate configuration remain tmpfs-only
+and must be privately re-injected after a container restart before its startup
+barrier opens. A restart invalidates in-memory outer sessions. This gate volume
+is **not included in the current application archive or restore rehearsal**;
+its backup/recovery and supervisor integration remain deployment work.
+
+The real isolated gate acceptance now passed **29 checks**, including persistent
+SQLite file survival, missing RAM configuration denying requests after restart,
+successful private configuration reinjection, and anonymous denial afterward.
+It used a random, explicitly labelled disposable volume, not the permanent gate
+volume. All test containers, the network and that volume were removed. The
+standalone permanent controller has source/validator coverage but has not been
+installed or exercised against an owner credential; do not describe these
+fixture results as completed permanent deployment or a Windows reboot test.
+
+The backend manager also supports an explicit future owned update with
+`-PublicOrigin https://winesnap.boleoai.se`. Only that exact HTTPS origin is
+accepted. It stages the browser same-origin `/backend` build setting and GoTrue
+email/callback URLs together, while retaining both loopback redirect origins and
+the existing JWT issuer. Subsequent ordinary updates inherit the installed web
+container's public-origin label; they do not silently revert it. An explicit
+`Update -LocalOnly` rebuild removes that mode. Changing origin during a verify,
+resume or backup is refused. Neither option starts a tunnel. **Neither update
+was run here**, so the installed local build and auth configuration are unchanged.
+
+Local validation passed all **1,062 tests in 110 files**, TypeScript, ESLint,
+the synthetic Node build, both runtime smoke scenarios and the client budget.
+The first sandboxed runtime probe reached its readiness deadline; the rerun with
+local process/loopback permissions passed with app readiness in 1,252 ms and
+343 ms. No readiness threshold or application code was weakened to pass it.
+The build still emits its existing Vite native-config and dependency directive
+warnings; these were not suppressed or refactored in this change. The existing
+Windows supervisor, jobs and heartbeat also passed their read-only health check.
+The new gate's read-only status confirmed that the owner credential is absent.
+
+Next deployment gates remain: owner credential, permanent gate installation and
+denial/restart/rollback acceptance, supervised key reinjection, gate-state backup,
+approved app/auth rebuild, then separately confirmed connector/hostname/DNS
+activation followed by actual external TLS, cache-isolation and human owner-login
+acceptance. No existing Access-only configuration may be weakened to bypass
+this sequence. A private owner gate is not multi-user public-release approval.

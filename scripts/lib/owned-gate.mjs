@@ -33,7 +33,11 @@ export async function hashOwnedGatePassword(password) {
   }
 }
 
-export function ownedGateConfiguration({ sessionSecret, storageKey, resetSecret }) {
+export function ownedGateConfiguration(
+  { sessionSecret, storageKey, resetSecret },
+  { persistent = false } = {},
+) {
+  assert.equal(typeof persistent, "boolean");
   for (const value of [sessionSecret, storageKey, resetSecret])
     assert.match(value, /^[a-f0-9]{64}$/);
   return {
@@ -83,7 +87,12 @@ export function ownedGateConfiguration({ sessionSecret, storageKey, resetSecret 
     },
     regulation: { max_retries: 5, find_time: "2m", ban_time: "15m" },
     identity_validation: { reset_password: { jwt_secret: resetSecret } },
-    storage: { encryption_key: storageKey, local: { path: "/tmp/gate/gate.sqlite3" } },
+    storage: {
+      encryption_key: storageKey,
+      local: {
+        path: persistent ? "/var/lib/authelia/gate.sqlite3" : "/tmp/gate/gate.sqlite3",
+      },
+    },
     notifier: { filesystem: { filename: "/tmp/gate/notifications.txt" } },
   };
 }

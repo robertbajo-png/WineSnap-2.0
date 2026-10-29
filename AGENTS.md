@@ -51,6 +51,15 @@ runtime root, not in Git. Card-free Authelia gate preparation is described in th
 until owner credential setup, gate deployment, rollback and end-to-end denial
 checks are complete. Never run `create-owned-gate-key.mjs` directly: it is a
 private stdin/stdout helper whose output includes gate secrets.
+`run-owned-ingress.ps1` controls only the separate private gate/proxy, not a
+connector or DNS. Its source is prepared but not installed. Resume requires the
+existing exact labelled resources and owner-created `internet-gate.dpapi`; it
+does not provision missing resources. The gate database has its own volume for
+durable regulation state, outside the current application-backup manifest.
+`run-owned-windows.ps1 -Action Update -PublicOrigin https://winesnap.boleoai.se`
+is an explicit owned-only build/auth change, not a tunnel activation. Ordinary
+updates preserve an installed public-origin label; `-LocalOnly` is the explicit
+rebuild rollback. Do not run either mode change merely to test its source.
 Use `run-owned-windows.ps1 -Action Features` for tagged, disposable backend
 fixtures. `FeaturesAi` is a separate opt-in with up to eight real AI scenarios;
 never schedule it or substitute it for browser/mobile verification. Clean up
