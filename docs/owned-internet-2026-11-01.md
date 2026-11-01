@@ -216,6 +216,75 @@ chat. The private URL and Chrome acceptance do not complete every device/release
 gate. The temporary, value-free proxy diagnostic was removed; the original proxy
 configuration and authentication remain unchanged.
 
+## Local Operations Follow-Up
+
+The owner deferred physical mobile/cellular acceptance on 2026-11-01. Those checks
+remain unverified; this follow-up is restricted to the owned Windows installation.
+
+The manual read-only command is:
+
+```powershell
+node scripts/check-owned-operations.mjs
+```
+
+It reuses the existing supervisor/task check, reads only seven fixed status-report
+names under `%USERPROFILE%\WineSnapOwned`, and inventories archive names, file types
+and bounded sizes in `backups` / `internet-backups`. It does not open credential
+stores, decrypt archives, contact any network service, change settings, start jobs,
+write status files or touch the abandoned test/old production. The PowerShell child
+receives a bounded system-environment allowlist, not inherited provider credentials.
+The installed Codex-bundled PowerShell path must remain available, as for startup.
+
+Reports must match the owned project, successful scope flags and timestamps.
+Supervisor health must be within five minutes, maintenance within two hours, and
+backup/rehearsal evidence within 26 hours, with at most five minutes of future clock
+skew. The archive basename must also contain a valid, current UTC timestamp;
+refreshing a report cannot make an old or future-dated archive pass.
+Privacy and price maintenance must both report zero failures/backlog. App
+backup evidence requires Auth hashes, image bytes and encryption round-trip checks;
+the latest retained archive must exist and match the isolated rehearsal by name.
+All restore isolation, real-JWT ownership, table/hash/privilege, image-download and
+cleanup flags are required. When private ingress is enabled, the gate requires its
+own current archive, SQLite integrity and credential-recovery rehearsal. A tunnel
+declared enabled without its gate is rejected. Deliberately disabled internet needs
+neither a gate rehearsal nor automatic reactivation.
+
+Exit 0 means these local advisory checks passed; exit 2 means missing, stale,
+mismatched or failed evidence needs attention; exit 1 means unsupported invocation.
+Malformed/oversized reports and redirected paths are rejected. Output contains only
+fixed check names, validated archive basenames, timestamps and booleans, never raw errors or
+unexpected fields. This is a report-consistency check, not a new cryptographic
+inspection of archive bytes or proof against an administrator forging local files.
+New daily backups can make the matching rehearsal pending again without meaning
+the app is down. No new scheduled job was installed and no existing watcher changed.
+
+Actual acceptance in this follow-up:
+
+- New app archive `owned-20261101-160907087.dpapi` passed encryption round-trip.
+  Its isolated restore completed at `2026-11-01T16:12:02Z`: all 75 tables, Auth
+  identities/hashes, grants/policies/functions, row fingerprints/share IDs and one
+  image matched. The image downloaded through restored Storage; synthetic login,
+  wrong-password denial and owner isolation through real JWT/RLS passed. The
+  restore did not stop/connect to the live database, expose ports, load provider
+  keys or create permanent volumes. Its temporary resources were cleaned up.
+- New gate archive `gate-20261101-161246854.dpapi` passed encryption round-trip and
+  resumed the gate/proxy after backup. The isolated rehearsal at `16:14:14Z` passed
+  all 26 SQLite tables, file/integrity checks and CurrentUser recovery of the
+  backed-up gate/tunnel credentials. Temporary resources were cleaned up.
+- The actual new command reported `localOperationsReady: true`, healthy supervisor,
+  current maintenance, both current recoveries and no issues. Its separate
+  `publicReleaseAssessed` remains false. Existing anonymous public HTTPS/denial
+  acceptance also passed all 25 checks again after the backup operations.
+
+Source validation passed 1,124 tests in 113 files, including 40 new operational
+regressions. TypeScript, ESLint, synthetic build, standalone runtime smoke and
+client budget checks passed. No frontend change or owned-app rebuild was needed.
+
+Backups remain same-PC/current-Windows-user encrypted. Off-device recovery,
+external SMTP, a real Windows cold boot, supplier/legal sign-off and physical
+mobile/cellular acceptance were not completed or silently waived. No owner
+password, AI scenario, external email or old-production operation was used.
+
 ## Safe Stop And Rollback
 
 Stop the connector first to make the new public service unavailable, then optionally

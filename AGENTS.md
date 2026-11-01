@@ -113,6 +113,15 @@ permanent data, load provider keys or replay migrations. All clone resources
 must match the random invocation's `owned-backup-rehearsal` labels and are
 removed afterward. This is not portable/off-device or production recovery.
 
+`node scripts/check-owned-operations.mjs` is a manual, read-only Windows check of
+supervisor health, maintenance, bounded status reports and retained archive names.
+It opens no keys, decrypts no archive and starts no job or network request. Exit 2
+means local operational evidence needs attention, not failed application tests.
+It requires a recent matching rehearsal of the latest retained app/gate backup;
+daily backup rotation can make that rehearsal pending again. It never attests
+public release, portable recovery, external email, cold boot or physical mobile.
+See the local-operations follow-up in `docs/owned-internet-2026-11-01.md`.
+
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
 `docs/cooking-core-2026-10-24.md`. Keep the cooking feature gated to WineSnap-test;
