@@ -122,6 +122,21 @@ daily backup rotation can make that rehearsal pending again. It never attests
 public release, portable recovery, external email, cold boot or physical mobile.
 See the local-operations follow-up in `docs/owned-internet-2026-11-01.md`.
 
+Portable recovery tooling lives under `scripts/portable`, with its own pinned
+`age-encryption` dependency/lockfile. Install using `npm ci --prefix scripts/portable
+--ignore-scripts`; do not install through the shared root node_modules junction.
+Use only `scripts/run-owned-portable.ps1` for real snapshots and passphrases.
+NEVER run `scripts/portable/worker.mjs` directly or print its output: Create and
+RecoverFiles return private envelopes containing archive material/credentials.
+The wrapper uses masked human-only passphrase entry, private pipes, CurrentUser
+reencryption and an independent `%USERPROFILE%\WineSnapPortable` work directory.
+It never writes over the active runtime or starts a tunnel. SelfTest uses a
+temporary random test phrase, removes its files and creates NO usable backup.
+An actual Create requires a clean committed checkout and an owner-retained
+recovery phrase. RecoverFiles is a verified staging operation, not live deployment.
+See `docs/portable-backup-2026-11-01.md`. Never equate an isolated rehearsal with
+an actual second-PC/off-device/cutover acceptance or record legal sign-off.
+
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
 `docs/cooking-core-2026-10-24.md`. Keep the cooking feature gated to WineSnap-test;

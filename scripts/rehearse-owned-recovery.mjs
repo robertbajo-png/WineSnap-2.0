@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { ownedProject, ownedServices } from "./lib/owned-backend.mjs";
+import { ownedProject } from "./lib/owned-backend.mjs";
 import { checkBinaryPart, recoveryToken, sha256 } from "./lib/platform-recovery.mjs";
 import {
   assertOwnedRestoreContainer,
   inspectOwnedTar,
   ownedRestoreLimit,
+  ownedRestoreProbeImage,
   ownedRestoreNames,
   ownedRoleRestoreSql,
   ownedRestoreScope,
@@ -219,14 +220,14 @@ try {
   const images = {};
   for (const service of ["db", "auth", "storage", "rest"]) {
     images[service] = (
-      await command(["image", "inspect", ownedServices[service], "--format", "{{.Id}}"])
+      await command(["image", "inspect", bundle.images[service], "--format", "{{.Id}}"])
     )
       .toString()
       .trim();
     assert.equal(images[service], bundle.images[service]);
   }
   images.probe = (
-    await command(["image", "inspect", "winesnap-owned:local", "--format", "{{.Id}}"])
+    await command(["image", "inspect", ownedRestoreProbeImage, "--format", "{{.Id}}"])
   )
     .toString()
     .trim();

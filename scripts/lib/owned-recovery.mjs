@@ -6,6 +6,8 @@ import { checkBinaryPart } from "./platform-recovery.mjs";
 
 export const ownedRestoreScope = "owned-backup-rehearsal";
 export const ownedRestoreLimit = 128 * 1024 * 1024;
+export const ownedRestoreProbeImage =
+  "node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da";
 const hex = /^[a-f0-9]{64}$/;
 const schemas = new Set(["public", "auth", "storage", "extensions", "winesnap_local"]);
 const catalog = [

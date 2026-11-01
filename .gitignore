@@ -22,6 +22,9 @@ supabase/functions/.env
 .winesnap-test.keys*.local
 .env.winesnap-test-keys*.local
 .winesnap-release-evidence.local.json
+# Backups do not belong in source control, even when encrypted.
+*.age
+*.dpapi
 
 # Wrangler / Cloudflare
 .wrangler/
