@@ -13,14 +13,18 @@ try {
   $report.heartbeatFresh=($age -ge -300 -and $age -lt 300)
   $report.jobsHealthy=($state.jobsHealthy -eq $true)
   $report.keepAwakeOnAC=($state.keepAwakeOnAC -eq $true)
-  $report.currentSupervisorVersion=($state.supervisorVersion -eq '2026-10-27-guarded-v2')
+  $report.currentSupervisorVersion=($state.supervisorVersion -eq '2026-11-01-private-ingress-v3')
+  $ingress=Read-OwnedJobStatus 'ingress-control'
+  $report.privateIngressHealthy=($ingress.enabled -ne $true -or $state.ingressHealthy -eq $true)
+  $tunnel=Read-OwnedJobStatus 'tunnel-control'
+  $report.publicTunnelHealthy=($tunnel.enabled -ne $true -or $state.tunnelHealthy -eq $true)
   $task=Get-ScheduledTask -TaskName 'WineSnap Owned Local' -TaskPath '\'
   $report.taskVerified=($task.Description -eq 'WineSnap owned Windows supervisor v1 - no production or public exposure' -and $task.Principal.RunLevel -eq 'Limited' -and $task.Principal.LogonType -eq 'Interactive')
   $report.taskRunning=($task.State -eq 'Running')
   $process=if($state.processId -is [long] -or $state.processId -is [int]){Get-CimInstance Win32_Process -Filter "ProcessId=$($state.processId)"}else{$null}
   $entry=Join-Path $PSScriptRoot 'start-owned-windows-session.ps1'
   $report.supervisorRunning=[bool]($process -and $process.Name -eq 'pwsh.exe' -and $process.CommandLine.Contains($entry))
-  $report.healthy=($state.completed -eq $true -and $report.currentSupervisorVersion -and $report.heartbeatFresh -and $report.jobsHealthy -and $report.taskVerified -and $report.taskRunning -and $report.supervisorRunning)
+  $report.healthy=($state.completed -eq $true -and $report.currentSupervisorVersion -and $report.heartbeatFresh -and $report.jobsHealthy -and $report.taskVerified -and $report.taskRunning -and $report.supervisorRunning -and $report.privateIngressHealthy -and $report.publicTunnelHealthy)
 }catch{$report.failure='owned_supervisor_not_healthy'}
 $report | ConvertTo-Json
 if(-not $report.healthy){exit 1}

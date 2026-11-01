@@ -149,6 +149,8 @@ describe("GPT-6.1 label reader compatibility", () => {
     expect(url).toBe("https://api.openai.com/v1/chat/completions");
     expect(body.model).toBe("gpt-6.1-sol");
     expect(body.store).toBe(false);
+    expect(body.messages[0].content).toContain("20 / 23");
+    expect(body.messages[0].content).toContain("An isolated two-digit number");
     expect(body.reasoning_effort).toBe("low");
     expect(body.max_completion_tokens).toBe(8192);
     expect(body).not.toHaveProperty("tools");

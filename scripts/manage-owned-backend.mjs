@@ -31,6 +31,7 @@ assert.ok(
     "Backup",
     "Update",
     "Accept",
+    "ScanAccept",
     "Features",
     "FeaturesAi",
     "Offline",
@@ -388,6 +389,8 @@ try {
     action,
   });
   report.browserPublicOrigin = originSettings.origin || null;
+  report.loopbackPortsOnly = true;
+  report.localOnly = !originSettings.origin;
   if (action === "Resume") {
     phase = "resume_existing_installation";
     // Require every exact installed container before starting any of them.
@@ -515,9 +518,6 @@ try {
         GOTRUE_SMTP_SENDER_NAME: "WineSnap Local",
         GOTRUE_SMTP_MAX_FREQUENCY: "1s",
         GOTRUE_RATE_LIMIT_EMAIL_SENT: "60",
-        GOTRUE_MAILER_URLPATHS_CONFIRMATION: "/auth/v1/verify",
-        GOTRUE_MAILER_URLPATHS_RECOVERY: "/auth/v1/verify",
-        GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: "/auth/v1/verify",
         GOTRUE_LOG_LEVEL: "error",
       },
     });
@@ -749,7 +749,7 @@ try {
     });
     assert.equal(report.features.completed, true);
   }
-  if (action === "Accept") {
+  if (["Accept", "ScanAccept"].includes(action)) {
     const { acceptOwnedBackend } = await import("./lib/owned-acceptance.mjs");
     report.acceptance = await acceptOwnedBackend(
       keys,
@@ -769,6 +769,17 @@ try {
         assert.match(step, /^[a-z_]+$/);
         phase = `acceptance_${step}`;
       },
+      action === "ScanAccept"
+        ? {
+            scanImage: join(
+              process.env.USERPROFILE,
+              "OneDrive",
+              "Desktop",
+              "Winesnap",
+              "54456874_400.webp",
+            ),
+          }
+        : {},
     );
   }
   if (action === "Maintain") {

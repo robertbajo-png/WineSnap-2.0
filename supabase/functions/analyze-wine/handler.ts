@@ -38,6 +38,7 @@ HARD RULES:
 - Never fill an identity gap with a guess. No plausible producer, vintage, region, appellation or grape. If it is not on the label, value = null and source = "unknown".
 - Never substitute a famous or similar wine you happen to know. If the label text does not match a wine you recognise, keep the label's own words.
 - If the image is blurry, cropped or shows no label text, return label_text as best you can and leave identity values null.
+- A vintage can be printed as a split year, such as 20 / 23 on the same label row. When BOTH printed parts clearly form one vintage, return the four-digit value 2023 and quote both parts as evidence. Preserve the original split text in label_text. Do not join unrelated alcohol percentages, volumes, lot numbers or dates. An isolated two-digit number without a printed century is not enough to guess a four-digit vintage; leave it unknown.
 
 STEP 3 — Taste estimates. The taste block (structure, notes, pairings, serving) is an ESTIMATE based on the identified wine or its style. Only fill it if at least a wine name or producer was read; otherwise leave the values null.
 
@@ -74,7 +75,9 @@ const wineResponseFormat = {
           properties: {
             producer: identityField("Producer / winery exactly as printed"),
             wine_name: identityField("Wine name / cuvée exactly as printed"),
-            vintage: identityField("Vintage year as printed, e.g. '2023' or '23'"),
+            vintage: identityField(
+              "Four-digit vintage read from the label; join clearly paired printed century/year fragments such as 20 / 23 into 2023. Never guess the century from an isolated short year.",
+            ),
             region: identityField("Region or appellation as printed"),
             country: identityField("Country as printed or unambiguously given by the appellation"),
             wine_type: identityField("red, white, rose, sparkling, dessert, fortified, orange"),

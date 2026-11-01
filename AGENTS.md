@@ -44,26 +44,43 @@ without a separate request. Internet preparation targets the separate proposed
 `winesnap.boleoai.se` hostname and is not permission to change the apex site or
 old production. Never resume the historical Quick Tunnel or expose the mailbox.
 The owner declined card-backed Cloudflare Zero Trust and approved only the separate
-`winesnap-owned-windows` tunnel. It currently has no published route. Its connector
+`winesnap-owned-windows` tunnel. After action-time confirmation, its sole published
+route is now `https://winesnap.boleoai.se`, behind the owner-only Authelia gate.
+Do not broaden that route, expose core services or alter the old production. Its connector
 credential is CurrentUser-encrypted in `internet-tunnel.dpapi` under the owned
 runtime root, not in Git. Card-free Authelia gate preparation is described in the
-2026-10-28 addendum of the owned Windows guide. Do not activate DNS or the tunnel
-until owner credential setup, gate deployment, rollback and end-to-end denial
-checks are complete. Never run `create-owned-gate-key.mjs` directly: it is a
+2026-10-28 addendum and `docs/owned-internet-2026-11-01.md`. Owner credential setup,
+gate restart/rollback and external anonymous denial are verified; authenticated
+browser/device acceptance remains a separate gate. Never run `create-owned-gate-key.mjs` directly: it is a
 private stdin/stdout helper whose output includes gate secrets.
 `run-owned-ingress.ps1` controls only the separate private gate/proxy, not a
-connector or DNS. Its source is prepared but not installed. Resume requires the
+connector or DNS. It is installed and supervised. Resume requires the
 existing exact labelled resources and owner-created `internet-gate.dpapi`; it
 does not provision missing resources. The gate database has its own volume for
-durable regulation state, outside the current application-backup manifest.
+durable regulation state, covered by a separate CurrentUser-encrypted gate archive
+and isolated SQLite/key restore rehearsal, not the application-backup manifest.
+Use its `Backup` and `Rehearse` actions through the PowerShell wrapper; the Node
+backup envelope is private and must never be printed or run directly. The separate
+`run-owned-tunnel.ps1` owns only the approved isolated connector. Its token is
+tmpfs-only inside the container, never an argument, build input or Docker env.
+`Stop` disables supervisor recovery for that component; `Install` explicitly
+re-enables it after preflight. Never stop the shared Docker engine to test recovery.
 `run-owned-windows.ps1 -Action Update -PublicOrigin https://winesnap.boleoai.se`
 is an explicit owned-only build/auth change, not a tunnel activation. Ordinary
 updates preserve an installed public-origin label; `-LocalOnly` is the explicit
-rebuild rollback. Do not run either mode change merely to test its source.
+rebuild rollback. The approved public-origin update is installed. Do not run either
+mode change merely to test its source. GoTrue mail verification paths must include
+`/backend/auth/v1/verify` in public-origin mode; an absolute mail path replaces the
+API base path. Keep that covered in the actual owned acceptance workflow.
 Use `run-owned-windows.ps1 -Action Features` for tagged, disposable backend
 fixtures. `FeaturesAi` is a separate opt-in with up to eight real AI scenarios;
 never schedule it or substitute it for browser/mobile verification. Clean up
 only exact fixture IDs whose email and run metadata match, never real accounts.
+`ScanAccept` is another manual opt-in: it sends the previously approved original
+Zehn Morgen WebP through the installed AI path with a disposable fixture, then
+checks save/image/restart/erasure. Never schedule it or infer that its loopback
+browser proves public-owner/mobile acceptance. Keep provider-scenario accounting
+separate from the test browser's forbidden external-network counter.
 For interactive browser acceptance, `BrowserPrepare` creates a separate local
 fixture and sends a normal sign-in link only to the local inbox. `BrowserInspect`
 reads its cooking state; `BrowserMemory` separately makes one live Gemini

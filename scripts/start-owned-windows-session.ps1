@@ -4,7 +4,7 @@ $sessionLock=$null
 $sessionAcquired=$false
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 $phase='local_engine'
-$state=[ordered]@{project='winesnap-owned-local';supervisorVersion='2026-10-27-guarded-v2';completed=$false;productionTouched=$false;hostedTestTouched=$false;processId=$PID;checkedAt=[DateTime]::UtcNow.ToString('o')}
+$state=[ordered]@{project='winesnap-owned-local';supervisorVersion='2026-11-01-private-ingress-v3';completed=$false;productionTouched=$false;hostedTestTouched=$false;processId=$PID;checkedAt=[DateTime]::UtcNow.ToString('o')}
 try {
   $sessionLock=Open-OwnedRuntimeLock -Name session
   $sessionAcquired=[bool]$sessionLock

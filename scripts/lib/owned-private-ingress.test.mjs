@@ -186,6 +186,18 @@ describe("private ingress lifecycle boundaries", () => {
     const check = (v) =>
       checkPrivateIngressNetwork(v, privateIngress.ingressNetwork, installationId);
     expect(() => check(network)).not.toThrow();
+    expect(() =>
+      check({
+        ...network,
+        Options: {
+          "com.docker.network.enable_ipv4": "true",
+          "com.docker.network.enable_ipv6": "false",
+        },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      check({ ...network, Options: { "com.docker.network.enable_ipv6": "true" } }),
+    ).toThrow();
     expect(() => check({ ...network, Internal: false })).toThrow();
     expect(() => check({ ...network, Containers: { t: { Name: "foreign-connector" } } })).toThrow();
     expect(() =>
@@ -208,7 +220,7 @@ describe("private ingress lifecycle boundaries", () => {
   it("has no connector, DNS operation, provider invocation or destructive volume cleanup", () => {
     const manager = readFileSync(new URL("../manage-owned-ingress.mjs", import.meta.url), "utf8");
     expect(manager).toContain('process.env.WINESNAP_OWNED_INGRESS_PIPE, "1"');
-    expect(manager).toContain("size <= 16384");
+    expect(manager).toContain('action === "Rehearse" ? 32 * 1024 * 1024 : 16384');
     expect(manager).toContain('if (action === "Install")');
     expect(manager).toContain('if (action === "Verify") assert.ok(found.State.Running)');
     expect(manager).toContain("persistent: true");
@@ -220,6 +232,29 @@ describe("private ingress lifecycle boundaries", () => {
     expect(wrapper).toContain("ProtectedData]::Unprotect");
     expect(wrapper).toContain("$job.Assign($process.Handle)");
     expect(wrapper).toContain("$process.StandardInput.Write($payload)");
-    expect(wrapper).not.toMatch(/internet-tunnel|ai-keys|Set-NetFirewall|Start-Process/);
+    expect(wrapper).not.toMatch(/ai-keys|Set-NetFirewall|Start-Process/);
+    expect(wrapper).toContain("ProtectedData]::Protect");
+    expect(wrapper).toContain("encryptedRoundtripVerified");
+  });
+  it("backs up only quiesced gate SQLite files and rehearses without the real volume", () => {
+    const manager = readFileSync(new URL("../manage-owned-ingress.mjs", import.meta.url), "utf8");
+    expect(manager).toContain('phase = "gate_backup_quiesce"');
+    expect(manager).toContain("paused.push(service)");
+    expect(manager).toContain("for (const service of paused.reverse())");
+    expect(manager).toMatch(/"--network",\s+"none"/);
+    const helper = readFileSync(new URL("./owned-gate-archive.mjs", import.meta.url), "utf8");
+    expect(helper).toContain('["gate.sqlite3", "gate.sqlite3-wal", "gate.sqlite3-shm"]');
+    expect(helper).toContain('flag: "wx"');
+    expect(helper).toContain("names.includes(file.name)");
+    expect(helper).toContain("PRAGMA integrity_check");
+    expect(helper).toContain("assert.equal(digest(bytes), file.sha256)");
+    expect(helper).not.toMatch(/fetch\(|https?:|execFile|spawn\(/);
+  });
+  it("opts into guarded supervisor recovery only after explicit private installation", () => {
+    const watch = readFileSync(new URL("../watch-owned-windows.ps1", import.meta.url), "utf8");
+    expect(watch).toContain("if($ingress.enabled -eq $true)");
+    expect(watch).toContain("Invoke-OwnedRuntimeAction -Action IngressResume");
+    expect(watch).toContain("Name='gate-backup';Hours=24");
+    expect(watch).toContain("if($tunnel.enabled -eq $true)");
   });
 });

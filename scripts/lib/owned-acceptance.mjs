@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, lstat, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { localOwnedFixtureConfirmation } from "./owned-public-origin.mjs";
+import { verifyOwnedScanFixture } from "./owned-scan-fixture.mjs";
 import {
   ownedApp,
   ownedApi,
@@ -11,7 +13,7 @@ import {
   validateOwnedKeys,
 } from "./owned-backend.mjs";
 
-export async function acceptOwnedBackend(keys, restart, progress = () => {}) {
+export async function acceptOwnedBackend(keys, restart, progress = () => {}, { scanImage } = {}) {
   validateOwnedKeys(keys);
   const run = randomUUID().replaceAll("-", "").slice(0, 16);
   const report = { passed: 0, cleanupCompleted: false, externalRequests: 0 };
@@ -34,8 +36,12 @@ export async function acceptOwnedBackend(keys, restart, progress = () => {}) {
     }
     return result.data;
   };
-  const image = await readFile(new URL("../../public/icon-512.png", import.meta.url));
-  const api = async (path, body, token) =>
+  if (scanImage) {
+    const info = await lstat(scanImage);
+    assert.ok(info.isFile() && !info.isSymbolicLink() && info.size <= 5 * 1024 * 1024);
+  }
+  const image = await readFile(scanImage ?? new URL("../../public/icon-512.png", import.meta.url));
+  const api = async (path, body, token, timeout = 20000) =>
     fetch(ownedApp + path, {
       method: "POST",
       headers: {
@@ -44,7 +50,7 @@ export async function acceptOwnedBackend(keys, restart, progress = () => {}) {
       },
       body: JSON.stringify(body),
       redirect: "error",
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(timeout),
     });
   async function mailLink(email, type) {
     for (let attempt = 0; attempt < 40; attempt++) {
@@ -62,13 +68,15 @@ export async function acceptOwnedBackend(keys, restart, progress = () => {}) {
         ).json();
         for (const match of (content.HTML ?? "").matchAll(/href="([^"]+)"/g)) {
           const url = new URL(match[1].replaceAll("&amp;", "&"));
-          if (
-            url.origin === ownedApi &&
-            url.pathname === "/auth/v1/verify" &&
-            url.searchParams.get("type") === type
-          ) {
+          let local;
+          try {
+            local = localOwnedFixtureConfirmation(url);
+          } catch {
+            continue;
+          }
+          if (local.searchParams.get("type") === type) {
             messages.push(message.ID);
-            return url;
+            return local;
           }
         }
       }
@@ -100,7 +108,11 @@ export async function acceptOwnedBackend(keys, restart, progress = () => {}) {
     );
     for (const user of stale) {
       const runId = user.email.match(/[a-f0-9]{16}(?=@)/)[0];
-      ok(await admin.storage.from("wine-labels").remove([`${user.id}/owned-${runId}.png`]));
+      ok(
+        await admin.storage
+          .from("wine-labels")
+          .remove([`${user.id}/owned-${runId}.png`, `${user.id}/owned-${runId}.webp`]),
+      );
       ok(await admin.auth.admin.deleteUser(user.id));
       const oldMail = await (
         await fetch(
@@ -164,13 +176,52 @@ export async function acceptOwnedBackend(keys, restart, progress = () => {}) {
     );
     owner.token = newLogin.session.access_token;
     report.passed++;
+    if (scanImage) {
+      progress("live_original_scan");
+      const scanCheck = (condition, code) => {
+        if (!condition) {
+          const failure = new Error("owned_scan_not_accepted");
+          failure.code = code;
+          throw failure;
+        }
+      };
+      const response = await api(
+        "/api/ai/analyze-wine",
+        {
+          imageBase64: image.toString("base64"),
+          mimeType: "image/webp",
+          language: "sv",
+        },
+        owner.token,
+        60000,
+      );
+      scanCheck(response.status === 200, `SCAN_${response.status}`);
+      const result = await response.json();
+      const evidenceDirectory = new URL("../../dist/owned-public/", import.meta.url);
+      await mkdir(evidenceDirectory, { recursive: true });
+      await writeFile(
+        new URL("original-scan-result.json", evidenceDirectory),
+        JSON.stringify(
+          {
+            fixture: "previously-approved-zehn-morgen-image",
+            labelText: result.wine?.label_text,
+            identity: result.wine?.identity,
+          },
+          null,
+          2,
+        ),
+      );
+      report.liveOriginalScan = verifyOwnedScanFixture(result.wine);
+      report.liveProviderScenarios = 1;
+      report.passed++;
+    }
     const id = randomUUID();
     progress("private_image_upload");
-    ownerPath = `${owner.id}/owned-${run}.png`;
+    ownerPath = `${owner.id}/owned-${run}.${scanImage ? "webp" : "png"}`;
     ok(
       await owner.app.storage
         .from("wine-labels")
-        .upload(ownerPath, image, { contentType: "image/png" }),
+        .upload(ownerPath, image, { contentType: scanImage ? "image/webp" : "image/png" }),
     );
     progress("wine_insert");
     ok(

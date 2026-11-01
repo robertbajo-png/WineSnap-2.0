@@ -36,7 +36,7 @@ function Test-OwnedDockerEngine {
     return ($process.ExitCode -eq 0 -and $value.Trim() -eq 'linux')
   } catch { return $false } finally {$job.Dispose();if($process){$process.Dispose()}}
 }
-function Invoke-OwnedRuntimeAction([ValidateSet('Resume','Verify','Maintain','Backup')][string]$Action) {
+function Invoke-OwnedRuntimeAction([ValidateSet('Resume','Verify','Maintain','Backup','IngressResume','GateBackup','TunnelResume')][string]$Action) {
   Initialize-OwnedProcessJob
   $job=[WineSnapOwned.ProcessJob]::new()
   $process=$null
@@ -55,7 +55,7 @@ function Invoke-OwnedRuntimeAction([ValidateSet('Resume','Verify','Maintain','Ba
     $output=$process.StandardOutput.ReadToEndAsync();$errors=$process.StandardError.ReadToEndAsync()
     # No operation can start before the kill-on-close job owns its process tree.
     $process.StandardInput.WriteLine('WineSnap-owned-supervisor-v1');$process.StandardInput.Close()
-    $limit=@{Resume=300000;Verify=180000;Maintain=600000;Backup=1200000}[$Action]
+    $limit=@{Resume=300000;Verify=180000;Maintain=600000;Backup=1200000;IngressResume=400000;GateBackup=400000;TunnelResume=400000}[$Action]
     if(-not $process.WaitForExit($limit)){throw [TimeoutException]::new('Owned supervisor child timed out.')}
     if(-not [Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)){throw [TimeoutException]::new('Owned child output did not close.')}
     $raw=$output.GetAwaiter().GetResult();$errors.GetAwaiter().GetResult() | Out-Null
@@ -166,7 +166,7 @@ function Assert-OwnedRuntimeDirectory {
   return $directory
 }
 function Read-OwnedJobStatus([string]$Name) {
-  if($Name -notin @('maintain','backup')){throw 'Unexpected owned job.'}
+  if($Name -notin @('maintain','backup','ingress-control','gate-backup','gate-restore','tunnel-control')){throw 'Unexpected owned job.'}
   $directory=Assert-OwnedRuntimeDirectory
   $path=Join-Path $directory ($Name+'-status.json')
   if(-not (Test-Path -LiteralPath $path)){return $null}

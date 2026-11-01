@@ -17,9 +17,12 @@ export function ownedPublicOriginSettings(value = "") {
       ].join(","),
       // Preserve existing local sessions and Storage JWT validation across this change.
       GOTRUE_JWT_ISSUER: ownedApi + "/auth/v1",
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: value ? "/backend/auth/v1/verify" : "/auth/v1/verify",
+      GOTRUE_MAILER_URLPATHS_RECOVERY: value ? "/backend/auth/v1/verify" : "/auth/v1/verify",
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: value ? "/backend/auth/v1/verify" : "/auth/v1/verify",
     },
     authConfig: value
-      ? "owned-auth-v3-private-host:" + value
+      ? "owned-auth-v4-private-host-email-prefix:" + value
       : "owned-auth-v2-authenticated-default",
   };
 }
@@ -37,4 +40,16 @@ export function selectOwnedPublicOrigin({ requested, reset, installed = "", acti
     return ownedPublicOriginSettings(requested);
   }
   return ownedPublicOriginSettings(installed);
+}
+
+export function localOwnedFixtureConfirmation(value) {
+  const source = new URL(value);
+  assert.ok(!source.username && !source.password && !source.hash);
+  assert.ok(
+    (source.origin === ownedApi && source.pathname === "/auth/v1/verify") ||
+      (source.origin === ownedInternetOrigin && source.pathname === "/backend/auth/v1/verify"),
+  );
+  const local = new URL(ownedApi + "/auth/v1/verify");
+  local.search = source.search;
+  return local;
 }

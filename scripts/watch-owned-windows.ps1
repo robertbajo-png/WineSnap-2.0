@@ -19,7 +19,7 @@ try {
   Initialize-OwnedPowerProtection
   $power=[WineSnapOwned.HostingPower]::new()
   do {
-    $state=[ordered]@{project='winesnap-owned-local';supervisorVersion='2026-10-27-guarded-v2';completed=$false;productionTouched=$false;hostedTestTouched=$false;processId=$PID;checkedAt=[DateTime]::UtcNow.ToString('o')}
+    $state=[ordered]@{project='winesnap-owned-local';supervisorVersion='2026-11-01-private-ingress-v3';completed=$false;productionTouched=$false;hostedTestTouched=$false;processId=$PID;checkedAt=[DateTime]::UtcNow.ToString('o')}
     try {
       $state.phase='verify'
       $verified=Invoke-OwnedRuntimeAction -Action Verify
@@ -34,12 +34,30 @@ try {
       }
       if(-not $verified.completed){throw 'Local services are not running.'}
       $state.completed=$true;$state.jobsHealthy=$true
-      foreach($job in @(@{Action='Maintain';Hours=1},@{Action='Backup';Hours=24})){
+      $ingress=Read-OwnedJobStatus 'ingress-control'
+      $jobs=@(@{Action='Maintain';Name='maintain';Hours=1},@{Action='Backup';Name='backup';Hours=24})
+      if($ingress.enabled -eq $true){
+        $state.phase='private_ingress'
+        $private=Invoke-OwnedRuntimeAction -Action IngressResume
+        if($private.skipped -eq 'operation_already_running'){$state.busy=$true}
+        elseif(-not $private.completed){throw 'Private ingress is not ready.'}
+        $state.ingressHealthy=($private.completed -eq $true)
+        $jobs+=@{Action='GateBackup';Name='gate-backup';Hours=24}
+        $tunnel=Read-OwnedJobStatus 'tunnel-control'
+        if($tunnel.enabled -eq $true){
+          $state.phase='owned_tunnel'
+          $connector=Invoke-OwnedRuntimeAction -Action TunnelResume
+          if($connector.skipped -eq 'operation_already_running'){$state.busy=$true}
+          elseif(-not $connector.completed){throw 'Owned tunnel is not ready.'}
+          $state.tunnelHealthy=($connector.completed -eq $true)
+        }
+      }
+      foreach($job in $jobs){
         $state.phase=$job.Action.ToLowerInvariant()
-        $last=Read-OwnedJobStatus $job.Action.ToLowerInvariant()
+        $last=Read-OwnedJobStatus $job.Name
         if(Due $last $job.Hours){
           Invoke-OwnedRuntimeAction -Action $job.Action | Out-Null
-          $last=Read-OwnedJobStatus $job.Action.ToLowerInvariant()
+          $last=Read-OwnedJobStatus $job.Name
         }
         if(-not $last.completed){$state.jobsHealthy=$false}
       }

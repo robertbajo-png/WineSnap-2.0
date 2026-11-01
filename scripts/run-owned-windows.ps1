@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','Features','FeaturesAi','Offline','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [switch]$LocalOnly
 )

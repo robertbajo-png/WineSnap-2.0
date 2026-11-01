@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { ownedEgress, ownedScope } from "./owned-backend.mjs";
 import { ownedIngressNetwork, ownedInternetOrigin } from "./owned-internet.mjs";
 import { ownedGateImage, ownedGateUsers } from "./owned-gate.mjs";
+import { ownedConnectorName } from "./owned-tunnel.mjs";
 
 export const privateIngress = Object.freeze({
   gate: "winesnap-owned-gate",
@@ -47,11 +48,18 @@ export function checkPrivateIngressNetwork(value, network, installationId) {
   assert.equal(value.Driver, "bridge");
   assert.equal(value.Internal, true);
   assert.equal(value.EnableIPv6, false);
-  assert.deepEqual(value.Options ?? {}, {});
+  const defaultOptions = {
+    "com.docker.network.enable_ipv4": "true",
+    "com.docker.network.enable_ipv6": "false",
+  };
+  for (const [key, setting] of Object.entries(value.Options ?? {})) {
+    assert.ok(Object.hasOwn(defaultOptions, key));
+    assert.equal(setting, defaultOptions[key]);
+  }
   const allowed =
     network === privateIngress.gateNetwork
       ? [privateIngress.gate, privateIngress.proxy]
-      : [privateIngress.proxy];
+      : [privateIngress.proxy, ownedConnectorName];
   // No connector is installed by this controller. It cannot enable Internet access.
   assert.ok(Object.values(value.Containers ?? {}).every((c) => allowed.includes(c.Name)));
 }
