@@ -178,12 +178,19 @@ export async function acceptOwnedOffline(keys, options) {
     await context.setOffline(true);
     assert.equal(await page.evaluate(() => navigator.onLine), false);
     await visible(status("Offline"));
+    phase("offline_timer");
     await page.getByRole("button", { name: "Starta 01:00", exact: true }).click();
     await page.getByRole("button", { name: "Pausa Forbered tomaten", exact: true }).click();
+    phase("offline_portions");
     await page.getByRole("button", { name: "Fler portioner", exact: true }).click();
-    await page.getByRole("checkbox", { name: "Tomat 600 g", exact: true }).check();
+    const ingredient = page.getByRole("checkbox", { name: "Tomat 600 g", exact: true });
+    // This controlled checkbox updates after its IndexedDB write, not in the click handler.
+    await ingredient.click();
+    await until(() => ingredient.isChecked());
+    phase("offline_step");
     await next();
     await step(2);
+    phase("offline_state");
     const offlineState = await localState();
     assert.equal(offlineState.dirty, true);
     assert.equal(offlineState.state.activeStep, 1);
@@ -339,7 +346,15 @@ export async function acceptOwnedOffline(keys, options) {
   } catch (error) {
     // Do not leak browser errors, credential fields, JWTs or network response bodies.
     report.failure = "owned_offline_acceptance_failed";
-    if (/^[A-Za-z]+Error$/.test(error?.name)) report.errorKind = error.name;
+    const errorKind = /^([A-Za-z]*Error)(?:$|\s)/.exec(error?.name ?? "")?.[1];
+    if (errorKind) report.errorKind = errorKind;
+    if (error?.code === "ERR_ASSERTION") {
+      report.errorKind = "AssertionError";
+      if (["boolean", "number"].includes(typeof error.actual))
+        report.assertionActual = error.actual;
+      if (["boolean", "number"].includes(typeof error.expected))
+        report.assertionExpected = error.expected;
+    }
     if (page && new URL(page.url()).origin === ownedApp)
       report.pagePath = new URL(page.url()).pathname;
     if (report.pagePath === "/login") {

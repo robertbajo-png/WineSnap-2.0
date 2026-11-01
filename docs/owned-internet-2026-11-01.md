@@ -137,14 +137,68 @@ only its own synthetic confirmations to the fixed loopback API; it does not bypa
 the public gate or follow arbitrary inbox links. SMTP remains local Mailpit only,
 not external email delivery.
 
-Authenticated browser acceptance is **not yet signed off**. The owner completed
-the outer gate login in the in-app browser, but protected stylesheet requests in
-that browser received HTML, and the kitchen view remained on its loading state.
-The same asset exists and responds as CSS on the server and on direct authenticated
-navigation. No cookie policy, authentication or static-file protection was weakened
-to conceal this. An independent Chrome login is prepared for comparison, with its
-owner-entered password pending at this checkpoint. Physical mobile/camera, Safari
-and outside-home-network acceptance are distinct from desktop viewport emulation.
+Authenticated **Chrome acceptance is now verified for the owned installation**.
+The owner completed the outer gate login themselves. Inner-app tests used an
+administrator-tagged disposable account, not the owner's cellar or password.
+Its normal one-use sign-in link was consumed through the exact approved public
+verification path, with the approved public kitchen redirect. Tokens were not
+printed, persisted as browser state or supplied through chat.
+
+The browser checks found that the service worker fetched build assets with
+`credentials: "omit"`. Behind the owner gate this returns login HTML instead of
+the protected CSS/JavaScript. Build assets now use `same-origin` credentials;
+the cache version is `2026-11-01-gated-assets`. Private/no-store/no-cache, Vary,
+redirect, exact-origin and path guards remain in place. The anonymous generic
+cooking-shell fetch still omits credentials. No gate rule, cookie policy or
+static-file protection was weakened. Existing controlled tabs were closed and
+reopened to activate the corrected worker, then the app was reloaded.
+
+Verified through `https://winesnap.boleoai.se` in Chrome:
+
+- Desktop navigation and responsive layout at 390 by 844 pixels, with no horizontal
+  overflow in Cook Mode, the scan result or the AI conversation.
+- Recipe and Cook Mode rendering. Checking the synthetic tomato ingredient and
+  advancing to step two persisted on the server: revision 3, active step index 1,
+  one checked ingredient, two servings. The private fixture inspector confirmed it.
+- The synthetic cellar showed its two bottles and its correct wine detail page.
+- One additional live OpenAI scan used the approved original Zehn Morgen WebP.
+  It read Zehn Morgen, Chardonnay and Weisser Burgunder, Nahe, and 2023. The image
+  preview rendered correctly. The result was discarded, not saved to any cellar.
+- One live Gemini chat returned two vegetarian pairing suggestions in Swedish.
+  The conversation appeared in history and could be reopened. Browser logs showed
+  no captured errors or warnings at the final check.
+- Inner-app logout returned the profile to its unauthenticated state. Guarded
+  cleanup removed the disposable account and its linked records.
+
+After all browser and offline fixtures were cleaned up, the original counts
+remained one Auth user, one wine and one wine-label object. Only this task's five
+synthetic sign-in messages were removed from the local mailbox; older messages
+and the owner's mail were left intact.
+
+The isolated real-vendor gate check also passed 30 checks, including explicit
+cookie Path `/`, exact domain and valid lifetime. No real owner's cookie or
+password was read. All 25 external anonymous TLS/denial checks passed again.
+
+Two consecutive post-fix loopback offline rehearsals passed all ten scenarios: actual network
+loss, edits, reload, private-cellar denial, reconnect, silent reconnect, both
+conflict choices, desktop rendering and private-cache erasure on logout. The first
+two attempts exposed an over-eager test assertion on a controlled checkbox whose
+IndexedDB write completes asynchronously. The test now clicks once and waits for
+the persisted checked state; it does not retry clicks, loosen assertions or alter
+the application cooking logic. Its diagnostic report records safe checkpoints
+and primitive assertion values, never raw browser errors or response bodies.
+
+This offline rehearsal used only the loopback app in a separate Playwright browser;
+it is not a claim of offline operation through the authenticated public gate. Its
+external/provider request counters and page-error counter remained zero, and its
+temporary account was removed. Physical mobile/camera, Safari, outside-home-network,
+external email, portable backup and actual Windows cold-boot acceptance remain
+distinct release gates, not implied by Chrome viewport checks.
+
+At the final source checkpoint, all 1,084 tests in 112 files, TypeScript, ESLint,
+synthetic build, both standalone runtime smoke checks and the client budget passed.
+The largest client chunk remained 109,759 gzip bytes. This is not blanket commercial
+release approval or a deployment to the original production.
 
 Five live scan attempts were made during diagnosis and final acceptance. The
 first attempts exposed a fixture-contract mismatch and an unread split vintage.
@@ -156,10 +210,11 @@ Its browser-external-request counter remains separate from live provider scenari
 The ignored scan artifact contains only the approved reference label's transcript
 and wine identity, never credentials, user history or provider keys.
 
-The successful live scan and local browser saves are not a completed public-owner
-browser/device acceptance. The private URL is live, but every release gate is
-not thereby complete. The temporary, value-free stylesheet diagnostic was removed;
-the original proxy configuration and authentication remain unchanged.
+The original five live scan attempts above belong to local diagnosis/acceptance;
+the subsequent Chrome scan is one additional live scenario, alongside one Gemini
+chat. The private URL and Chrome acceptance do not complete every device/release
+gate. The temporary, value-free proxy diagnostic was removed; the original proxy
+configuration and authentication remain unchanged.
 
 ## Safe Stop And Rollback
 

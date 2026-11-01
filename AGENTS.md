@@ -50,8 +50,10 @@ Do not broaden that route, expose core services or alter the old production. Its
 credential is CurrentUser-encrypted in `internet-tunnel.dpapi` under the owned
 runtime root, not in Git. Card-free Authelia gate preparation is described in the
 2026-10-28 addendum and `docs/owned-internet-2026-11-01.md`. Owner credential setup,
-gate restart/rollback and external anonymous denial are verified; authenticated
-browser/device acceptance remains a separate gate. Never run `create-owned-gate-key.mjs` directly: it is a
+gate restart/rollback and external anonymous denial are verified. Authenticated Chrome
+acceptance now passes through the public hostname, including responsive 390px checks,
+live scan/chat and disposable cooking persistence. Physical mobile/camera and outside-home
+acceptance remain separate gates. Never run `create-owned-gate-key.mjs` directly: it is a
 private stdin/stdout helper whose output includes gate secrets.
 `run-owned-ingress.ps1` controls only the separate private gate/proxy, not a
 connector or DNS. It is installed and supervised. Resume requires the
@@ -72,6 +74,10 @@ rebuild rollback. The approved public-origin update is installed. Do not run eit
 mode change merely to test its source. GoTrue mail verification paths must include
 `/backend/auth/v1/verify` in public-origin mode; an absolute mail path replaces the
 API base path. Keep that covered in the actual owned acceptance workflow.
+Build-asset requests in the service worker must retain same-origin gate cookies;
+omitting them returns the login portal instead of CSS/JavaScript on the owned hostname.
+Keep private/no-store/Vary/redirect cache guards and the anonymous cooking-shell fetch.
+Do not exempt static assets from the gate or cache owner-authenticated kitchen HTML.
 Use `run-owned-windows.ps1 -Action Features` for tagged, disposable backend
 fixtures. `FeaturesAi` is a separate opt-in with up to eight real AI scenarios;
 never schedule it or substitute it for browser/mobile verification. Clean up

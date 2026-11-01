@@ -1,5 +1,5 @@
 /* WineSnap service worker — offline shell + asset caching */
-const VERSION = "2026-10-26-cooking-reconnect";
+const VERSION = "2026-11-01-gated-assets";
 const ASSET_CACHE = `winesnap-assets-${VERSION}`;
 const PAGE_CACHE = `winesnap-pages-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -83,7 +83,8 @@ self.addEventListener("fetch", (event) => {
       (url.pathname.startsWith("/assets/") &&
         /\.(js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)))
   ) {
-    const network = fetch(req, { credentials: "omit" }).then(async (res) => {
+    // Same-origin gates need their cookie even for build assets; private responses stay uncached.
+    const network = fetch(req, { credentials: "same-origin" }).then(async (res) => {
       if (cacheableAsset(res)) await (await caches.open(ASSET_CACHE)).put(req, res.clone());
       else await (await caches.open(ASSET_CACHE)).delete(req);
       return res;

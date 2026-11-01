@@ -48,6 +48,8 @@ function worker() {
             "winesnap-pages-2026-10-25-recipe-nutrition",
             "winesnap-assets-2026-10-25-privacy-review",
             "winesnap-pages-2026-10-25-privacy-review",
+            "winesnap-assets-2026-10-26-cooking-reconnect",
+            "winesnap-pages-2026-10-26-cooking-reconnect",
             ...currentCaches,
           ],
           delete: remove,
@@ -167,6 +169,8 @@ describe("release service worker", () => {
       "winesnap-pages-2026-10-25-recipe-nutrition",
       "winesnap-assets-2026-10-25-privacy-review",
       "winesnap-pages-2026-10-25-privacy-review",
+      "winesnap-assets-2026-10-26-cooking-reconnect",
+      "winesnap-pages-2026-10-26-cooking-reconnect",
     ]);
     expect(claim).toHaveBeenCalledOnce();
   });
@@ -207,18 +211,31 @@ describe("release service worker", () => {
         completed = promise;
       },
     });
-    await response;
+    const result = await response;
     await completed;
+    return result;
   }
-  it("caches only public build assets and fetches them without cookies", async () => {
+  it("allows same-origin gate cookies but caches only public build responses", async () => {
     const test = worker();
     test.fetcher.mockResolvedValueOnce(
       assetResponse({ "Cache-Control": "public, max-age=31536000, immutable" }),
     );
     await fetchAsset(test);
-    expect(test.fetcher).toHaveBeenCalledWith(expect.anything(), { credentials: "omit" });
+    expect(test.fetcher).toHaveBeenCalledWith(expect.anything(), { credentials: "same-origin" });
     expect(test.cache.put).toHaveBeenCalledOnce();
     expect(test.match).not.toHaveBeenCalled();
+  });
+  it("delivers a gate-protected asset without persisting its private response", async () => {
+    const test = worker();
+    const response = assetResponse({
+      "Content-Type": "application/javascript",
+      "Cache-Control": "private, no-store, public, max-age=31536000, immutable",
+    });
+    test.fetcher.mockResolvedValueOnce(response);
+    expect(await fetchAsset(test)).toBe(response);
+    expect(test.fetcher).toHaveBeenCalledWith(expect.anything(), { credentials: "same-origin" });
+    expect(test.cache.put).not.toHaveBeenCalled();
+    expect(test.cache.delete).toHaveBeenCalledOnce();
   });
   it("keeps public offline assets available without consulting other caches", async () => {
     const test = worker();
