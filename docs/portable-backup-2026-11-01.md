@@ -37,7 +37,8 @@ against a compromised OS, Docker administrator or memory/page-file forensics.
 ## Commands
 
 Prerequisites: Windows x64, PowerShell 7, Linux-mode Docker Desktop with the fixed
-desktop-linux named-pipe endpoint, Git, the repository, Node 22.19+ and Python.
+desktop-linux named-pipe endpoint, Git, the repository, Node 22.19+ (with npm for
+tool dependency installation) and Python.
 The wrappers currently use the same Codex-bundled Node/Python paths as the owned
 runtime; those dependencies must also be present on the replacement PC. No running
 WineSnap, original Windows account or original DPAPI store is required for recovery.
@@ -122,9 +123,36 @@ Windows user. Temporary files/resources were removed; no usable owner backup was
 claimed from those self-tests. The cipher library's wrong-phrase, tamper/truncation,
 work-factor, schema, credential-scope and image-source regressions passed.
 
-A real owner-retained portable backup and any additional copy remain pending
-until the owner completes the masked phrase dialog. Actual second-computer hardware,
-external-media/cloud-copy survival and live cutover are separate unverified gates.
-The first concurrent full-suite attempt timed out under host load; those timeouts
-are not passing tests. Final bounded-concurrency and GitHub results are recorded
-separately when available. Passing CI never approves public release.
+### Owner Backup Verified On 2026-11-02
+
+The owner completed the masked phrase flow. The real age file was written on
+2026-11-01 and its Create operation finalized successfully on 2026-11-02. The saved
+file was reopened using only the recovery phrase in a fresh child process. The
+isolated application restore verified 75 tables and one image; gate restoration
+verified 26 tables, SQLite integrity and recovered credential structure. Cleanup
+completed. Neither an original Windows DPAPI store nor a live database connection,
+provider key or active tunnel was used by that portable rehearsal.
+
+The retained ciphertext was checked again on 2026-11-02: its SHA-256 matched the
+successful Create receipt, the age format header was intact, and Windows file
+permissions allowed only the owner and SYSTEM. No rehearsal containers or networks
+remained. A credential-free recovery guide is kept beside the private archive;
+archive names, checksums, private paths and operator receipts are not committed.
+
+This is a point-in-time archive of the November 1 snapshots, not a continuously
+updated copy. The newer November 2 daily DPAPI app and gate backups were separately
+rehearsed successfully: 75 application tables, one downloaded image and 26 gate
+tables, with cleanup and no active-installation replacement. Those newer local
+backups do not update or replace the verified portable age file.
+
+No additional exported copy is recorded. Actual second-computer hardware,
+external-media/cloud-copy survival and live cutover remain unverified. The active
+installation and old production were not replaced or reconfigured.
+
+For tooling commit `6dcb1490d240ad700984ab0349e2f6f0c1007c60`, both push and pull-request
+Quality and Database Safety workflows passed. Quality passed all 1,148 tests in
+114 files, typecheck, lint, the portable dependency audit, synthetic Node
+build/runtime, client budget and prototype build. The initial concurrent local
+full-suite attempt timed out under host load; those timeouts are not passing
+tests, and this checkpoint does not claim that the later local retry passed.
+Passing CI or a backup rehearsal never approves public release.
