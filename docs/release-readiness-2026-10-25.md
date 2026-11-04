@@ -3,6 +3,12 @@
 Date: 2026-10-25. Scope: the source checkout and existing local test status only.
 No production operation, agreement acceptance or supplier setting change occurs.
 
+Current owned-Windows behavior is described in
+[the November 4 follow-up](owned-release-preflight-2026-11-04.md). Its operational
+hints supersede the historical WineSnapHosting/test-only hints below. The legacy
+cloud evidence contract remains supported explicitly; neither document is release
+approval or permission to resume the abandoned hosted test.
+
 ## Current Result
 
 Public release is still blocked. Supplier account access is unchanged; no new

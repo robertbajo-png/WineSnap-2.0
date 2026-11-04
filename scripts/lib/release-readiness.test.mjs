@@ -11,6 +11,7 @@ import {
   approvalMaxAgeMs,
   readBoundedJson,
   releaseGates,
+  ownedReleaseGates,
   testProject,
 } from "./release-readiness.mjs";
 
@@ -54,6 +55,21 @@ function localFixture() {
     },
     backup: { ...base, verifiedTables: 35, backupFile },
     restore: { ...base, tables: 35, cleanupCompleted: true, snapshotFile: backupFile },
+  };
+}
+function ownedFixture() {
+  const legacy = fixture();
+  const { supabase, ...otherApprovals } = legacy.approvals;
+  return {
+    version: 2,
+    candidateCommit: commit,
+    appOrigin: "https://app.release-fixture.se",
+    backend: {
+      kind: "owned-windows",
+      project: "winesnap-owned-local",
+      installationId: "c".repeat(32),
+    },
+    approvals: { backend: supabase, ...otherApprovals },
   };
 }
 
@@ -130,6 +146,89 @@ describe("public release acceptance contract", () => {
     );
     expect(invalid).not.toContain("synthetic-private-canary");
     expect(invalid).not.toContain("apiKey");
+  });
+});
+
+describe("owned Windows release acceptance contract", () => {
+  it("accepts only explicit operator attestations for a selected owned installation and exact clean candidate", () => {
+    const report = assessRelease(ownedFixture(), source);
+    expect(report.releaseReady).toBe(true);
+    expect(report.checksOperatorAttestationsOnly).toBe(true);
+    expect(report.gates).toHaveLength(10);
+    expect(report.gates.map((g) => g.id)).toEqual(Object.keys(ownedReleaseGates));
+    expect(assessRelease(ownedFixture(), { ...source, clean: false }).releaseReady).toBe(false);
+    expect(assessRelease(ownedFixture(), { ...source, commit: "b".repeat(40) }).blockers).toContain(
+      "candidate_not_bound",
+    );
+  });
+  it("ships a fully pending owned template and never manufactures a backend selection", () => {
+    const pending = JSON.parse(readFileSync("config/release/owned-windows.example.json", "utf8"));
+    const report = assessRelease(pending, source);
+    expect(report.releaseReady).toBe(false);
+    expect(report.gates.every((gate) => gate.status === "pending")).toBe(true);
+    expect(report.blockers).toContain("release_backend_not_selected");
+    const value = ownedFixture();
+    value.backend.installationId = null;
+    expect(assessRelease(value, source).blockers).toContain("release_backend_not_selected");
+    expect(assessRelease(null, source).gates[0].id).toBe("backend");
+  });
+  it.each(Object.keys(ownedReleaseGates))(
+    "keeps %s mandatory even for private owned hosting",
+    (id) => {
+      const value = ownedFixture();
+      value.approvals[id] = {
+        status: "pending",
+        reviewedAt: null,
+        reviewer: null,
+        reference: null,
+      };
+      expect(assessRelease(value, source).blockers).toContain(`${id}:pending`);
+      delete value.approvals[id];
+      expect(assessRelease(value, source).blockers).toContain("operator_evidence_invalid");
+    },
+  );
+  it.each([
+    { kind: "hosted" },
+    { project: testProject },
+    { project: "other-installation" },
+    { installationId: "short" },
+    { installationId: "../backend.dpapi" },
+    { token: "synthetic-private-canary" },
+  ])("rejects foreign or malformed owned backend declarations (%#)", (patch) => {
+    const value = ownedFixture();
+    Object.assign(value.backend, patch);
+    const report = assessRelease(value, source);
+    expect(report.blockers).toContain("operator_evidence_invalid");
+    expect(JSON.stringify(report)).not.toContain("synthetic-private-canary");
+  });
+  it("does not convert a legacy cloud record, healthy reports or deferred work into owned approvals", () => {
+    const value = fixture();
+    value.version = 2;
+    expect(assessRelease(value, source).blockers).toContain("operator_evidence_invalid");
+    const owned = ownedFixture();
+    owned.approvals.backend = {
+      status: "deferred",
+      reviewedAt: null,
+      reviewer: null,
+      reference: null,
+    };
+    expect(assessRelease(owned, source).releaseReady).toBe(false);
+    expect(
+      assessRelease({ ...ownedFixture(), ownedWindows: { localOperationsReady: true } }, source)
+        .releaseReady,
+    ).toBe(false);
+  });
+  it("retains expiry, origin and reviewer redaction rules for the owned backend", () => {
+    const value = ownedFixture();
+    value.approvals.backend.reviewedAt = new Date(now - approvalMaxAgeMs - 1).toISOString();
+    expect(assessRelease(value, source).blockers).toContain("backend:stale_or_future");
+    expect(
+      assessRelease({ ...ownedFixture(), appOrigin: "http://127.0.0.1:5212" }, source).blockers,
+    ).toContain("release_origin_not_accepted");
+    const text = JSON.stringify(assessRelease(ownedFixture(), source));
+    expect(text).not.toContain("Synthetic reviewer");
+    expect(text).not.toContain("private:synthetic");
+    expect(text).not.toContain("c".repeat(32));
   });
 });
 
@@ -248,7 +347,13 @@ describe("bounded local evidence reader", () => {
         encoding: "utf8",
         timeout: 15000,
         windowsHide: true,
-        env: { ...process.env, LOCALAPPDATA: folder, GIT_CEILING_DIRECTORIES: folder },
+        env: {
+          ...process.env,
+          LOCALAPPDATA: folder,
+          USERPROFILE: folder,
+          HOME: folder,
+          GIT_CEILING_DIRECTORIES: folder,
+        },
       });
       expect(result.status).toBe(2);
       expect(result.stderr).toBe("");
@@ -260,6 +365,10 @@ describe("bounded local evidence reader", () => {
       expect(report.blockers).not.toContain("operator_evidence_missing");
       expect(result.stdout).not.toContain("synthetic-private-canary");
       expect(result.stdout).not.toContain(folder);
+      expect(report).not.toHaveProperty("localTest");
+      expect(report.ownedWindows.scope).toBe("owned_windows_only");
+      expect(report.ownedWindows.affectsReleaseApproval).toBe(false);
+      expect(report.ownedWindows.localOperationsReady).toBe(false);
     });
   });
 });

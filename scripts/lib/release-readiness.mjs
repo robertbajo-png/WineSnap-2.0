@@ -43,6 +43,10 @@ export const releaseGates = {
   acceptance: "Candidate-bound CI, browser and real-device acceptance",
   rollout: "Explicit release approval and tested rollback",
 };
+export const ownedReleaseGates = {
+  backend: "Owned database, Auth and Storage responsibilities, suppliers, region and retention",
+  ...Object.fromEntries(Object.entries(releaseGates).filter(([id]) => id !== "supabase")),
+};
 const gateSchema = z.discriminatedUnion("status", [
   z
     .object({
@@ -65,23 +69,45 @@ const gateSchema = z.discriminatedUnion("status", [
     })
     .strict(),
 ]);
-const evidenceSchema = z
-  .object({
-    version: z.literal(1),
-    candidateCommit: z
-      .string()
-      .regex(/^[a-f0-9]{40}$/)
-      .nullable(),
-    appOrigin: z.string().max(300).nullable(),
-    backendProject: z
-      .string()
-      .regex(/^[a-z0-9]{20}$/)
-      .nullable(),
-    approvals: z
-      .object(Object.fromEntries(Object.keys(releaseGates).map((key) => [key, gateSchema])))
-      .strict(),
-  })
-  .strict();
+const sourceFields = {
+  candidateCommit: z
+    .string()
+    .regex(/^[a-f0-9]{40}$/)
+    .nullable(),
+  appOrigin: z.string().max(300).nullable(),
+};
+const approvalsSchema = (gates) =>
+  z.object(Object.fromEntries(Object.keys(gates).map((key) => [key, gateSchema]))).strict();
+const evidenceSchema = z.discriminatedUnion("version", [
+  z
+    .object({
+      version: z.literal(1),
+      ...sourceFields,
+      backendProject: z
+        .string()
+        .regex(/^[a-z0-9]{20}$/)
+        .nullable(),
+      approvals: approvalsSchema(releaseGates),
+    })
+    .strict(),
+  z
+    .object({
+      version: z.literal(2),
+      ...sourceFields,
+      backend: z
+        .object({
+          kind: z.literal("owned-windows"),
+          project: z.literal("winesnap-owned-local"),
+          installationId: z
+            .string()
+            .regex(/^[a-f0-9]{32}$/)
+            .nullable(),
+        })
+        .strict(),
+      approvals: approvalsSchema(ownedReleaseGates),
+    })
+    .strict(),
+]);
 
 function releaseOrigin(value) {
   if (!value) return false;
@@ -125,10 +151,15 @@ export function assessRelease(evidence, { commit, clean, now = Date.now() }) {
     if (!input.candidateCommit || input.candidateCommit !== commit)
       blockers.push("candidate_not_bound");
     if (!releaseOrigin(input.appOrigin)) blockers.push("release_origin_not_accepted");
-    if (!input.backendProject || input.backendProject === testProject)
+    if (
+      input.version === 1
+        ? !input.backendProject || input.backendProject === testProject
+        : !input.backend.installationId
+    )
       blockers.push("release_backend_not_selected");
   }
-  const gates = Object.entries(releaseGates).map(([id, label]) => {
+  const gateDefinitions = input?.version === 1 ? releaseGates : ownedReleaseGates;
+  const gates = Object.entries(gateDefinitions).map(([id, label]) => {
     const approval = input?.approvals[id];
     const accepted =
       approval?.status === "verified" && fresh(approval.reviewedAt, now, approvalMaxAgeMs);

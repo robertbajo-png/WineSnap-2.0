@@ -166,6 +166,15 @@ restore external font/CDN requests or imply zero-retention/EU-only AI processing
 release remains blocked. See `docs/release-readiness-2026-10-25.md`. Never create
 operator attestations, copy credentials into evidence or treat local application
 backup/restore success as full platform recovery. It is not a deploy command.
+The current owned-Windows follow-up is `docs/owned-release-preflight-2026-11-04.md`.
+The CLI reports `ownedWindows` using existing bounded owned reports and the shared
+read-only supervisor inspector, not historical WineSnapHosting/test hints. Version-2
+operator evidence uses the fully pending `config/release/owned-windows.example.json`;
+the owned backend responsibility gate replaces the cloud-specific Supabase gate,
+not the requirement for a reviewed backend decision. Legacy version-1 evidence
+remains explicitly cloud-specific. Never convert it or a healthy local report into
+owned approval. The owner deferred off-device/second-PC backup checks; keep those
+unverified and do not restart them on a generic request to continue.
 
 `scripts/rehearse-local-platform-recovery.ps1` is a separate synthetic local
 PostgreSQL/Auth/Storage rehearsal, not a hosted WineSnap-test export. Always use

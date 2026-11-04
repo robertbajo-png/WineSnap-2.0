@@ -1,7 +1,10 @@
 import { execFileSync } from "node:child_process";
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assessLocalOperations, assessRelease, readBoundedJson } from "./lib/release-readiness.mjs";
+import { assessRelease, readBoundedJson } from "./lib/release-readiness.mjs";
+import { assessOwnedOperations, readOwnedOperations } from "./lib/owned-operations.mjs";
+import { readOwnedRuntimeStatus } from "./lib/owned-runtime-status.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 if (process.argv.length !== 2) {
@@ -40,22 +43,25 @@ if (evidence.state !== "missing")
   assessment.blockers = assessment.blockers.map((code) =>
     code === "operator_evidence_missing" ? "operator_evidence_invalid" : code,
   );
-let maintenance = null,
-  backup = null,
-  restore = null;
-if (process.platform === "win32" && process.env.LOCALAPPDATA) {
-  const directory = join(process.env.LOCALAPPDATA, "WineSnapHosting");
-  maintenance = (await readBoundedJson(join(directory, "maintain-status.json"))).value;
-  backup = (await readBoundedJson(join(directory, "backup-status.json"))).value;
-  restore = (await readBoundedJson(join(directory, "restore-status.json"))).value;
-}
+const available = process.platform === "win32";
+const operations = available
+  ? {
+      ...(await readOwnedOperations(join(homedir(), "WineSnapOwned"))),
+      runtime: await readOwnedRuntimeStatus(root),
+    }
+  : {};
 process.stdout.write(
   JSON.stringify(
     {
       ...assessment,
       readOnly: true,
       productionTouched: false,
-      localTest: assessLocalOperations({ maintenance, backup, restore }),
+      ownedWindows: {
+        ...assessOwnedOperations(operations),
+        scope: "owned_windows_only",
+        available,
+        affectsReleaseApproval: false,
+      },
     },
     null,
     2,
