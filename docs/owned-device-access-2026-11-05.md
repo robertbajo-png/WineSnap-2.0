@@ -51,6 +51,10 @@ Prepare validates the exact labelled web/gateway/Auth containers and existing
 confirmed account. It stages a disabled binding and CurrentUser-encrypted,
 one-hour enrollment material. It does not activate access or change a password.
 Installation and source/security verification must precede Enable.
+Repeating Prepare explicitly revalidates the existing account and installation.
+If the staged credential still exactly matches the current gate, it renews only
+the one-hour operator window and preserves all passwords/keys and activation.
+Foreign mappings or changed storage/session keys fail closed.
 
 Enable preserves the existing gate session, storage-encryption and reset keys.
 It replaces only the unavailable gate password hash with an operator-generated
@@ -103,3 +107,52 @@ must be recorded only after they actually occur.
 Primary references: [Authelia passkeys](https://www.authelia.com/overview/authentication/security-key/),
 [WebAuthn configuration](https://www.authelia.com/configuration/second-factor/webauthn/),
 and the pinned vendor's [session state endpoint](https://github.com/authelia/authelia/blob/v4.39.28/internal/handlers/handler_state.go).
+
+## Verification Receipt
+
+Source `bd2180e` passed Quality and Database Safety on both push and pull-request
+workflows. The full suite passed 1,239 tests across 121 files with one skipped;
+the local focused device/gate suite passed 78 tests. Typecheck, lint, dependency
+security checks, synthetic runtime build/probes and client budget passed in CI.
+PowerShell AST parsing passed for the changed operator/runtime wrappers.
+
+The existing encrypted gate archive was restored into an isolated rehearsal:
+SQLite integrity, 26 tables, credential-key recovery and cleanup passed. This is
+not a portable/off-device restore claim. Private enrollment staging succeeded;
+both metadata and DPAPI enrollment files have explicit protected owner/System
+ACLs. Failed encrypted staging files were removed without changing live keys.
+
+The owned-only app update completed at 2026-11-05T21:59:28Z. Database, Auth,
+storage and app checks passed, preserving `dark-v1` and the approved HTTPS origin.
+All 37 installed migrations were retained; none were newly applied. A running
+owned web image was explicitly retained as
+`winesnap-owned:passkey-rollback-20261105-222945`; do not rely on untagged images
+surviving. An actual anonymous HTTPS POST
+to the new session path returned 302 to the gate with no-store caching.
+
+Passkey activation completed at 2026-11-05T22:11:59Z. Core Auth/storage/app checks
+and all seven private-ingress denial probes passed. A wire-level negative test
+then caught built-in fetch dropping the required Host on the internal gate read.
+Source `98cbf7a` switches that read to bounded Node HTTP, without redirects, and
+passed Quality plus 38 focused local tests including the HTTP transport cases.
+The corrected owned-only update completed at 2026-11-05T22:31:49Z, again without
+new migrations or changes to existing data. Actual post-update tests passed:
+anonymous HTTPS requests redirect to the gate (302), missing gate sessions are
+rejected (403), and forged cookies plus identity headers are rejected (403).
+All three responses were no-store.
+
+Private setup authentication and normal provider identity elevation passed. The
+setup cookie now retains the provider's Domain-cookie scope; a duplicate
+host-only cookie previously caused elevation denial. The owned-only encrypted
+operator window was renewed without a gate restart or password/key rotation.
+Both Chrome and the bundled browser were tried for the visible enrollment page.
+The anonymous portal renders with four buttons and no failed requests, but the
+authenticated settings page has not reached usable controls in the visible
+helper. Desktop presence/unlocked-state confirmation was requested from the
+owner. No owner screenshot, browser state, OTP or token was exported.
+
+Real human-device enrollment, new credential backup and fresh passkey/app-owner
+sign-in are still pending. Do not record these as completed or claim that all
+personal devices are paired. A prepared binding, activated gate or green source
+build alone is not proof of password-free owner sign-in. The old production was
+not changed.

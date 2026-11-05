@@ -216,7 +216,10 @@ try {
     await status("launching_enrollment_browser");
     browser = await playwright.chromium.launch({ headless: false });
     await status("creating_private_browser_context");
-    const context = await browser.newContext({ viewport: null, locale: "sv-SE" });
+    const context = await browser.newContext({
+      viewport: { width: 1100, height: 800 },
+      locale: "sv-SE",
+    });
     await context.addCookies([
       {
         name: "__Secure-winesnap_gate",
@@ -278,15 +281,19 @@ try {
     payload.keys = undefined;
     payload.gate = undefined;
     setup.password = undefined;
+    setup.gate = undefined;
+    setup.previousPasswordHash = undefined;
     for (const chunk of chunks) chunk.fill(0);
     await status("opening_owner_passkey_settings");
     const page = await context.newPage();
+    await page.bringToFront();
     await status("loading_owner_passkey_settings");
     const opened = await page.goto(origin + "/gate/settings/two-factor-authentication", {
       waitUntil: "commit",
       timeout: 60000,
     });
     assert.equal(opened?.status(), 200);
+    await status("rendering_owner_passkey_settings");
     await page.getByRole("button").first().waitFor({ state: "visible", timeout: 60000 });
     await status("awaiting_owner_passkey_registration");
     const deadline = Date.now() + 30 * 60000;
@@ -309,7 +316,10 @@ try {
     await backupRegisteredPasskey();
     report.passkeyBackupVerified = true;
     await context.close();
-    const verification = await browser.newContext({ viewport: null, locale: "sv-SE" });
+    const verification = await browser.newContext({
+      viewport: { width: 1100, height: 800 },
+      locale: "sv-SE",
+    });
     const verifiedPage = await verification.newPage();
     await verifiedPage.goto(origin + "/?device_login=1", { waitUntil: "domcontentloaded" });
     await status("awaiting_owner_passkey_sign_in");
