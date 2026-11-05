@@ -9,6 +9,15 @@ const installed = (item) => ({
   sha256: createHash("sha256").update(item.source).digest("hex"),
 });
 describe("owned Windows lifecycle", () => {
+  it("bounds a slow Docker startup probe without accepting a failed engine check", () => {
+    const runtime = readFileSync(new URL("./owned-windows-runtime.ps1", import.meta.url), "utf8");
+    const manager = readFileSync(new URL("../manage-owned-backend.mjs", import.meta.url), "utf8");
+    expect(runtime).toContain("if(-not $process.WaitForExit(30000)){return $false}");
+    expect(runtime).toContain("$process.ExitCode -eq 0 -and $value.Trim() -eq 'linux'");
+    expect(manager).toContain(
+      'command(["version", "--format", "{{.Server.Os}}"], undefined, {}, 30000)',
+    );
+  });
   it("uses a private non-virtualized user-profile directory for all owned tools", () => {
     const runtime = readFileSync(new URL("./owned-windows-runtime.ps1", import.meta.url), "utf8");
     expect(runtime).toContain("[Environment]::GetFolderPath('UserProfile')");

@@ -391,7 +391,7 @@ try {
   for (const chunk of chunks) chunk.fill(0);
   phase = "local_engine";
   assert.equal(
-    (await command(["version", "--format", "{{.Server.Os}}"], undefined, {}, 10000))
+    (await command(["version", "--format", "{{.Server.Os}}"], undefined, {}, 30000))
       .toString()
       .trim(),
     "linux",

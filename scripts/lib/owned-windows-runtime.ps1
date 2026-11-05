@@ -30,7 +30,7 @@ function Test-OwnedDockerEngine {
     $process=[Diagnostics.Process]::Start($start)
     try{$job.Assign($process.Handle)}catch{if(-not $process.HasExited){throw}}
     $output=$process.StandardOutput.ReadToEndAsync();$errors=$process.StandardError.ReadToEndAsync()
-    if(-not $process.WaitForExit(10000)){return $false}
+    if(-not $process.WaitForExit(30000)){return $false}
     if(-not [Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)){return $false}
     $value=$output.GetAwaiter().GetResult();$errors.GetAwaiter().GetResult()|Out-Null
     return ($process.ExitCode -eq 0 -and $value.Trim() -eq 'linux')
