@@ -315,6 +315,8 @@ async function request(path, { method = "GET", token, body, headers = {} } = {})
   return response;
 }
 async function installWebKeys() {
+  const deviceOwnerId = process.env.WINESNAP_OWNED_DEVICE_OWNER_ID;
+  if (deviceOwnerId) assert.match(deviceOwnerId, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
   const payload = {
     version: 1,
     project: ownedProject,
@@ -333,6 +335,22 @@ async function installWebKeys() {
   await command(
     ["exec", "--interactive", name("web"), "node", "--input-type=module", "--eval", code],
     JSON.stringify(payload),
+  );
+  const deviceBinding = {
+    version: 1,
+    project: ownedProject,
+    hostname: "winesnap.boleoai.se",
+    enabled: Boolean(deviceOwnerId),
+    ownerId: deviceOwnerId ?? null,
+  };
+  const deviceCode = `import{writeFile,rename,lstat}from'node:fs/promises';
+    let s='';for await(const c of process.stdin){s+=c;if(s.length>4096)throw Error();}
+    const p='/tmp/winesnap-ai';const f=await lstat(p);
+    if(f.isSymbolicLink()||f.uid!==process.getuid()||(f.mode&63))throw Error();
+    await writeFile(p+'/device-pending.json',s,{mode:384});await rename(p+'/device-pending.json',p+'/device-access.json');`;
+  await command(
+    ["exec", "--interactive", name("web"), "node", "--input-type=module", "--eval", deviceCode],
+    JSON.stringify(deviceBinding),
   );
 }
 async function verify() {

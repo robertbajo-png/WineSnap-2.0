@@ -223,7 +223,10 @@ describe("private ingress lifecycle boundaries", () => {
     expect(manager).toContain('action === "Rehearse" ? 32 * 1024 * 1024 : 16384');
     expect(manager).toContain('if (action === "Install")');
     expect(manager).toContain('if (action === "Verify") assert.ok(found.State.Running)');
-    expect(manager).toContain("persistent: true");
+    expect(manager).toContain("ownedDeviceGateConfiguration(");
+    expect(readFileSync(new URL("./owned-device-gate.mjs", import.meta.url), "utf8")).toContain(
+      "persistent: true",
+    );
     expect(manager).not.toMatch(
       /cloudflared|internet-tunnel|"--publish"|"volume", "rm"|api.cloudflare|OPENAI|GEMINI/,
     );

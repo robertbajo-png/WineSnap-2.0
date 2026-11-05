@@ -11,6 +11,7 @@ if($PublicOrigin -and $LocalOnly){throw 'Choose one owned origin mode.'}
 if($PilotUi -and $Action -ne 'Update'){throw 'Changing the pilot UI requires an explicit Update.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
+. (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
 $directory=Get-OwnedRuntimeDirectory
 $store=Join-Path $directory 'backend.dpapi'
 $node=Join-Path $HOME '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
@@ -92,6 +93,7 @@ try {
       }
     }
   }
+  $deviceBinding=Read-OwnedDeviceAccess -InstallationId $keys.installationId
   $payload=$keys | ConvertTo-Json -Compress;$keys.Clear();$keys=$null
   $start=[Diagnostics.ProcessStartInfo]::new()
   $start.FileName=$node;$start.WorkingDirectory=$root;$start.UseShellExecute=$false;$start.CreateNoWindow=$true
@@ -101,6 +103,7 @@ try {
     $value=[Environment]::GetEnvironmentVariable($key);if($value){$start.Environment[$key]=$value}
   }
   $start.Environment['WINESNAP_OWNED_PIPE']='1'
+  if($deviceBinding -and $deviceBinding.enabled){$start.Environment['WINESNAP_OWNED_DEVICE_OWNER_ID']=$deviceBinding.ownerId}
   if($PublicOrigin){$start.Environment['WINESNAP_OWNED_PUBLIC_ORIGIN']=$PublicOrigin}
   if($LocalOnly){$start.Environment['WINESNAP_OWNED_ORIGIN_RESET']='1'}
   if($PilotUi){$start.Environment['WINESNAP_OWNED_PILOT_UI']=$PilotUi}

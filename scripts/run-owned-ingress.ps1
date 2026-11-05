@@ -2,6 +2,7 @@ param([ValidateSet('Status','Install','Resume','Restart','Verify','Stop','Backup
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
+. (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
 $directory=Assert-OwnedRuntimeDirectory
 $report=[ordered]@{project='winesnap-owned-local';completed=$false;productionTouched=$false;publicTunnelStarted=$false;dnsChanged=$false}
 $lock=$null;$job=$null;$process=$null;$start=$null;$bytes=$null;$payload=$null;$acquired=$false
@@ -58,6 +59,7 @@ try {
     if($Action -eq 'Stop'){Write-PrivateStatus 'ingress-control' @{project='winesnap-owned-local';enabled=$false}}
     $backend=Read-PrivateStore 'backend.dpapi'
     if($backend.version -ne 1 -or $backend.project -ne 'winesnap-owned-local' -or $backend.installationId -notmatch '^[a-f0-9]{32}$'){throw 'Unexpected owned installation.'}
+    $deviceBinding=Read-OwnedDeviceAccess -InstallationId $backend.installationId
     $inputData=@{installationId=$backend.installationId;gate=$null};$backend.Clear();$backend=$null
     if($Action -notin @('Stop','Verify','Rehearse')){$inputData.gate=Read-PrivateStore 'internet-gate.dpapi'}
     if($Action -eq 'Rehearse'){
@@ -97,6 +99,7 @@ try {
       $value=[Environment]::GetEnvironmentVariable($key);if($value){$start.Environment[$key]=$value}
     }
     $start.Environment['WINESNAP_OWNED_INGRESS_PIPE']='1'
+    if($deviceBinding -and $deviceBinding.enabled){$start.Environment['WINESNAP_OWNED_DEVICE_ACCESS']='1'}
     $start.ArgumentList.Add((Join-Path $PSScriptRoot 'manage-owned-ingress.mjs'));$start.ArgumentList.Add($Action)
     $process=[Diagnostics.Process]::Start($start);$job.Assign($process.Handle)
     $output=$process.StandardOutput.ReadToEndAsync();$errors=$process.StandardError.ReadToEndAsync()

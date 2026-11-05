@@ -4,8 +4,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { checkOwnedContainer, ownedEgress, ownedScope } from "./lib/owned-backend.mjs";
-import { ownedGateConfiguration, ownedGateUsers, ownedGateImage } from "./lib/owned-gate.mjs";
+import { ownedGateUsers, ownedGateImage } from "./lib/owned-gate.mjs";
 import { ownedGateArchiveCode } from "./lib/owned-gate-archive.mjs";
+import { ownedDeviceGateConfiguration } from "./lib/owned-device-gate.mjs";
 import { ownedConnectorName, checkOwnedTunnelContainer } from "./lib/owned-tunnel.mjs";
 import {
   privateIngress,
@@ -198,7 +199,10 @@ async function installRamConfiguration() {
   if (ready.trim() === "ready") return;
   await command(["exec", name, "mkdir", "-p", "/tmp/gate"]);
   for (const [file, value] of [
-    ["configuration.yml", ownedGateConfiguration(gateKeys, { persistent: true })],
+    [
+      "configuration.yml",
+      ownedDeviceGateConfiguration(gateKeys, process.env.WINESNAP_OWNED_DEVICE_ACCESS === "1"),
+    ],
     ["users.json", ownedGateUsers(gateKeys.passwordHash)],
   ])
     await command(

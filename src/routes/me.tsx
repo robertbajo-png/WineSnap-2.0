@@ -22,6 +22,11 @@ import { toast } from "sonner";
 import { readAllPages } from "@/lib/readAllPages";
 import { DataControls } from "@/components/DataControls";
 import { ProfileAccountSection } from "@/components/ProfileAccountSection";
+import {
+  leaveOwnedDeviceGate,
+  markOwnedDeviceSignedOut,
+  ownedDeviceOrigin,
+} from "@/lib/ownedDeviceLogin";
 
 export const Route = createFileRoute("/me")({
   head: () => ({
@@ -325,7 +330,21 @@ function MePage() {
         <DataControls />
         {user && (
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={async () => {
+              markOwnedDeviceSignedOut();
+              const result = await supabase.auth.signOut({
+                scope: ownedDeviceOrigin() ? "local" : "global",
+              });
+              if (result.error) {
+                toast.error(t("common.error"));
+                return;
+              }
+              try {
+                await leaveOwnedDeviceGate();
+              } catch {
+                toast.error(t("common.error"));
+              }
+            }}
             className="mt-6 mb-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-base text-muted-foreground hover:bg-white/5 min-h-11 min-w-11"
           >
             <LogOut className="h-5 w-5" /> {t("profile.signOut")}

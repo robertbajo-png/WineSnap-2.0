@@ -72,6 +72,13 @@ with the explicitly supplied local account email. The human chooses both passwor
 in masked fields; no guessed passwords, root-key regeneration or hosted resets.
 Never run its private worker directly or print its gate envelope. See
 `docs/owned-password-recovery-2026-11-05.md` for partial-completion and recovery rules.
+The owner subsequently requested private password-free access, not public account
+exposure. `configure-owned-device-access.ps1` prepares an exact existing-owner
+binding and enables vendor passkeys plus a verified gate-to-GoTrue handoff.
+Never run `owned-device-operator.mjs` directly: Prepare returns private enrollment
+material. Real authenticator approval must remain human-only; no virtual passkeys
+on the real account or exported browser state. See `docs/owned-device-access-2026-11-05.md`.
+Do not equate a prepared binding or Status read with completed device enrollment.
 `run-owned-windows.ps1 -Action Update -PublicOrigin https://winesnap.boleoai.se`
 is an explicit owned-only build/auth change, not a tunnel activation. Ordinary
 updates preserve an installed public-origin label; `-LocalOnly` is the explicit
