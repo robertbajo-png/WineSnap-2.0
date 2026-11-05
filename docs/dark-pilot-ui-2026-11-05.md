@@ -55,7 +55,7 @@ operation lock; PilotAccept uses the existing five-minute acceptance wait. An
 observed supervisor collision is queued without deleting/bypassing locks or
 stopping background services. Ordinary Verify/maintenance behavior is unchanged.
 
-Service-worker version `2026-11-05-dark-pilot` requests an ordinary app update.
+Service-worker version `2026-11-05-dark-pilot-2` requests an ordinary app update.
 Same-origin gate credentials and private/no-store/Vary/redirect guards remain
 unchanged. No forced reload of an owner's active session is performed.
 
@@ -75,15 +75,52 @@ The manual Playwright action is:
 
 It requires the installed dark label, normal fixture login and tagged disposable
 accounts. It blocks external and AI requests, captures home/recipe/Cook/cellar at
-360, 390, 430, 1024 and 1440 px, checks images, navigation, theme, overflow and
-post-logout private-home clearing, and attempts exact-owner cleanup in `finally`.
+360, 390, 430, 1024 and 1440 px, and adds 390 px Chef, memory, pairing and nutrition
+views after their loading indicators disappear. It checks images, keyboard recipe
+navigation, 44 px primary-nav targets, theme, destructive-text contrast, overflow
+and post-logout private-home clearing, and attempts exact-owner cleanup in `finally`.
 Screenshots/progress are ignored under `dist/owned-pilot-ui`; no browser session,
 HAR, token or real-owner screenshot is saved. The existing synthetic fixture also
 completes its own profile onboarding to avoid a first-login redirect during home
 acceptance; no real profile is edited.
 
-At this checkpoint the source implementation is in verification. Actual owned
-installation, screenshot inspection and final CI results must be recorded after
-they occur. Neither source unit success nor these raster designs certify real
-mobile devices, physical cameras, external SMTP or public release. The original
-production, abandoned hosted test and deferred external backup remain untouched.
+## Owned Verification
+
+- Installed `dark-v1` on the exact owned Windows backend. A subsequent ordinary
+  Update preserved the dark selection and existing public origin without an
+  override; completed at 10:21 UTC on 2026-11-05. All 37 existing migrations were
+  retained, zero applied, and app/database/Auth/Storage checks passed.
+- The served service worker contains `2026-11-05-dark-pilot-2`. The installed app
+  image uses frontend revision `a65205c`; later acceptance/documentation changes
+  do not alter that Docker build's frontend inputs.
+- Quality and Database Safety passed for that frontend revision on GitHub:
+  [Quality](https://github.com/robertbajo-png/WineSnap-2.0/actions/runs/42008919783)
+  and [Database Safety](https://github.com/robertbajo-png/WineSnap-2.0/actions/runs/42008919773).
+  This includes typecheck, lint, tests, security checks, synthetic Node build,
+  runtime checks and the client budget; the actual owned Docker build also passed.
+- The first dark installation separately passed all ten existing browser-offline
+  scenarios: edits/reload/timer persistence, private-shell isolation, reconnect,
+  both conflict choices and logout erasure. The follow-up app build only changed
+  semantic contrast colors and the cache revision, not offline/auth/data logic.
+- A post-update anonymous HTTPS probe passed all 25 denial/isolation checks on
+  the approved owned hostname. This is gate verification, not authenticated
+  mobile or outside-home acceptance.
+- Final disposable browser acceptance completed at 10:33 UTC: 24 responsive
+  screen checks plus logout clearing passed, with zero external requests, blocked
+  AI requests or JavaScript page errors, and exact-fixture cleanup completed.
+  Screenshots were visually inspected on phones and desktop, including loaded
+  memory/pairing states. The check waits for the client-only resumable session
+  before asserting navigation, avoiding a transient SSR/hydration timing race.
+  No owner session is reused; artifacts stay in ignored `dist`.
+
+The latest local full backup was restored in isolation before installation:
+75 tables, one downloaded image, Auth identities/hashes, RLS/grants, row/share
+fingerprints and JWT owner isolation matched; temporary clone cleanup passed.
+This is same-PC recovery only. Off-device and physical second-PC work stays
+deferred. No real accounts, recipes or cellar contents were changed by acceptance.
+
+Stage 2 is the shared experience, not completion of the remaining connected
+journeys, comprehensive state review or guided pilot. Neither source unit success
+nor these browser checks certify physical mobile devices/cameras, external SMTP
+or public release. The old production, abandoned hosted test and deferred external
+backup remain untouched.

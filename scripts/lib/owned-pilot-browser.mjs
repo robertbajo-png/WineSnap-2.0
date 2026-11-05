@@ -131,18 +131,29 @@ export async function acceptOwnedPilotUi(
       phase("home");
       await page.goto(ownedApp + "/", { waitUntil: "domcontentloaded" });
       await page.locator(".pilot-home").waitFor();
+      // The resumable session proves the authenticated client has hydrated.
+      await page.locator(".pilot-resume").waitFor();
       await page.locator('.pilot-entry[href="/kitchen"]').waitFor();
+      await page.locator('.pilot-entry[href="/cellar"]').waitFor();
       assert.equal(await page.locator('.pilot-entry[href="/cellar"]').count(), 1);
       assert.equal(await page.locator('nav[aria-label="WineSnap"] li').count(), 5);
       assert.equal(await page.locator(".pilot-camera").getAttribute("href"), "/scan");
+      assert.equal(
+        await page.locator(".pilot-nav a").evaluateAll((links) =>
+          links.every((link) => {
+            const rect = link.getBoundingClientRect();
+            return rect.width >= 44 && rect.height >= 44;
+          }),
+        ),
+        true,
+      );
       await page.waitForFunction(() => document.querySelector(".pilot-hero")?.naturalWidth > 0);
-      await page.locator(".pilot-resume").waitFor();
       await capture("home", width);
 
       phase("recipe");
-      await page.goto(ownedApp + "/kitchen", { waitUntil: "domcontentloaded" });
+      await page.locator('.pilot-entry[href="/kitchen"]').press("Enter");
       await page.locator("button.k-recipe").first().waitFor();
-      await page.locator("button.k-recipe").first().click();
+      await page.locator("button.k-recipe").first().press("Enter");
       await page.getByRole("button", { name: "B\u00f6rja laga", exact: true }).waitFor();
       await capture("recipe", width);
 
@@ -160,6 +171,23 @@ export async function acceptOwnedPilotUi(
         "page",
       );
       await capture("cellar", width);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const [screen, selector] of [
+      ["chef", ".chef-panel"],
+      ["memory", ".chef-panel"],
+      ["pairings", ".meal-panel"],
+      ["nutrition", ".nutrition-panel"],
+    ]) {
+      phase(screen);
+      await page.goto(ownedApp + "/kitchen#" + screen, { waitUntil: "domcontentloaded" });
+      await page.locator(selector).waitFor();
+      await page
+        .locator(selector)
+        .getByText(/^H\u00e4mtar/)
+        .waitFor({ state: "hidden" });
+      assert.equal(await page.locator(selector).locator(".k-error").count(), 0);
+      await capture(screen, 390);
     }
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });

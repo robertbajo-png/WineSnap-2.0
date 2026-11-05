@@ -3,7 +3,9 @@
 Date: 2026-11-05. Status: both concepts delivered; owner selected B (dark).
 These are AI-generated raster design references, not functional app screens.
 They have no API connection, real user data, implemented timer or camera.
-No actual application component, runtime configuration or production is changed.
+Generating these boards changed no app component, runtime configuration or
+production. The later owned-only implementation is recorded in
+[the dark pilot UI report](../../dark-pilot-ui-2026-11-05.md).
 
 ## A: Light
 
