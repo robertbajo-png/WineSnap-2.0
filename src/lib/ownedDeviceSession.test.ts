@@ -58,7 +58,7 @@ describe("owned device session exchange", () => {
     expect(response.headers.get("vary")).toContain("Cookie");
     expect(response.headers.has("access-control-allow-origin")).toBe(false);
   });
-  it.each([
+  it.each<Record<string, string>>([
     { Origin: "https://attacker.invalid" },
     { Origin: "" },
     { "X-WineSnap-Device": "" },

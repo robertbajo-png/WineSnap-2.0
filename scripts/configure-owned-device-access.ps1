@@ -32,7 +32,11 @@ function Write-Private([string]$Name,$Value,[switch]$Encrypted,[switch]$RetainPr
     $data=if($Encrypted){[Security.Cryptography.ProtectedData]::Protect($plain,$null,'CurrentUser')}else{$plain}
     $handle=[IO.File]::Open($pending,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
     try{$handle.Write($data,0,$data.Length)}finally{$handle.Dispose()}
-    $acl=Get-Acl -LiteralPath (Join-Path $directory 'backend.dpapi')
+    $acl=[Security.AccessControl.FileSecurity]::new()
+    $acl.SetAccessRuleProtection($true,$false)
+    $owner=[Security.Principal.WindowsIdentity]::GetCurrent().User
+    $acl.SetOwner($owner)
+    foreach($sid in @($owner,[Security.Principal.SecurityIdentifier]::new('S-1-5-18'))){$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid,'FullControl','Allow'))}
     [IO.FileSystemAclExtensions]::SetAccessControl((Get-Item -LiteralPath $pending),$acl);Assert-File $pending
     if($Encrypted){
       $roundtrip=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($pending),$null,'CurrentUser')
@@ -113,14 +117,16 @@ try {
       if($result.report.project -ne 'winesnap-owned-local' -or $result.report.productionTouched -ne $false -or $result.report.completed -ne $true -or $process.ExitCode -ne 0){throw 'Device operation was not accepted.'}
       if($Action -eq 'Prepare'){
         if($binding){if($binding.ownerId -cne $result.binding.ownerId){throw 'Existing device owner cannot be silently replaced.'};$result.binding.enabled=$binding.enabled}
+        $report.phase='saving_encrypted_enrollment'
         Write-Private 'device-enrollment.dpapi' $result.enrollment -Encrypted
+        $report.phase='saving_disabled_binding'
         Write-Private 'device-access.json' $result.binding
       }
       $report.completed=$true;$report.phase=$result.report.phase
       $result=$null
     }
   }
-}catch{$report.failure='owned_device_access_not_complete';$report.completed=$false}
+}catch{$report.failure='owned_device_access_not_complete';$report.errorType=$_.Exception.GetType().Name;$report.completed=$false}
 finally{
   $payload=$null;$input=$null;$result=$null
   if($keys){$keys.Clear()};if($gate){$gate.Clear()};if($enrollment){$enrollment.Clear()}
