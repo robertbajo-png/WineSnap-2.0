@@ -214,7 +214,7 @@ try {
       ).href
     );
     await status("launching_enrollment_browser");
-    browser = await playwright.chromium.launch({ headless: false, channel: "chrome" });
+    browser = await playwright.chromium.launch({ headless: false });
     await status("creating_private_browser_context");
     const context = await browser.newContext({ viewport: null, locale: "sv-SE" });
     await context.addCookies([
@@ -281,9 +281,13 @@ try {
     for (const chunk of chunks) chunk.fill(0);
     await status("opening_owner_passkey_settings");
     const page = await context.newPage();
-    await page.goto(origin + "/gate/settings/two-factor-authentication", {
-      waitUntil: "domcontentloaded",
+    await status("loading_owner_passkey_settings");
+    const opened = await page.goto(origin + "/gate/settings/two-factor-authentication", {
+      waitUntil: "commit",
+      timeout: 60000,
     });
+    assert.equal(opened?.status(), 200);
+    await page.getByRole("button").first().waitFor({ state: "visible", timeout: 60000 });
     await status("awaiting_owner_passkey_registration");
     const deadline = Date.now() + 30 * 60000;
     let registered = false;
