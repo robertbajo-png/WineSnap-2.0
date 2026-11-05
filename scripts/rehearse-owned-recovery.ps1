@@ -25,7 +25,7 @@ function Assert-Private([string]$Path,[switch]$AllowInherited) {
   }
 }
 try {
-  $operationLock=Open-OwnedRuntimeLock -Name operation
+  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs 120000
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Owned operation is already running.'}
   Assert-Private $directory;Assert-Private $backups

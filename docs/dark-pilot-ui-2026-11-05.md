@@ -14,6 +14,8 @@ prototype or a production cutover. Guided pilot sessions remain a later mileston
 - Home data is fetched after client authorization, fenced to the current owner
   and hidden after logout/account switch. Offline cellar data is not retained;
   cooking reuses its existing deliberately private offline cache and sync logic.
+- Recent-wine thumbnails only use managed paths through the existing image proxy;
+  arbitrary stored external image URLs are not automatically loaded by the home.
 - Shared five-position navigation: Home, Kitchen, direct wine camera, Cellar,
   Profile. Existing routes/deep links stay intact; sommelier access remains in
   the home and cellar. Focused Cook Mode omits the global bottom navigation.
@@ -47,6 +49,11 @@ the installed `winesnap.pilot-ui` label; an unconfigured install stays classic.
 Unknown labels/modes fail closed. Presentation selection does not reset the
 public origin, credentials, database, tunnel or DNS. A failed image build leaves
 the old app container intact. Do not run a UI rollback merely to exercise it.
+
+Manual Update and local restore now wait up to two minutes for the existing
+operation lock; PilotAccept uses the existing five-minute acceptance wait. An
+observed supervisor collision is queued without deleting/bypassing locks or
+stopping background services. Ordinary Verify/maintenance behavior is unchanged.
 
 Service-worker version `2026-11-05-dark-pilot` requests an ordinary app update.
 Same-origin gate credentials and private/no-store/Vary/redirect guards remain

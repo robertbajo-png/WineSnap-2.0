@@ -340,7 +340,9 @@ function CellarListPage() {
                       <div className="mt-1 flex items-center gap-2 text-sm">
                         {pilotUiEnabled && (
                           <span className="text-muted-foreground">
-                            {t("pilot.bottleQuantity").replace("{count}", String(bottleCount(w)))}
+                            {t(
+                              bottleCount(w) === 1 ? "pilot.singleBottle" : "pilot.bottleQuantity",
+                            ).replace("{count}", String(bottleCount(w)))}
                           </span>
                         )}
                         {!pilotUiEnabled && w.vintage && (

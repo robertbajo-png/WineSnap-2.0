@@ -14,6 +14,7 @@ import { AppShell } from "@/components/AppShell";
 import { WineImage } from "@/components/WineImage";
 import { useT } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { wineImageStoragePath } from "@/lib/wineImages";
 import { recipeImages } from "../kitchen/catalog";
 import { useKitchen } from "../kitchen/useKitchen";
 import { chefEnabled } from "../chef/feature";
@@ -221,7 +222,12 @@ export function PilotHome({ owner }: { owner?: string }) {
                   <Link to="/wine/$id" params={{ id: wine.id }} className="pilot-recent-wine">
                     <span className="pilot-bottle">
                       <Wine size={22} aria-hidden />
-                      <WineImage src={wine.image_url} alt="" loading="lazy" />
+                      <WineImage
+                        src={null}
+                        storagePath={wineImageStoragePath(wine.image_url)}
+                        alt=""
+                        loading="lazy"
+                      />
                     </span>
                     <span className="pilot-row-copy">
                       <strong>{wine.wine_name || wine.producer || t("pilot.unnamedWine")}</strong>

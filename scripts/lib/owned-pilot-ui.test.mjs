@@ -36,5 +36,9 @@ describe("explicit owned pilot UI selection", () => {
     const source = readFileSync("scripts/run-owned-windows.ps1", "utf8");
     expect(source).toContain("[ValidateSet('Dark','Classic')][string]$PilotUi");
     expect(source).toContain("WINESNAP_OWNED_PILOT_UI");
+    expect(source).toContain("elseif($Action -eq 'Update'){120000}");
+    expect(readFileSync("scripts/rehearse-owned-recovery.ps1", "utf8")).toContain(
+      "Open-OwnedRuntimeLock -Name operation -WaitMs 120000",
+    );
   });
 });
