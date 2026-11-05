@@ -8,6 +8,35 @@ const input = {
 };
 
 describe("independent build configuration", () => {
+  it("keeps the pilot disabled in synthetic checks and rejects non-owned opt-ins", () => {
+    expect(
+      independentEnvironment("runtime-check", { VITE_PILOT_UI_ENABLED: "true" })
+        .VITE_PILOT_UI_ENABLED,
+    ).toBe("false");
+    expect(independentEnvironment("production", input)).not.toHaveProperty("VITE_PILOT_UI_ENABLED");
+    expect(() =>
+      independentEnvironment("production", { ...input, VITE_PILOT_UI_ENABLED: "true" }),
+    ).toThrow("owned Windows");
+    const owned = {
+      ...input,
+      VITE_SUPABASE_URL: "http://127.0.0.1:54323",
+      VITE_PILOT_UI_ENABLED: "true",
+      VITE_OWNED_BACKEND_ENABLED: "true",
+      VITE_COOKING_CORE_ENABLED: "true",
+      VITE_PRIVACY_CONTROLS_ENABLED: "true",
+      VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
+    };
+    expect(independentEnvironment("production", owned).VITE_PILOT_UI_ENABLED).toBe("true");
+    expect(() =>
+      independentEnvironment("production", { ...owned, VITE_COOKING_CORE_ENABLED: "false" }),
+    ).toThrow("owned Windows");
+    expect(() =>
+      independentEnvironment("production", {
+        ...owned,
+        VITE_SUPABASE_URL: "https://pzniyupmgwvlldvztzqh.supabase.co",
+      }),
+    ).toThrow("exact local gateway");
+  });
   it("keeps cooking disabled outside test and requires verified privacy operations", () => {
     expect(
       independentEnvironment("runtime-check", { VITE_COOKING_CORE_ENABLED: "true" })

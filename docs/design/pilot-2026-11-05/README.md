@@ -1,6 +1,6 @@
 # Food And Wine Design Comparison
 
-Date: 2026-11-05. Status: both concepts delivered; owner selection pending.
+Date: 2026-11-05. Status: both concepts delivered; owner selected B (dark).
 These are AI-generated raster design references, not functional app screens.
 They have no API connection, real user data, implemented timer or camera.
 No actual application component, runtime configuration or production is changed.
@@ -58,5 +58,6 @@ must not be shipped as backgrounds or substituted for working screen components.
 
 The owner requested comparison before implementation. Do not infer a selection
 from generated output, a preferred answer's position, or a generic request to
-continue. Capture an explicit A/B choice or requested revision before adapting
-the actual app. See the [delivery plan](../../pilot-development-plan-2026-11-05.md).
+continue. The owner explicitly selected concept B (dark) on 2026-11-05 and
+opens stage 2 of the actual app, not general release permission. See the
+[delivery plan](../../pilot-development-plan-2026-11-05.md).

@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
 import { wineRating, bottleCount, type RatedWine } from "@/lib/wineRatings";
 import { readAllPages } from "@/lib/readAllPages";
+import { pilotUiEnabled } from "@/features/pilot/feature";
 
 export const Route = createFileRoute("/cellar")({
   head: () => ({
@@ -191,6 +192,14 @@ function CellarListPage() {
           <ChevronRight className="h-5 w-5" />
         </Link>
 
+        {pilotUiEnabled && (
+          <Link to="/ask" className="pilot-command">
+            <Wine className="h-5 w-5" aria-hidden />
+            <span>{t("pilot.sommelier")}</span>
+            <ChevronRight className="h-5 w-5" aria-hidden />
+          </Link>
+        )}
+
         <div className="mt-4">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -251,7 +260,7 @@ function CellarListPage() {
           </select>
         </div>
 
-        <ul className="mt-3 space-y-2.5 pb-4">
+        <ul className={cn("mt-3 pb-4", pilotUiEnabled ? "pilot-cellar-list" : "space-y-2.5")}>
           {authLoading || loading ? (
             <>
               <li>
@@ -300,9 +309,17 @@ function CellarListPage() {
                   <Link
                     to="/wine/$id"
                     params={{ id: w.id }}
-                    className="flex items-center gap-3 rounded-lg border border-white/10 bg-card/50 p-3 transition-colors hover:bg-card/70"
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border border-white/10 bg-card/50 p-3 transition-colors hover:bg-card/70",
+                      pilotUiEnabled && "pilot-cellar-row",
+                    )}
                   >
-                    <div className="flex h-[72px] w-[54px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60">
+                    <div
+                      className={cn(
+                        "flex h-[72px] w-[54px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-b from-burgundy/40 to-background/60",
+                        pilotUiEnabled && "pilot-cellar-image",
+                      )}
+                    >
                       {w.image_url ? (
                         <WineImage
                           src={w.image_url}
@@ -321,7 +338,12 @@ function CellarListPage() {
                         {[w.region, w.country].filter(Boolean).join(", ")}
                       </p>
                       <div className="mt-1 flex items-center gap-2 text-sm">
-                        {w.vintage && (
+                        {pilotUiEnabled && (
+                          <span className="text-muted-foreground">
+                            {t("pilot.bottleQuantity").replace("{count}", String(bottleCount(w)))}
+                          </span>
+                        )}
+                        {!pilotUiEnabled && w.vintage && (
                           <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-sm text-muted-foreground">
                             {w.vintage}
                           </span>

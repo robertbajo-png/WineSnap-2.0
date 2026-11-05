@@ -18,6 +18,7 @@ import {
 } from "./lib/owned-backend.mjs";
 import { ownedResumeOrder, planOwnedMigrations } from "./lib/owned-lifecycle.mjs";
 import { selectOwnedPublicOrigin } from "./lib/owned-public-origin.mjs";
+import { selectOwnedPilotUi } from "./lib/owned-pilot-ui.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -35,6 +36,7 @@ assert.ok(
     "Features",
     "FeaturesAi",
     "Offline",
+    "PilotAccept",
     "BrowserPrepare",
     "BrowserInspect",
     "BrowserConflict",
@@ -229,6 +231,7 @@ async function start(
     entrypoint,
     configHash,
     publicOrigin,
+    pilotUiLabel,
   } = {},
 ) {
   let found = await existing(service);
@@ -248,6 +251,7 @@ async function start(
     ...labelArgs(),
     ...(configHash ? ["--label", `winesnap.config=${configHash}`] : []),
     ...(publicOrigin ? ["--label", `winesnap.public-origin=${publicOrigin}`] : []),
+    ...(pilotUiLabel ? ["--label", `winesnap.pilot-ui=${pilotUiLabel}`] : []),
     "--network",
     ownedNetwork,
     "--restart",
@@ -382,6 +386,12 @@ try {
     assert.match(images[service], /^sha256:[a-f0-9]{64}$/);
   }
   const installedWeb = await existing("web");
+  const pilotUi = selectOwnedPilotUi({
+    requested: process.env.WINESNAP_OWNED_PILOT_UI,
+    installed: installedWeb?.Config.Labels["winesnap.pilot-ui"] ?? "",
+    action,
+  });
+  report.pilotUi = pilotUi.label;
   const originSettings = selectOwnedPublicOrigin({
     requested: process.env.WINESNAP_OWNED_PUBLIC_ORIGIN,
     reset: process.env.WINESNAP_OWNED_ORIGIN_RESET,
@@ -631,6 +641,7 @@ try {
         VITE_AI_CHEF_ENABLED: "true",
         VITE_MEALS_ENABLED: "true",
         VITE_RECIPE_NUTRITION_ENABLED: "true",
+        VITE_PILOT_UI_ENABLED: pilotUi.enabled ? "true" : "false",
         VITE_PRIVACY_CONTROLS_ENABLED: "true",
         VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
         VITE_PRIVACY_SUPPLIERS_VERIFIED: "false",
@@ -660,6 +671,7 @@ try {
     await start("web", webImage, {
       user: "node",
       publicOrigin: originSettings.origin,
+      pilotUiLabel: pilotUi.label,
       memory: "768m",
       port: "5212:3000",
       env: {
@@ -691,7 +703,7 @@ try {
     await wait(() => verify());
     report.restartedApplication = true;
   }
-  if (action.startsWith("Browser") || action === "Offline") {
+  if (action.startsWith("Browser") || ["Offline", "PilotAccept"].includes(action)) {
     const { ownedBrowserFixture, validateBrowserFixture } =
       await import("./lib/owned-browser-fixture.mjs");
     const manifestPath = join(process.env.USERPROFILE, "WineSnapOwned", "browser-fixture.json");
@@ -704,7 +716,7 @@ try {
       if (error.code !== "ENOENT") throw error;
     }
     phase = `browser_${action.slice(7).toLowerCase()}`;
-    if (["BrowserPrepare", "Offline"].includes(action) && fixture) {
+    if (["BrowserPrepare", "Offline", "PilotAccept"].includes(action) && fixture) {
       // Refuse to overwrite a live fixture's cleanup manifest.
       const existing = await ownedBrowserFixture(keys, "absent", fixture);
       assert.equal(existing.alreadyClean, true);
@@ -717,7 +729,20 @@ try {
         mode: 0o600,
       });
     };
-    if (action === "Offline") {
+    if (action === "PilotAccept") {
+      assert.equal(pilotUi.enabled, true, "Pilot acceptance requires the installed dark UI");
+      const { acceptOwnedPilotUi } = await import("./lib/owned-pilot-browser.mjs");
+      report.pilotAcceptance = await acceptOwnedPilotUi(keys, {
+        fixture,
+        remember,
+        artifactDirectory: fileURLToPath(new URL("../dist/owned-pilot-ui", import.meta.url)),
+        progress(step) {
+          assert.match(step, /^[a-z_]+$/);
+          phase = `pilot_${step}`;
+        },
+      });
+      assert.equal(report.pilotAcceptance.completed, true);
+    } else if (action === "Offline") {
       const { acceptOwnedOffline } = await import("./lib/owned-offline.mjs");
       report.offline = await acceptOwnedOffline(keys, {
         fixture,

@@ -18,6 +18,7 @@ export const publicEnvironmentKeys = [
   "VITE_AI_CHEF_ENABLED",
   "VITE_MEALS_ENABLED",
   "VITE_RECIPE_NUTRITION_ENABLED",
+  "VITE_PILOT_UI_ENABLED",
   "VITE_PRIVACY_LEGAL_BASIS",
   "VITE_PRIVACY_RETENTION",
 ] as const;
@@ -36,6 +37,7 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       VITE_AI_CHEF_ENABLED: "false",
       VITE_MEALS_ENABLED: "false",
       VITE_RECIPE_NUTRITION_ENABLED: "false",
+      VITE_PILOT_UI_ENABLED: "false",
     };
   }
 
@@ -48,6 +50,11 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       throw new Error(`Independent build requires ${key}; see config/independent/.env.example`);
   }
   const url = new URL(values.VITE_SUPABASE_URL);
+  if (
+    values.VITE_PILOT_UI_ENABLED === "true" &&
+    (values.VITE_OWNED_BACKEND_ENABLED !== "true" || values.VITE_COOKING_CORE_ENABLED !== "true")
+  )
+    throw new Error("Pilot UI requires the owned Windows cooking backend");
   if (values.VITE_OWNED_PUBLIC_ORIGIN) {
     if (values.VITE_OWNED_BACKEND_ENABLED !== "true")
       throw new Error("Public owned routing requires the owned backend");

@@ -22,17 +22,18 @@ weeks, plus owner review and pilot sessions. This is an estimate, not a deadline
 
 ## Stage Status
 
-1. Design comparison: both raster concepts are delivered; owner selection is
-   pending. See [the comparison](design/pilot-2026-11-05/README.md).
-2. Shared visual system and navigation: pending design selection.
+1. Design comparison: complete. The owner selected B (dark) on 2026-11-05.
+   See [the comparison](design/pilot-2026-11-05/README.md).
+2. Shared visual system and navigation: implementation and acceptance in progress.
 3. Connected food/wine journeys: pending.
 4. Complete and consistent core states: pending.
 5. Actual owned-app regression and controlled installation: pending.
 6. Guided pilot and corrective iteration: pending.
 
 Concept illustrations are not running UI, device testing, data changes or release
-evidence. No pilot UI flag, application component or deployed image is changed in
-stage 1. The existing Chef prototype remains historical, not the pilot application.
+evidence. Stage 1 changed no application component or deployed image. Stage 2 now
+implements the selected design behind an owned-only opt-in. The existing Chef
+prototype remains historical, not the pilot application.
 
 ## Delivery Sequence
 

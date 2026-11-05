@@ -109,6 +109,12 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
       await remember(validateBrowserFixture(fixture));
       await owner();
       ok(
+        await app
+          .from("profiles")
+          .update({ onboarded_at: new Date().toISOString() })
+          .eq("id", fixture.userId),
+      );
+      ok(
         await app.from("wines").insert({
           id: fixture.wineId,
           user_id: user.id,

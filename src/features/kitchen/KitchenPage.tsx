@@ -26,6 +26,7 @@ import {
   Timer,
   Trash2,
   Wine,
+  User,
   Brain,
   Sparkles,
   Scale,
@@ -38,6 +39,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useT } from "@/i18n";
+import { BottomNav } from "@/components/BottomNav";
+import { pilotUiEnabled } from "../pilot/feature";
 import { kitchenEnabled } from "./feature";
 import { useKitchen } from "./useKitchen";
 import { blankRecipe, recipeImages, startingRecipes } from "./catalog";
@@ -535,6 +539,7 @@ export function KitchenPage() {
   return <KitchenWorkspace key={user.id} owner={user.id} />;
 }
 function KitchenWorkspace({ owner }: { owner: string }) {
+  const t = useT();
   const kitchen = useKitchen(owner);
   const { cache, busy, ready, offline, error, conflict } = kitchen;
   const [tab, setTab] = useState("library");
@@ -662,16 +667,35 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     }
   }
   return (
-    <div className="kitchen">
+    <div
+      className={`kitchen${pilotUiEnabled ? ` pilot-kitchen${tab === "cook" ? " pilot-cook" : ""}` : ""}`}
+    >
       <header className="k-header">
-        <a href="/kitchen" className="k-brand">
-          <ChefHat size={24} />
-          <span>Köket</span>
-        </a>
-        <Link to="/" className="k-wine">
-          <Wine size={18} />
-          WineSnap
-        </Link>
+        {pilotUiEnabled ? (
+          <Link to="/" className="pilot-brand">
+            WineSnap
+          </Link>
+        ) : (
+          <a href="/kitchen" className="k-brand">
+            <ChefHat size={24} />
+            <span>Köket</span>
+          </a>
+        )}
+        {pilotUiEnabled ? (
+          <Link
+            to="/me"
+            className="pilot-icon"
+            aria-label={t("nav.profile")}
+            title={t("nav.profile")}
+          >
+            <User size={24} aria-hidden />
+          </Link>
+        ) : (
+          <Link to="/" className="k-wine">
+            <Wine size={18} />
+            WineSnap
+          </Link>
+        )}
       </header>
       <main className="k-main" id="kitchen-content">
         <nav className={`k-tabs${chefEnabled ? " has-chef" : ""}`} aria-label="Köket">
@@ -1552,6 +1576,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           </>
         )}
       </main>
+      {pilotUiEnabled && tab !== "cook" && <BottomNav />}
       {editor && (
         <RecipeEditor
           initial={editor}

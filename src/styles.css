@@ -2,6 +2,7 @@
 @source "../src";
 @import "tw-animate-css";
 @import "./assets/fonts/fonts.css";
+@import "./features/pilot/pilot.css";
 
 @custom-variant dark (&:is(.dark *));
 

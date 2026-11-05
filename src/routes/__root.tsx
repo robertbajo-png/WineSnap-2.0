@@ -3,6 +3,7 @@ import { AppUpdate } from "@/components/AppUpdate";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n";
 import { KitchenAccountCleanup } from "@/features/kitchen/KitchenAccountCleanup";
+import { pilotUiEnabled } from "@/features/pilot/feature";
 
 import appCss from "../styles.css?url";
 
@@ -33,7 +34,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#5a1a23" },
+      { name: "theme-color", content: pilotUiEnabled ? "#111614" : "#5a1a23" },
       { title: "Winesnap — Skanna vinetiketter" },
       {
         name: "description",
@@ -74,7 +75,7 @@ export const Route = createRootRoute({
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={pilotUiEnabled ? "pilot-ui" : undefined}>
       <head>
         <HeadContent />
       </head>

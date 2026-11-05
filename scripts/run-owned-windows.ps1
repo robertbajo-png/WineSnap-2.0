@@ -1,12 +1,14 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
+  [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
 if(($PublicOrigin -or $LocalOnly) -and $Action -ne 'Update'){throw 'Changing the app origin requires an explicit Update.'}
 if($PublicOrigin -and $LocalOnly){throw 'Choose one owned origin mode.'}
+if($PilotUi -and $Action -ne 'Update'){throw 'Changing the pilot UI requires an explicit Update.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 $directory=Get-OwnedRuntimeDirectory
@@ -101,6 +103,7 @@ try {
   $start.Environment['WINESNAP_OWNED_PIPE']='1'
   if($PublicOrigin){$start.Environment['WINESNAP_OWNED_PUBLIC_ORIGIN']=$PublicOrigin}
   if($LocalOnly){$start.Environment['WINESNAP_OWNED_ORIGIN_RESET']='1'}
+  if($PilotUi){$start.Environment['WINESNAP_OWNED_PILOT_UI']=$PilotUi}
   $start.ArgumentList.Add((Join-Path $PSScriptRoot 'manage-owned-backend.mjs'));$start.ArgumentList.Add($Action)
   $phase='owned_backend_operation'
   $process=[Diagnostics.Process]::Start($start)

@@ -142,9 +142,14 @@ The owner approved the guided food-and-wine pilot delivery plan on 2026-11-05:
 the working name, and pilot sessions are guided on this PC rather than public
 internet onboarding. Two generated light/dark design boards are under
 `docs/design/pilot-2026-11-05`; they are illustrations, not implemented app screens.
-An explicit owner design selection is required before building the new pilot UI.
-Do not choose a theme automatically, ship the raster boards as UI, revive the old
-Chef prototype as the real app or enable the planned pilot flag prematurely.
+The owner explicitly selected concept B (dark) on 2026-11-05. Implement the actual
+app behind `VITE_PILOT_UI_ENABLED`, default off, only for the owned backend. Never
+ship the raster boards as UI or revive the old Chef prototype as the real app.
+The owned Update's `-PilotUi Dark` explicitly selects the new experience;
+`-PilotUi Classic` is the UI rollback, independent from public-origin routing.
+Ordinary updates preserve the installed `winesnap.pilot-ui` label. `PilotAccept`
+is manual loopback Playwright acceptance with a tagged disposable fixture and
+blocked external/AI requests, not physical-device or public-release proof.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
