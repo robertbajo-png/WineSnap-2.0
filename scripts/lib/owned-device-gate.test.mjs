@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { ownedDeviceGateConfiguration, validateOwnedDeviceBinding } from "./owned-device-gate.mjs";
+import {
+  ownedDeviceGateConfiguration,
+  validateOwnedDeviceBinding,
+  renewOwnedDeviceEnrollment,
+} from "./owned-device-gate.mjs";
 import { ownedGateConfiguration } from "./owned-gate.mjs";
 
 const keys = {
@@ -8,6 +12,53 @@ const keys = {
   storageKey: "b".repeat(64),
   resetSecret: "c".repeat(64),
 };
+
+describe("explicit private enrollment renewal", () => {
+  const installationId = "a".repeat(32),
+    ownerId = "c5129119-b982-448f-b09a-971afcda0b42";
+  const gate = {
+    version: 1,
+    project: "winesnap-owned-local",
+    hostname: "winesnap.boleoai.se",
+    username: "robert",
+    passwordHash: `$argon2id$v=19$m=65536,t=3,p=4$${"a".repeat(22)}$${"b".repeat(43)}`,
+    ...keys,
+  };
+  const staged = {
+    version: 1,
+    project: "winesnap-owned-local",
+    installationId,
+    ownerId,
+    gate,
+    password: "x".repeat(43),
+    previousPasswordHash: gate.passwordHash,
+    expiresAt: "2000-01-01T00:00:00.000Z",
+  };
+  it("renews only the operator's setup window while preserving every live key and credential", () => {
+    const result = renewOwnedDeviceEnrollment(staged, installationId, gate, ownerId);
+    expect(result).toEqual({ ...staged, expiresAt: expect.any(String) });
+    expect(Date.parse(result.expiresAt)).toBeGreaterThan(Date.now() + 3590000);
+    expect(result.gate).toBe(gate);
+    expect(staged.expiresAt).toBe("2000-01-01T00:00:00.000Z");
+  });
+  it.each([
+    { ownerId: "another-owner" },
+    { installationId: "b".repeat(32) },
+    { password: "short" },
+    { project: "another-project" },
+    { extra: true },
+    { gate: { ...gate, storageKey: "f".repeat(64) } },
+  ])("refuses foreign or altered enrollment: %j", (patch) => {
+    expect(() =>
+      renewOwnedDeviceEnrollment({ ...staged, ...patch }, installationId, gate, ownerId),
+    ).toThrow();
+  });
+  it("does not reuse a setup credential that is not the currently installed gate login", () => {
+    const changed = { ...gate, passwordHash: gate.passwordHash.replace(/b/g, "c") };
+    expect(renewOwnedDeviceEnrollment(staged, installationId, changed, ownerId)).toBeNull();
+    expect(renewOwnedDeviceEnrollment(null, installationId, gate, ownerId)).toBeNull();
+  });
+});
 describe("owned device gate opt-in", () => {
   it("keeps the existing configuration identical when disabled", () => {
     expect(ownedDeviceGateConfiguration(keys, false)).toEqual(

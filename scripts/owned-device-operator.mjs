@@ -15,7 +15,10 @@ import {
 import { validateOwnedGateKeys } from "./lib/owned-private-ingress.mjs";
 import { hashOwnedGatePassword } from "./lib/owned-gate.mjs";
 import { selectOwnedPasswordResetUser } from "./lib/owned-password-reset.mjs";
-import { validateOwnedDeviceBinding } from "./lib/owned-device-gate.mjs";
+import {
+  validateOwnedDeviceBinding,
+  renewOwnedDeviceEnrollment,
+} from "./lib/owned-device-gate.mjs";
 
 assert.equal(process.platform, "win32");
 assert.equal(process.env.WINESNAP_OWNED_DEVICE_OPERATOR_PIPE, "1");
@@ -106,7 +109,7 @@ try {
     assert.ok(info.State.Running);
   }
   if (action === "Prepare") {
-    assert.deepEqual(Object.keys(payload).sort(), ["gate", "keys", "ownerEmail"]);
+    assert.deepEqual(Object.keys(payload).sort(), ["enrollment", "gate", "keys", "ownerEmail"]);
     report.phase = "locating_existing_owner";
     const admin = createClient(ownedApi, ownedToken(payload.keys, "service_role"), {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -129,11 +132,17 @@ try {
     const owner = selectOwnedPasswordResetUser(listed.data.users, payload.ownerEmail);
     assert.ok(!owner.is_anonymous);
     report.phase = "creating_private_enrollment";
-    const password = randomBytes(32).toString("base64url"),
+    const renewed = renewOwnedDeviceEnrollment(
+      payload.enrollment,
+      payload.keys.installationId,
+      payload.gate,
+      owner.id,
+    );
+    const password = renewed?.password ?? randomBytes(32).toString("base64url"),
       buffer = Buffer.from(password);
     let passwordHash;
     try {
-      passwordHash = await hashOwnedGatePassword(buffer);
+      passwordHash = renewed?.gate.passwordHash ?? (await hashOwnedGatePassword(buffer));
     } finally {
       buffer.fill(0);
     }
@@ -147,7 +156,7 @@ try {
         enabled: false,
         ownerId: owner.id,
       },
-      enrollment: {
+      enrollment: renewed ?? {
         version: 1,
         project: "winesnap-owned-local",
         installationId: payload.keys.installationId,
@@ -159,7 +168,7 @@ try {
       },
     };
     report.completed = true;
-    report.phase = "prepared_not_enabled";
+    report.phase = renewed ? "renewed_existing_enrollment" : "prepared_not_enabled";
   } else {
     assert.deepEqual(Object.keys(payload).sort(), ["binding", "enrollment", "gate", "keys"]);
     const setup = payload.enrollment;
@@ -212,7 +221,7 @@ try {
       {
         name: "__Secure-winesnap_gate",
         value: issued.cookie.slice("__Secure-winesnap_gate=".length),
-        domain: "winesnap.boleoai.se",
+        domain: ".winesnap.boleoai.se",
         path: "/",
         httpOnly: true,
         secure: true,
@@ -227,7 +236,9 @@ try {
         data,
         headers: { Origin: origin, "X-Requested-With": "XMLHttpRequest" },
         maxRedirects: 0,
+        timeout: 15000,
       });
+      report.providerStatus = response.status();
       assert.equal(response.status(), 200);
       return response.json();
     };
@@ -238,9 +249,15 @@ try {
     await status("elevating_private_setup_session");
     const elevated = await gateRequest("/gate/api/user/session/elevation");
     if (elevated.data?.elevated !== true) {
+      await status("requesting_private_setup_elevation");
       await gateRequest("/gate/api/user/session/elevation", "POST");
+      report.gateCookieCount = (await context.cookies(origin)).filter(
+        (cookie) => cookie.name === "__Secure-winesnap_gate",
+      ).length;
+      assert.equal(report.gateCookieCount, 1);
       // Read only the provider's local notification for this owner setup; never
       // expose the one-time code or notification in logs, artifacts or chat.
+      await status("reading_private_setup_notification");
       const notification = await command([
         "exec",
         "winesnap-owned-gate",
@@ -250,8 +267,11 @@ try {
       const codes = [
         ...notification.matchAll(/^-{40}\r?\n\s*([A-Za-z0-9][A-Za-z0-9 -]{5,127})\s*\r?\n-{40}/gm),
       ];
+      report.localCodeAvailable = codes.length > 0;
       assert.ok(codes.length && notification.includes("winesnap.boleoai.se"));
+      await status("verifying_private_setup_elevation");
       await gateRequest("/gate/api/user/session/elevation", "PUT", { otc: codes.at(-1)[1].trim() });
+      await status("checking_elevated_private_setup_session");
       assert.equal((await gateRequest("/gate/api/user/session/elevation")).data?.elevated, true);
     }
     issued.cookie = undefined;
@@ -327,7 +347,12 @@ try {
     payload = undefined;
     await new Promise((resolve) => browser.once("disconnected", resolve));
   }
-} catch {
+} catch (error) {
+  report.failureKind = ["AssertionError", "TimeoutError", "TypeError", "AbortError"].includes(
+    error.name,
+  )
+    ? error.name
+    : "Error";
   report.failedPhase = report.phase;
   report.failure = "owned_device_access_not_complete";
 } finally {

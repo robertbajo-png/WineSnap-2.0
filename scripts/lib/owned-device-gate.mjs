@@ -1,5 +1,31 @@
 import assert from "node:assert/strict";
 import { ownedGateConfiguration } from "./owned-gate.mjs";
+import { validateOwnedGateKeys } from "./owned-private-ingress.mjs";
+
+export function renewOwnedDeviceEnrollment(value, installationId, gate, ownerId) {
+  if (value === null) return null;
+  assert.deepEqual(Object.keys(value).sort(), [
+    "expiresAt",
+    "gate",
+    "installationId",
+    "ownerId",
+    "password",
+    "previousPasswordHash",
+    "project",
+    "version",
+  ]);
+  assert.equal(value.version, 1);
+  assert.equal(value.project, "winesnap-owned-local");
+  assert.equal(value.installationId, installationId);
+  assert.equal(value.ownerId, ownerId);
+  assert.match(value.password, /^[A-Za-z0-9_-]{43}$/);
+  assert.ok(Number.isFinite(Date.parse(value.expiresAt)));
+  validateOwnedGateKeys(value.gate);
+  validateOwnedGateKeys({ ...gate, passwordHash: value.previousPasswordHash });
+  if (value.gate.passwordHash !== gate.passwordHash) return null;
+  assert.deepEqual(value.gate, gate);
+  return { ...value, expiresAt: new Date(Date.now() + 3600000).toISOString() };
+}
 
 export function validateOwnedDeviceBinding(value, installationId) {
   assert.deepEqual(Object.keys(value).sort(), [

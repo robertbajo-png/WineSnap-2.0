@@ -62,7 +62,7 @@ try {
     $path=Join-Path $directory 'device-access.json'
     if(Test-Path -LiteralPath $path){Assert-File $path;$binding=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json;$report.passwordlessEnabled=($binding.enabled -eq $true)}
     $path=Join-Path $directory 'device-enrollment-status.json'
-    if(Test-Path -LiteralPath $path){$saved=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json;$report.enrollment=$saved|Select-Object completed,phase,failedPhase,passkeyRegistered,passkeyBackupVerified,passkeyLoginVerified,appOwnerSessionVerified,failure,checkedAt}
+    if(Test-Path -LiteralPath $path){$saved=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json;$report.enrollment=$saved|Select-Object completed,phase,failedPhase,failureKind,providerStatus,gateCookieCount,localCodeAvailable,passkeyRegistered,passkeyBackupVerified,passkeyLoginVerified,appOwnerSessionVerified,failure,checkedAt}
     $report.completed=$true
   }else{
     $lock=Open-OwnedRuntimeLock -Name operation -WaitMs 300000
@@ -74,7 +74,8 @@ try {
     if($Action -eq 'Prepare'){
       $report.phase='preparing_existing_owner'
       if($OwnerEmail -cnotmatch '^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$'){throw 'Explicit owner email required.'}
-      $input=@{keys=$keys;gate=$gate;ownerEmail=$OwnerEmail}
+      if(Test-Path -LiteralPath (Join-Path $directory 'device-enrollment.dpapi')){$enrollment=Read-Encrypted 'device-enrollment.dpapi'}
+      $input=@{keys=$keys;gate=$gate;ownerEmail=$OwnerEmail;enrollment=$enrollment}
     }elseif($Action -eq 'Enroll'){
       $report.phase='opening_owner_enrollment'
       if(-not $binding -or -not $binding.enabled){throw 'Device access has not been enabled.'}
@@ -120,7 +121,7 @@ try {
       $raw=$out.GetAwaiter().GetResult();$err.GetAwaiter().GetResult()|Out-Null
       if(-not $raw -or $raw.Length -gt 32KB){throw 'Unexpected device helper output.'}
       $result=$raw|ConvertFrom-Json -AsHashtable;$raw=$null
-      if($result.report.phase -in @('private_input','validating_owned_containers','locating_existing_owner','creating_private_enrollment','prepared_not_enabled','authenticating_private_setup_session','awaiting_owner_passkey_registration','backing_up_registered_passkey','awaiting_owner_passkey_sign_in','complete','needs_attention')){$report.phase=$result.report.phase}
+      if($result.report.phase -in @('private_input','validating_owned_containers','locating_existing_owner','creating_private_enrollment','prepared_not_enabled','renewed_existing_enrollment','authenticating_private_setup_session','awaiting_owner_passkey_registration','backing_up_registered_passkey','awaiting_owner_passkey_sign_in','complete','needs_attention')){$report.phase=$result.report.phase}
       if($result.report.project -ne 'winesnap-owned-local' -or $result.report.productionTouched -ne $false -or $result.report.completed -ne $true -or $process.ExitCode -ne 0){throw 'Device operation was not accepted.'}
       if($Action -eq 'Prepare'){
         if($binding){if($binding.ownerId -cne $result.binding.ownerId){throw 'Existing device owner cannot be silently replaced.'};$result.binding.enabled=$binding.enabled}
@@ -128,6 +129,7 @@ try {
         Write-Private 'device-enrollment.dpapi' $result.enrollment -Encrypted
         $report.phase='saving_disabled_binding'
         Write-Private 'device-access.json' $result.binding
+        $report.passwordlessEnabled=($result.binding.enabled -eq $true)
       }
       $report.completed=$true;$report.phase=$result.report.phase
       $result=$null
