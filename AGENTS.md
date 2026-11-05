@@ -67,6 +67,11 @@ backup envelope is private and must never be printed or run directly. The separa
 tmpfs-only inside the container, never an argument, build input or Docker env.
 `Stop` disables supervisor recovery for that component; `Install` explicitly
 re-enables it after preflight. Never stop the shared Docker engine to test recovery.
+Owner-authorized password recovery uses `reset-owned-passwords.ps1 -Action Window`
+with the explicitly supplied local account email. The human chooses both passwords
+in masked fields; no guessed passwords, root-key regeneration or hosted resets.
+Never run its private worker directly or print its gate envelope. See
+`docs/owned-password-recovery-2026-11-05.md` for partial-completion and recovery rules.
 `run-owned-windows.ps1 -Action Update -PublicOrigin https://winesnap.boleoai.se`
 is an explicit owned-only build/auth change, not a tunnel activation. Ordinary
 updates preserve an installed public-origin label; `-LocalOnly` is the explicit
