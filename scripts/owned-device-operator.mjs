@@ -204,7 +204,9 @@ try {
         ),
       ).href
     );
+    await status("launching_enrollment_browser");
     browser = await playwright.chromium.launch({ headless: false, channel: "chrome" });
+    await status("creating_private_browser_context");
     const context = await browser.newContext({ viewport: null, locale: "sv-SE" });
     await context.addCookies([
       {

@@ -109,7 +109,7 @@ try {
       $start.UseShellExecute=$false;$start.CreateNoWindow=$true
       $start.RedirectStandardInput=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
       $start.Environment.Clear()
-      foreach($name in @('PATH','PATHEXT','COMSPEC','SystemRoot','WINDIR','SystemDrive','ProgramData','ALLUSERSPROFILE','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP')){$value=[Environment]::GetEnvironmentVariable($name);if($value){$start.Environment[$name]=$value}}
+      foreach($name in @('PATH','PATHEXT','COMSPEC','SystemRoot','WINDIR','SystemDrive','ProgramData','ProgramFiles','ProgramFiles(x86)','ALLUSERSPROFILE','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP')){$value=[Environment]::GetEnvironmentVariable($name);if($value){$start.Environment[$name]=$value}}
       $start.Environment['WINESNAP_OWNED_DEVICE_OPERATOR_PIPE']='1'
       $start.ArgumentList.Add((Join-Path $PSScriptRoot 'owned-device-operator.mjs'));$start.ArgumentList.Add($Action)
       $process=[Diagnostics.Process]::Start($start);$job.Assign($process.Handle)
