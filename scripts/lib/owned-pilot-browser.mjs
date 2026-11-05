@@ -89,6 +89,8 @@ export async function acceptOwnedPilotUi(
     async function capture(screen, width) {
       await page.locator("html.pilot-ui").waitFor();
       await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
+      await page.waitForFunction(() => window.scrollY === 0);
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         true,
@@ -97,6 +99,26 @@ export async function acceptOwnedPilotUi(
         await page.evaluate(() => getComputedStyle(document.body).backgroundColor),
         "rgb(17, 22, 20)",
       );
+      const destructiveContrast = await page.evaluate(() => {
+        const control = document.querySelector(".k-abandon");
+        if (!control) return null;
+        const luminance = (color) => {
+          const channels = color
+            .match(/[\d.]+/g)
+            .slice(0, 3)
+            .map(Number);
+          return channels
+            .map((channel) => {
+              const value = channel / 255;
+              return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+            })
+            .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+        };
+        const text = luminance(getComputedStyle(control).color);
+        const background = luminance(getComputedStyle(document.body).backgroundColor);
+        return (Math.max(text, background) + 0.05) / (Math.min(text, background) + 0.05);
+      });
+      if (destructiveContrast !== null) assert.ok(destructiveContrast >= 4.5);
       await page.screenshot({
         path: join(artifactDirectory, `${screen}-${width}.png`),
         fullPage: false,

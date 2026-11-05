@@ -365,6 +365,44 @@
 .pilot-ui .nutrition-unknown {
   color: #e7bc87;
 }
+.pilot-ui :is(.k-abandon, .k-timer small) {
+  color: var(--destructive);
+}
+.pilot-ui .k-stars,
+.pilot-ui .chef-message .chat-answer li::marker {
+  color: var(--gold);
+}
+.pilot-ui .chef-message.user {
+  color: var(--burgundy);
+}
+.pilot-ui
+  :is(
+    .chef-message .chat-answer a,
+    .meal-reasons strong,
+    .nutrition-summary strong,
+    .nutrition-panel a
+  ) {
+  color: var(--primary);
+}
+.pilot-ui
+  :is(
+    .kitchen-dialog [id$="description"],
+    .chef-meta,
+    .chef-panel blockquote cite,
+    .meal-people p,
+    .meal-caption,
+    .meal-unknown,
+    .meal-result-head p,
+    .nutrition-source
+  ) {
+  color: var(--muted-foreground);
+}
+.pilot-ui .meal-caution {
+  color: #e7bc87;
+}
+.pilot-ui .kitchen :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--primary);
+}
 .pilot-ui .k-wine {
   color: var(--burgundy);
 }
