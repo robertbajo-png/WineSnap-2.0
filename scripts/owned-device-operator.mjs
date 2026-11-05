@@ -195,6 +195,7 @@ try {
       ),
     );
     assert.ok(issued.cookie?.startsWith("__Secure-winesnap_gate="));
+    await status("opening_enrollment_browser");
     const playwright = await import(
       pathToFileURL(
         join(
@@ -228,9 +229,11 @@ try {
       assert.equal(response.status(), 200);
       return response.json();
     };
+    await status("validating_private_setup_session");
     const state = await gateRequest("/gate/api/state");
     assert.equal(state.data?.username, "robert");
     assert.ok(state.data.authentication_level >= 1);
+    await status("elevating_private_setup_session");
     const elevated = await gateRequest("/gate/api/user/session/elevation");
     if (elevated.data?.elevated !== true) {
       await gateRequest("/gate/api/user/session/elevation", "POST");
@@ -243,7 +246,7 @@ try {
         "/tmp/gate/notifications.txt",
       ]);
       const codes = [
-        ...notification.matchAll(/^-{40}\r?\n\s*([A-Z0-9][A-Z0-9 -]{5,127})\s*\r?\n-{40}/gm),
+        ...notification.matchAll(/^-{40}\r?\n\s*([A-Za-z0-9][A-Za-z0-9 -]{5,127})\s*\r?\n-{40}/gm),
       ];
       assert.ok(codes.length && notification.includes("winesnap.boleoai.se"));
       await gateRequest("/gate/api/user/session/elevation", "PUT", { otc: codes.at(-1)[1].trim() });
@@ -254,6 +257,7 @@ try {
     payload.gate = undefined;
     setup.password = undefined;
     for (const chunk of chunks) chunk.fill(0);
+    await status("opening_owner_passkey_settings");
     const page = await context.newPage();
     await page.goto(origin + "/gate/settings/two-factor-authentication", {
       waitUntil: "domcontentloaded",
@@ -322,6 +326,7 @@ try {
     await new Promise((resolve) => browser.once("disconnected", resolve));
   }
 } catch {
+  report.failedPhase = report.phase;
   report.failure = "owned_device_access_not_complete";
 } finally {
   for (const chunk of chunks) chunk.fill(0);

@@ -1,5 +1,6 @@
 import { lstat, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { request as httpRequest } from "node:http";
 import { createClient, type Session } from "@supabase/supabase-js";
 import { z } from "zod";
 import { approvedLocalBackend, ownedBackendOrigin, ownedBackendProject } from "./backendScope";
@@ -148,16 +149,46 @@ async function binding() {
   }
 }
 
-async function gateState(cookie: string) {
-  const response = await fetch("http://winesnap-owned-internet:8080/gate/api/state", {
-    headers: { Host: "winesnap.boleoai.se", Origin: deviceAccessOrigin, Cookie: cookie },
-    redirect: "error",
-    cache: "no-store",
-    signal: AbortSignal.timeout(5000),
+export function readOwnedGateState(cookie: string): Promise<GateState | null> {
+  // The proxy deliberately rejects every other Host. Node HTTP preserves this
+  // header; built-in fetch does not reliably allow a custom Host.
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(
+      "http://winesnap-owned-internet:8080/gate/api/state",
+      {
+        headers: { Host: "winesnap.boleoai.se", Origin: deviceAccessOrigin, Cookie: cookie },
+        signal: AbortSignal.timeout(5000),
+      },
+      (response) => {
+        response.on("error", reject);
+        if (response.statusCode !== 200) {
+          response.resume();
+          resolve(null);
+          return;
+        }
+        let size = 0;
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > 16384) {
+            request.destroy(new Error("Gate state limit exceeded"));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        response.on("end", () => {
+          try {
+            const result = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+            resolve(result.status === "OK" ? (result.data as GateState) : null);
+          } catch {
+            reject(new Error("Invalid gate state"));
+          }
+        });
+      },
+    );
+    request.on("error", reject);
+    request.end();
   });
-  if (!response.ok) return null;
-  const result = await response.json();
-  return result.status === "OK" ? (result.data as GateState) : null;
 }
 
 async function openSession(ownerId: string) {
@@ -199,6 +230,6 @@ async function openSession(ownerId: string) {
 export const handleOwnedDeviceSession = createOwnedDeviceSessionHandler({
   enabled,
   binding,
-  gateState,
+  gateState: readOwnedGateState,
   openSession,
 });
