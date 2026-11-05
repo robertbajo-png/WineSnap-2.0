@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { ownedDeviceGateConfiguration, validateOwnedDeviceBinding } from "./owned-device-gate.mjs";
 import { ownedGateConfiguration } from "./owned-gate.mjs";
 
@@ -39,6 +40,15 @@ describe("owned device gate opt-in", () => {
 });
 
 describe("private installation-bound owner mapping", () => {
+  it("protects staged credentials explicitly and uses a real null backup name for atomic replacement", () => {
+    const wrapper = readFileSync(
+      new URL("../configure-owned-device-access.ps1", import.meta.url),
+      "utf8",
+    );
+    expect(wrapper).toContain("$acl.SetAccessRuleProtection($true,$false)");
+    expect(wrapper).toContain("[IO.File]::Replace($pending,$path,[NullString]::Value,$false)");
+    expect(wrapper).toContain("-Encrypted -RetainPrevious");
+  });
   const installationId = "a".repeat(32);
   const binding = {
     version: 1,

@@ -29,9 +29,12 @@ function Write-Private([string]$Name,$Value,[switch]$Encrypted,[switch]$RetainPr
   $pending=Join-Path $directory ('device-write-'+[guid]::NewGuid().ToString('N')+'.pending')
   $plain=[Text.Encoding]::UTF8.GetBytes(($Value|ConvertTo-Json -Depth 6 -Compress))
   try {
+    $report.storageTarget=$Name
+    $report.storageStep='encrypt_pending'
     $data=if($Encrypted){[Security.Cryptography.ProtectedData]::Protect($plain,$null,'CurrentUser')}else{$plain}
     $handle=[IO.File]::Open($pending,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
     try{$handle.Write($data,0,$data.Length)}finally{$handle.Dispose()}
+    $report.storageStep='protect_pending_acl'
     $acl=[Security.AccessControl.FileSecurity]::new()
     $acl.SetAccessRuleProtection($true,$false)
     $owner=[Security.Principal.WindowsIdentity]::GetCurrent().User
@@ -39,13 +42,17 @@ function Write-Private([string]$Name,$Value,[switch]$Encrypted,[switch]$RetainPr
     foreach($sid in @($owner,[Security.Principal.SecurityIdentifier]::new('S-1-5-18'))){$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid,'FullControl','Allow'))}
     [IO.FileSystemAclExtensions]::SetAccessControl((Get-Item -LiteralPath $pending),$acl);Assert-File $pending
     if($Encrypted){
+      $report.storageStep='verify_encryption_roundtrip'
       $roundtrip=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($pending),$null,'CurrentUser')
       try{if(-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals([Security.Cryptography.SHA256]::HashData($plain),[Security.Cryptography.SHA256]::HashData($roundtrip))){throw 'Device encryption round trip failed.'}}finally{[Array]::Clear($roundtrip,0,$roundtrip.Length)}
     }
     if(Test-Path -LiteralPath $path){
-      $backup=if($RetainPrevious){Join-Path $directory ('gate-before-device-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'-'+[guid]::NewGuid().ToString('N')+'.dpapi')}else{$null}
-      [IO.File]::Replace($pending,$path,$backup,$false)
-    }else{[IO.File]::Move($pending,$path)}
+      $report.storageStep='replace_existing_private_file'
+      if($RetainPrevious){
+        $backup=Join-Path $directory ('gate-before-device-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'-'+[guid]::NewGuid().ToString('N')+'.dpapi')
+        [IO.File]::Replace($pending,$path,$backup,$false)
+      }else{[IO.File]::Replace($pending,$path,[NullString]::Value,$false)}
+    }else{$report.storageStep='move_new_private_file';[IO.File]::Move($pending,$path)}
     Assert-File $path
   } finally {[Array]::Clear($plain,0,$plain.Length);$data=$null}
 }
@@ -126,7 +133,7 @@ try {
       $result=$null
     }
   }
-}catch{$report.failure='owned_device_access_not_complete';$report.errorType=$_.Exception.GetType().Name;$report.completed=$false}
+}catch{$report.failure='owned_device_access_not_complete';$report.errorType=$_.Exception.GetType().Name;if($_.Exception.InnerException){$report.innerErrorType=$_.Exception.InnerException.GetType().Name;$report.errorHResult=$_.Exception.InnerException.HResult.ToString('X8')};$report.completed=$false}
 finally{
   $payload=$null;$input=$null;$result=$null
   if($keys){$keys.Clear()};if($gate){$gate.Clear()};if($enrollment){$enrollment.Clear()}
