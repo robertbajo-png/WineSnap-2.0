@@ -56,7 +56,12 @@ export async function acceptOwnedPilotUi(
       ).href
     );
     browser = await playwright.chromium.launch({ headless: true });
-    context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "sv-SE" });
+    // Fault probes must observe every request; offline/SW acceptance is separate.
+    context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      locale: "sv-SE",
+      serviceWorkers: "block",
+    });
     await context.addInitScript(() => localStorage.setItem("lang", "sv"));
     await context.route("**/*", async (route) => {
       const policy = offlineRequestPolicy(route.request().url());

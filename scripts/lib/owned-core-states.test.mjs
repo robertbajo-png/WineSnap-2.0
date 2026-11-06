@@ -16,5 +16,7 @@ describe("disposable core-state probes", () => {
     expect(source).not.toMatch(
       /api\.openai\.com|generativelanguage|storageState\(|writeFile|localStorage/,
     );
+    const browser = readFileSync(new URL("./owned-pilot-browser.mjs", import.meta.url), "utf8");
+    expect(browser).toContain('serviceWorkers: "block"');
   });
 });
