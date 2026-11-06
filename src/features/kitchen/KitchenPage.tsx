@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -571,6 +571,7 @@ export function KitchenPage() {
 }
 function KitchenWorkspace({ owner }: { owner: string }) {
   const t = useT();
+  const routerHash = useRouterState({ select: (state) => state.location.hash });
   const kitchen = useKitchen(owner);
   const { cache, busy, ready, offline, error, conflict } = kitchen;
   const [tab, setTab] = useState("library");
@@ -681,6 +682,9 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     };
     route();
     window.addEventListener("hashchange", route);
+    return () => window.removeEventListener("hashchange", route);
+  }, [routerHash]);
+  useEffect(() => {
     let wall = Date.now(),
       monotonic = performance.now();
     const timer = window.setInterval(() => {
@@ -691,10 +695,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       monotonic = tick;
       setNow(next);
     }, 500);
-    return () => {
-      window.removeEventListener("hashchange", route);
-      window.clearInterval(timer);
-    };
+    return () => window.clearInterval(timer);
   }, []);
   const navigate = (next: string) => {
     setSelectedPast(null);
