@@ -91,6 +91,11 @@ export async function acceptOwnedPilotUi(
       await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
       await page.waitForFunction(() => window.scrollY === 0);
+      if (screen === "wine-journey") {
+        await page.waitForLoadState("networkidle");
+        await page.locator(".pilot-journey").waitFor();
+        await page.locator(".animate-pulse").first().waitFor({ state: "hidden" });
+      }
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         true,
@@ -266,6 +271,30 @@ export async function acceptOwnedPilotUi(
     await page.getByRole("button", { name: "\u00d6ppna din kokbok", exact: true }).click();
     await page.locator("button.k-recipe").first().waitFor();
     report.passed.push("missing_recipe_not_substituted");
+    phase("missing_wine");
+    await page.goto(ownedApp + "/kitchen#pairings?wine=00000000-0000-4000-8000-000000000001", {
+      waitUntil: "domcontentloaded",
+    });
+    await page
+      .getByRole("checkbox", {
+        name: "Visa vinf\u00f6rslag till vuxna fr\u00e5n min vink\u00e4llare",
+        exact: true,
+      })
+      .check();
+    await page
+      .getByText(
+        "Vinet \u00e4r inte l\u00e4ngre tillg\u00e4ngligt i din k\u00e4llare. V\u00e4lj ett annat vin.",
+        { exact: true },
+      )
+      .waitFor();
+    const wineChoice = page.getByRole("combobox", {
+      name: "Vin fr\u00e5n din k\u00e4llare",
+      exact: true,
+    });
+    assert.equal(await wineChoice.inputValue(), "");
+    await wineChoice.selectOption(fixture.wineId);
+    await page.locator(".meal-results").waitFor();
+    report.passed.push("missing_wine_requires_explicit_choice");
     for (const [screen, selector] of [
       ["chef", ".chef-panel"],
       ["memory", ".chef-panel"],
