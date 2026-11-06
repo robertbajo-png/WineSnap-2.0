@@ -384,7 +384,8 @@ export async function acceptOwnedPilotUi(
     }
     if (/^[A-Za-z]*Error$/.test(error?.name ?? "")) report.errorKind = error.name;
     if (/networkidle/.test(error?.message ?? "")) report.waitTarget = "network_idle";
-    else if (/animate-pulse/.test(error?.message ?? "")) report.waitTarget = "global_loading_marker";
+    else if (/animate-pulse/.test(error?.message ?? ""))
+      report.waitTarget = "global_loading_marker";
     else if (/scrollY/.test(error?.message ?? "")) report.waitTarget = "scroll_position";
     if (error?.code === "ERR_ASSERTION") {
       if (["boolean", "number"].includes(typeof error.actual))
