@@ -187,6 +187,13 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
     await page.getByRole("button", { name: "Skicka", exact: true }).click();
     await page.getByText("Syntetiskt svar finns kvar.", { exact: true }).waitFor();
     assert.equal(chefRequests[0].requestId, chefRequests[1].requestId);
+    phase("core_chef_history_retry");
+    await page
+      .getByText(
+        "Samtalshistoriken kunde inte h\u00e4mtas. Det senaste svaret finns kvar h\u00e4r.",
+        { exact: true },
+      )
+      .waitFor();
     await remove("**/rest/v1/chef_conversations**");
     await page.getByRole("button", { name: "H\u00e4mta igen", exact: true }).click();
     await page
@@ -195,6 +202,7 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
     assert.equal(chefRequests.length, 2);
     assert.equal(await page.getByText("Syntetiskt svar finns kvar.", { exact: true }).count(), 1);
     pass("chef_quota_keeps_prompt_explicit_retry_reuses_id_and_history_failure_keeps_answer");
+    phase("core_recipe_draft_save");
     await page.getByRole("button", { name: "Skapa recept", exact: true }).click();
     await page
       .getByRole("textbox", {
@@ -229,7 +237,7 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
     assert.equal(chefRequests.length, 3);
     pass("recipe_draft_requires_review_and_survives_save_failure_with_same_version_id");
 
-    phase("core_scan_recovery");
+    phase("core_scan_analysis_retry");
     let imageBytes,
       imageCalls = 0,
       analysisCalls = 0;
@@ -260,6 +268,7 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
     assert.equal(imageCalls, 2);
     await page.getByRole("button", { name: "Kasta", exact: true }).click();
     pass("scan_analysis_error_retains_identical_image_for_explicit_retry");
+    phase("core_scan_save_recovery");
     await page.getByRole("button", { name: "Skriv", exact: true }).click();
     const description = page.locator("#scan-description");
     await description.fill(text);
