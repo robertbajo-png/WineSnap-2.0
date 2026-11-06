@@ -54,7 +54,7 @@ import { pilotUiEnabled } from "../pilot/feature";
 import { kitchenEnabled } from "./feature";
 import { useKitchen } from "./useKitchen";
 import { blankRecipe, recipeImages, startingRecipes } from "./catalog";
-import { recipeHistory } from "./api";
+import { recipeHistory, recipeVersion } from "./api";
 import {
   changeSessionStatus,
   convertAmount,
@@ -560,6 +560,11 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const [tab, setTab] = useState("library");
   const [journeyHash, setJourneyHash] = useState("");
   const appliedJourney = useRef("");
+  const [extraVersion, setExtraVersion] = useState<{
+    owner: string;
+    id: string;
+    result?: RecipeVersion | null;
+  } | null>(null);
   const [chefOpening, setChefOpening] = useState<ChefOpening>({
     mode: "chat",
     context: emptyChefContext,
@@ -594,12 +599,36 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     () => (pilotUiEnabled ? readKitchenJourney(journeyHash) : { kind: "none" as const }),
     [journeyHash],
   );
-  const requestedRecipe =
+  const cachedRecipe =
     journey.kind === "ready" && cache
       ? resolveJourneyRecipe(journey.destination, owner, cache.versions, cache.session)
       : undefined;
+  const missingVersionId =
+    ready && cachedRecipe === null && journey.kind === "ready" && !journey.destination.session
+      ? journey.destination.recipe
+      : undefined;
+  useEffect(() => {
+    if (!missingVersionId || offline) return;
+    let current = true;
+    setExtraVersion({ owner, id: missingVersionId });
+    void recipeVersion(owner, missingVersionId)
+      .then((result) => {
+        if (current) setExtraVersion({ owner, id: missingVersionId, result });
+      })
+      .catch(() => {
+        if (current) setExtraVersion({ owner, id: missingVersionId, result: null });
+      });
+    return () => {
+      current = false;
+    };
+  }, [missingVersionId, owner, offline]);
+  const lookedUp =
+    extraVersion?.owner === owner && extraVersion.id === missingVersionId ? extraVersion : null;
+  const journeyPending = !!missingVersionId && !offline && lookedUp?.result === undefined;
+  const requestedRecipe =
+    cachedRecipe === null && lookedUp?.result ? lookedUp.result : cachedRecipe;
   const journeyUnavailable =
-    ready && !!cache && (journey.kind === "invalid" || requestedRecipe === null);
+    ready && !!cache && !journeyPending && (journey.kind === "invalid" || requestedRecipe === null);
   useEffect(() => {
     if (!pilotUiEnabled || !ready || !cache) return;
     const key = `${owner}:${journeyHash}:${requestedRecipe?.id ?? ""}`;
@@ -906,7 +935,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                 </button>
               </section>
             )}
-            {!journeyUnavailable && (
+            {journeyPending && <p role="status">{t("common.loading")}</p>}
+            {!journeyUnavailable && !journeyPending && (
               <>
                 <Suspense fallback={<p aria-busy="true">Öppnar…</p>}>
                   {nutritionEnabled && tab === "nutrition" && (

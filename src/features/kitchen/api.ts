@@ -184,6 +184,20 @@ export async function recipeHistory(owner: string, recipeId: string) {
   if (result.error) failed(result.error);
   return (result.data ?? []).map((value) => versionSchema.parse(value));
 }
+export async function recipeVersion(owner: string, versionId: string) {
+  await verifyKitchenOwner(owner);
+  const result = await client
+    .from("kitchen_recipe_versions")
+    .select("*")
+    .eq("id", versionId)
+    .eq("user_id", owner)
+    .maybeSingle();
+  if (result.error) failed(result.error);
+  if (!result.data) return null;
+  const version = versionSchema.parse(result.data);
+  if (version.user_id !== owner || version.id !== versionId) throw new KitchenError("unavailable");
+  return version;
+}
 export async function archiveRecipe(recipeId: string, revision: number) {
   const result = await client.rpc("kitchen_archive_recipe", {
     _id: recipeId,
