@@ -13,6 +13,7 @@ import {
   Wine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OperationNotice } from "./OperationNotice";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -45,6 +46,9 @@ export type ScanResultProps = {
   edited: boolean;
   saved: boolean;
   busy: boolean;
+  offline?: boolean;
+  saveError?: boolean;
+  saveUncertain?: boolean;
   onEdit: (wine: AnalyzedWine) => void;
   onSave: () => void;
   onClose: () => void;
@@ -61,6 +65,9 @@ export function ScanResult({
   edited,
   saved,
   busy,
+  offline = false,
+  saveError = false,
+  saveUncertain = false,
   onEdit,
   onSave,
   onClose,
@@ -93,7 +100,7 @@ export function ScanResult({
         <Button
           variant="ghost"
           size="icon"
-          disabled={busy}
+          disabled={busy || saveUncertain}
           aria-label={saved ? t("wine.backToCellar") : t("scan.discard")}
           title={saved ? t("wine.backToCellar") : t("scan.discard")}
           onClick={saved ? onCellar : onClose}
@@ -110,6 +117,15 @@ export function ScanResult({
         aria-label={t("scan.result")}
       >
         <div className="mx-auto w-full max-w-2xl px-5 pb-6 pt-2 sm:px-7">
+          {busy && <OperationNotice kind="loading">{t("state.savingWine")}</OperationNotice>}
+          {offline && !saved && (
+            <OperationNotice kind="offline">{t("state.saveOffline")}</OperationNotice>
+          )}
+          {saveError && (
+            <OperationNotice kind={saveUncertain ? "pending" : "error"}>
+              {t(saveUncertain ? "state.saveUncertain" : "state.saveFailed")}
+            </OperationNotice>
+          )}
           {saved && (
             <p
               role="status"
@@ -328,10 +344,10 @@ export function ScanResult({
               <ExternalLink className="h-5 w-5" />
             </Button>
           ) : (
-            <ScanIdentityEditor wine={wine} disabled={busy} onApply={onEdit} />
+            <ScanIdentityEditor wine={wine} disabled={busy || saveUncertain} onApply={onEdit} />
           )}
           <Button
-            disabled={busy}
+            disabled={busy || (!saved && offline)}
             onClick={saved ? onCellar : onSave}
             className="h-12 min-w-0 bg-gradient-burgundy px-3 text-base text-cream"
           >
@@ -342,7 +358,15 @@ export function ScanResult({
             ) : (
               <Check className="h-5 w-5 shrink-0" />
             )}
-            {t(saved ? "wine.backToCellar" : "scan.addToCellar")}
+            {t(
+              busy
+                ? "state.saving"
+                : saved
+                  ? "wine.backToCellar"
+                  : saveUncertain
+                    ? "state.checkSave"
+                    : "scan.addToCellar",
+            )}
           </Button>
         </div>
       </footer>

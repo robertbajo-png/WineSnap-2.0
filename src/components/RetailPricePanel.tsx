@@ -11,6 +11,7 @@ import {
   priceCandidates,
   priceFreshness,
   priceResponseSchema,
+  retailQuoteSchema,
   runPriceBatches,
   type PriceProgress,
   type PriceRequest,
@@ -258,6 +259,7 @@ function PriceWineRow({
   const t = useT();
   const status = priceFreshness(wine);
   const candidates = priceCandidates(wine);
+  const quote = retailQuoteSchema.safeParse(wine.retail_price_match);
   const [selected, setSelected] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const picked = candidates.find((c) => c.productNumber === selected);
@@ -293,6 +295,12 @@ function PriceWineRow({
       {date(wine.market_price_checked_at) && (
         <p className="mt-1 text-sm text-muted-foreground">
           {t("overview.lastChecked")}: {date(wine.market_price_checked_at)}
+        </p>
+      )}
+      {quote.success && quote.data.source && (
+        <p className="mt-1 break-words text-sm text-muted-foreground">
+          {t("prices.source")}: {quote.data.source}
+          {quote.data.sourceAsOf && ` · ${date(quote.data.sourceAsOf)}`}
         </p>
       )}
       {date(wine.retail_price_attempted_at) && (
@@ -334,6 +342,11 @@ function PriceWineRow({
                       {candidate.producer} · {candidate.vintage ?? t("prices.unknownYear")} ·{" "}
                       {candidate.volumeMl ? `${candidate.volumeMl} ml` : t("prices.unknownSize")} ·{" "}
                       {money(candidate.price, candidate.currency)} · #{candidate.productNumber}
+                      {candidate.source && (
+                        <span className="block">
+                          {t("prices.source")}: {candidate.source} · {date(candidate.sourceAsOf)}
+                        </span>
+                      )}
                     </span>
                   </span>
                 </label>

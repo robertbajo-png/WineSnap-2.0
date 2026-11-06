@@ -30,6 +30,7 @@ import {
 import { WineDetailSkeleton } from "@/components/Skeleton";
 import { AromaProfileTabs } from "@/components/AromaProfileTabs";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/aiTransport";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT, useI18n } from "@/i18n";
@@ -44,6 +45,7 @@ import { recommendationKey, recordRecommendationEvent } from "@/lib/recommendati
 import { addToWishlist } from "@/lib/wishlist";
 import { wineRating, type RatedWine } from "@/lib/wineRatings";
 import { useAuth } from "@/hooks/useAuth";
+import { WineKitchenJourney } from "@/features/meals/WineKitchenJourney";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -53,6 +55,7 @@ export const Route = createFileRoute("/wine/$id")({
 type Pair = { dish: string; reason: string };
 type WineRow = RatedWine & {
   id: string;
+  user_id: string;
   image_url: string | null;
   producer: string | null;
   wine_name: string | null;
@@ -137,9 +140,7 @@ function WineDetailPage() {
     setSuggestLoading(true);
     setSuggestError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("wine-suggestions", {
-        body: { wineId: w.id, language: lang },
-      });
+      const { data, error } = await invokeAi("wine-suggestions", { wineId: w.id, language: lang });
       if (error) throw error;
       const payload = data as { error?: string; suggestions?: Suggestion[] } | null;
       if (payload?.error) throw new Error(payload.error);
@@ -277,6 +278,7 @@ function WineDetailPage() {
 
   return (
     <AppShell>
+      <WineKitchenJourney wineId={w.id} wineOwner={w.user_id} viewer={user?.id} />
       <div className="-mx-5 -mt-6 px-5 pt-3">
         {/* Top bar */}
         <header className="flex items-center justify-between">
@@ -801,7 +803,7 @@ function WineDetailPage() {
         <Button
           variant="ghost"
           onClick={remove}
-          className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive min-h-11"
+          className="mt-8 mb-4 w-full text-red-300 hover:bg-destructive/10 hover:text-red-200 min-h-11"
         >
           <Trash2 className="h-5 w-5" /> {t("wine.delete")}
         </Button>

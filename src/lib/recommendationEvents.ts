@@ -2,21 +2,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { RecommendationCandidate } from "@/lib/recommendationEngine";
 
 export type RecommendationEventType =
-  | "impression"
-  | "open"
-  | "save"
-  | "like"
-  | "dislike"
-  | "dismiss"
-  | "compare";
+  "impression" | "open" | "save" | "like" | "dislike" | "dismiss" | "compare";
 
 export type RecommendationSource =
-  | "for_you"
-  | "similar"
-  | "compare"
-  | "ask"
-  | "social"
-  | "restaurant";
+  "for_you" | "similar" | "compare" | "ask" | "social" | "restaurant";
 
 export function recommendationKey(candidate: RecommendationCandidate) {
   return [candidate.producer, candidate.wine_name, candidate.vintage]

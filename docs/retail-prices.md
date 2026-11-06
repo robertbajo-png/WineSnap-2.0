@@ -1,5 +1,31 @@
 # Verified retail price refresh
 
+## Local Windows Follow-Up (2026-10-23)
+
+The Windows test installation now opts in to the public community mirror at
+`https://susbolaget.emrik.org/v1/products`, not the unavailable `api.bolaget.io`.
+This is restricted to the approved test backend; production/default builds are
+unchanged. Quotes retain `susbolaget.emrik.org` and its source date in both
+cellar and wishlist metadata, and show those in the cellar's per-wine details.
+Mirror references expire after 48 hours of source age instead of being re-dated
+on each read. Source identity does not relax vintage, volume, origin or cuvee
+checks. The initial streamed catalog import is a bounded two-minute background
+operation (about 81 seconds measured here); the in-memory index is reused daily.
+Browser quote deadlines are unchanged. No private wine search is sent to this
+public mirror.
+
+Actual local acceptance passes: product 2016901 at SEK 140 for vintage 2024,
+saved quote/source, refusal for the original 2023 wine, wishlist persistence and
+deduplicated alerts, mobile/desktop rendering, and fixture cleanup. Run
+`scripts/configure-local-windows-ai.ps1 -Action TestPrices` for the independent
+price suite. It explicitly does not certify AI/privacy flows. The broader live
+feature suite currently encounters a Google 503, not a price-service failure.
+
+This remains a community retail reference, not an official API or resale value.
+See [source documentation](https://github.com/C4illin/systembolaget-data) and
+`docs/local-windows-completion-2026-10-23.md` for limitations and release gates.
+The remainder of this document describes the earlier default adapter/rollout.
+
 The cellar overview distinguishes purchase cost, verified retail references and manual collector estimates. The latter two are not interchangeable: a bolaget.io retail quote is not a resale valuation or investment return.
 
 ## Refresh and matching

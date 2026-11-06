@@ -9,6 +9,7 @@ const owner = "33333333-3333-4333-8333-333333333333";
 const secret = "synthetic-secret-".repeat(3);
 function setup(name: string, env: Record<string, string> = {}) {
   let handler: Handler | undefined;
+  const exported: { createHandler?: (dependencies: unknown) => Handler } = {};
   const user = {
     id: owner,
     email: "owner@example.test",
@@ -44,13 +45,13 @@ function setup(name: string, env: Record<string, string> = {}) {
   const erase = vi.fn().mockResolvedValue({ complete: true });
   const logger = { error: vi.fn(), info: vi.fn() };
   const output = transpileModule(
-    readFileSync(new URL(`../../supabase/functions/${name}/index.ts`, import.meta.url), "utf8"),
+    readFileSync(new URL(`../../supabase/functions/${name}/handler.ts`, import.meta.url), "utf8"),
     {
       compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
     },
   ).outputText;
   runInNewContext(output, {
-    exports: {},
+    exports: exported,
     require: (path: string) => {
       if (path === "../_shared/privacy.ts") return privacy;
       if (path === "../_shared/privacyRuntime.ts")
@@ -70,6 +71,7 @@ function setup(name: string, env: Record<string, string> = {}) {
     TextEncoder,
     console: logger,
   });
+  handler = exported.createHandler?.({ env: (key: string) => env[key], admin: () => admin, erase });
   if (!handler) throw new Error("Missing handler");
   return {
     admin,
@@ -152,9 +154,47 @@ describe("actual scheduler handler", () => {
     expect(api.remove).not.toHaveBeenCalled();
     expect((await api.call({ execute: true }, secret)).status).toBe(503);
   });
+  it("reports another batch instead of silently claiming a drained queue", async () => {
+    const api = setup("privacy-maintenance", { PRIVACY_CRON_SECRET: secret });
+    api.rpc.mockImplementationOnce(async () => ({
+      data: { more_batches_required: true },
+      error: null,
+    }));
+    const response = await api.call({}, secret);
+    expect(response.status).toBe(200);
+    expect((await response.json()).more_work).toBe(true);
+  });
 });
 
 describe("actual owner export handler", () => {
+  it("includes all six private Chef tables only behind the explicit rollout gate", async () => {
+    const enabled = setup("privacy-export", { AI_CHEF_ENABLED: "true" });
+    const result = await (await enabled.call()).json();
+    for (const table of [
+      "food_memory_state",
+      "food_signals",
+      "food_memory_tombstones",
+      "chef_conversations",
+      "chef_messages",
+      "chef_requests",
+    ])
+      expect(result.tables).toHaveProperty(table);
+    const disabled = setup("privacy-export");
+    expect((await (await disabled.call()).json()).tables).not.toHaveProperty("food_signals");
+  });
+  it("includes cooking tables only after the explicit verified rollout switch", async () => {
+    const enabled = setup("privacy-export", { KITCHEN_CORE_ENABLED: "true" });
+    const result = await (await enabled.call()).json();
+    for (const table of [
+      "kitchen_recipes",
+      "kitchen_recipe_versions",
+      "cooking_sessions",
+      "cooking_feedback",
+    ])
+      expect(result.tables).toHaveProperty(table);
+    const disabled = setup("privacy-export");
+    expect((await (await disabled.call()).json()).tables).not.toHaveProperty("kitchen_recipes");
+  });
   it("includes owner-filtered social and quota rows without reading other profiles", async () => {
     const api = setup("privacy-export");
     const response = await api.call({ userId: "stranger" });

@@ -1,0 +1,43 @@
+name: Database Safety
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: winesnap_ci
+          POSTGRES_PASSWORD: ci-only-synthetic-password
+          POSTGRES_DB: postgres
+        ports:
+          - 127.0.0.1:54329:5432
+        options: >-
+          --health-cmd "pg_isready -U winesnap_ci -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:database
+        env:
+          WINESNAP_DATABASE_CHECK: ephemeral-synthetic-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-database-report
+          path: dist/staging-database-check.json
+          if-no-files-found: error
+          retention-days: 7

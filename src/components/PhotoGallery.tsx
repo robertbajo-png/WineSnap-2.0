@@ -5,6 +5,8 @@ import { Plus, Trash2, X, Loader2, Wine } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { WineImage } from "./WineImage";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Dialog, DialogPortal, DialogOverlay, DialogClose, DialogTitle } from "./ui/dialog";
 const LabelCropper = lazy(() =>
   import("./LabelCropper").then((m) => ({ default: m.LabelCropper })),
 );
@@ -32,6 +34,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
     null,
   );
   const inputRef = useRef<HTMLInputElement>(null);
+  const lightboxTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const load = async () => {
     const { data } = await supabase
@@ -119,7 +122,11 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
           >
             <button
               type="button"
-              onClick={() => setLightbox({ url: c.url, storagePath: c.storagePath })}
+              aria-label={t("photos.view")}
+              onClick={(event) => {
+                lightboxTriggerRef.current = event.currentTarget;
+                setLightbox({ url: c.url, storagePath: c.storagePath });
+              }}
               className="absolute inset-0 min-h-11 min-w-11"
             >
               <WineImage
@@ -184,31 +191,42 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
         </Suspense>
       )}
 
-      {lightbox && (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setLightbox(null)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setLightbox(null);
-          }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
-        >
-          <button
-            aria-label="Close"
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-cream hover:bg-white/20 min-h-11 min-w-11"
-            onClick={() => setLightbox(null)}
+      <Dialog open={lightbox !== null} onOpenChange={(open) => !open && setLightbox(null)}>
+        <DialogPortal>
+          <DialogOverlay className="bg-black/95" />
+          <DialogPrimitive.Content
+            aria-describedby={undefined}
+            className="fixed inset-0 z-[60] flex h-dvh w-full items-center justify-center p-4 outline-none"
+            style={{
+              paddingTop: "max(4rem, env(safe-area-inset-top))",
+              paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+            }}
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) setLightbox(null);
+            }}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              lightboxTriggerRef.current?.focus();
+            }}
           >
-            <X className="h-5 w-5" />
-          </button>
-          <WineImage
-            src={lightbox.url}
-            storagePath={lightbox.storagePath}
-            alt=""
-            className="max-h-full max-w-full rounded-xl object-contain"
-          />
-        </div>
-      )}
+            <DialogTitle className="sr-only">{t("photos.image")}</DialogTitle>
+            <DialogClose
+              aria-label={t("common.close")}
+              className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-cream hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-gold"
+            >
+              <X className="h-5 w-5" />
+            </DialogClose>
+            {lightbox && (
+              <WineImage
+                src={lightbox.url}
+                storagePath={lightbox.storagePath}
+                alt={t("photos.image")}
+                className="h-full min-h-0 w-full object-contain"
+              />
+            )}
+          </DialogPrimitive.Content>
+        </DialogPortal>
+      </Dialog>
     </>
   );
 }

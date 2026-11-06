@@ -252,8 +252,7 @@ export const ACCEPTED_IMAGE_TYPES = [
 ];
 
 export type ImageCheck =
-  | { ok: true; mimeType: string }
-  | { ok: false; reason: "type" | "size" | "empty" };
+  { ok: true; mimeType: string } | { ok: false; reason: "type" | "size" | "empty" };
 
 export function checkImageInput(
   file: { type?: string; size?: number } | null | undefined,

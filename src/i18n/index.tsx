@@ -3,6 +3,85 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export type Lang = "en" | "sv";
 
 const en = {
+  "state.saving": "Saving…",
+  "state.savingWine":
+    "Saving your wine and its original image. Keep this review open until the result is confirmed.",
+  "state.saveOffline":
+    "You are offline. Keep this page open to retain the review and image. Nothing is queued for automatic saving.",
+  "state.saveUncertain":
+    "The connection was interrupted. The wine may already be saved. Check the result before editing or starting another save; the same save ID will be used.",
+  "state.saveFailed":
+    "The wine could not be saved. Your review and image are still here. Check the connection and try again.",
+  "state.checkSave": "Check saved result",
+  "state.scanOffline":
+    "Connect to analyze a wine. Your text or selected image stays here; analysis will not start automatically.",
+  "state.analyzeAgain": "Analyze again",
+  "state.imageRetained": "Your selected image is still available for another analysis.",
+  "state.historyFailed":
+    "Conversation history could not be loaded. The latest answer remains here.",
+  "state.historyLoading": "Loading conversation history…",
+  "state.retryRead": "Load again",
+  "state.chefLoading": "Preparing your answer. No recipe or preference is saved automatically.",
+  "state.chefOffline":
+    "The Chef needs a connection. Your input stays here; Cook Mode still works offline.",
+  "state.chefFailed":
+    "The AI request could not be completed. Your input is unchanged. You can explicitly send the same request again.",
+  "state.chefQuota": "The AI limit has been reached. Your input remains here. Try again later.",
+  "state.chefAuth":
+    "Your session could not be verified. Sign in again before requesting another answer.",
+  "state.reviewDraft": "Review or discard the current recipe suggestion before requesting another.",
+  "state.discardDraft": "Discard suggestion",
+  "state.memoryLoading": "Loading your food memory…",
+  "state.memoryFailed":
+    "Food memory could not be loaded. This does not mean your preferences are empty.",
+  "state.memoryOffline":
+    "Connect to read or change food memory. Previously loaded preferences are hidden.",
+  "state.memoryWorking": "Updating food memory…",
+  "state.localSaved": "Saved on this device",
+  "state.syncPending": "Saved on this device. Waiting to sync.",
+  "state.synced": "Synced",
+  "state.syncing": "Syncing…",
+  "state.syncUnverified": "Local copy; server status not confirmed",
+  "state.retrySync": "Try syncing again",
+  "state.recipeSaveFailed":
+    "Saving could not be confirmed. Your draft remains open. Review it and try again; the same recipe-version ID is retained.",
+  "state.recipeOffline":
+    "Your draft is still open. Connect before saving; it will not be saved automatically.",
+  "nav.kitchen": "Kitchen",
+  "pilot.cellarEntry": "Cellar",
+  "pilot.heroAlt": "Tomato and basil pasta beside a glass of white wine",
+  "pilot.resume": "Continue cooking",
+  "pilot.recipes": "Your recipes",
+  "pilot.openRecipes": "Choose a recipe",
+  "pilot.cookingProgress": "Cooking progress",
+  "pilot.step": "Step {current} of {total}",
+  "pilot.foodWine": "Food & wine",
+  "pilot.chooseWine": "Choose wine for dinner",
+  "pilot.chef": "Ask the Chef",
+  "pilot.sommelier": "Ask the sommelier",
+  "pilot.recentWines": "Recent wines",
+  "pilot.bottleQuantity": "{count} bottles",
+  "pilot.singleBottle": "{count} bottle",
+  "pilot.openCellar": "Open your cellar",
+  "pilot.signIn": "Sign in",
+  "pilot.loading": "Loading…",
+  "pilot.winesOffline": "Connect to view your cellar.",
+  "pilot.kitchenUnavailable": "Your cooking session could not be loaded.",
+  "pilot.unnamedWine": "Unnamed wine",
+  "journey.foodWine": "Food & wine",
+  "journey.resumeCook": "Continue cooking",
+  "journey.backRecipe": "Back to the recipe",
+  "journey.backWine": "Back to the wine",
+  "journey.findRecipes": "Find recipes for this wine",
+  "journey.wineForMeal": "Wine for this meal",
+  "journey.unavailable": "This cooking context is unavailable",
+  "journey.unavailableDetail":
+    "The recipe or cooking session may have changed or belong to another account. Nothing has been replaced.",
+  "journey.openLibrary": "Open your cookbook",
+  "journey.wineUnavailable":
+    "This wine is no longer available in your cellar. Choose another wine.",
+  "journey.noWines": "No available bottles in your cellar.",
+  "journey.chooseWine": "Choose a wine",
   "wine.ownerRating": "Owner's rating",
   "privacy.link": "Privacy and your data",
   "recommendation.styleEstimate": "AI-estimated style",
@@ -183,6 +262,7 @@ const en = {
   "login.hasAccount": "Have an account? Sign in",
   "login.created": "Account created — sign in.",
   "login.forgot": "Forgot password?",
+  "login.localInbox": "Local inbox",
 
   // Password reset
   "reset.forgotTitle": "Reset password",
@@ -287,7 +367,7 @@ const en = {
   "overview.addPrices": "Add purchase prices to track value",
   "overview.marketValue": "Retail price reference",
   "overview.marketValueDesc":
-    "Verified retail prices from the last 30 days, via bolaget.io. Not resale values or investment returns.",
+    "Verified retail reference prices from a community catalog mirror. Not resale values or investment returns.",
   "prices.coverage": "wines with a current, verified price",
   "prices.fresh": "Current",
   "prices.old": "Older / not rechecked",
@@ -311,6 +391,7 @@ const en = {
   "prices.unknownYear": "Vintage not stated",
   "prices.unknownSize": "Bottle size not stated",
   "prices.attempted": "Latest attempt",
+  "prices.source": "Catalog source",
   "prices.product": "Catalog product",
   "prices.bottleMl": "Bottle size (ml)",
   "prices.invalidSize": "Enter a whole bottle size between 50 and 30,000 ml, or leave it empty.",
@@ -730,6 +811,8 @@ const en = {
   "crop.use": "Use photo",
   "crop.useOriginal": "Use the whole photo",
   "photos.title": "Photos",
+  "photos.view": "View wine photo",
+  "photos.image": "Wine photo",
   "photos.add": "Add photo",
   "photos.empty": "No extra photos yet.",
   "photos.delete": "Delete photo",
@@ -784,6 +867,83 @@ const en = {
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
+  "state.saving": "Sparar…",
+  "state.savingWine":
+    "Sparar vinet och originalbilden. Behåll granskningen öppen tills sparandet är bekräftat.",
+  "state.saveOffline":
+    "Du är offline. Behåll sidan öppen så finns granskningen och bilden kvar. Inget köas för automatisk sparning.",
+  "state.saveUncertain":
+    "Anslutningen avbröts. Vinet kan redan vara sparat. Kontrollera resultatet innan du ändrar eller sparar på nytt; samma spar-ID används.",
+  "state.saveFailed":
+    "Vinet kunde inte sparas. Granskningen och bilden finns kvar här. Kontrollera anslutningen och försök igen.",
+  "state.checkSave": "Kontrollera sparandet",
+  "state.scanOffline":
+    "Anslut för att analysera ett vin. Texten eller den valda bilden finns kvar här; analysen startar inte automatiskt.",
+  "state.analyzeAgain": "Analysera igen",
+  "state.imageRetained": "Den valda bilden finns kvar för en ny analys.",
+  "state.historyFailed": "Samtalshistoriken kunde inte hämtas. Det senaste svaret finns kvar här.",
+  "state.historyLoading": "Hämtar samtalshistorik…",
+  "state.retryRead": "Hämta igen",
+  "state.chefLoading": "Tar fram ditt svar. Inget recept eller någon preferens sparas automatiskt.",
+  "state.chefOffline":
+    "AI-kocken behöver anslutning. Din text finns kvar här; Cook Mode fungerar fortfarande offline.",
+  "state.chefFailed":
+    "AI-anropet kunde inte slutföras. Din text är oförändrad. Du kan själv skicka samma fråga igen.",
+  "state.chefQuota": "AI-gränsen är nådd. Din text finns kvar här. Försök igen senare.",
+  "state.chefAuth":
+    "Inloggningen kunde inte verifieras. Logga in igen innan du begär ett nytt svar.",
+  "state.reviewDraft": "Granska eller kasta det aktuella receptförslaget innan du begär ett nytt.",
+  "state.discardDraft": "Kasta förslag",
+  "state.memoryLoading": "Hämtar ditt matminne…",
+  "state.memoryFailed":
+    "Matminnet kunde inte hämtas. Det betyder inte att dina preferenser är tomma.",
+  "state.memoryOffline":
+    "Anslut för att läsa eller ändra matminnet. Tidigare hämtade preferenser är dolda.",
+  "state.memoryWorking": "Uppdaterar matminnet…",
+  "state.localSaved": "Sparat på enheten",
+  "state.syncPending": "Sparat på enheten. Väntar på synkning.",
+  "state.synced": "Synkat",
+  "state.syncing": "Synkar…",
+  "state.syncUnverified": "Lokal kopia; serverstatus inte bekräftad",
+  "state.retrySync": "Försök synka igen",
+  "state.recipeSaveFailed":
+    "Sparandet kunde inte bekräftas. Utkastet finns kvar öppet. Granska och försök igen; samma receptversions-ID behålls.",
+  "state.recipeOffline":
+    "Utkastet är fortfarande öppet. Anslut innan du sparar; det sparas inte automatiskt.",
+  "nav.kitchen": "Köket",
+  "pilot.cellarEntry": "Källaren",
+  "pilot.heroAlt": "Tomatpasta med basilika bredvid ett glas vitt vin",
+  "pilot.resume": "Fortsätt laga",
+  "pilot.recipes": "Dina recept",
+  "pilot.openRecipes": "Välj ett recept",
+  "pilot.cookingProgress": "Matlagningens framsteg",
+  "pilot.step": "Steg {current} av {total}",
+  "pilot.foodWine": "Mat & vin",
+  "pilot.chooseWine": "Välj vin till maten",
+  "pilot.chef": "Fråga AI-kocken",
+  "pilot.sommelier": "Fråga sommelieren",
+  "pilot.recentWines": "Senaste viner",
+  "pilot.bottleQuantity": "{count} flaskor",
+  "pilot.singleBottle": "{count} flaska",
+  "pilot.openCellar": "Öppna vinkällaren",
+  "pilot.signIn": "Logga in",
+  "pilot.loading": "Hämtar…",
+  "pilot.winesOffline": "Anslut för att visa din vinkällare.",
+  "pilot.kitchenUnavailable": "Din matlagning kunde inte hämtas.",
+  "pilot.unnamedWine": "Vin utan namn",
+  "journey.foodWine": "Mat & vin",
+  "journey.resumeCook": "Fortsätt laga",
+  "journey.backRecipe": "Tillbaka till receptet",
+  "journey.backWine": "Tillbaka till vinet",
+  "journey.findRecipes": "Hitta recept till vinet",
+  "journey.wineForMeal": "Vin till maten",
+  "journey.unavailable": "Den här matlagningen är inte tillgänglig",
+  "journey.unavailableDetail":
+    "Receptet eller matlagningen kan ha ändrats eller tillhöra ett annat konto. Inget har ersatts.",
+  "journey.openLibrary": "Öppna din kokbok",
+  "journey.wineUnavailable": "Vinet är inte längre tillgängligt i din källare. Välj ett annat vin.",
+  "journey.noWines": "Inga tillgängliga flaskor i din vinkällare.",
+  "journey.chooseWine": "Välj ett vin",
   "wine.ownerRating": "Ägarens betyg",
   "privacy.link": "Integritet och dina data",
   "recommendation.styleEstimate": "AI-uppskattad stil",
@@ -958,6 +1118,7 @@ const sv: Record<keyof typeof en, string> = {
   "login.hasAccount": "Har du redan konto? Logga in",
   "login.created": "Konto skapat — logga in.",
   "login.forgot": "Glömt lösenord?",
+  "login.localInbox": "Lokal inkorg",
 
   "reset.forgotTitle": "Återställ lösenord",
   "reset.forgotSub": "Ange din e-postadress så skickar vi en återställningslänk.",
@@ -1057,7 +1218,7 @@ const sv: Record<keyof typeof en, string> = {
   "overview.addPrices": "Lägg till inköpspris för att se värde",
   "overview.marketValue": "Butiksprisreferens",
   "overview.marketValueDesc":
-    "Verifierade butikspriser från de senaste 30 dagarna, via bolaget.io. Inte andrahandsvärden eller investeringsavkastning.",
+    "Verifierade butikspriser via en communityspegel av sortimentet. Inte andrahandsvärden eller investeringsavkastning.",
   "prices.coverage": "viner med aktuellt, verifierat pris",
   "prices.fresh": "Aktuellt",
   "prices.old": "Äldre / ej omkontrollerat",
@@ -1081,6 +1242,7 @@ const sv: Record<keyof typeof en, string> = {
   "prices.unknownYear": "Årgång ej angiven",
   "prices.unknownSize": "Flaskstorlek ej angiven",
   "prices.attempted": "Senaste försök",
+  "prices.source": "Sortimentskälla",
   "prices.product": "Sortimentsprodukt",
   "prices.bottleMl": "Flaskstorlek (ml)",
   "prices.invalidSize": "Ange en hel flaskstorlek mellan 50 och 30 000 ml, eller lämna tomt.",
@@ -1484,6 +1646,8 @@ const sv: Record<keyof typeof en, string> = {
   "crop.use": "Använd bild",
   "crop.useOriginal": "Använd hela bilden",
   "photos.title": "Bilder",
+  "photos.view": "Visa vinbild",
+  "photos.image": "Vinbild",
   "photos.add": "Lägg till bild",
   "photos.empty": "Inga extra bilder än.",
   "photos.delete": "Radera bild",
