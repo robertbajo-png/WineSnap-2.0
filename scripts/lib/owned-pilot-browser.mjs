@@ -161,17 +161,17 @@ export async function acceptOwnedPilotUi(
       await page.getByRole("button", { name: "Fler portioner", exact: true }).click();
       await page.getByRole("button", { name: "Fler portioner", exact: true }).click();
       await page.getByRole("button", { name: "Vin till maten", exact: true }).click();
-      await page.getByRole("combobox", { name: "R\u00e4tt", exact: true }).waitFor();
-      assert.equal(
-        await page.getByRole("combobox", { name: "R\u00e4tt", exact: true }).inputValue(),
-        fixture.versionId,
-      );
       await page
         .getByRole("checkbox", {
           name: "Visa vinf\u00f6rslag till vuxna fr\u00e5n min vink\u00e4llare",
           exact: true,
         })
         .check();
+      await page.getByRole("combobox", { name: "R\u00e4tt", exact: true }).waitFor();
+      assert.equal(
+        await page.getByRole("combobox", { name: "R\u00e4tt", exact: true }).inputValue(),
+        fixture.versionId,
+      );
       await page.getByRole("link", { name: "Visa vinet", exact: true }).click();
       await page.getByRole("link", { name: "Tillbaka till receptet", exact: true }).waitFor();
       await capture("wine-journey", width);
