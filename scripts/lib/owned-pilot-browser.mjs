@@ -95,6 +95,12 @@ export async function acceptOwnedPilotUi(
         await page.waitForLoadState("networkidle");
         await page.locator(".pilot-journey").waitFor();
         await page.locator(".animate-pulse").first().waitFor({ state: "hidden" });
+        await page.evaluate(
+          () =>
+            new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        );
+        await page.screenshot({ animations: "disabled" });
+        await page.locator(".pilot-journey").waitFor();
       }
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
@@ -127,6 +133,7 @@ export async function acceptOwnedPilotUi(
       await page.screenshot({
         path: join(artifactDirectory, `${screen}-${width}.png`),
         fullPage: false,
+        animations: "disabled",
       });
       report.passed.push(`${screen}_${width}`);
     }
