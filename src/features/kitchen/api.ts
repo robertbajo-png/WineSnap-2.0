@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { scopedClient } from "@/lib/scopedClient";
 import {
   recipeSchema,
   savedSessionSchema,
@@ -38,6 +39,23 @@ export async function verifyKitchenOwner(owner: string) {
   const result = await client.rpc("kitchen_access");
   if (result.error) failed(result.error);
   if (result.data !== true) throw new KitchenError("unavailable");
+}
+async function writeClient(owner: string) {
+  const { data } = await client.auth.getSession();
+  if (data.session?.user.id !== owner) throw new KitchenError("unavailable");
+  const token = data.session.access_token;
+  const verified = await client.auth.getUser(token);
+  if (verified.error || verified.data.user?.id !== owner)
+    throw new KitchenError(
+      verified.error?.status === 401 || verified.error?.status === 403 || !verified.error
+        ? "unavailable"
+        : "network",
+    );
+  const scoped = scopedClient(token);
+  const gate = await scoped.rpc("kitchen_access");
+  if (gate.error) failed(gate.error);
+  if (gate.data !== true) throw new KitchenError("unavailable");
+  return scoped;
 }
 export async function loadKitchen(owner: string) {
   await verifyKitchenOwner(owner);
@@ -137,12 +155,15 @@ export async function hydrateSession(value: unknown, owner: string): Promise<Loc
   };
 }
 export async function saveRecipe(
+  owner: string,
   recipeId: string,
   versionId: string,
   expectedRevision: number,
   document: RecipeDocument,
 ): Promise<RecipeVersion> {
-  const result = await client.rpc("kitchen_save_recipe", {
+  const result = await (
+    await writeClient(owner)
+  ).rpc("kitchen_save_recipe", {
     _recipe_id: recipeId,
     _version_id: versionId,
     _expected_revision: expectedRevision,
@@ -152,7 +173,9 @@ export async function saveRecipe(
   return versionSchema.parse(result.data);
 }
 export async function saveCookingSession(session: LocalSession) {
-  const result = await client.rpc("kitchen_save_session", {
+  const result = await (
+    await writeClient(session.version.user_id)
+  ).rpc("kitchen_save_session", {
     _id: session.id,
     _version_id: session.version.id,
     _expected_revision: session.baseRevision,
@@ -198,8 +221,10 @@ export async function recipeVersion(owner: string, versionId: string) {
   if (version.user_id !== owner || version.id !== versionId) throw new KitchenError("unavailable");
   return version;
 }
-export async function archiveRecipe(recipeId: string, revision: number) {
-  const result = await client.rpc("kitchen_archive_recipe", {
+export async function archiveRecipe(owner: string, recipeId: string, revision: number) {
+  const result = await (
+    await writeClient(owner)
+  ).rpc("kitchen_archive_recipe", {
     _id: recipeId,
     _expected_revision: revision,
   });

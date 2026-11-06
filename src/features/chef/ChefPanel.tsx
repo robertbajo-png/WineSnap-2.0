@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ChefHat, FilePenLine, Loader2, Plus, Send, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { ChefHat, FilePenLine, Loader2, Plus, Send, Sparkles, Trash2 } from "lucide-react";
+import { OperationNotice } from "@/components/OperationNotice";
+import { useT } from "@/i18n";
 import { ChatMessageContent } from "@/components/ChatMessageContent";
 import type { RecipeDocument } from "../kitchen/domain";
 import { emptyChefContext, type ChefContext, type ChefRequest } from "./domain";
-import { askChef, chefConversations, chefMessages, type ChefResult } from "./api";
+import { askChef, ChefError, chefConversations, chefMessages, type ChefResult } from "./api";
 import "./chef.css";
 
 export type ChefOpening = {
@@ -24,6 +26,11 @@ export function ChefPanel({
   offline: boolean;
   onReview: (draft: RecipeDocument) => void;
 }) {
+  const t = useT();
+  const working = useRef(false);
+  const historyRead = useRef(0);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   const [mode, setMode] = useState(opening.mode);
   const [prompt, setPrompt] = useState(opening.initialPrompt ?? "");
   const [servings, setServings] = useState(opening.initialServings ?? 2),
@@ -46,24 +53,39 @@ export function ChefPanel({
     live.current = true;
     return () => {
       live.current = false;
+      historyRead.current++;
       controller.current?.abort();
     };
   }, []);
+  const loadHistory = useCallback(async () => {
+    const request = ++historyRead.current;
+    setHistoryBusy(true);
+    setHistoryError(false);
+    try {
+      const rows = await chefConversations(owner);
+      if (live.current && request === historyRead.current) setConversations(rows);
+    } catch {
+      if (live.current && request === historyRead.current) {
+        setConversations([]);
+        setHistoryError(true);
+      }
+    } finally {
+      if (live.current && request === historyRead.current) setHistoryBusy(false);
+    }
+  }, [owner]);
   useEffect(() => {
-    let active = true;
-    if (!offline)
-      void chefConversations(owner)
-        .then((rows) => {
-          if (active) setConversations(rows);
-        })
-        .catch(() => undefined);
+    if (offline) {
+      setConversations([]);
+      setHistoryBusy(false);
+    } else void loadHistory();
     return () => {
-      active = false;
+      historyRead.current++;
     };
-  }, [owner, offline]);
+  }, [loadHistory, offline]);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy || offline) return;
+    if (working.current || offline || result?.draft) return;
+    working.current = true;
     setBusy(true);
     setError("");
     setResult(null);
@@ -99,14 +121,28 @@ export function ChefPanel({
         setPrompt("");
       }
       pending.current = null;
-      setConversations(await chefConversations(owner));
+      void loadHistory();
     } catch (cause) {
-      if (live.current) setError(cause instanceof Error ? cause.message : "Kunde inte hämta svar.");
+      if (live.current)
+        setError(
+          cause instanceof ChefError
+            ? cause.status === 429
+              ? t("state.chefQuota")
+              : [401, 403].includes(cause.status)
+                ? t("state.chefAuth")
+                : cause.status < 500
+                  ? cause.message
+                  : t("state.chefFailed")
+            : t("state.chefFailed"),
+        );
     } finally {
+      working.current = false;
       if (live.current) setBusy(false);
     }
   }
   async function resume(id: string) {
+    if (working.current || offline) return;
+    working.current = true;
     setBusy(true);
     setError("");
     try {
@@ -122,6 +158,7 @@ export function ChefPanel({
     } catch {
       if (live.current) setError("Samtalet kunde inte hämtas.");
     } finally {
+      working.current = false;
       if (live.current) setBusy(false);
     }
   }
@@ -138,7 +175,7 @@ export function ChefPanel({
       <div className="chef-modes" role="group" aria-label="AI-uppgift">
         <button
           aria-pressed={mode === "chat"}
-          disabled={busy}
+          disabled={busy || !!result?.draft}
           onClick={() => {
             setMode("chat");
             setResult(null);
@@ -148,7 +185,7 @@ export function ChefPanel({
         </button>
         <button
           aria-pressed={mode === "generate"}
-          disabled={busy}
+          disabled={busy || !!result?.draft}
           onClick={() => {
             setMode("generate");
             setResult(null);
@@ -159,7 +196,7 @@ export function ChefPanel({
         {!!opening.context.recipeVersionId && (
           <button
             aria-pressed={mode === "adapt"}
-            disabled={busy}
+            disabled={busy || !!result?.draft}
             onClick={() => {
               setMode("adapt");
               setResult(null);
@@ -221,6 +258,19 @@ export function ChefPanel({
           </div>
         </>
       )}
+      {historyBusy && <OperationNotice kind="loading">{t("state.historyLoading")}</OperationNotice>}
+      {historyError && (
+        <OperationNotice
+          kind="error"
+          action={{
+            label: t("state.retryRead"),
+            disabled: offline || historyBusy,
+            onClick: () => void loadHistory(),
+          }}
+        >
+          {t("state.historyFailed")}
+        </OperationNotice>
+      )}
       <form onSubmit={(e) => void submit(e)}>
         <label>
           {mode === "chat" ? "Din fråga" : "Vad ska receptet innehålla eller ändra?"}
@@ -262,7 +312,10 @@ export function ChefPanel({
             </label>
           </div>
         )}
-        <button className="k-primary" disabled={busy || offline || !prompt.trim()}>
+        <button
+          className="k-primary"
+          disabled={busy || offline || !!result?.draft || !prompt.trim()}
+        >
           {busy ? (
             <Loader2 className="animate-spin" size={18} />
           ) : mode === "chat" ? (
@@ -273,16 +326,12 @@ export function ChefPanel({
           {busy ? "Arbetar…" : mode === "chat" ? "Skicka" : "Ta fram förslag"}
         </button>
       </form>
-      {offline && (
-        <p role="status">AI-kocken behöver internet. Cook Mode fungerar fortfarande offline.</p>
-      )}
-      {error && (
-        <p className="k-error" role="alert">
-          {error}
-        </p>
-      )}
+      {busy && <OperationNotice kind="loading">{t("state.chefLoading")}</OperationNotice>}
+      {offline && <OperationNotice kind="offline">{t("state.chefOffline")}</OperationNotice>}
+      {error && <OperationNotice kind="error">{error}</OperationNotice>}
       {result?.draft && (
         <section className="chef-draft">
+          <OperationNotice kind="pending">{t("state.reviewDraft")}</OperationNotice>
           <p className="k-eyebrow">Ej sparat</p>
           <h2>{result.draft.title}</h2>
           <p>{result.draft.description}</p>
@@ -297,6 +346,10 @@ export function ChefPanel({
           <button className="k-primary" onClick={() => onReview(result.draft!)}>
             <FilePenLine size={18} />
             Granska recept
+          </button>
+          <button type="button" className="k-text" onClick={() => setResult(null)}>
+            <Trash2 size={18} />
+            {t("state.discardDraft")}
           </button>
         </section>
       )}

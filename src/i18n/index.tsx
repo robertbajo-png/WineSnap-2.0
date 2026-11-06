@@ -3,6 +3,50 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export type Lang = "en" | "sv";
 
 const en = {
+  "state.saving": "Saving…",
+  "state.savingWine":
+    "Saving your wine and its original image. Keep this review open until the result is confirmed.",
+  "state.saveOffline":
+    "You are offline. Keep this page open to retain the review and image. Nothing is queued for automatic saving.",
+  "state.saveUncertain":
+    "The connection was interrupted. The wine may already be saved. Check the result before editing or starting another save; the same save ID will be used.",
+  "state.saveFailed":
+    "The wine could not be saved. Your review and image are still here. Check the connection and try again.",
+  "state.checkSave": "Check saved result",
+  "state.scanOffline":
+    "Connect to analyze a wine. Your text or selected image stays here; analysis will not start automatically.",
+  "state.analyzeAgain": "Analyze again",
+  "state.imageRetained": "Your selected image is still available for another analysis.",
+  "state.historyFailed":
+    "Conversation history could not be loaded. The latest answer remains here.",
+  "state.historyLoading": "Loading conversation history…",
+  "state.retryRead": "Load again",
+  "state.chefLoading": "Preparing your answer. No recipe or preference is saved automatically.",
+  "state.chefOffline":
+    "The Chef needs a connection. Your input stays here; Cook Mode still works offline.",
+  "state.chefFailed":
+    "The AI request could not be completed. Your input is unchanged. You can explicitly send the same request again.",
+  "state.chefQuota": "The AI limit has been reached. Your input remains here. Try again later.",
+  "state.chefAuth":
+    "Your session could not be verified. Sign in again before requesting another answer.",
+  "state.reviewDraft": "Review or discard the current recipe suggestion before requesting another.",
+  "state.discardDraft": "Discard suggestion",
+  "state.memoryLoading": "Loading your food memory…",
+  "state.memoryFailed":
+    "Food memory could not be loaded. This does not mean your preferences are empty.",
+  "state.memoryOffline":
+    "Connect to read or change food memory. Previously loaded preferences are hidden.",
+  "state.memoryWorking": "Updating food memory…",
+  "state.localSaved": "Saved on this device",
+  "state.syncPending": "Saved on this device. Waiting to sync.",
+  "state.synced": "Synced",
+  "state.syncing": "Syncing…",
+  "state.syncUnverified": "Local copy; server status not confirmed",
+  "state.retrySync": "Try syncing again",
+  "state.recipeSaveFailed":
+    "Saving could not be confirmed. Your draft remains open. Review it and try again; the same recipe-version ID is retained.",
+  "state.recipeOffline":
+    "Your draft is still open. Connect before saving; it will not be saved automatically.",
   "nav.kitchen": "Kitchen",
   "pilot.cellarEntry": "Cellar",
   "pilot.heroAlt": "Tomato and basil pasta beside a glass of white wine",
@@ -823,6 +867,49 @@ const en = {
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
+  "state.saving": "Sparar…",
+  "state.savingWine":
+    "Sparar vinet och originalbilden. Behåll granskningen öppen tills sparandet är bekräftat.",
+  "state.saveOffline":
+    "Du är offline. Behåll sidan öppen så finns granskningen och bilden kvar. Inget köas för automatisk sparning.",
+  "state.saveUncertain":
+    "Anslutningen avbröts. Vinet kan redan vara sparat. Kontrollera resultatet innan du ändrar eller sparar på nytt; samma spar-ID används.",
+  "state.saveFailed":
+    "Vinet kunde inte sparas. Granskningen och bilden finns kvar här. Kontrollera anslutningen och försök igen.",
+  "state.checkSave": "Kontrollera sparandet",
+  "state.scanOffline":
+    "Anslut för att analysera ett vin. Texten eller den valda bilden finns kvar här; analysen startar inte automatiskt.",
+  "state.analyzeAgain": "Analysera igen",
+  "state.imageRetained": "Den valda bilden finns kvar för en ny analys.",
+  "state.historyFailed": "Samtalshistoriken kunde inte hämtas. Det senaste svaret finns kvar här.",
+  "state.historyLoading": "Hämtar samtalshistorik…",
+  "state.retryRead": "Hämta igen",
+  "state.chefLoading": "Tar fram ditt svar. Inget recept eller någon preferens sparas automatiskt.",
+  "state.chefOffline":
+    "AI-kocken behöver anslutning. Din text finns kvar här; Cook Mode fungerar fortfarande offline.",
+  "state.chefFailed":
+    "AI-anropet kunde inte slutföras. Din text är oförändrad. Du kan själv skicka samma fråga igen.",
+  "state.chefQuota": "AI-gränsen är nådd. Din text finns kvar här. Försök igen senare.",
+  "state.chefAuth":
+    "Inloggningen kunde inte verifieras. Logga in igen innan du begär ett nytt svar.",
+  "state.reviewDraft": "Granska eller kasta det aktuella receptförslaget innan du begär ett nytt.",
+  "state.discardDraft": "Kasta förslag",
+  "state.memoryLoading": "Hämtar ditt matminne…",
+  "state.memoryFailed":
+    "Matminnet kunde inte hämtas. Det betyder inte att dina preferenser är tomma.",
+  "state.memoryOffline":
+    "Anslut för att läsa eller ändra matminnet. Tidigare hämtade preferenser är dolda.",
+  "state.memoryWorking": "Uppdaterar matminnet…",
+  "state.localSaved": "Sparat på enheten",
+  "state.syncPending": "Sparat på enheten. Väntar på synkning.",
+  "state.synced": "Synkat",
+  "state.syncing": "Synkar…",
+  "state.syncUnverified": "Lokal kopia; serverstatus inte bekräftad",
+  "state.retrySync": "Försök synka igen",
+  "state.recipeSaveFailed":
+    "Sparandet kunde inte bekräftas. Utkastet finns kvar öppet. Granska och försök igen; samma receptversions-ID behålls.",
+  "state.recipeOffline":
+    "Utkastet är fortfarande öppet. Anslut innan du sparar; det sparas inte automatiskt.",
   "nav.kitchen": "Köket",
   "pilot.cellarEntry": "Källaren",
   "pilot.heroAlt": "Tomatpasta med basilika bredvid ett glas vitt vin",

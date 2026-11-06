@@ -25,6 +25,23 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("Chef account fencing", () => {
+  it("preserves quota status for non-JSON errors without leaking raw response text", async () => {
+    mocks.send.mockResolvedValue(new Response("private-error-canary", { status: 429 }));
+    await expect(
+      askChef(
+        {
+          action: "chat",
+          requestId: crypto.randomUUID(),
+          context: emptyChefContext,
+          message: "Hello",
+          conversationId: crypto.randomUUID(),
+          conversationRevision: 0,
+        },
+        owner,
+      ),
+    ).rejects.toMatchObject({ status: 429 });
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+  });
   it("rejects stale actions after an account switch before any network write", async () => {
     mocks.session.mockResolvedValue({
       data: { session: { user: { id: "different-owner" }, access_token: "other" } },

@@ -48,6 +48,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { OperationNotice } from "@/components/OperationNotice";
 import { useT } from "@/i18n";
 import { BottomNav } from "@/components/BottomNav";
 import { pilotUiEnabled } from "../pilot/feature";
@@ -202,20 +203,25 @@ type EditorState = {
 function RecipeEditor({
   initial,
   busy,
+  offline,
   onSave,
   onClose,
 }: {
   initial: EditorState;
   busy: boolean;
-  onSave: (editor: EditorState) => Promise<void>;
+  offline: boolean;
+  onSave: (editor: EditorState) => Promise<boolean>;
   onClose: () => void;
 }) {
+  const t = useT();
+  const submitting = useRef(false);
   const [document, setDocument] = useState(initial.document);
   const [error, setError] = useState("");
   const patch = (value: Partial<RecipeDocument>) =>
     setDocument((current) => ({ ...current, ...value }));
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submitting.current || busy || offline) return;
     const parsed = recipeSchema.safeParse(document);
     if (!parsed.success) {
       setError(
@@ -224,7 +230,15 @@ function RecipeEditor({
       return;
     }
     setError("");
-    void onSave({ ...initial, document: parsed.data });
+    submitting.current = true;
+    try {
+      if (!(await onSave({ ...initial, document: parsed.data })))
+        setError(t("state.recipeSaveFailed"));
+    } catch {
+      setError(t("state.recipeSaveFailed"));
+    } finally {
+      submitting.current = false;
+    }
   }
   return (
     <Dialog
@@ -242,7 +256,9 @@ function RecipeEditor({
               : "Sparas privat i din kokbok."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit}>
+        {offline && <OperationNotice kind="offline">{t("state.recipeOffline")}</OperationNotice>}
+        {busy && <OperationNotice kind="loading">{t("state.saving")}</OperationNotice>}
+        <form onSubmit={(event) => void submit(event)}>
           <fieldset disabled={busy}>
             <label>
               Receptnamn
@@ -507,7 +523,7 @@ function RecipeEditor({
               <button type="button" className="k-secondary" onClick={onClose}>
                 Avbryt
               </button>
-              <button className="k-primary" type="submit">
+              <button className="k-primary" type="submit" disabled={offline}>
                 {busy ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
                 {initial.revision ? "Spara ny version" : "Spara recept"}
               </button>
@@ -565,6 +581,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     id: string;
     result?: RecipeVersion | null;
   } | null>(null);
+  const [versionRetry, setVersionRetry] = useState(0);
   const [chefOpening, setChefOpening] = useState<ChefOpening>({
     mode: "chat",
     context: emptyChefContext,
@@ -621,7 +638,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     return () => {
       current = false;
     };
-  }, [missingVersionId, owner, offline]);
+  }, [missingVersionId, owner, offline, versionRetry]);
   const lookedUp =
     extraVersion?.owner === owner && extraVersion.id === missingVersionId ? extraVersion : null;
   const journeyPending = !!missingVersionId && !offline && lookedUp?.result === undefined;
@@ -743,10 +760,12 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const statusText = !cache
     ? "Inte ansluten"
     : offline
-      ? "Offline"
+      ? t("state.localSaved")
       : local?.dirty
-        ? "Väntar på synkning"
-        : "Sparat";
+        ? t("state.syncPending")
+        : error
+          ? t("state.syncUnverified")
+          : t("state.synced");
   async function showHistory() {
     if (!selected) return;
     setHistoryError("");
@@ -861,10 +880,10 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           ) : (
             <CheckCheck size={16} />
           )}
-          {busy ? "Sparar…" : statusText}
+          {busy ? t(local?.dirty ? "state.syncing" : "state.saving") : statusText}
           <button
             className="k-text"
-            disabled={busy || offline}
+            disabled={busy || offline || !cache || !!conflict}
             onClick={() => {
               void kitchen.sync();
             }}
@@ -875,13 +894,20 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           </button>
         </div>
         {error && (
-          <div className="k-error" role="alert">
-            <p>{error}</p>
-            <button className="k-text" disabled={busy} onClick={kitchen.reload}>
-              <RefreshCw size={18} />
-              Hämta uppdateringen
-            </button>
-          </div>
+          <OperationNotice
+            kind="error"
+            action={
+              !conflict
+                ? {
+                    label: t(local?.dirty ? "state.retrySync" : "state.retryRead"),
+                    disabled: busy || offline,
+                    onClick: local?.dirty ? () => void kitchen.sync() : kitchen.reload,
+                  }
+                : undefined
+            }
+          >
+            {error}
+          </OperationNotice>
         )}
         {conflict && (
           <section className="k-conflict" aria-label="Synkningskonflikt">
@@ -930,6 +956,12 @@ function KitchenWorkspace({ owner }: { owner: string }) {
               <section className="k-empty" role="alert">
                 <h1>{t("journey.unavailable")}</h1>
                 <p>{t("journey.unavailableDetail")}</p>
+                {missingVersionId && !offline && (
+                  <button className="k-secondary" onClick={() => setVersionRetry((v) => v + 1)}>
+                    <RefreshCw size={18} />
+                    {t("state.retryRead")}
+                  </button>
+                )}
                 <button className="k-secondary" onClick={() => navigate("library")}>
                   {t("journey.openLibrary")}
                 </button>
@@ -1720,6 +1752,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
         <RecipeEditor
           initial={editor}
           busy={busy}
+          offline={offline}
           onClose={() => setEditor(null)}
           onSave={async (value) => {
             const saved = await kitchen.save(
@@ -1732,6 +1765,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
               setEditor(null);
               openRecipe(saved);
             }
+            return !!saved;
           }}
         />
       )}

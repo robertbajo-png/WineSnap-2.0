@@ -337,6 +337,15 @@ export async function acceptOwnedPilotUi(
       assert.equal(await page.locator(selector).locator(".k-error").count(), 0);
       await capture(screen, 390);
     }
+    const { acceptOwnedCoreStates } = await import("./owned-core-states.mjs");
+    report.coreStates = await acceptOwnedCoreStates({
+      page,
+      context,
+      fixture,
+      phase,
+      capture,
+      pass: (name) => report.passed.push(name),
+    });
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Logga ut", exact: true }).click();

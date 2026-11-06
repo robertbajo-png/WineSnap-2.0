@@ -7,7 +7,6 @@ import {
   saveCookingSession,
   saveRecipe,
   serverSession,
-  verifyKitchenOwner,
 } from "./api";
 import {
   emptyKitchenCache,
@@ -64,7 +63,6 @@ export function useKitchen(owner: string | undefined) {
   }, []);
   async function flush(value: KitchenCache) {
     if (!value.session?.dirty || !navigator.onLine) return;
-    await verifyKitchenOwner(value.owner);
     try {
       const saved = await saveCookingSession(value.session);
       if (saved.user_id !== value.owner || saved.id !== value.session.id)
@@ -295,8 +293,7 @@ export function useKitchen(owner: string | undefined) {
     let result: RecipeVersion | null = null;
     const success = await run(async (value) => {
       if (!navigator.onLine) throw new KitchenError("network");
-      await verifyKitchenOwner(value.owner);
-      result = await saveRecipe(recipeId, versionId, revision, document);
+      result = await saveRecipe(value.owner, recipeId, versionId, revision, document);
       if (result.user_id !== value.owner) throw new KitchenError("unavailable");
       await persist({
         ...value,
@@ -309,8 +306,7 @@ export function useKitchen(owner: string | undefined) {
   async function archive(version: RecipeVersion) {
     return run(async (value) => {
       if (!navigator.onLine) throw new KitchenError("network");
-      await verifyKitchenOwner(value.owner);
-      await archiveRecipe(version.recipe_id, version.revision);
+      await archiveRecipe(value.owner, version.recipe_id, version.revision);
       await persist({
         ...value,
         versions: value.versions.filter((item) => item.recipe_id !== version.recipe_id),

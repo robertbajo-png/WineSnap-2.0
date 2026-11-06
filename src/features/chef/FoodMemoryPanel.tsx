@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Brain, Check, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { OperationNotice } from "@/components/OperationNotice";
+import { useT } from "@/i18n";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,10 @@ export function FoodMemoryPanel({
   offline: boolean;
   onChanged: () => void;
 }) {
+  const t = useT();
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const readSequence = useRef(0);
+  const working = useRef(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof foodMemory>> | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -50,49 +56,74 @@ export function FoodMemoryPanel({
     live.current = true;
     return () => {
       live.current = false;
+      readSequence.current++;
     };
   }, []);
   async function reload() {
-    const result = await foodMemory(owner);
-    if (live.current) {
-      setData(result);
-      setFeedbackId((old) =>
-        result.feedback.some((f) => f.id === old) ? old : (result.feedback[0]?.id ?? ""),
-      );
+    const sequence = ++readSequence.current;
+    setData(null);
+    setLoadState("loading");
+    setError("");
+    try {
+      const result = await foodMemory(owner);
+      if (live.current && sequence === readSequence.current) {
+        setData(result);
+        setLoadState("ready");
+        setFeedbackId((old) =>
+          result.feedback.some((f) => f.id === old) ? old : (result.feedback[0]?.id ?? ""),
+        );
+      }
+    } catch {
+      if (live.current && sequence === readSequence.current) {
+        setData(null);
+        setLoadState("error");
+      }
     }
   }
   useEffect(() => {
     let active = true;
-    if (!offline)
+    const sequence = ++readSequence.current;
+    setData(null);
+    setError("");
+    if (!offline) {
+      setLoadState("loading");
       void foodMemory(owner)
         .then((result) => {
-          if (active) {
+          if (active && sequence === readSequence.current) {
             setData(result);
+            setLoadState("ready");
             setFeedbackId(result.feedback[0]?.id ?? "");
           }
         })
-        .catch((cause) => {
-          if (active) setError(cause.message);
+        .catch(() => {
+          if (active && sequence === readSequence.current) setLoadState("error");
         });
+    }
     return () => {
       active = false;
+      readSequence.current++;
     };
   }, [owner, offline]);
   async function run(action: () => Promise<void>, message: string) {
-    if (busy || offline) return;
+    if (working.current || offline || loadState !== "ready") return;
+    working.current = true;
     setBusy(true);
     setError("");
     setNotice("");
     try {
       await action();
       if (!live.current) return;
-      await reload();
       setNotice(message);
       onChanged();
+      await reload();
     } catch (cause) {
-      if (live.current)
+      if (live.current) {
+        setData(null);
+        setLoadState("error");
         setError(cause instanceof Error ? cause.message : "Kunde inte uppdatera matminnet.");
+      }
     } finally {
+      working.current = false;
       if (live.current) setBusy(false);
     }
   }
@@ -130,8 +161,8 @@ export function FoodMemoryPanel({
       <div className="k-actions">
         <button
           className="k-secondary"
-          disabled={busy || offline}
-          onClick={() => void run(reload, "Uppdaterat.")}
+          disabled={busy || offline || loadState === "loading"}
+          onClick={() => void reload()}
         >
           <RefreshCw size={18} />
           Hämta
@@ -145,19 +176,29 @@ export function FoodMemoryPanel({
           Nollställ matminne
         </button>
       </div>
-      {offline && <p role="status">Anslut för att läsa eller ändra ditt matminne.</p>}
+      {offline && <OperationNotice kind="offline">{t("state.memoryOffline")}</OperationNotice>}
+      {!offline && loadState === "loading" && (
+        <OperationNotice kind="loading">{t("state.memoryLoading")}</OperationNotice>
+      )}
+      {!offline && loadState === "error" && (
+        <OperationNotice
+          kind="error"
+          action={{ label: t("state.retryRead"), disabled: busy, onClick: () => void reload() }}
+        >
+          {t("state.memoryFailed")}
+        </OperationNotice>
+      )}
+      {busy && <OperationNotice kind="loading">{t("state.memoryWorking")}</OperationNotice>}
       {error && (
         <p className="k-error" role="alert">
           {error}
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      {!offline && (
+      {!offline && data && loadState === "ready" && (
         <>
           <h2>Bekräftat</h2>
-          {!data ? (
-            <p aria-busy="true">Hämtar matminnet…</p>
-          ) : !preferences.length ? (
+          {!preferences.length ? (
             <p>Inga bekräftade matpreferenser ännu.</p>
           ) : (
             <ul className="food-memory-list">
@@ -420,7 +461,7 @@ export function FoodMemoryPanel({
             </button>
             <button
               className="k-primary"
-              disabled={busy}
+              disabled={busy || offline || loadState !== "ready"}
               onClick={() => {
                 const choice = confirm;
                 if (choice)

@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { scopedClient } from "@/lib/scopedClient";
 import { recipeSchema } from "../kitchen/domain";
 import { chefRequestSchema, memoryEntrySchema, signalSchema, type ChefRequest } from "./domain";
 
@@ -35,8 +36,8 @@ export class ChefError extends Error {
               : status === 422
                 ? "Frågan behöver separat säkerhetsgranskning. AI-förslaget sparades inte."
                 : status === 401 || status === 403
-                  ? "Logga in igen eller kontrollera att AI-kocken är aktiverad i testmiljön."
-                  : "AI-tjänsten kunde inte slutföra anropet. Inget recept eller minne har ändrats.",
+                  ? "Logga in igen eller kontrollera att AI-kocken är tillgänglig för ditt konto."
+                  : "Anropet kunde inte bekräftas. Hämta aktuella uppgifter före nästa ändring.",
     );
   }
 }
@@ -65,9 +66,22 @@ export async function askChef(
     cache: "no-store",
     redirect: "error",
   });
-  const result = await response.json();
-  if (!response.ok) throw new ChefError(response.status, result.error);
-  return resultSchema.parse(result);
+  let result: unknown;
+  try {
+    result = await response.json();
+  } catch {
+    throw new ChefError(response.ok ? 502 : response.status);
+  }
+  if (!response.ok)
+    throw new ChefError(
+      response.status,
+      result && typeof result === "object" && "error" in result && typeof result.error === "string"
+        ? result.error
+        : "",
+    );
+  const parsed = resultSchema.safeParse(result);
+  if (!parsed.success) throw new ChefError(502);
+  return parsed.data;
 }
 async function ensureOwner(owner: string) {
   const { data, error } = await client.auth.getUser();
@@ -115,13 +129,7 @@ export async function changeFoodMemory(
   entry?: z.input<typeof memoryEntrySchema>,
 ) {
   const token = await ownerToken(owner);
-  const scoped = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    {
-      accessToken: async () => token,
-    },
-  );
+  const scoped = scopedClient(token);
   const result = await scoped.rpc("food_memory_change", {
     _action: action,
     _id: id,

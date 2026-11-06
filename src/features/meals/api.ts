@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { versionSchema } from "../kitchen/domain";
@@ -12,6 +12,7 @@ import {
   wineSchema,
 } from "./domain";
 import { mealsEnabled } from "./feature";
+import { scopedClient } from "@/lib/scopedClient";
 
 export class MealsError extends Error {
   constructor(code = "") {
@@ -31,11 +32,7 @@ async function scoped(owner: string): Promise<SupabaseClient> {
   const token = data.session.access_token;
   const verified = await supabase.auth.getUser(token);
   if (verified.error || verified.data.user?.id !== owner) throw new MealsError();
-  const client = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    { accessToken: async () => token },
-  );
+  const client = scopedClient(token);
   const gate = await client.rpc("meals_access");
   if (gate.error || gate.data !== true) throw new MealsError();
   return client;
