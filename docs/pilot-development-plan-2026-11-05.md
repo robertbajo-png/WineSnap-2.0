@@ -26,7 +26,8 @@ weeks, plus owner review and pilot sessions. This is an estimate, not a deadline
    See [the comparison](design/pilot-2026-11-05/README.md).
 2. Shared visual system and navigation: complete in the owned dark installation.
    See [implementation and verification](dark-pilot-ui-2026-11-05.md).
-3. Connected food/wine journeys: pending.
+3. Connected food/wine journeys: complete in the owned dark installation.
+   See [implementation and acceptance](connected-journeys-2026-11-06.md).
 4. Complete and consistent core states: pending.
 5. Actual owned-app regression and controlled installation: pending.
 6. Guided pilot and corrective iteration: pending.

@@ -173,6 +173,12 @@ The owned Update's `-PilotUi Dark` explicitly selects the new experience;
 Ordinary updates preserve the installed `winesnap.pilot-ui` label. `PilotAccept`
 is manual loopback Playwright acceptance with a tagged disposable fixture and
 blocked external/AI requests, not physical-device or public-release proof.
+Pilot stage 3 is installed: `docs/connected-journeys-2026-11-06.md`. Food/wine
+return hashes carry only bounded IDs/servings, never arbitrary return URLs or
+private memory. Resolve exact owned recipe versions and active sessions; do not
+substitute a current version or another bottle for an unavailable explicit target.
+The owned pilot browser check includes both directions and timer-state fingerprints.
+Stage 4 core-state consistency is next; broader release/pilot gates remain pending.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See

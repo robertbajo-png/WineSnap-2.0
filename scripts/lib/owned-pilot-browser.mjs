@@ -130,11 +130,30 @@ export async function acceptOwnedPilotUi(
         return (Math.max(text, background) + 0.05) / (Math.min(text, background) + 0.05);
       });
       if (destructiveContrast !== null) assert.ok(destructiveContrast >= 4.5);
-      await page.screenshot({
+      const screenshot = await page.screenshot({
         path: join(artifactDirectory, `${screen}-${width}.png`),
         fullPage: false,
         animations: "disabled",
       });
+      if (screen === "wine-journey") {
+        const painted = await page.evaluate(async (png) => {
+          const image = new Image();
+          image.src = `data:image/png;base64,${png}`;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = Math.min(140, image.height);
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(image, 0, 0);
+          const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          let textPixels = 0;
+          for (let i = 0; i < data.length; i += 4)
+            if (data[i + 1] > 110 && data[i + 1] > data[i] + 15 && data[i + 1] > data[i + 2] + 8)
+              textPixels++;
+          return textPixels > 40;
+        }, screenshot.toString("base64"));
+        assert.equal(painted, true, "Wine return controls must be painted, not a loading skeleton");
+      }
       report.passed.push(`${screen}_${width}`);
     }
 
