@@ -178,7 +178,11 @@ return hashes carry only bounded IDs/servings, never arbitrary return URLs or
 private memory. Resolve exact owned recipe versions and active sessions; do not
 substitute a current version or another bottle for an unavailable explicit target.
 The owned pilot browser check includes both directions and timer-state fingerprints.
-Stage 4 core-state consistency is next; broader release/pilot gates remain pending.
+Pilot stage 4 is installed and verified: `docs/core-states-2026-11-06.md`.
+Preserve explicit AI retries, owner-bound save IDs/tokens and read reconciliation
+before retrying uncertain wine inserts. Browser fault probes use synthetic AI,
+not provider calls; separate Offline acceptance covers real network loss and SW.
+Stage 5 broader five-journey regression is next; release/pilot gates remain pending.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See
