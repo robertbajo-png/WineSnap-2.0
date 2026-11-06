@@ -47,7 +47,11 @@ export async function saveScanOnce<T extends SavedRow>(
     }
     const sqlCode = cause && typeof cause === "object" && "code" in cause ? cause.code : null;
     throw new ScanSaveError(
-      !(typeof sqlCode === "string" && sqlCode !== "23505" && /^[0-9A-Z]{5}$/.test(sqlCode)),
+      !(
+        typeof sqlCode === "string" &&
+        sqlCode !== "23505" &&
+        /^(22|23|42)[0-9A-Z]{3}$/.test(sqlCode)
+      ),
     );
   }
 }

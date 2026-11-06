@@ -96,4 +96,17 @@ describe("explicit scan-save reconciliation", () => {
       }),
     ).rejects.toMatchObject({ uncertain: false });
   });
+  it.each(["08006", "08007", "40003", "23505", "PGRST000"])(
+    "keeps connection and unresolved completion errors uncertain: %s",
+    async (code) => {
+      await expect(
+        saveScanOnce(intent(), {
+          find: async () => null,
+          insert: async () => {
+            throw { code };
+          },
+        }),
+      ).rejects.toMatchObject({ uncertain: true });
+    },
+  );
 });
