@@ -212,13 +212,17 @@ export async function acceptOwnedPilotUi(
       await page.getByRole("link", { name: "Tillbaka till receptet", exact: true }).waitFor();
       await capture("wine-journey", width);
       const returnUrl = new URL(
-        await page.getByRole("link", { name: "Tillbaka till receptet", exact: true }).getAttribute("href"),
+        await page
+          .getByRole("link", { name: "Tillbaka till receptet", exact: true })
+          .getAttribute("href"),
         ownedApp,
       );
       assert.equal(returnUrl.pathname, "/kitchen");
       assert.equal(returnUrl.hash.split("?")[0], "#recipes");
       await page.getByRole("link", { name: "Tillbaka till receptet", exact: true }).press("Enter");
-      await page.waitForURL((url) => url.pathname === "/kitchen" && url.hash.startsWith("#recipes?"));
+      await page.waitForURL(
+        (url) => url.pathname === "/kitchen" && url.hash.startsWith("#recipes?"),
+      );
       await page.locator(".k-detail h1").waitFor();
       assert.equal(await page.locator(".k-detail .k-portions strong").textContent(), "4");
       await page.reload({ waitUntil: "domcontentloaded" });
@@ -376,7 +380,8 @@ export async function acceptOwnedPilotUi(
       const url = new URL(page.url());
       report.failedPath = url.pathname.startsWith("/wine/") ? "/wine/:fixture" : url.pathname;
       const view = url.hash.slice(1).split("?")[0];
-      if (/^(recipes|pairings|cook|chef|memory|nutrition|kitchen)$/.test(view)) report.failedView = view;
+      if (/^(recipes|pairings|cook|chef|memory|nutrition|kitchen)$/.test(view))
+        report.failedView = view;
     }
     if (/^[A-Za-z]*Error$/.test(error?.name ?? "")) report.errorKind = error.name;
     if (error?.code === "ERR_ASSERTION") {

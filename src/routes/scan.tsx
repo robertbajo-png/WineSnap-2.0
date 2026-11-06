@@ -112,7 +112,6 @@ function ScanPage() {
     setPreviewUrl(null);
     setScopeOwner(user?.id);
     // Every account has an independent review/attempt scope, including logout.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const reportAnalysisFailure = async (error: unknown, attempt: number) => {
