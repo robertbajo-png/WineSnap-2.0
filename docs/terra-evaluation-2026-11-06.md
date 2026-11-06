@@ -57,6 +57,26 @@ reported input usage.
 The final single-image diagnostic and canary cost approximately USD 0.00345;
 all three invocations together made 22 provider requests, approximately USD 0.04438.
 
+## Sol Follow-Up
+
+At the owner's request, the failing original-image case was rerun three times
+using `gpt-6.1-sol` through the existing application label client and its Chat
+Completions endpoint. Prompts, image, JSON schema, confidence/evidence validation
+and acceptance criteria were unchanged. All three passed: the validated producer
+was `ZEHN MORGEN`, vintage was `2023`, and the name and split year were transcribed.
+The synthetic fixture checks and exact-account cleanup also passed.
+
+This invocation made four successful provider requests including a small
+availability canary: 6,295 input tokens (1,792 cached), 2,029 output tokens,
+approximately USD 0.02948 at the published standard Sol rates. It did not save
+the scanned wine or change the running application. Sol was already the ordinary
+label default and remains selected; the other running workloads were not switched
+to Terra. This narrow result supports keeping Sol for scanning, not a general
+claim that Sol always identifies every wine correctly.
+
+Sol image-only report: `dist/ai-sol-image-evaluation/report.json`.
+Reference: [Sol model](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+
 ## Repeat Safely
 
 Run only on the existing owned Windows installation, from PowerShell 7:
@@ -64,6 +84,7 @@ Run only on the existing owned Windows installation, from PowerShell 7:
 ```powershell
 ./scripts/test-owned-terra.ps1
 ./scripts/test-owned-terra.ps1 -ImageOnly
+./scripts/test-owned-terra.ps1 -SolImage
 ```
 
 `-ImageAttempts 1` optionally bounds an image-only diagnostic to one repetition.
@@ -73,6 +94,7 @@ pipes credentials privately and binds the worker tree to its lifetime. Each
 invocation is limited to 20 provider requests, 8,192 output tokens per request,
 45 seconds per provider request, no redirects, no retries and no model fallback.
 Provider storage is disabled with `store: false`.
+Sol mode implies image-only and uses at most four requests, including its canary.
 
 Credential-free reports are generated under `dist/ai-terra-evaluation` and
 `dist/ai-terra-image-evaluation`. A nonzero exit is expected when a quality check

@@ -1,12 +1,60 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createTerraEvaluationFactory,
+  createSolImageEvaluationFactory,
+  solModel,
   terraCompletion,
   terraModel,
   terraRequest,
 } from "../../scripts/lib/terra-evaluation-client";
 
 describe("isolated Terra evaluation transport", () => {
+  it("uses the existing Sol image transport with the same schema and no model fallback", async () => {
+    const sample = vi.fn();
+    const send = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      Response.json({
+        model: solModel,
+        choices: [{ finish_reason: "stop", message: { content: "{}" } }],
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 30,
+          prompt_tokens_details: { cached_tokens: 20 },
+          completion_tokens_details: { reasoning_tokens: 5 },
+        },
+      }),
+    );
+    const factory = createSolImageEvaluationFactory("sk-" + "x".repeat(30), sample, send);
+    expect(() => factory("fast", () => undefined)).toThrow("image-only");
+    const client = factory("labelReading", () => undefined);
+    const response = await client.complete({
+      messages: [],
+      reasoning_effort: "low",
+      response_format: { type: "json_schema" },
+      max_completion_tokens: 8192,
+    });
+    expect(response.status).toBe(200);
+    expect(send.mock.calls[0][0]).toBe("https://api.openai.com/v1/chat/completions");
+    expect(JSON.parse(String(send.mock.calls[0][1]?.body))).toMatchObject({
+      model: solModel,
+      store: false,
+      stream: false,
+      reasoning_effort: "low",
+      max_completion_tokens: 8192,
+      response_format: { type: "json_schema" },
+    });
+    expect(sample).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: solModel,
+        inputTokens: 100,
+        outputTokens: 30,
+        cachedTokens: 20,
+        reasoningTokens: 5,
+      }),
+    );
+    for (let i = 0; i < 3; i++) await client.complete({ messages: [] });
+    await expect(client.complete({ messages: [] })).rejects.toThrow("limit reached");
+    expect(send).toHaveBeenCalledTimes(4);
+  });
   it("pins the exact model, disables storage, and preserves image and JSON contracts", () => {
     const result = terraRequest({
       model: "do-not-use",

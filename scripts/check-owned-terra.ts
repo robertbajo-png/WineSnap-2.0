@@ -16,6 +16,8 @@ import {
 import { acceptOwnedFeatures } from "./lib/owned-features.mjs";
 import {
   createTerraEvaluationFactory,
+  createSolImageEvaluationFactory,
+  solModel,
   terraModel,
   type TerraSample,
 } from "./lib/terra-evaluation-client";
@@ -39,10 +41,12 @@ type Context = {
 };
 type Case = { name: string; passed: boolean; status?: number; durationMs: number; detail?: string };
 const imageOnly = process.env.WINESNAP_OWNED_TERRA_IMAGE_ONLY === "1";
+const solImage = process.env.WINESNAP_OWNED_SOL_IMAGE === "1";
+const evaluationModel = solImage ? solModel : terraModel;
 const imageAttempts = Number(process.env.WINESNAP_OWNED_TERRA_IMAGE_ATTEMPTS ?? 3);
 const report = {
   project: "winesnap-owned-local",
-  model: terraModel,
+  model: evaluationModel,
   completed: false,
   productionTouched: false,
   configurationChanged: false,
@@ -70,7 +74,11 @@ let keys: ReturnType<typeof validateOwnedKeys> | undefined,
 const chunks: Buffer[] = [];
 const directory = join(
   import.meta.dirname,
-  imageOnly ? "../dist/ai-terra-image-evaluation" : "../dist/ai-terra-evaluation",
+  solImage
+    ? "../dist/ai-sol-image-evaluation"
+    : imageOnly
+      ? "../dist/ai-terra-image-evaluation"
+      : "../dist/ai-terra-evaluation",
 );
 const progress = async (phase: string) => {
   report.phase = phase;
@@ -79,7 +87,7 @@ const progress = async (phase: string) => {
     join(directory, "progress.json"),
     JSON.stringify({
       phase,
-      model: terraModel,
+      model: evaluationModel,
       cases: report.cases.map((c) => ({ name: c.name, passed: c.passed })),
       providerCalls: report.samples.length,
     }),
@@ -91,7 +99,10 @@ const checkedFetch: typeof fetch = async (url, init) => {
   assert.ok(
     u.origin === ownedApi ||
       (u.origin === "https://api.openai.com" &&
-        ["/v1/responses", `/v1/models/${terraModel}`].includes(u.pathname)),
+        [
+          solImage ? "/v1/chat/completions" : "/v1/responses",
+          `/v1/models/${evaluationModel}`,
+        ].includes(u.pathname)),
   );
   return nativeFetch(url, {
     ...init,
@@ -160,6 +171,7 @@ async function fixturesImages() {
 try {
   assert.equal(process.platform, "win32");
   assert.equal(process.env.WINESNAP_OWNED_TERRA_PIPE, "1");
+  assert.ok(!solImage || imageOnly);
   assert.ok(Number.isInteger(imageAttempts) && imageAttempts >= 1 && imageAttempts <= 3);
   assert.ok(!process.stdin.isTTY && !process.stdout.isTTY);
   let size = 0;
@@ -182,12 +194,12 @@ try {
     assert.equal(c.State.Running, true);
   }
   await progress("model_access");
-  const available = await checkedFetch(`https://api.openai.com/v1/models/${terraModel}`, {
+  const available = await checkedFetch(`https://api.openai.com/v1/models/${evaluationModel}`, {
     headers: { Authorization: `Bearer ${keys.openai}` },
   });
   if (!available.ok) throw new Error(`model_access_${available.status}`);
-  assert.equal((await available.json()).id, terraModel);
-  const factory = createTerraEvaluationFactory(
+  assert.equal((await available.json()).id, evaluationModel);
+  const factory = (solImage ? createSolImageEvaluationFactory : createTerraEvaluationFactory)(
     keys.openai,
     (value) => report.samples.push({ ...value, scenario }),
     checkedFetch,
@@ -195,8 +207,8 @@ try {
   const candidate = factory("labelReading", () => undefined);
   const ping = await candidate.complete({
     messages: [{ role: "user", content: "Reply with OK." }],
-    reasoning_effort: "none",
-    max_tokens: 64,
+    reasoning_effort: solImage ? "low" : "none",
+    max_completion_tokens: solImage ? 256 : 64,
   });
   if (!ping.ok) throw new Error(`model_generation_${ping.status}`);
   const publicKey = ownedToken(keys, "anon"),
@@ -428,7 +440,10 @@ try {
     totals: {
       ...tokens,
       providerCalls: report.samples.length,
-      estimatedUsd: (tokens.input - tokens.cached + tokens.cached * 0.05 + tokens.output * 5) / 1e6,
+      estimatedUsd:
+        ((tokens.input - tokens.cached + tokens.cached * 0.05 + tokens.output * 5) *
+          (solImage ? 2 : 1)) /
+        1e6,
     },
     checkedAt: new Date().toISOString(),
   };

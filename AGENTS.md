@@ -106,6 +106,10 @@ synthetic accounts may enter its handler dispatcher. No deployed model or
 configuration is changed. `-ImageOnly` repeats the approved original-label
 fixture without rerunning the other live scenarios. See
 `docs/terra-evaluation-2026-11-06.md`; failed quality checks must remain failures.
+`-SolImage` runs only the original-image comparison through the existing Sol
+label client (at most four provider requests including its canary). It does
+not enable Terra or change any running model. Sol passed all three follow-up
+image checks; the ordinary label default remains Sol.
 For interactive browser acceptance, `BrowserPrepare` creates a separate local
 fixture and sends a normal sign-in link only to the local inbox. `BrowserInspect`
 reads its cooking state; `BrowserMemory` separately makes one live Gemini

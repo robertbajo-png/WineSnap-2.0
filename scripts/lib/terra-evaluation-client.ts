@@ -1,6 +1,7 @@
-import type { createAiClient } from "../../supabase/functions/_shared/aiClient.ts";
+import { createAiClient } from "../../supabase/functions/_shared/aiClient.ts";
 
 export const terraModel = "gpt-6.1-terra";
+export const solModel = "gpt-6.1-sol";
 export type TerraSample = {
   status: number;
   durationMs: number;
@@ -165,4 +166,45 @@ export function createTerraEvaluationFactory(
       );
     },
   });
+}
+
+// Compare the failing image using the deployed Sol transport, not the Terra bridge.
+export function createSolImageEvaluationFactory(
+  key: string,
+  sample: (value: TerraSample) => void,
+  send: typeof fetch = fetch,
+): typeof createAiClient {
+  let requests = 0;
+  return (workload) => {
+    if (workload !== "labelReading") throw new Error("Sol evaluation is image-only");
+    return createAiClient(
+      workload,
+      (name) =>
+        name === "OPENAI_API_KEY" ? key : name === "OPENAI_LABEL_MODEL" ? solModel : undefined,
+      async (url, init) => {
+        if (++requests > 4) throw new Error("Sol image evaluation limit reached");
+        const started = Date.now();
+        const response = await send(url, init);
+        const data = await response
+          .clone()
+          .json()
+          .catch(() => ({}));
+        const usage = data.usage ?? {};
+        sample({
+          status: response.status,
+          durationMs: Date.now() - started,
+          inputTokens: usage.prompt_tokens ?? 0,
+          outputTokens: usage.completion_tokens ?? 0,
+          cachedTokens: usage.prompt_tokens_details?.cached_tokens ?? 0,
+          reasoningTokens: usage.completion_tokens_details?.reasoning_tokens ?? 0,
+          model:
+            typeof data.model === "string" && /^gpt-[a-z0-9.-]{1,100}$/.test(data.model)
+              ? data.model
+              : solModel,
+          kind: JSON.parse(String(init?.body)).response_format ? "json_schema" : "text",
+        });
+        return response;
+      },
+    );
+  };
 }

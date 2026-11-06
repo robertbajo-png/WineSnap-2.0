@@ -14,6 +14,7 @@ describe("manual Terra evaluation boundaries", () => {
     expect(source).toContain("$process.StandardInput.Write($payload)");
     expect(source).toContain("$job.Assign($process.Handle)");
     expect(source).toContain("$err.GetAwaiter().GetResult()|Out-Null");
+    expect(source).toContain("if($SolImage){$ImageOnly=$true}");
     expect(source).not.toMatch(/Set-Content|WriteAllText|winesnap\.boleoai\.se|\.supabase\.co/);
   });
   it("runs actual factories only for administrator-tagged synthetic fixture accounts", () => {
@@ -26,6 +27,8 @@ describe("manual Terra evaluation boundaries", () => {
     expect(source).toContain("beforeCleanup:");
     expect(source).toContain("report.cleanupCompleted = backend.cleanupCompleted");
     expect(source).toContain("report.cases.every((c) => c.passed)");
+    expect(source).toContain("assert.ok(!solImage || imageOnly)");
+    expect(source).toContain("../dist/ai-sol-image-evaluation");
     expect(source).not.toMatch(/\.supabase\.co|createServer|listen\(|loadCredentials\(/);
     for (const name of [
       "analyze-wine",

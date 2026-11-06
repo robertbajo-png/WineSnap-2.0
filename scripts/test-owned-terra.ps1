@@ -1,10 +1,12 @@
-param([switch]$ImageOnly,[ValidateRange(1,3)][int]$ImageAttempts=3)
+param([switch]$ImageOnly,[ValidateRange(1,3)][int]$ImageAttempts=3,[switch]$SolImage)
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
+if($SolImage){$ImageOnly=$true}
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 $directory=Assert-OwnedRuntimeDirectory
 $lock=$null;$keys=$null;$provider=$null;$process=$null;$start=$null;$job=$null;$payload=$null
 $report=[ordered]@{project='winesnap-owned-local';model='gpt-6.1-terra';completed=$false;productionTouched=$false;configurationChanged=$false}
+if($SolImage){$report.model='gpt-6.1-sol'}
 function Assert-Private([string]$Path){
   $item=Get-Item -LiteralPath $Path -Force
   if($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $item.Length -gt 32KB){throw 'Unsafe private input.'}
@@ -32,6 +34,7 @@ try{
   foreach($name in @('PATH','PATHEXT','COMSPEC','SystemRoot','WINDIR','SystemDrive','ProgramData','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP')){$value=[Environment]::GetEnvironmentVariable($name);if($value){$start.Environment[$name]=$value}}
   $start.Environment['WINESNAP_OWNED_TERRA_PIPE']='1'
   if($ImageOnly){$start.Environment['WINESNAP_OWNED_TERRA_IMAGE_ONLY']='1';$start.Environment['WINESNAP_OWNED_TERRA_IMAGE_ATTEMPTS']=[string]$ImageAttempts}
+  if($SolImage){$start.Environment['WINESNAP_OWNED_SOL_IMAGE']='1'}
   $start.ArgumentList.Add('--import');$start.ArgumentList.Add('tsx');$start.ArgumentList.Add((Join-Path $PSScriptRoot 'check-owned-terra.ts'))
   $process=[Diagnostics.Process]::Start($start);$job.Assign($process.Handle)
   $out=$process.StandardOutput.ReadToEndAsync();$err=$process.StandardError.ReadToEndAsync()
