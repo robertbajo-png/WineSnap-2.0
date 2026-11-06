@@ -1,4 +1,13 @@
-import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -581,7 +590,10 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const document = local?.version.document;
   const step = document && state ? document.steps[state.activeStep] : null;
   const cacheOwner = cache?.owner;
-  const journey = pilotUiEnabled ? readKitchenJourney(journeyHash) : { kind: "none" as const };
+  const journey = useMemo(
+    () => (pilotUiEnabled ? readKitchenJourney(journeyHash) : { kind: "none" as const }),
+    [journeyHash],
+  );
   const requestedRecipe =
     journey.kind === "ready" && cache
       ? resolveJourneyRecipe(journey.destination, owner, cache.versions, cache.session)
