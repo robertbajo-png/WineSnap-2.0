@@ -99,6 +99,13 @@ Zehn Morgen WebP through the installed AI path with a disposable fixture, then
 checks save/image/restart/erasure. Never schedule it or infer that its loopback
 browser proves public-owner/mobile acceptance. Keep provider-scenario accounting
 separate from the test browser's forbidden external-network counter.
+`test-owned-terra.ps1` is a manual, isolated `gpt-6.1-terra` evaluation. Never
+invoke `check-owned-terra.ts` directly: it consumes private stdin credentials.
+The wrapper reuses CurrentUser-protected owned keys; only administrator-tagged
+synthetic accounts may enter its handler dispatcher. No deployed model or
+configuration is changed. `-ImageOnly` repeats the approved original-label
+fixture without rerunning the other live scenarios. See
+`docs/terra-evaluation-2026-11-06.md`; failed quality checks must remain failures.
 For interactive browser acceptance, `BrowserPrepare` creates a separate local
 fixture and sends a normal sign-in link only to the local inbox. `BrowserInspect`
 reads its cooking state; `BrowserMemory` separately makes one live Gemini

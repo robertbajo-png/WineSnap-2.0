@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AiAccessOptions } from "./aiAccess.ts";
+import type { createAiClient } from "./aiClient.ts";
 
 // Runtime dependencies are injected; the shared handlers never read process globals.
 export type AiRuntime = {
+  aiClient?: typeof createAiClient;
   env: (name: string) => string | undefined;
   createClient: (
     url: string,

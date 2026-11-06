@@ -313,7 +313,7 @@ describe("Edge migration integrity", () => {
       name === "analyze-wine" ? "await dependencies.requireAccess(" : "await requireAiAccess(",
     );
     expect(guard).toBeGreaterThanOrEqual(0);
-    expect(guard).toBeLessThan(source.indexOf('createAiClient("'));
+    expect(guard).toBeLessThan(source.indexOf('(dependencies.aiClient ?? createAiClient)("'));
     expect(source).toContain("instanceof AiConfigurationError");
     expect(source).toContain("503");
     expect(source).not.toMatch(/ai\.gateway\.lovable|LOVABLE_API_KEY/);

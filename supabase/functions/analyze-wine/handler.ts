@@ -157,6 +157,7 @@ const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/heic", "im
 const MAX_BASE64_CHARS = 18_000_000; // ~13 MB binary
 
 export function createLabelReader(dependencies: {
+  aiClient?: typeof createAiClient;
   env: (name: string) => string | undefined;
   requireAccess: (req: Request, options: AiAccessOptions) => Promise<Response | { userId: string }>;
 }) {
@@ -190,7 +191,7 @@ export function createLabelReader(dependencies: {
         ? String(mimeType).toLowerCase()
         : "image/jpeg";
 
-      const ai = createAiClient("labelReading", dependencies.env);
+      const ai = (dependencies.aiClient ?? createAiClient)("labelReading", dependencies.env);
 
       let userContent: unknown;
       if (imageBase64 || imageUrl) {

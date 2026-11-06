@@ -118,7 +118,7 @@ describe("Direct provider workload routing", () => {
     "supabase/functions/restaurant-match/handler.ts",
   ])("uses the direct Flash client in %s", (path) => {
     const source = read(path);
-    expect(source).toContain('createAiClient("fast",');
+    expect(source).toContain('(dependencies.aiClient ?? createAiClient)("fast",');
     expect(source).toContain("await ai.complete(");
     expect(source).not.toContain("ai.gateway.lovable.dev");
     expect(source).not.toContain("LOVABLE_API_KEY");
@@ -128,7 +128,7 @@ describe("Direct provider workload routing", () => {
 
   it("stores the same model ID that Ask actually requests", () => {
     const source = read("supabase/functions/ask-winesnap/handler.ts");
-    expect(source).toContain('createAiClient("fast",');
+    expect(source).toContain('(dependencies.aiClient ?? createAiClient)("fast",');
     expect(source).toContain("await ai.complete(");
     expect(source).toContain("_model: ai.model,");
   });

@@ -86,7 +86,7 @@ export function createHandler(dependencies: AiRuntime) {
       if (!supabaseUrl || !serviceRoleKey) {
         throw new Error("Server configuration error");
       }
-      const ai = createAiClient("fast", env);
+      const ai = (dependencies.aiClient ?? createAiClient)("fast", env);
 
       const admin = createClient(supabaseUrl, serviceRoleKey, {
         auth: { persistSession: false, autoRefreshToken: false },

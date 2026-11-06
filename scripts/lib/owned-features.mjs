@@ -11,7 +11,10 @@ import {
 
 // Backend acceptance only. UI checks use the user's browser separately; no real
 // account, saved preference, gate or provider configuration is changed here.
-export async function acceptOwnedFeatures(keys, { liveAi = false, progress = () => {} } = {}) {
+export async function acceptOwnedFeatures(
+  keys,
+  { liveAi = false, progress = () => {}, beforeCleanup } = {},
+) {
   validateOwnedKeys(keys);
   assert.equal(typeof liveAi, "boolean");
   const run = randomUUID();
@@ -101,6 +104,7 @@ export async function acceptOwnedFeatures(keys, { liveAi = false, progress = () 
           password,
           email_confirm: true,
           user_metadata: { owned_feature_run: run },
+          app_metadata: { owned_feature_run: run },
         }),
       ).user;
       assert.ok(created?.id);
@@ -644,6 +648,12 @@ export async function acceptOwnedFeatures(keys, { liveAi = false, progress = () 
       assert.equal(response.model, null);
       assert.equal(response.inputTokens, 0);
     });
+    if (beforeCleanup) {
+      assert.equal(typeof beforeCleanup, "function");
+      await check("additional_model_scenarios", () =>
+        beforeCleanup({ owner, peer, wine, version, session, feedback }),
+      );
+    }
   } finally {
     progress("cleanup");
     let failures = 0;
@@ -652,6 +662,7 @@ export async function acceptOwnedFeatures(keys, { liveAi = false, progress = () 
         const found = ok(await admin.auth.admin.getUserById(user.id)).user;
         assert.equal(found.email, user.email);
         assert.equal(found.user_metadata.owned_feature_run, run);
+        assert.equal(found.app_metadata.owned_feature_run, run);
         ok(await admin.auth.admin.deleteUser(user.id));
         const removed = await admin.auth.admin.getUserById(user.id);
         assert.equal(removed.error?.status, 404);
