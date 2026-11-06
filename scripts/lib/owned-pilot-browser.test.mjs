@@ -19,5 +19,9 @@ describe("owned pilot browser acceptance boundary", () => {
     expect(source).toContain('ownedBrowserFixture(keys, "cleanup", fixture)');
     expect(source).not.toContain("storageState(");
     expect(source).not.toContain("launchPersistentContext");
+    expect(source).toContain("afterJourney.stateFingerprint, beforeJourney.stateFingerprint");
+    expect(source).toContain("recipe_wine_roundtrip_");
+    expect(source).toContain("wine_recipe_roundtrip");
+    expect(source).toContain("missing_recipe_not_substituted");
   });
 });

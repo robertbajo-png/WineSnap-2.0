@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -69,6 +69,12 @@ import { FoodMemoryPanel } from "../chef/FoodMemoryPanel";
 import { emptyChefContext } from "../chef/domain";
 import { mealsEnabled } from "../meals/feature";
 import { nutritionEnabled } from "../nutrition/feature";
+import {
+  kitchenJourneyHash,
+  readKitchenJourney,
+  resolveJourneyRecipe,
+  wineJourneyHash,
+} from "./journey";
 const NutritionPage = lazy(() =>
   import("../nutrition/NutritionPanel").then((m) => ({ default: m.NutritionPage })),
 );
@@ -543,6 +549,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const kitchen = useKitchen(owner);
   const { cache, busy, ready, offline, error, conflict } = kitchen;
   const [tab, setTab] = useState("library");
+  const [journeyHash, setJourneyHash] = useState("");
+  const appliedJourney = useRef("");
   const [chefOpening, setChefOpening] = useState<ChefOpening>({
     mode: "chat",
     context: emptyChefContext,
@@ -573,6 +581,25 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const document = local?.version.document;
   const step = document && state ? document.steps[state.activeStep] : null;
   const cacheOwner = cache?.owner;
+  const journey = pilotUiEnabled ? readKitchenJourney(journeyHash) : { kind: "none" as const };
+  const requestedRecipe =
+    journey.kind === "ready" && cache
+      ? resolveJourneyRecipe(journey.destination, owner, cache.versions, cache.session)
+      : undefined;
+  const journeyUnavailable =
+    ready && !!cache && (journey.kind === "invalid" || requestedRecipe === null);
+  useEffect(() => {
+    if (!pilotUiEnabled || !ready || !cache) return;
+    const key = `${owner}:${journeyHash}:${requestedRecipe?.id ?? ""}`;
+    if (appliedJourney.current === key) return;
+    appliedJourney.current = key;
+    if (journey.kind === "ready" && requestedRecipe) {
+      setSelected(journey.destination.view === "recipes" ? requestedRecipe : null);
+      setPairingRecipe(journey.destination.view === "pairings" ? requestedRecipe : undefined);
+      setServings(journey.destination.servings ?? requestedRecipe.document.servings);
+      setSelectedPast(null);
+    }
+  }, [ready, cache, journeyHash, requestedRecipe, journey, owner]);
   useEffect(() => {
     if (!ready || !cacheOwner || !navigator.onLine || !("serviceWorker" in navigator)) return;
     void navigator.serviceWorker.ready
@@ -584,6 +611,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   useEffect(() => {
     const route = () => {
       const hash = window.location.hash.slice(1).split("?")[0];
+      setJourneyHash(window.location.hash);
       setTab(
         hash === "cook" ||
           (chefEnabled && ["chef", "memory"].includes(hash)) ||
@@ -627,12 +655,33 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       : "recipes";
     setTab(next);
   };
-  const openRecipe = (version: RecipeVersion) => {
-    window.location.hash = "recipes";
+  const openRecipe = (version: RecipeVersion, wine?: string) => {
+    window.location.hash = pilotUiEnabled
+      ? kitchenJourneyHash({
+          view: "recipes",
+          recipe: version.id,
+          servings: version.document.servings,
+          ...(wine ? { wine } : {}),
+        })
+      : "recipes";
     setSelected(version);
     setServings(version.document.servings);
     setHistory(null);
     setTab("library");
+  };
+  const openPairings = (version: RecipeVersion, fromCook = false) => {
+    setPairingRecipe(version);
+    if (pilotUiEnabled) {
+      setSelected(null);
+      setSelectedPast(null);
+      window.location.hash = kitchenJourneyHash({
+        view: "pairings",
+        recipe: version.id,
+        servings: fromCook && local ? local.state.servings : servings,
+        ...(fromCook && local ? { session: local.id, fromCook: true } : {}),
+      });
+      setTab("pairings");
+    } else navigate("pairings");
   };
   const edit = (document: RecipeDocument, version?: RecipeVersion) =>
     setEditor({
@@ -836,742 +885,790 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           </section>
         ) : (
           <>
-            <Suspense fallback={<p aria-busy="true">Öppnar…</p>}>
-              {nutritionEnabled && tab === "nutrition" && (
-                <NutritionPage
-                  key={`${owner}:${nutritionVersion?.id ?? "library"}:${nutritionServings ?? ""}`}
-                  versions={cache.versions}
-                  initial={nutritionVersion}
-                  initialServings={nutritionServings}
-                  onAdapt={
-                    chefEnabled && !offline
-                      ? (version, prompt) =>
-                          openChef(
-                            {
-                              mode: "adapt",
-                              context: { ...emptyChefContext, recipeVersionId: version.id },
-                              title: version.document.title,
-                              initialPrompt: prompt,
-                              initialServings: version.document.servings,
-                            },
-                            version,
-                          )
-                      : undefined
-                  }
-                />
-              )}
-              {mealsEnabled && tab === "pairings" && (
-                <PairingPanel
-                  owner={owner}
-                  versions={cache.versions}
-                  initial={pairingRecipe}
-                  onOpen={(document, version) => (version ? openRecipe(version) : edit(document))}
-                />
-              )}
-              {mealsEnabled && tab === "family" && <FamilyPanel owner={owner} />}
-              {mealsEnabled && tab === "meals" && (
-                <MealHistoryPanel
-                  owner={owner}
-                  sessions={cache.history}
-                  initialSession={mealSession}
-                />
-              )}
-            </Suspense>
-            {chefEnabled && tab === "chef" && (
-              <ChefPanel
-                key={`${owner}:${chefEpoch}`}
-                owner={owner}
-                opening={chefOpening}
-                offline={offline}
-                onReview={(draft) =>
-                  edit(
-                    draft,
-                    chefSource
-                      ? (cache.versions.find((v) => v.recipe_id === chefSource.recipe_id) ??
-                          chefSource)
-                      : undefined,
-                  )
-                }
-              />
-            )}
-            {chefEnabled && tab === "memory" && (
-              <FoodMemoryPanel
-                owner={owner}
-                offline={offline}
-                onChanged={() => setChefEpoch((epoch) => epoch + 1)}
-              />
-            )}
-            {tab === "library" && !selected && (
-              <>
-                <div className="k-title-row">
-                  <div>
-                    <p className="k-eyebrow">Din kokbok</p>
-                    <h1>Vad lagar vi idag?</h1>
-                  </div>
-                  <button
-                    className="k-primary"
-                    disabled={busy || offline}
-                    onClick={() => edit(blankRecipe())}
-                  >
-                    <Plus size={18} />
-                    <span>Nytt recept</span>
-                  </button>
-                </div>
-                {chefEnabled && (
-                  <button
-                    className="k-text"
-                    disabled={offline || busy}
-                    onClick={() =>
-                      openChef({
-                        mode: "generate",
-                        context: emptyChefContext,
-                        title: "Nytt recept",
-                      })
-                    }
-                  >
-                    <Sparkles size={18} />
-                    Skapa med AI
-                  </button>
-                )}
-                {cooking && (
-                  <button className="k-resume" onClick={() => navigate("cook")}>
-                    <CookingPot size={22} />
-                    <span>
-                      <strong>{document?.title}</strong>
-                      <small>
-                        Steg {(state?.activeStep ?? 0) + 1} ·{" "}
-                        {state?.status === "paused" ? "Pausad" : "Pågår"}
-                      </small>
-                    </span>
-                    <ArrowRight size={21} />
-                  </button>
-                )}
-                <label className="k-search">
-                  <Search size={20} />
-                  <span className="sr-only">Sök recept</span>
-                  <input
-                    type="search"
-                    placeholder="Sök recept eller ingrediens"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </label>
-                {cache.versions.length ? (
-                  <div className="k-recipe-grid">
-                    {cache.versions
-                      .filter((version) =>
-                        `${version.document.title} ${version.document.ingredients.map((item) => item.name).join(" ")}`
-                          .toLocaleLowerCase("sv-SE")
-                          .includes(search.toLocaleLowerCase("sv-SE")),
-                      )
-                      .map((version) => (
-                        <button
-                          className="k-recipe"
-                          key={version.id}
-                          onClick={() => openRecipe(version)}
-                        >
-                          {recipeImages[version.document.image] ? (
-                            <img
-                              src={recipeImages[version.document.image]}
-                              alt={version.document.title}
-                            />
-                          ) : (
-                            <div className="k-recipe-placeholder">
-                              <CookingPot size={44} />
-                            </div>
-                          )}
-                          <div>
-                            <h2>{version.document.title}</h2>
-                            <p>
-                              <Clock3 size={15} />
-                              {version.document.totalMinutes} min{" "}
-                              <span>· {version.document.servings} portioner</span>
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                ) : (
-                  <section className="k-empty">
-                    <BookOpen size={28} />
-                    <h2>Din första sida i kokboken</h2>
-                    <p>Spara ett eget recept eller börja med något av recepten nedan.</p>
-                  </section>
-                )}
-                {cache.versions.length > 0 &&
-                  search &&
-                  !cache.versions.some((version) =>
-                    `${version.document.title} ${version.document.ingredients.map((item) => item.name).join(" ")}`
-                      .toLowerCase()
-                      .includes(search.toLowerCase()),
-                  ) && <p>Inga recept matchar sökningen.</p>}
-                {!!cache.history.length && (
-                  <section className="k-starting">
-                    <h2>Senast lagat</h2>
-                    <div className="k-history">
-                      {cache.history.map((session) => (
-                        <button
-                          key={session.id}
-                          onClick={() => {
-                            setSelectedPast(session);
-                            setSelected(null);
-                            setTab("cook");
-                            window.location.hash = "cook";
-                          }}
-                        >
-                          <span>{session.version.document.title}</span>
-                          <span>
-                            {session.state.status === "abandoned"
-                              ? "Avbruten"
-                              : session.feedback?.rating
-                                ? `${session.feedback.rating}/5`
-                                : "Avslutad"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                )}
-                <section className="k-starting">
-                  <h2>Att börja med</h2>
-                  <div className="k-starting-list">
-                    {startingRecipes.map((recipe) => (
-                      <button
-                        key={recipe.title}
-                        disabled={offline || busy}
-                        onClick={() => edit(recipe)}
-                      >
-                        <img src={recipeImages[recipe.image]} alt="" />
-                        <span>
-                          <strong>{recipe.title}</strong>
-                          <small>
-                            {recipe.totalMinutes} min · {recipe.servings} portioner
-                          </small>
-                        </span>
-                        <Plus size={20} />
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              </>
-            )}
-            {tab === "library" && selected && (
-              <article className="k-detail">
-                <button className="k-text" onClick={() => setSelected(null)}>
-                  <ArrowLeft size={18} />
-                  Kokboken
-                </button>
-                {recipeImages[selected.document.image] && (
-                  <img
-                    className="k-detail-image"
-                    src={recipeImages[selected.document.image]}
-                    alt={selected.document.title}
-                  />
-                )}
-                <p className="k-eyebrow">
-                  Version {selected.revision} · {selected.document.totalMinutes} min
-                </p>
-                <h1>{selected.document.title}</h1>
-                <p className="k-description">{selected.document.description}</p>
-                {nutritionEnabled && (
-                  <button
-                    className="k-text"
-                    onClick={() => {
-                      setNutritionVersion(selected);
-                      setNutritionServings(servings);
-                      navigate("nutrition");
-                    }}
-                  >
-                    <Scale size={18} />
-                    Kolhydrater & ingrediensbyten
-                  </button>
-                )}
-                {mealsEnabled && (
-                  <button
-                    className="k-text"
-                    disabled={offline}
-                    onClick={() => {
-                      setPairingRecipe(selected);
-                      navigate("pairings");
-                    }}
-                  >
-                    <Wine size={18} />
-                    Vin till maten
-                  </button>
-                )}
-                {chefEnabled && (
-                  <button
-                    className="k-text"
-                    disabled={offline || busy}
-                    onClick={() =>
-                      openChef(
-                        {
-                          mode: "adapt",
-                          context: { ...emptyChefContext, recipeVersionId: selected.id },
-                          title: selected.document.title,
-                        },
-                        selected,
-                      )
-                    }
-                  >
-                    <Sparkles size={18} />
-                    Föreslå receptändring
-                  </button>
-                )}
-                <div className="k-actions">
-                  <button
-                    className="k-primary"
-                    disabled={busy || !!cooking || !!conflict}
-                    onClick={async () => {
-                      if (await kitchen.begin(selected, servings)) navigate("cook");
-                    }}
-                  >
-                    <Play size={18} />
-                    Börja laga
-                  </button>
-                  <IconButton
-                    label="Redigera recept"
-                    disabled={busy || offline}
-                    onClick={() =>
-                      edit(
-                        selected.document,
-                        cache.versions.find(
-                          (version) => version.recipe_id === selected.recipe_id,
-                        ) ?? selected,
-                      )
-                    }
-                  >
-                    <Pencil size={20} />
-                  </IconButton>
-                  <IconButton
-                    label="Receptets versioner"
-                    disabled={offline}
-                    onClick={() => {
-                      void showHistory();
-                    }}
-                  >
-                    <History size={20} />
-                  </IconButton>
-                  <IconButton
-                    label="Arkivera recept"
-                    disabled={busy || offline}
-                    onClick={() => setConfirm("archive")}
-                  >
-                    <Archive size={20} />
-                  </IconButton>
-                </div>
-                {cooking && (
-                  <button className="k-text" onClick={() => navigate("cook")}>
-                    <CookingPot size={18} />
-                    Fortsätt pågående matlagning först
-                  </button>
-                )}
-                {historyError && <p role="alert">{historyError}</p>}
-                {history && (
-                  <section className="k-history">
-                    <h2>Receptversioner</h2>
-                    {history.map((version) => (
-                      <button
-                        key={version.id}
-                        aria-current={version.id === selected.id ? "true" : undefined}
-                        onClick={() => {
-                          setSelected(version);
-                          setServings(version.document.servings);
-                        }}
-                      >
-                        Version {version.revision}
-                        <span>{new Date(version.created_at).toLocaleDateString("sv-SE")}</span>
-                      </button>
-                    ))}
-                  </section>
-                )}
-                <section>
-                  <div className="k-section-title">
-                    <h2>Ingredienser</h2>
-                    <PortionControl value={servings} onChange={setServings} />
-                  </div>
-                  <Ingredients document={selected.document} servings={servings} />
-                </section>
-                <section>
-                  <h2>Tillagning</h2>
-                  <ol className="k-method">
-                    {selected.document.steps.map((item, index) => (
-                      <li key={item.id}>
-                        <span>{index + 1}</span>
-                        <div>
-                          <h3>{item.title}</h3>
-                          <p>{item.text}</p>
-                          {item.timerSeconds && (
-                            <small>
-                              <Timer size={15} />
-                              {formatTimer(item.timerSeconds * 1000)}
-                            </small>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
-                {selected.document.notes && (
-                  <section>
-                    <h2>Dina anteckningar</h2>
-                    <p className="k-note">{selected.document.notes}</p>
-                  </section>
-                )}
-                <p className="k-source">{selected.document.sourceNote}</p>
-              </article>
-            )}
-            {tab === "cook" && (!local || !state || !document || !step) && (
-              <section className="k-empty">
-                <CookingPot size={36} />
-                <h1>En sak i taget</h1>
-                <p>Välj ett recept när det är dags att laga mat.</p>
-                <button className="k-primary" onClick={() => navigate("library")}>
-                  <BookOpen size={18} />
-                  Till kokboken
+            {journeyUnavailable && (
+              <section className="k-empty" role="alert">
+                <h1>{t("journey.unavailable")}</h1>
+                <p>{t("journey.unavailableDetail")}</p>
+                <button className="k-secondary" onClick={() => navigate("library")}>
+                  {t("journey.openLibrary")}
                 </button>
               </section>
             )}
-            {tab === "cook" && local && state && document && step && (
-              <div className="k-cook">
-                {chefEnabled && cooking && (
-                  <button
-                    className="k-text"
-                    disabled={offline || busy || local.dirty || !!conflict}
-                    onClick={() =>
-                      openChef(
-                        {
-                          mode: "chat",
-                          context: {
-                            recipeVersionId: local.version.id,
-                            sessionId: local.id,
-                            sessionRevision: local.baseRevision,
-                          },
-                          title: `${document.title} · steg ${state.activeStep + 1}`,
-                        },
-                        local.version,
+            {!journeyUnavailable && (
+              <>
+                <Suspense fallback={<p aria-busy="true">Öppnar…</p>}>
+                  {nutritionEnabled && tab === "nutrition" && (
+                    <NutritionPage
+                      key={`${owner}:${nutritionVersion?.id ?? "library"}:${nutritionServings ?? ""}`}
+                      versions={cache.versions}
+                      initial={nutritionVersion}
+                      initialServings={nutritionServings}
+                      onAdapt={
+                        chefEnabled && !offline
+                          ? (version, prompt) =>
+                              openChef(
+                                {
+                                  mode: "adapt",
+                                  context: { ...emptyChefContext, recipeVersionId: version.id },
+                                  title: version.document.title,
+                                  initialPrompt: prompt,
+                                  initialServings: version.document.servings,
+                                },
+                                version,
+                              )
+                          : undefined
+                      }
+                    />
+                  )}
+                  {mealsEnabled && tab === "pairings" && (
+                    <PairingPanel
+                      key={pilotUiEnabled ? journeyHash : "pairings"}
+                      owner={owner}
+                      versions={cache.versions}
+                      initial={requestedRecipe ?? pairingRecipe}
+                      initialWineId={
+                        journey.kind === "ready" ? journey.destination.wine : undefined
+                      }
+                      journey={journey.kind === "ready" ? journey.destination : undefined}
+                      onOpen={(document, version, wine) =>
+                        version ? openRecipe(version, wine) : edit(document)
+                      }
+                    />
+                  )}
+                  {mealsEnabled && tab === "family" && <FamilyPanel owner={owner} />}
+                  {mealsEnabled && tab === "meals" && (
+                    <MealHistoryPanel
+                      owner={owner}
+                      sessions={cache.history}
+                      initialSession={mealSession}
+                    />
+                  )}
+                </Suspense>
+                {chefEnabled && tab === "chef" && (
+                  <ChefPanel
+                    key={`${owner}:${chefEpoch}`}
+                    owner={owner}
+                    opening={chefOpening}
+                    offline={offline}
+                    onReview={(draft) =>
+                      edit(
+                        draft,
+                        chefSource
+                          ? (cache.versions.find((v) => v.recipe_id === chefSource.recipe_id) ??
+                              chefSource)
+                          : undefined,
                       )
                     }
-                  >
-                    <ChefHat size={18} />
-                    Fråga AI-kocken
-                  </button>
+                  />
                 )}
-                <div className="k-cook-heading">
-                  <div>
-                    <p className="k-eyebrow">
-                      {state.status === "completed"
-                        ? "Avslutad"
-                        : state.status === "abandoned"
-                          ? "Avbruten"
-                          : `Steg ${state.activeStep + 1} av ${document.steps.length}`}
-                    </p>
-                    <h1>{document.title}</h1>
-                    <small>Receptversion {local.version.revision}</small>
-                  </div>
-                  {cooking && (
-                    <IconButton
-                      label={
-                        state.status === "paused" ? "Återuppta matlagningen" : "Pausa matlagningen"
-                      }
-                      disabled={busy || !!conflict}
-                      onClick={() => {
-                        void kitchen.change(
-                          changeSessionStatus(
-                            state,
-                            state.status === "paused" ? "running" : "paused",
-                          ),
-                        );
-                      }}
-                    >
-                      {state.status === "paused" ? <Play /> : <Pause />}
-                    </IconButton>
-                  )}
-                </div>
-                {nutritionEnabled && (
-                  <button
-                    className="k-text"
-                    onClick={() => {
-                      setNutritionVersion(local.version);
-                      setNutritionServings(state.servings);
-                      navigate("nutrition");
-                    }}
-                  >
-                    <Scale size={18} />
-                    Se receptets kolhydratunderlag
-                  </button>
+                {chefEnabled && tab === "memory" && (
+                  <FoodMemoryPanel
+                    owner={owner}
+                    offline={offline}
+                    onChanged={() => setChefEpoch((epoch) => epoch + 1)}
+                  />
                 )}
-                {clockChanged && (
-                  <p className="k-error" role="alert">
-                    Enhetens klocka har ändrats. Kontrollera timerinställningarna.
-                  </p>
-                )}
-                {state.status === "paused" && (
-                  <p className="k-paused" role="status">
-                    <Pause size={18} />
-                    Matlagningen och aktiva timers är pausade.
-                  </p>
-                )}
-                {!cooking ? (
-                  <section className="k-finished">
-                    <CheckCheck size={32} />
-                    <h2>
-                      {state.status === "completed"
-                        ? "Matlagningen är avslutad"
-                        : "Matlagningen är avbruten"}
-                    </h2>
-                    {local.feedback?.rating && <p>Betyg: {local.feedback.rating} av 5</p>}
-                    {local.feedback?.note && <p>{local.feedback.note}</p>}
-                    {mealsEnabled && state.status === "completed" && (
+                {tab === "library" && !selected && (
+                  <>
+                    <div className="k-title-row">
+                      <div>
+                        <p className="k-eyebrow">Din kokbok</p>
+                        <h1>Vad lagar vi idag?</h1>
+                      </div>
                       <button
-                        className="k-secondary"
-                        disabled={offline || local.dirty}
+                        className="k-primary"
+                        disabled={busy || offline}
+                        onClick={() => edit(blankRecipe())}
+                      >
+                        <Plus size={18} />
+                        <span>Nytt recept</span>
+                      </button>
+                    </div>
+                    {chefEnabled && (
+                      <button
+                        className="k-text"
+                        disabled={offline || busy}
+                        onClick={() =>
+                          openChef({
+                            mode: "generate",
+                            context: emptyChefContext,
+                            title: "Nytt recept",
+                          })
+                        }
+                      >
+                        <Sparkles size={18} />
+                        Skapa med AI
+                      </button>
+                    )}
+                    {cooking && (
+                      <button className="k-resume" onClick={() => navigate("cook")}>
+                        <CookingPot size={22} />
+                        <span>
+                          <strong>{document?.title}</strong>
+                          <small>
+                            Steg {(state?.activeStep ?? 0) + 1} ·{" "}
+                            {state?.status === "paused" ? "Pausad" : "Pågår"}
+                          </small>
+                        </span>
+                        <ArrowRight size={21} />
+                      </button>
+                    )}
+                    <label className="k-search">
+                      <Search size={20} />
+                      <span className="sr-only">Sök recept</span>
+                      <input
+                        type="search"
+                        placeholder="Sök recept eller ingrediens"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                      />
+                    </label>
+                    {cache.versions.length ? (
+                      <div className="k-recipe-grid">
+                        {cache.versions
+                          .filter((version) =>
+                            `${version.document.title} ${version.document.ingredients.map((item) => item.name).join(" ")}`
+                              .toLocaleLowerCase("sv-SE")
+                              .includes(search.toLocaleLowerCase("sv-SE")),
+                          )
+                          .map((version) => (
+                            <button
+                              className="k-recipe"
+                              key={version.id}
+                              onClick={() => openRecipe(version)}
+                            >
+                              {recipeImages[version.document.image] ? (
+                                <img
+                                  src={recipeImages[version.document.image]}
+                                  alt={version.document.title}
+                                />
+                              ) : (
+                                <div className="k-recipe-placeholder">
+                                  <CookingPot size={44} />
+                                </div>
+                              )}
+                              <div>
+                                <h2>{version.document.title}</h2>
+                                <p>
+                                  <Clock3 size={15} />
+                                  {version.document.totalMinutes} min{" "}
+                                  <span>· {version.document.servings} portioner</span>
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                      </div>
+                    ) : (
+                      <section className="k-empty">
+                        <BookOpen size={28} />
+                        <h2>Din första sida i kokboken</h2>
+                        <p>Spara ett eget recept eller börja med något av recepten nedan.</p>
+                      </section>
+                    )}
+                    {cache.versions.length > 0 &&
+                      search &&
+                      !cache.versions.some((version) =>
+                        `${version.document.title} ${version.document.ingredients.map((item) => item.name).join(" ")}`
+                          .toLowerCase()
+                          .includes(search.toLowerCase()),
+                      ) && <p>Inga recept matchar sökningen.</p>}
+                    {!!cache.history.length && (
+                      <section className="k-starting">
+                        <h2>Senast lagat</h2>
+                        <div className="k-history">
+                          {cache.history.map((session) => (
+                            <button
+                              key={session.id}
+                              onClick={() => {
+                                setSelectedPast(session);
+                                setSelected(null);
+                                setTab("cook");
+                                window.location.hash = "cook";
+                              }}
+                            >
+                              <span>{session.version.document.title}</span>
+                              <span>
+                                {session.state.status === "abandoned"
+                                  ? "Avbruten"
+                                  : session.feedback?.rating
+                                    ? `${session.feedback.rating}/5`
+                                    : "Avslutad"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                    <section className="k-starting">
+                      <h2>Att börja med</h2>
+                      <div className="k-starting-list">
+                        {startingRecipes.map((recipe) => (
+                          <button
+                            key={recipe.title}
+                            disabled={offline || busy}
+                            onClick={() => edit(recipe)}
+                          >
+                            <img src={recipeImages[recipe.image]} alt="" />
+                            <span>
+                              <strong>{recipe.title}</strong>
+                              <small>
+                                {recipe.totalMinutes} min · {recipe.servings} portioner
+                              </small>
+                            </span>
+                            <Plus size={20} />
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  </>
+                )}
+                {tab === "library" && selected && (
+                  <article className="k-detail">
+                    <button
+                      className="k-text"
+                      onClick={() => (pilotUiEnabled ? navigate("library") : setSelected(null))}
+                    >
+                      <ArrowLeft size={18} />
+                      Kokboken
+                    </button>
+                    {pilotUiEnabled && journey.kind === "ready" && journey.destination.wine && (
+                      <Link
+                        className="k-text"
+                        to="/wine/$id"
+                        params={{ id: journey.destination.wine }}
+                        hash={wineJourneyHash({ view: "recipes", recipe: selected.id, servings })}
+                      >
+                        <Wine size={20} aria-hidden />
+                        {t("journey.backWine")}
+                      </Link>
+                    )}
+                    {recipeImages[selected.document.image] && (
+                      <img
+                        className="k-detail-image"
+                        src={recipeImages[selected.document.image]}
+                        alt={selected.document.title}
+                      />
+                    )}
+                    <p className="k-eyebrow">
+                      Version {selected.revision} · {selected.document.totalMinutes} min
+                    </p>
+                    <h1>{selected.document.title}</h1>
+                    <p className="k-description">{selected.document.description}</p>
+                    {nutritionEnabled && (
+                      <button
+                        className="k-text"
                         onClick={() => {
-                          setMealSession(local.id);
-                          navigate("meals");
+                          setNutritionVersion(selected);
+                          setNutritionServings(servings);
+                          navigate("nutrition");
+                        }}
+                      >
+                        <Scale size={18} />
+                        Kolhydrater & ingrediensbyten
+                      </button>
+                    )}
+                    {mealsEnabled && (
+                      <button
+                        className="k-text"
+                        disabled={offline}
+                        onClick={() => {
+                          openPairings(selected);
                         }}
                       >
                         <Wine size={18} />
-                        Registrera vin till måltiden
+                        Vin till maten
                       </button>
                     )}
+                    {chefEnabled && (
+                      <button
+                        className="k-text"
+                        disabled={offline || busy}
+                        onClick={() =>
+                          openChef(
+                            {
+                              mode: "adapt",
+                              context: { ...emptyChefContext, recipeVersionId: selected.id },
+                              title: selected.document.title,
+                            },
+                            selected,
+                          )
+                        }
+                      >
+                        <Sparkles size={18} />
+                        Föreslå receptändring
+                      </button>
+                    )}
+                    <div className="k-actions">
+                      <button
+                        className="k-primary"
+                        disabled={busy || !!cooking || !!conflict}
+                        onClick={async () => {
+                          if (await kitchen.begin(selected, servings)) navigate("cook");
+                        }}
+                      >
+                        <Play size={18} />
+                        Börja laga
+                      </button>
+                      <IconButton
+                        label="Redigera recept"
+                        disabled={busy || offline}
+                        onClick={() =>
+                          edit(
+                            selected.document,
+                            cache.versions.find(
+                              (version) => version.recipe_id === selected.recipe_id,
+                            ) ?? selected,
+                          )
+                        }
+                      >
+                        <Pencil size={20} />
+                      </IconButton>
+                      <IconButton
+                        label="Receptets versioner"
+                        disabled={offline}
+                        onClick={() => {
+                          void showHistory();
+                        }}
+                      >
+                        <History size={20} />
+                      </IconButton>
+                      <IconButton
+                        label="Arkivera recept"
+                        disabled={busy || offline}
+                        onClick={() => setConfirm("archive")}
+                      >
+                        <Archive size={20} />
+                      </IconButton>
+                    </div>
+                    {cooking && (
+                      <button className="k-text" onClick={() => navigate("cook")}>
+                        <CookingPot size={18} />
+                        Fortsätt pågående matlagning först
+                      </button>
+                    )}
+                    {historyError && <p role="alert">{historyError}</p>}
+                    {history && (
+                      <section className="k-history">
+                        <h2>Receptversioner</h2>
+                        {history.map((version) => (
+                          <button
+                            key={version.id}
+                            aria-current={version.id === selected.id ? "true" : undefined}
+                            onClick={() => {
+                              setSelected(version);
+                              setServings(version.document.servings);
+                            }}
+                          >
+                            Version {version.revision}
+                            <span>{new Date(version.created_at).toLocaleDateString("sv-SE")}</span>
+                          </button>
+                        ))}
+                      </section>
+                    )}
+                    <section>
+                      <div className="k-section-title">
+                        <h2>Ingredienser</h2>
+                        <PortionControl value={servings} onChange={setServings} />
+                      </div>
+                      <Ingredients document={selected.document} servings={servings} />
+                    </section>
+                    <section>
+                      <h2>Tillagning</h2>
+                      <ol className="k-method">
+                        {selected.document.steps.map((item, index) => (
+                          <li key={item.id}>
+                            <span>{index + 1}</span>
+                            <div>
+                              <h3>{item.title}</h3>
+                              <p>{item.text}</p>
+                              {item.timerSeconds && (
+                                <small>
+                                  <Timer size={15} />
+                                  {formatTimer(item.timerSeconds * 1000)}
+                                </small>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                    {selected.document.notes && (
+                      <section>
+                        <h2>Dina anteckningar</h2>
+                        <p className="k-note">{selected.document.notes}</p>
+                      </section>
+                    )}
+                    <p className="k-source">{selected.document.sourceNote}</p>
+                  </article>
+                )}
+                {tab === "cook" && (!local || !state || !document || !step) && (
+                  <section className="k-empty">
+                    <CookingPot size={36} />
+                    <h1>En sak i taget</h1>
+                    <p>Välj ett recept när det är dags att laga mat.</p>
                     <button className="k-primary" onClick={() => navigate("library")}>
                       <BookOpen size={18} />
                       Till kokboken
                     </button>
                   </section>
-                ) : (
-                  <div className="k-cook-layout">
-                    <section className="k-current-step">
-                      <progress
-                        aria-label="Receptets steg"
-                        max={document.steps.length}
-                        value={state.activeStep + 1}
-                      />
-                      <h2>{step.title}</h2>
-                      <p>{step.text}</p>
-                      {step.timerSeconds && (
-                        <button
-                          className="k-secondary"
-                          disabled={
-                            busy ||
-                            state.status !== "running" ||
-                            state.timers.length >= 8 ||
-                            !!conflict
-                          }
-                          onClick={() =>
-                            change({
-                              timers: [...state.timers, newTimer(step.title, step.timerSeconds!)],
-                            })
-                          }
-                        >
-                          <Timer size={19} />
-                          Starta {formatTimer(step.timerSeconds * 1000)}
-                        </button>
-                      )}
-                      <div className="k-step-nav">
-                        <button
-                          className="k-secondary"
-                          disabled={
-                            busy ||
-                            state.status !== "running" ||
-                            state.activeStep === 0 ||
-                            !!conflict
-                          }
-                          onClick={() => change({ activeStep: state.activeStep - 1 })}
-                        >
-                          <ArrowLeft size={18} />
-                          Föregående
-                        </button>
-                        <button
-                          className="k-primary"
-                          disabled={busy || state.status !== "running" || !!conflict}
-                          onClick={() =>
-                            state.activeStep + 1 < document.steps.length
-                              ? change({ activeStep: state.activeStep + 1 })
-                              : setConfirm("finish")
-                          }
-                        >
-                          {state.activeStep + 1 === document.steps.length ? (
-                            <Check size={18} />
-                          ) : (
-                            <ArrowRight size={18} />
-                          )}
-                          {state.activeStep + 1 === document.steps.length
-                            ? "Avsluta"
-                            : "Nästa steg"}
-                        </button>
+                )}
+                {tab === "cook" && local && state && document && step && (
+                  <div className="k-cook">
+                    {pilotUiEnabled && mealsEnabled && cooking && (
+                      <button
+                        className="k-text"
+                        disabled={offline || busy || !!conflict}
+                        onClick={() => openPairings(local.version, true)}
+                      >
+                        <Wine size={20} aria-hidden />
+                        {t("journey.wineForMeal")}
+                      </button>
+                    )}
+                    {chefEnabled && cooking && (
+                      <button
+                        className="k-text"
+                        disabled={offline || busy || local.dirty || !!conflict}
+                        onClick={() =>
+                          openChef(
+                            {
+                              mode: "chat",
+                              context: {
+                                recipeVersionId: local.version.id,
+                                sessionId: local.id,
+                                sessionRevision: local.baseRevision,
+                              },
+                              title: `${document.title} · steg ${state.activeStep + 1}`,
+                            },
+                            local.version,
+                          )
+                        }
+                      >
+                        <ChefHat size={18} />
+                        Fråga AI-kocken
+                      </button>
+                    )}
+                    <div className="k-cook-heading">
+                      <div>
+                        <p className="k-eyebrow">
+                          {state.status === "completed"
+                            ? "Avslutad"
+                            : state.status === "abandoned"
+                              ? "Avbruten"
+                              : `Steg ${state.activeStep + 1} av ${document.steps.length}`}
+                        </p>
+                        <h1>{document.title}</h1>
+                        <small>Receptversion {local.version.revision}</small>
                       </div>
-                    </section>
-                    <aside>
-                      <section>
-                        <div className="k-section-title">
-                          <h2>Ingredienser</h2>
-                          <PortionControl
-                            value={state.servings}
-                            disabled={busy || !!conflict}
-                            onChange={(value) => change({ servings: value })}
-                          />
-                        </div>
-                        <Ingredients
-                          document={document}
-                          servings={state.servings}
-                          checked={state.checkedIngredientIds}
-                          disabled={busy || !!conflict}
-                          onCheck={(id) =>
-                            change({
-                              checkedIngredientIds: state.checkedIngredientIds.includes(id)
-                                ? state.checkedIngredientIds.filter((item) => item !== id)
-                                : [...state.checkedIngredientIds, id],
-                            })
+                      {cooking && (
+                        <IconButton
+                          label={
+                            state.status === "paused"
+                              ? "Återuppta matlagningen"
+                              : "Pausa matlagningen"
                           }
-                        />
-                      </section>
-                      <section className="k-timers">
-                        <div className="k-section-title">
-                          <h2>Timers</h2>
-                          <span>{state.timers.length}/8</span>
-                        </div>
-                        {state.timers.map((timer) => (
-                          <div className="k-timer" key={timer.id}>
-                            <div>
-                              <strong>{timer.name}</strong>
-                              <output role="timer" aria-label={timer.name} aria-live="off">
-                                {formatTimer(timerRemaining(timer, now))}
-                              </output>
-                              {timerRemaining(timer, now) === 0 && (
-                                <small role="status">Tiden är ute</small>
-                              )}
-                            </div>
-                            <div className="k-timer-actions">
-                              <IconButton
-                                label={
-                                  timer.deadlineMs === null
-                                    ? `Starta ${timer.name}`
-                                    : `Pausa ${timer.name}`
-                                }
-                                disabled={busy || state.status !== "running" || !!conflict}
-                                onClick={() =>
-                                  change({
-                                    timers: state.timers.map((item) =>
-                                      item.id === timer.id ? toggleCookingTimer(item) : item,
-                                    ),
-                                  })
-                                }
-                              >
-                                {timer.deadlineMs === null ? (
-                                  <Play size={18} />
-                                ) : (
-                                  <Pause size={18} />
-                                )}
-                              </IconButton>
-                              <IconButton
-                                label={`Starta om ${timer.name}`}
-                                disabled={busy || !!conflict}
-                                onClick={() =>
-                                  change({
-                                    timers: state.timers.map((item) =>
-                                      item.id === timer.id
-                                        ? {
-                                            ...item,
-                                            deadlineMs:
-                                              state.status === "running"
-                                                ? Date.now() + item.durationMs
-                                                : null,
-                                            pausedMs: item.durationMs,
-                                          }
-                                        : item,
-                                    ),
-                                  })
-                                }
-                              >
-                                <RotateCcw size={18} />
-                              </IconButton>
-                              <IconButton
-                                label={`Ta bort ${timer.name}`}
-                                disabled={busy || !!conflict}
-                                onClick={() =>
-                                  change({
-                                    timers: state.timers.filter((item) => item.id !== timer.id),
-                                  })
-                                }
-                              >
-                                <Trash2 size={18} />
-                              </IconButton>
-                            </div>
-                          </div>
-                        ))}
-                        <form
-                          className="k-new-timer"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            if (
-                              !timerName.trim() ||
-                              !Number.isInteger(timerMinutes) ||
-                              timerMinutes < 1 ||
-                              timerMinutes > 360
-                            )
-                              return;
-                            change({
-                              timers: [...state.timers, newTimer(timerName, timerMinutes * 60)],
-                            });
-                            setTimerName("");
+                          disabled={busy || !!conflict}
+                          onClick={() => {
+                            void kitchen.change(
+                              changeSessionStatus(
+                                state,
+                                state.status === "paused" ? "running" : "paused",
+                              ),
+                            );
                           }}
                         >
-                          <label>
-                            Namn
-                            <input
-                              value={timerName}
-                              maxLength={60}
-                              required
-                              placeholder="Till exempel pasta"
-                              onChange={(event) => setTimerName(event.target.value)}
-                            />
-                          </label>
-                          <label>
-                            Minuter
-                            <input
-                              type="number"
-                              min={1}
-                              max={360}
-                              value={timerMinutes}
-                              required
-                              onChange={(event) => setTimerMinutes(Number(event.target.value))}
-                            />
-                          </label>
+                          {state.status === "paused" ? <Play /> : <Pause />}
+                        </IconButton>
+                      )}
+                    </div>
+                    {nutritionEnabled && (
+                      <button
+                        className="k-text"
+                        onClick={() => {
+                          setNutritionVersion(local.version);
+                          setNutritionServings(state.servings);
+                          navigate("nutrition");
+                        }}
+                      >
+                        <Scale size={18} />
+                        Se receptets kolhydratunderlag
+                      </button>
+                    )}
+                    {clockChanged && (
+                      <p className="k-error" role="alert">
+                        Enhetens klocka har ändrats. Kontrollera timerinställningarna.
+                      </p>
+                    )}
+                    {state.status === "paused" && (
+                      <p className="k-paused" role="status">
+                        <Pause size={18} />
+                        Matlagningen och aktiva timers är pausade.
+                      </p>
+                    )}
+                    {!cooking ? (
+                      <section className="k-finished">
+                        <CheckCheck size={32} />
+                        <h2>
+                          {state.status === "completed"
+                            ? "Matlagningen är avslutad"
+                            : "Matlagningen är avbruten"}
+                        </h2>
+                        {local.feedback?.rating && <p>Betyg: {local.feedback.rating} av 5</p>}
+                        {local.feedback?.note && <p>{local.feedback.note}</p>}
+                        {mealsEnabled && state.status === "completed" && (
                           <button
-                            className="k-icon"
-                            title="Lägg till timer"
-                            aria-label="Lägg till timer"
-                            disabled={
-                              busy ||
-                              state.status !== "running" ||
-                              state.timers.length >= 8 ||
-                              !!conflict
-                            }
+                            className="k-secondary"
+                            disabled={offline || local.dirty}
+                            onClick={() => {
+                              setMealSession(local.id);
+                              navigate("meals");
+                            }}
                           >
-                            <Plus size={21} />
+                            <Wine size={18} />
+                            Registrera vin till måltiden
                           </button>
-                        </form>
-                        <p className="k-source">
-                          Kontrollera maten även när timern går ut. Larm när appen är i bakgrunden
-                          kan inte garanteras.
-                        </p>
+                        )}
+                        <button className="k-primary" onClick={() => navigate("library")}>
+                          <BookOpen size={18} />
+                          Till kokboken
+                        </button>
                       </section>
-                    </aside>
+                    ) : (
+                      <div className="k-cook-layout">
+                        <section className="k-current-step">
+                          <progress
+                            aria-label="Receptets steg"
+                            max={document.steps.length}
+                            value={state.activeStep + 1}
+                          />
+                          <h2>{step.title}</h2>
+                          <p>{step.text}</p>
+                          {step.timerSeconds && (
+                            <button
+                              className="k-secondary"
+                              disabled={
+                                busy ||
+                                state.status !== "running" ||
+                                state.timers.length >= 8 ||
+                                !!conflict
+                              }
+                              onClick={() =>
+                                change({
+                                  timers: [
+                                    ...state.timers,
+                                    newTimer(step.title, step.timerSeconds!),
+                                  ],
+                                })
+                              }
+                            >
+                              <Timer size={19} />
+                              Starta {formatTimer(step.timerSeconds * 1000)}
+                            </button>
+                          )}
+                          <div className="k-step-nav">
+                            <button
+                              className="k-secondary"
+                              disabled={
+                                busy ||
+                                state.status !== "running" ||
+                                state.activeStep === 0 ||
+                                !!conflict
+                              }
+                              onClick={() => change({ activeStep: state.activeStep - 1 })}
+                            >
+                              <ArrowLeft size={18} />
+                              Föregående
+                            </button>
+                            <button
+                              className="k-primary"
+                              disabled={busy || state.status !== "running" || !!conflict}
+                              onClick={() =>
+                                state.activeStep + 1 < document.steps.length
+                                  ? change({ activeStep: state.activeStep + 1 })
+                                  : setConfirm("finish")
+                              }
+                            >
+                              {state.activeStep + 1 === document.steps.length ? (
+                                <Check size={18} />
+                              ) : (
+                                <ArrowRight size={18} />
+                              )}
+                              {state.activeStep + 1 === document.steps.length
+                                ? "Avsluta"
+                                : "Nästa steg"}
+                            </button>
+                          </div>
+                        </section>
+                        <aside>
+                          <section>
+                            <div className="k-section-title">
+                              <h2>Ingredienser</h2>
+                              <PortionControl
+                                value={state.servings}
+                                disabled={busy || !!conflict}
+                                onChange={(value) => change({ servings: value })}
+                              />
+                            </div>
+                            <Ingredients
+                              document={document}
+                              servings={state.servings}
+                              checked={state.checkedIngredientIds}
+                              disabled={busy || !!conflict}
+                              onCheck={(id) =>
+                                change({
+                                  checkedIngredientIds: state.checkedIngredientIds.includes(id)
+                                    ? state.checkedIngredientIds.filter((item) => item !== id)
+                                    : [...state.checkedIngredientIds, id],
+                                })
+                              }
+                            />
+                          </section>
+                          <section className="k-timers">
+                            <div className="k-section-title">
+                              <h2>Timers</h2>
+                              <span>{state.timers.length}/8</span>
+                            </div>
+                            {state.timers.map((timer) => (
+                              <div className="k-timer" key={timer.id}>
+                                <div>
+                                  <strong>{timer.name}</strong>
+                                  <output role="timer" aria-label={timer.name} aria-live="off">
+                                    {formatTimer(timerRemaining(timer, now))}
+                                  </output>
+                                  {timerRemaining(timer, now) === 0 && (
+                                    <small role="status">Tiden är ute</small>
+                                  )}
+                                </div>
+                                <div className="k-timer-actions">
+                                  <IconButton
+                                    label={
+                                      timer.deadlineMs === null
+                                        ? `Starta ${timer.name}`
+                                        : `Pausa ${timer.name}`
+                                    }
+                                    disabled={busy || state.status !== "running" || !!conflict}
+                                    onClick={() =>
+                                      change({
+                                        timers: state.timers.map((item) =>
+                                          item.id === timer.id ? toggleCookingTimer(item) : item,
+                                        ),
+                                      })
+                                    }
+                                  >
+                                    {timer.deadlineMs === null ? (
+                                      <Play size={18} />
+                                    ) : (
+                                      <Pause size={18} />
+                                    )}
+                                  </IconButton>
+                                  <IconButton
+                                    label={`Starta om ${timer.name}`}
+                                    disabled={busy || !!conflict}
+                                    onClick={() =>
+                                      change({
+                                        timers: state.timers.map((item) =>
+                                          item.id === timer.id
+                                            ? {
+                                                ...item,
+                                                deadlineMs:
+                                                  state.status === "running"
+                                                    ? Date.now() + item.durationMs
+                                                    : null,
+                                                pausedMs: item.durationMs,
+                                              }
+                                            : item,
+                                        ),
+                                      })
+                                    }
+                                  >
+                                    <RotateCcw size={18} />
+                                  </IconButton>
+                                  <IconButton
+                                    label={`Ta bort ${timer.name}`}
+                                    disabled={busy || !!conflict}
+                                    onClick={() =>
+                                      change({
+                                        timers: state.timers.filter((item) => item.id !== timer.id),
+                                      })
+                                    }
+                                  >
+                                    <Trash2 size={18} />
+                                  </IconButton>
+                                </div>
+                              </div>
+                            ))}
+                            <form
+                              className="k-new-timer"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                if (
+                                  !timerName.trim() ||
+                                  !Number.isInteger(timerMinutes) ||
+                                  timerMinutes < 1 ||
+                                  timerMinutes > 360
+                                )
+                                  return;
+                                change({
+                                  timers: [...state.timers, newTimer(timerName, timerMinutes * 60)],
+                                });
+                                setTimerName("");
+                              }}
+                            >
+                              <label>
+                                Namn
+                                <input
+                                  value={timerName}
+                                  maxLength={60}
+                                  required
+                                  placeholder="Till exempel pasta"
+                                  onChange={(event) => setTimerName(event.target.value)}
+                                />
+                              </label>
+                              <label>
+                                Minuter
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={360}
+                                  value={timerMinutes}
+                                  required
+                                  onChange={(event) => setTimerMinutes(Number(event.target.value))}
+                                />
+                              </label>
+                              <button
+                                className="k-icon"
+                                title="Lägg till timer"
+                                aria-label="Lägg till timer"
+                                disabled={
+                                  busy ||
+                                  state.status !== "running" ||
+                                  state.timers.length >= 8 ||
+                                  !!conflict
+                                }
+                              >
+                                <Plus size={21} />
+                              </button>
+                            </form>
+                            <p className="k-source">
+                              Kontrollera maten även när timern går ut. Larm när appen är i
+                              bakgrunden kan inte garanteras.
+                            </p>
+                          </section>
+                        </aside>
+                      </div>
+                    )}
+                    {cooking && (
+                      <button
+                        className="k-text k-abandon"
+                        disabled={busy || !!conflict}
+                        onClick={() => setConfirm("abandon")}
+                      >
+                        <Archive size={18} />
+                        Avbryt matlagningen
+                      </button>
+                    )}
                   </div>
                 )}
-                {cooking && (
-                  <button
-                    className="k-text k-abandon"
-                    disabled={busy || !!conflict}
-                    onClick={() => setConfirm("abandon")}
-                  >
-                    <Archive size={18} />
-                    Avbryt matlagningen
-                  </button>
-                )}
-              </div>
+              </>
             )}
           </>
         )}

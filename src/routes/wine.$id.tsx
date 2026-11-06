@@ -45,6 +45,7 @@ import { recommendationKey, recordRecommendationEvent } from "@/lib/recommendati
 import { addToWishlist } from "@/lib/wishlist";
 import { wineRating, type RatedWine } from "@/lib/wineRatings";
 import { useAuth } from "@/hooks/useAuth";
+import { WineKitchenJourney } from "@/features/meals/WineKitchenJourney";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -54,6 +55,7 @@ export const Route = createFileRoute("/wine/$id")({
 type Pair = { dish: string; reason: string };
 type WineRow = RatedWine & {
   id: string;
+  user_id: string;
   image_url: string | null;
   producer: string | null;
   wine_name: string | null;
@@ -276,6 +278,7 @@ function WineDetailPage() {
 
   return (
     <AppShell>
+      <WineKitchenJourney wineId={w.id} wineOwner={w.user_id} viewer={user?.id} />
       <div className="-mx-5 -mt-6 px-5 pt-3">
         {/* Top bar */}
         <header className="flex items-center justify-between">

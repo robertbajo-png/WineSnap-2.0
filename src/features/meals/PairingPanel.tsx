@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useT } from "@/i18n";
+import { pilotUiEnabled } from "../pilot/feature";
+import { kitchenJourneyHash, wineJourneyHash, type KitchenDestination } from "../kitchen/journey";
 import { ArrowRight, RefreshCw, Utensils, Wine } from "lucide-react";
 import { WineImage } from "@/components/WineImage";
 import { cellarWines, familyData } from "./api";
@@ -44,40 +48,51 @@ export function PairingPanel({
   owner,
   versions,
   initial,
+  initialWineId,
+  journey,
   onOpen,
 }: {
   owner: string;
   versions: RecipeVersion[];
   initial?: RecipeVersion;
-  onOpen: (document: RecipeDocument, version?: RecipeVersion) => void;
+  initialWineId?: string;
+  journey?: KitchenDestination;
+  onOpen: (document: RecipeDocument, version?: RecipeVersion, wine?: string) => void;
 }) {
+  const t = useT();
   const { data, error, refresh } = useFreshData(async () => ({
     cellar: await cellarWines(owner),
     family: await familyData(owner),
   }));
   const choices = useMemo<RecipeChoice[]>(
     () => [
-      ...versions.map((v) => ({ key: v.id, document: v.document, version: v })),
+      ...[...versions, ...(initial && !versions.some((v) => v.id === initial.id) ? [initial] : [])]
+        .filter((v) => v.user_id === owner)
+        .map((v) => ({ key: v.id, document: v.document, version: v })),
       ...startingRecipes.map((d, i) => ({ key: `starter-${i}`, document: d })),
     ],
-    [versions],
+    [versions, initial, owner],
   );
   const [mode, setMode] = useState<"dish" | "wine">(() =>
-      typeof window !== "undefined" && window.location.hash.includes("?wine=") ? "wine" : "dish",
+      initialWineId || (typeof window !== "undefined" && window.location.hash.includes("?wine="))
+        ? "wine"
+        : "dish",
     ),
     [recipeId, setRecipe] = useState(initial?.id ?? ""),
     [wineId, setWine] = useState(
       () =>
+        initialWineId ??
         new URLSearchParams(
           typeof window === "undefined" ? "" : window.location.hash.split("?")[1],
-        ).get("wine") ?? "",
+        ).get("wine") ??
+        "",
     );
   const [selectedTraits, setTraits] = useState<DishTrait[] | null>(null),
     [people, setPeople] = useState<string[]>([]),
     [adults, setAdults] = useState(false);
-  const recipe = choices.find((c) => c.key === recipeId) ?? choices[0];
+  const recipe = recipeId ? choices.find((c) => c.key === recipeId) : choices[0];
   const available = data?.cellar.wines.filter((w) => w.quantity > 0 && !w.consumed_at) ?? [];
-  const wine = available.find((w) => w.id === wineId) ?? available[0];
+  const wine = wineId ? available.find((w) => w.id === wineId) : available[0];
   const diners = data?.family.diners.filter((d) => people.includes(d.id)) ?? [];
   const onlyChildren = diners.length > 0 && diners.every((d) => d.document.kind === "child");
   const dish = selectedTraits ?? (recipe ? inferDishTraits(recipe.document) : []);
@@ -119,6 +134,21 @@ export function PairingPanel({
       {!data && !error && <p aria-busy="true">Hämtar…</p>}
       {data && (
         <>
+          {pilotUiEnabled && initial && (
+            <nav className="pilot-journey" aria-label={t("journey.foodWine")}>
+              <Link
+                to="/kitchen"
+                hash={kitchenJourneyHash({
+                  ...journey,
+                  view: journey?.fromCook ? "cook" : "recipes",
+                  recipe: initial.id,
+                })}
+              >
+                <ArrowRight size={20} aria-hidden />
+                {t(journey?.fromCook ? "journey.resumeCook" : "journey.backRecipe")}
+              </Link>
+            </nav>
+          )}
           <fieldset className="meal-diners">
             <legend>Vilka äter?</legend>
             {data.family.diners.length === 0 ? (
@@ -248,10 +278,29 @@ export function PairingPanel({
                             </div>
                           </div>
                           <PairingNotes assessment={assessment} />
-                          <a href={`/wine/${w.id}`} className="k-text">
+                          <Link
+                            to="/wine/$id"
+                            params={{ id: w.id }}
+                            className="k-text"
+                            hash={
+                              pilotUiEnabled && recipe.version
+                                ? wineJourneyHash({
+                                    view: "recipes",
+                                    recipe: recipe.version.id,
+                                    servings:
+                                      recipe.version.id === initial?.id
+                                        ? journey?.servings
+                                        : recipe.document.servings,
+                                    ...(journey?.fromCook && recipe.version.id === initial?.id
+                                      ? { session: journey.session, fromCook: true }
+                                      : {}),
+                                  })
+                                : undefined
+                            }
+                          >
                             Visa vinet
                             <ArrowRight size={17} />
-                          </a>
+                          </Link>
                         </li>
                       ))}
                     </ul>
@@ -265,22 +314,27 @@ export function PairingPanel({
               )}
               {mode === "wine" && (
                 <>
+                  {available.length > 0 && (
+                    <label>
+                      Vin från din källare
+                      <select
+                        aria-label="Vin från din källare"
+                        value={wine?.id ?? ""}
+                        onChange={(e) => setWine(e.target.value)}
+                      >
+                        <option value="" disabled>
+                          {t("journey.chooseWine")}
+                        </option>
+                        {available.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.wine_name ?? "Namnlöst vin"} {w.vintage ?? ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   {wine ? (
                     <>
-                      <label>
-                        Vin från din källare
-                        <select
-                          aria-label="Vin från din källare"
-                          value={wine.id}
-                          onChange={(e) => setWine(e.target.value)}
-                        >
-                          {available.map((w) => (
-                            <option key={w.id} value={w.id}>
-                              {w.wine_name ?? "Namnlöst vin"} {w.vintage ?? ""}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
                       <ul className="meal-results">
                         {dishes.slice(0, 8).map(({ r, assessment, fit }) => (
                           <li key={r.key}>
@@ -289,7 +343,7 @@ export function PairingPanel({
                             <PairingNotes assessment={assessment} />
                             <button
                               className="k-text"
-                              onClick={() => onOpen(r.document, r.version)}
+                              onClick={() => onOpen(r.document, r.version, wine.id)}
                             >
                               Öppna recept
                               <ArrowRight size={17} />
@@ -299,7 +353,7 @@ export function PairingPanel({
                       </ul>
                     </>
                   ) : (
-                    <p>Inga tillgängliga flaskor i din vinkällare.</p>
+                    <p role="status">{t(wineId ? "journey.wineUnavailable" : "journey.noWines")}</p>
                   )}
                 </>
               )}

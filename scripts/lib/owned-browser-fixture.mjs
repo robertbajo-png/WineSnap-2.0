@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
   ownedApi,
@@ -291,6 +291,7 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
     completed: true,
     step: saved.state.activeStep,
     revision: saved.revision,
+    stateFingerprint: createHash("sha256").update(JSON.stringify(saved.state)).digest("hex"),
     servings: saved.state.servings,
     timers: saved.state.timers.length,
     checkedIngredients: saved.state.checkedIngredientIds.length,

@@ -157,11 +157,67 @@ export async function acceptOwnedPilotUi(
       await page.getByRole("button", { name: "B\u00f6rja laga", exact: true }).waitFor();
       await capture("recipe", width);
 
+      phase("recipe_wine_return");
+      await page.getByRole("button", { name: "Fler portioner", exact: true }).click();
+      await page.getByRole("button", { name: "Fler portioner", exact: true }).click();
+      await page.getByRole("button", { name: "Vin till maten", exact: true }).click();
+      await page.getByRole("combobox", { name: "R\u00e4tt", exact: true }).waitFor();
+      assert.equal(
+        await page.getByRole("combobox", { name: "R\u00e4tt", exact: true }).inputValue(),
+        fixture.versionId,
+      );
+      await page
+        .getByRole("checkbox", {
+          name: "Visa vinf\u00f6rslag till vuxna fr\u00e5n min vink\u00e4llare",
+          exact: true,
+        })
+        .check();
+      await page.getByRole("link", { name: "Visa vinet", exact: true }).click();
+      await page.getByRole("link", { name: "Tillbaka till receptet", exact: true }).waitFor();
+      await capture("wine-journey", width);
+      await page.getByRole("link", { name: "Tillbaka till receptet", exact: true }).press("Enter");
+      await page.locator(".k-detail h1").waitFor();
+      assert.equal(await page.locator(".k-detail .k-portions strong").textContent(), "4");
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(".k-detail h1").waitFor();
+      assert.equal(await page.locator(".k-detail .k-portions strong").textContent(), "4");
+      report.passed.push(`recipe_wine_roundtrip_${width}`);
+
       phase("cook");
       await page.goto(ownedApp + "/kitchen#cook", { waitUntil: "domcontentloaded" });
       await page.getByText("Steg 1 av 3", { exact: true }).waitFor();
       assert.equal(await page.locator(".pilot-nav").count(), 0);
       await capture("cook", width);
+
+      phase("cook_wine_return");
+      if (width === pilotViewports[0]) {
+        await page
+          .locator(".k-current-step")
+          .getByRole("button", { name: /^Starta / })
+          .click();
+        await page.waitForFunction(() =>
+          [...document.querySelectorAll(".k-cook button")].some(
+            (button) => button.textContent.trim() === "Vin till maten" && !button.disabled,
+          ),
+        );
+      }
+      const beforeJourney = await ownedBrowserFixture(keys, "inspect", fixture);
+      assert.equal(beforeJourney.timers, 1);
+      await page.getByRole("button", { name: "Vin till maten", exact: true }).click();
+      await page
+        .getByRole("checkbox", {
+          name: "Visa vinf\u00f6rslag till vuxna fr\u00e5n min vink\u00e4llare",
+          exact: true,
+        })
+        .check();
+      await page.getByRole("link", { name: "Visa vinet", exact: true }).click();
+      await page.getByRole("link", { name: "Forts\u00e4tt laga", exact: true }).press("Enter");
+      await page.getByText("Steg 1 av 3", { exact: true }).waitFor();
+      assert.equal(await page.getByRole("timer").count(), 1);
+      const afterJourney = await ownedBrowserFixture(keys, "inspect", fixture);
+      assert.equal(afterJourney.stateFingerprint, beforeJourney.stateFingerprint);
+      assert.equal(afterJourney.revision, beforeJourney.revision);
+      report.passed.push(`cook_wine_session_unchanged_${width}`);
 
       phase("cellar");
       await page.goto(ownedApp + "/cellar", { waitUntil: "domcontentloaded" });
@@ -173,6 +229,43 @@ export async function acceptOwnedPilotUi(
       await capture("cellar", width);
     }
     await page.setViewportSize({ width: 390, height: 844 });
+    phase("wine_recipe_return");
+    await page.goto(ownedApp + `/wine/${fixture.wineId}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("link", { name: "Hitta recept till vinet", exact: true }).click();
+    await page
+      .getByRole("checkbox", {
+        name: "Visa vinf\u00f6rslag till vuxna fr\u00e5n min vink\u00e4llare",
+        exact: true,
+      })
+      .check();
+    assert.equal(
+      await page
+        .getByRole("combobox", { name: "Vin fr\u00e5n din k\u00e4llare", exact: true })
+        .inputValue(),
+      fixture.wineId,
+    );
+    await page
+      .locator(".meal-results li")
+      .filter({ hasText: "Lokalt webblasarprov" })
+      .getByRole("button", { name: "\u00d6ppna recept", exact: true })
+      .click();
+    await page.getByRole("link", { name: "Tillbaka till vinet", exact: true }).click();
+    await page.getByRole("link", { name: "Hitta recept till vinet", exact: true }).waitFor();
+    report.passed.push("wine_recipe_roundtrip");
+    phase("missing_journey");
+    await page.goto(ownedApp + "/kitchen#recipes?recipe=00000000-0000-4000-8000-000000000001", {
+      waitUntil: "domcontentloaded",
+    });
+    await page
+      .getByRole("heading", {
+        name: "Den h\u00e4r matlagningen \u00e4r inte tillg\u00e4nglig",
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(await page.locator(".k-detail").count(), 0);
+    await page.getByRole("button", { name: "\u00d6ppna din kokbok", exact: true }).click();
+    await page.locator("button.k-recipe").first().waitFor();
+    report.passed.push("missing_recipe_not_substituted");
     for (const [screen, selector] of [
       ["chef", ".chef-panel"],
       ["memory", ".chef-panel"],

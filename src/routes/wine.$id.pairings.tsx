@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { mealsEnabled } from "@/features/meals/feature";
 import { useT, useI18n } from "@/i18n";
+import { WineKitchenJourney } from "@/features/meals/WineKitchenJourney";
+import { pilotUiEnabled } from "@/features/pilot/feature";
 
 export const Route = createFileRoute("/wine/$id/pairings")({
   head: () => ({ meta: [{ title: "Pairings | WineSnap" }] }),
@@ -91,6 +93,7 @@ function PairingsPage() {
       )}
       {w && (
         <>
+          <WineKitchenJourney wineId={w.id} wineOwner={w.user_id} viewer={user?.id} />
           <section className="my-5 flex items-center gap-4 border-b border-white/15 pb-5">
             <div className="flex h-24 w-14 shrink-0 items-center justify-center">
               {w.image_url ? (
@@ -108,7 +111,7 @@ function PairingsPage() {
               </p>
             </div>
           </section>
-          {mealsEnabled && user?.id === w.user_id && (
+          {!pilotUiEnabled && mealsEnabled && user?.id === w.user_id && (
             <a
               className="mb-5 flex min-h-12 items-center gap-3 text-base text-gold"
               href={`/kitchen#pairings?wine=${w.id}`}

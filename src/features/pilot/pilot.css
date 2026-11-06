@@ -52,6 +52,26 @@
 .pilot-shell {
   background: var(--background);
 }
+.pilot-journey {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 0 24px;
+}
+.pilot-journey a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--primary);
+  overflow-wrap: anywhere;
+}
+.pilot-journey svg {
+  flex-shrink: 0;
+}
 .pilot-home-header {
   display: flex;
   align-items: center;
