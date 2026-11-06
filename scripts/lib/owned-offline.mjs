@@ -97,7 +97,7 @@ export async function acceptOwnedOffline(keys, options) {
     });
     const status = (text) => page.locator('.k-status[role="status"]').filter({ hasText: text });
     const visible = (locator) => locator.waitFor({ state: "visible" });
-    const saved = () => status("Sparat").waitFor({ state: "visible", timeout: 60000 });
+    const saved = () => status("Synkat").waitFor({ state: "visible", timeout: 60000 });
     const step = (number) => visible(page.getByText(`Steg ${number} av 3`, { exact: true }));
     const next = () => page.getByRole("button", { name: /^N.sta steg$/ }).click();
     const localState = () =>
@@ -177,7 +177,7 @@ export async function acceptOwnedOffline(keys, options) {
     networkBlocked = true;
     await context.setOffline(true);
     assert.equal(await page.evaluate(() => navigator.onLine), false);
-    await visible(status("Offline"));
+    await visible(status(/Sparat p\u00e5 enheten/));
     phase("offline_timer");
     await page.getByRole("button", { name: "Starta 01:00", exact: true }).click();
     await page.getByRole("button", { name: "Pausa Forbered tomaten", exact: true }).click();
@@ -272,7 +272,7 @@ export async function acceptOwnedOffline(keys, options) {
       phase(`conflict_${choice}`);
       networkBlocked = true;
       await context.setOffline(true);
-      await visible(status("Offline"));
+      await visible(status(/Sparat p\u00e5 enheten/));
       await next();
       await step(choice === "remote" ? 3 : 2);
       const remote = await ownedBrowserFixture(keys, "conflict", fixture);
