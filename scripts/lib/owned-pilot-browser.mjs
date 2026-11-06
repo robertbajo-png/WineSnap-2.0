@@ -97,9 +97,8 @@ export async function acceptOwnedPilotUi(
       await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
       await page.waitForFunction(() => window.scrollY === 0);
       if (screen === "wine-journey") {
-        await page.waitForLoadState("networkidle");
         await page.locator(".pilot-journey").waitFor();
-        await page.locator(".animate-pulse").first().waitFor({ state: "hidden" });
+        await page.getByRole("heading", { name: /Local browser QA Chardonnay/ }).waitFor();
         await page.evaluate(
           () =>
             new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
@@ -384,6 +383,9 @@ export async function acceptOwnedPilotUi(
         report.failedView = view;
     }
     if (/^[A-Za-z]*Error$/.test(error?.name ?? "")) report.errorKind = error.name;
+    if (/networkidle/.test(error?.message ?? "")) report.waitTarget = "network_idle";
+    else if (/animate-pulse/.test(error?.message ?? "")) report.waitTarget = "global_loading_marker";
+    else if (/scrollY/.test(error?.message ?? "")) report.waitTarget = "scroll_position";
     if (error?.code === "ERR_ASSERTION") {
       if (["boolean", "number"].includes(typeof error.actual))
         report.assertionActual = error.actual;
