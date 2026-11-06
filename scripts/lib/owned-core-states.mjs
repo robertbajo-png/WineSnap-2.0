@@ -95,6 +95,7 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
       .waitFor();
     pass("memory_read_error_not_empty_and_manual_recovery");
     await mock("**/rest/v1/rpc/food_memory_change", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
       memoryWrites++;
       return route.fallback();
     });
@@ -210,6 +211,7 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
     await page.getByRole("button", { name: "Granska recept", exact: true }).click();
     const versions = [];
     await mock("**/rest/v1/rpc/kitchen_save_recipe", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
       versions.push(route.request().postDataJSON()._version_id);
       if (versions.length === 1) return json(route, 503, { message: "synthetic save failure" });
       return route.fallback();
