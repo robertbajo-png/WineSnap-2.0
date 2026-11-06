@@ -92,7 +92,13 @@ export async function acceptOwnedPilotUi(
     await page.waitForURL(ownedApp + "/");
 
     async function capture(screen, width) {
-      await page.locator("html.pilot-ui").waitFor();
+      await page.locator("html.pilot-ui").waitFor({ state: "attached" });
+      if (screen === "scan-save-uncertain") {
+        const main = page.getByRole("main", { name: "Skanningsresultat", exact: true });
+        await main.waitFor();
+        const box = await main.boundingBox();
+        assert.ok(box && box.width >= width - 1 && box.height > 200);
+      }
       await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
       await page.waitForFunction(() => window.scrollY === 0);

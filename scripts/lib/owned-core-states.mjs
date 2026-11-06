@@ -304,13 +304,17 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
       return route.fallback();
     });
     await page.getByRole("button", { name: "Spara i k\u00e4llaren", exact: true }).click();
+    phase("core_scan_save_uncertain");
     await page.getByRole("button", { name: "Kontrollera sparandet", exact: true }).waitFor();
+    phase("core_scan_locked_editor");
     assert.equal(
       await page.getByRole("button", { name: "\u00c4ndra vinuppgifter", exact: true }).isDisabled(),
       true,
     );
+    phase("core_scan_uncertain_capture");
     await capture("scan-save-uncertain", 390);
     loseRead = false;
+    phase("core_scan_save_confirm");
     await page.getByRole("button", { name: "Kontrollera sparandet", exact: true }).click();
     await page.getByText("Sparat i din k\u00e4llare", { exact: true }).waitFor();
     assert.equal(wineWrites, 1);
