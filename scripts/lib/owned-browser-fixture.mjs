@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { ownedDemoRecipe } from "./owned-demo-data.mjs";
 import {
   ownedApi,
   ownedApp,
@@ -40,8 +41,16 @@ export function assertFixtureOwner(user, fixture) {
 
 // Only synthetic fixtures use this reproducible password. Never persist it or
 // include it in a report. Interactive sign-in uses mail in the local inbox.
-export async function ownedBrowserFixture(keys, action, fixture, remember = async () => {}) {
+export async function ownedBrowserFixture(
+  keys,
+  action,
+  fixture,
+  remember = async () => {},
+  { demo = false, cleanupImages = false } = {},
+) {
   validateOwnedKeys(keys);
+  assert.equal(typeof demo, "boolean");
+  assert.equal(typeof cleanupImages, "boolean");
   assert.ok(["prepare", "inspect", "conflict", "memory", "cleanup", "absent"].includes(action));
   assert.equal(typeof remember, "function");
   if (action !== "prepare") validateBrowserFixture(fixture);
@@ -90,8 +99,8 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
         email,
         password: password(run),
         email_confirm: true,
-        app_metadata: { owned_browser_run: run },
-        user_metadata: { display_name: "Local browser QA" },
+        app_metadata: { owned_browser_run: run, ...(demo ? { owned_demo_run: run } : {}) },
+        user_metadata: { display_name: demo ? "Demo (exempeldata)" : "Local browser QA" },
       }),
     ).user;
     fixture = {
@@ -118,8 +127,8 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
         await app.from("wines").insert({
           id: fixture.wineId,
           user_id: user.id,
-          wine_name: "Local browser QA Chardonnay",
-          producer: "Synthetic fixture",
+          wine_name: demo ? "Nahe Chardonnay (demo)" : "Local browser QA Chardonnay",
+          producer: demo ? "Exempelproducent" : "Synthetic fixture",
           vintage: 2023,
           wine_type: "white",
           quantity: 2,
@@ -130,7 +139,7 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
           sweetness: 0,
           fruit: 6,
           oak: 2,
-          is_public: true,
+          is_public: !demo,
           share_id: fixture.shareId,
         }),
       );
@@ -143,26 +152,38 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
           rating: null,
         }),
       );
-      const document = {
-        title: "Lokalt webblasarprov",
-        description: "Syntetiskt recept for funktionsprov.",
-        servings: 2,
-        totalMinutes: 10,
-        image: "none",
-        sourceNote: "Local synthetic QA",
-        notes: "",
-        ingredients: [{ id: randomUUID(), name: "Tomat", amount: 400, unit: "g" }],
-        steps: [
-          {
-            id: randomUUID(),
-            title: "Forbered tomaten",
-            text: "Syntetiskt steg ett.",
-            timerSeconds: 60,
-          },
-          { id: randomUUID(), title: "Ror om", text: "Syntetiskt steg tva.", timerSeconds: null },
-          { id: randomUUID(), title: "Servera", text: "Syntetiskt steg tre.", timerSeconds: null },
-        ],
-      };
+      const document = demo
+        ? ownedDemoRecipe()
+        : {
+            title: "Lokalt webblasarprov",
+            description: "Syntetiskt recept for funktionsprov.",
+            servings: 2,
+            totalMinutes: 10,
+            image: "none",
+            sourceNote: "Local synthetic QA",
+            notes: "",
+            ingredients: [{ id: randomUUID(), name: "Tomat", amount: 400, unit: "g" }],
+            steps: [
+              {
+                id: randomUUID(),
+                title: "Forbered tomaten",
+                text: "Syntetiskt steg ett.",
+                timerSeconds: 60,
+              },
+              {
+                id: randomUUID(),
+                title: "Ror om",
+                text: "Syntetiskt steg tva.",
+                timerSeconds: null,
+              },
+              {
+                id: randomUUID(),
+                title: "Servera",
+                text: "Syntetiskt steg tre.",
+                timerSeconds: null,
+              },
+            ],
+          };
       ok(
         await app.rpc("kitchen_save_recipe", {
           _recipe_id: randomUUID(),
@@ -209,6 +230,25 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
     if (!found.data?.user && found.error?.status === 404)
       return { completed: true, alreadyClean: true };
     assertFixtureOwner(ok(found).user, fixture);
+    if (demo) assert.equal(found.data.user.app_metadata?.owned_demo_run, fixture.run);
+    if (cleanupImages) {
+      const wines = ok(
+        await admin.from("wines").select("image_url").eq("user_id", fixture.userId).limit(101),
+      );
+      const photos = ok(
+        await admin
+          .from("wine_photos")
+          .select("storage_path")
+          .eq("user_id", fixture.userId)
+          .limit(101),
+      );
+      assert.ok(wines.length <= 100 && photos.length <= 100);
+      const paths = fixtureImagePaths(
+        [...wines.map((w) => w.image_url), ...photos.map((p) => p.storage_path)],
+        fixture,
+      );
+      if (paths.length) ok(await admin.storage.from("wine-labels").remove(paths));
+    }
     ok(await admin.auth.admin.deleteUser(fixture.userId));
     const after = await admin.auth.admin.getUserById(fixture.userId);
     assert.equal(after.error?.status, 404);
@@ -308,4 +348,19 @@ export async function ownedBrowserFixture(keys, action, fixture, remember = asyn
     })),
     status: saved.state.status,
   };
+}
+
+export function fixtureImagePaths(values, fixture) {
+  validateBrowserFixture(fixture);
+  assert.ok(Array.isArray(values) && values.length <= 200);
+  const paths = [...new Set(values.filter((v) => v !== null && v !== undefined))];
+  for (const path of paths) {
+    assert.equal(typeof path, "string");
+    assert.ok(path.startsWith(fixture.userId + "/"));
+    assert.match(
+      path.slice(fixture.userId.length + 1),
+      /^[a-zA-Z0-9_-]{1,100}\.(jpg|jpeg|png|webp)$/,
+    );
+  }
+  return paths;
 }

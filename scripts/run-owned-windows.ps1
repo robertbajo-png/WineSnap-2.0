@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PilotJourneys','PilotDemo','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly
@@ -51,7 +51,7 @@ try {
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
-  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $(if($Action -in @('Offline','PilotAccept')){300000}elseif($Action -eq 'Update'){120000}else{0})
+  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $(if($Action -in @('Offline','PilotAccept','PilotJourneys','PilotDemo')){300000}elseif($Action -eq 'Update'){120000}else{0})
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
   $phase='local_engine'

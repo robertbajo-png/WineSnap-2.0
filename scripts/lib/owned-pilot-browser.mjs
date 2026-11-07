@@ -13,11 +13,22 @@ export const pilotViewports = [360, 390, 430, 1024, 1440];
 // Manual, disposable-fixture acceptance only. Never load a real user's browser session.
 export async function acceptOwnedPilotUi(
   keys,
-  { fixture: previous, remember, artifactDirectory, progress = () => {} },
+  {
+    fixture: previous,
+    remember,
+    peerFixture: previousPeer,
+    rememberPeer,
+    liveJourneys = false,
+    artifactDirectory,
+    progress = () => {},
+  },
 ) {
   validateOwnedKeys(keys);
+  assert.equal(typeof liveJourneys, "boolean");
+  assert.equal(typeof rememberPeer, "function");
   assert.equal(typeof remember, "function");
   if (previous) await ownedBrowserFixture(keys, "absent", previous);
+  if (previousPeer) await ownedBrowserFixture(keys, "absent", previousPeer);
   await mkdir(artifactDirectory, { recursive: true });
   const info = await lstat(artifactDirectory);
   assert.ok(info.isDirectory() && !info.isSymbolicLink());
@@ -32,7 +43,7 @@ export async function acceptOwnedPilotUi(
     passed: [],
     phase: "prepare",
   };
-  let fixture, browser, context, page;
+  let fixture, peer, browser, context, page;
   const phase = (name) => {
     report.phase = name;
     writeFileSync(
@@ -358,6 +369,15 @@ export async function acceptOwnedPilotUi(
       assert.equal(await page.locator(selector).locator(".k-error").count(), 0);
       await capture(screen, 390);
     }
+    if (liveJourneys) {
+      const { acceptOwnedLiveJourneys } = await import("./owned-pilot-live.mjs");
+      report.liveJourneys = await acceptOwnedLiveJourneys({
+        page,
+        fixture,
+        phase,
+        pass: (name) => report.passed.push(name),
+      });
+    }
     const { acceptOwnedCoreStates } = await import("./owned-core-states.mjs");
     report.coreStates = await acceptOwnedCoreStates({
       page,
@@ -367,6 +387,10 @@ export async function acceptOwnedPilotUi(
       capture,
       pass: (name) => report.passed.push(name),
     });
+    {
+      const { exerciseMemoryControls } = await import("./owned-pilot-live.mjs");
+      await exerciseMemoryControls(page, phase, (name) => report.passed.push(name));
+    }
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Logga ut", exact: true }).click();
@@ -375,6 +399,54 @@ export async function acceptOwnedPilotUi(
     assert.equal(await page.locator(".pilot-resume").count(), 0);
     assert.equal(await page.locator(".pilot-recent-wine").count(), 0);
     report.passed.push("logout_hides_private_home");
+    {
+      phase("peer_account_isolation");
+      const { cachedKitchenOwnerPresent } = await import("./owned-pilot-live.mjs");
+      assert.equal(await cachedKitchenOwnerPresent(page, fixture.userId), false);
+      const createdPeer = await ownedBrowserFixture(keys, "prepare", undefined, async (value) => {
+        peer = value;
+        await rememberPeer(value);
+      });
+      peer = createdPeer.fixture;
+      await page.goto(ownedApp + "/login");
+      await page.waitForFunction(() =>
+        Object.keys(document.querySelector("#email") ?? {}).some((k) =>
+          k.startsWith("__reactProps"),
+        ),
+      );
+      await page.locator("#email").fill(peer.email);
+      await page
+        .locator("#password")
+        .fill(
+          createHmac("sha256", keys.jwtSecret)
+            .update(`owned-browser-fixture-password-v1:${peer.run}`)
+            .digest("hex"),
+        );
+      await page.locator('button[type="submit"]').click();
+      await page.waitForURL(ownedApp + "/");
+      await page.goto(ownedApp + "/kitchen#memory");
+      await page
+        .getByText("Inga bekr\u00e4ftade matpreferenser \u00e4nnu.", { exact: true })
+        .waitFor();
+      assert.equal(await page.getByText("Gillar dragonfrukt", { exact: true }).count(), 0);
+      await page.goto(ownedApp + `/kitchen#recipes?recipe=${fixture.versionId}`);
+      await page
+        .getByRole("heading", {
+          name: "Den h\u00e4r matlagningen \u00e4r inte tillg\u00e4nglig",
+          exact: true,
+        })
+        .waitFor();
+      assert.equal(await page.locator(".k-detail").count(), 0);
+      await page.goto(ownedApp + `/kitchen#recipes?recipe=${peer.versionId}`);
+      await page.locator(".k-detail h1").waitFor();
+      assert.equal(await cachedKitchenOwnerPresent(page, fixture.userId), false);
+      await page.goto(ownedApp + "/me");
+      await page.getByRole("button", { name: "Logga ut", exact: true }).click();
+      await page.goto(ownedApp + "/");
+      await page.getByRole("link", { name: "Logga in", exact: true }).waitFor();
+      assert.equal(await cachedKitchenOwnerPresent(page, peer.userId), false);
+      report.passed.push("peer_cannot_read_owner_memory_recipe_or_offline_copy");
+    }
     assert.equal(report.externalRequests, 0);
     assert.equal(report.blockedAiRequests, 0);
     assert.equal(report.pageErrors, 0);
@@ -405,10 +477,21 @@ export async function acceptOwnedPilotUi(
         .catch(() => undefined);
   } finally {
     await browser?.close().catch(() => undefined);
+    if (peer) {
+      try {
+        await ownedBrowserFixture(keys, "cleanup", peer);
+      } catch {
+        report.peerCleanupFailed = true;
+        report.completed = false;
+      }
+    }
     if (fixture) {
       try {
-        const cleaned = await ownedBrowserFixture(keys, "cleanup", fixture);
-        report.cleanupCompleted = Boolean(cleaned.cleanupCompleted || cleaned.alreadyClean);
+        const cleaned = await ownedBrowserFixture(keys, "cleanup", fixture, undefined, {
+          cleanupImages: liveJourneys,
+        });
+        report.cleanupCompleted =
+          !report.peerCleanupFailed && Boolean(cleaned.cleanupCompleted || cleaned.alreadyClean);
       } catch {
         report.completed = false;
         report.failure = "owned_pilot_ui_cleanup_failed";

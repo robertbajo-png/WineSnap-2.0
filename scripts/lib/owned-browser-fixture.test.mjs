@@ -177,6 +177,42 @@ describe("owned browser fixtures", () => {
     expect(signIn).not.toHaveBeenCalled();
     expect(remove).toHaveBeenCalledExactlyOnceWith(user.id);
   });
+  it("refuses foreign image paths before storage or account deletion", async () => {
+    const value = fixture(),
+      remove = vi.fn(),
+      deleteUser = vi.fn();
+    const query = { select: vi.fn(), eq: vi.fn(), limit: vi.fn() };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.limit.mockResolvedValue({
+      data: [{ image_url: randomUUID() + "/other.webp" }],
+      error: null,
+    });
+    mocks.createClient.mockReturnValue({
+      auth: {
+        admin: {
+          getUserById: vi.fn().mockResolvedValue({
+            data: {
+              user: {
+                id: value.userId,
+                email: value.email,
+                app_metadata: { owned_browser_run: value.run },
+              },
+            },
+            error: null,
+          }),
+          deleteUser,
+        },
+      },
+      from: vi.fn().mockReturnValue(query),
+      storage: { from: vi.fn().mockReturnValue({ remove }) },
+    });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupImages: true }),
+    ).rejects.toThrow();
+    expect(remove).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
   it("creates a remote conflict only for the exact owned synthetic recipe and revision", async () => {
     const value = fixture();
     const state = {

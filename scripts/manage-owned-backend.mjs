@@ -37,6 +37,9 @@ assert.ok(
     "FeaturesAi",
     "Offline",
     "PilotAccept",
+    "PilotJourneys",
+    "PilotDemo",
+    "PilotDemoCleanup",
     "BrowserPrepare",
     "BrowserInspect",
     "BrowserConflict",
@@ -721,7 +724,44 @@ try {
     await wait(() => verify());
     report.restartedApplication = true;
   }
-  if (action.startsWith("Browser") || ["Offline", "PilotAccept"].includes(action)) {
+  if (["PilotDemo", "PilotDemoCleanup"].includes(action)) {
+    assert.equal(pilotUi.enabled, true);
+    const { showOwnedPilotDemo } = await import("./lib/owned-pilot-demo.mjs");
+    const { validateBrowserFixture } = await import("./lib/owned-browser-fixture.mjs");
+    const manifest = join(process.env.USERPROFILE, "WineSnapOwned", "pilot-demo-fixture.json");
+    let previous;
+    try {
+      const info = await lstat(manifest);
+      assert.ok(info.isFile() && !info.isSymbolicLink() && info.size < 16384);
+      previous = validateBrowserFixture(JSON.parse(await readFile(manifest, "utf8")));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    if (action === "PilotDemoCleanup") {
+      const { ownedBrowserFixture } = await import("./lib/owned-browser-fixture.mjs");
+      report.demo = previous
+        ? await ownedBrowserFixture(keys, "cleanup", previous, undefined, {
+            demo: true,
+            cleanupImages: true,
+          })
+        : { completed: true, alreadyClean: true };
+    } else
+      report.demo = await showOwnedPilotDemo(keys, {
+        fixture: previous,
+        remember: (value) =>
+          writeFile(manifest, JSON.stringify(validateBrowserFixture(value)), {
+            flag: previous ? "w" : "wx",
+            mode: 0o600,
+          }),
+        artifactDirectory: fileURLToPath(new URL("../dist/owned-demo", import.meta.url)),
+      });
+    assert.equal(report.demo.completed, true);
+    assert.equal(Boolean(report.demo.cleanupCompleted || report.demo.alreadyClean), true);
+  }
+  if (
+    action.startsWith("Browser") ||
+    ["Offline", "PilotAccept", "PilotJourneys"].includes(action)
+  ) {
     const { ownedBrowserFixture, validateBrowserFixture } =
       await import("./lib/owned-browser-fixture.mjs");
     const manifestPath = join(process.env.USERPROFILE, "WineSnapOwned", "browser-fixture.json");
@@ -734,7 +774,7 @@ try {
       if (error.code !== "ENOENT") throw error;
     }
     phase = `browser_${action.slice(7).toLowerCase()}`;
-    if (["BrowserPrepare", "Offline", "PilotAccept"].includes(action) && fixture) {
+    if (["BrowserPrepare", "Offline", "PilotAccept", "PilotJourneys"].includes(action) && fixture) {
       // Refuse to overwrite a live fixture's cleanup manifest.
       const existing = await ownedBrowserFixture(keys, "absent", fixture);
       assert.equal(existing.alreadyClean, true);
@@ -747,12 +787,30 @@ try {
         mode: 0o600,
       });
     };
-    if (action === "PilotAccept") {
+    const peerPath = join(process.env.USERPROFILE, "WineSnapOwned", "browser-peer-fixture.json");
+    let peerFixture;
+    if (["PilotAccept", "PilotJourneys", "BrowserCleanup"].includes(action)) {
+      try {
+        const info = await lstat(peerPath);
+        assert.ok(info.isFile() && !info.isSymbolicLink() && info.size < 16384);
+        peerFixture = validateBrowserFixture(JSON.parse(await readFile(peerPath, "utf8")));
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+    }
+    if (["PilotAccept", "PilotJourneys"].includes(action)) {
       assert.equal(pilotUi.enabled, true, "Pilot acceptance requires the installed dark UI");
       const { acceptOwnedPilotUi } = await import("./lib/owned-pilot-browser.mjs");
       report.pilotAcceptance = await acceptOwnedPilotUi(keys, {
         fixture,
         remember,
+        liveJourneys: action === "PilotJourneys",
+        peerFixture,
+        rememberPeer: (value) =>
+          writeFile(peerPath, JSON.stringify(validateBrowserFixture(value)), {
+            flag: peerFixture ? "w" : "wx",
+            mode: 0o600,
+          }),
         artifactDirectory: fileURLToPath(new URL("../dist/owned-pilot-ui", import.meta.url)),
         progress(step) {
           assert.match(step, /^[a-z_]+$/);
@@ -773,11 +831,14 @@ try {
       });
       assert.equal(report.offline.completed, true);
     } else {
+      if (action === "BrowserCleanup" && peerFixture)
+        await ownedBrowserFixture(keys, "cleanup", peerFixture);
       report.browser = await ownedBrowserFixture(
         keys,
         action.slice(7).toLowerCase(),
         fixture,
         remember,
+        { cleanupImages: action === "BrowserCleanup" },
       );
     }
   }
