@@ -7,8 +7,19 @@ import { validateBrowserFixture } from "./owned-browser-fixture.mjs";
 import { verifyOwnedScanFixture } from "./owned-scan-fixture.mjs";
 
 // Explicit manual opt-in: exactly one approved-image analysis and one Chef generation.
-export async function acceptOwnedLiveJourneys({ page, fixture, phase, pass }) {
+export async function acceptOwnedLiveJourneys({
+  page,
+  fixture,
+  phase,
+  pass,
+  replayApprovedImage = false,
+  report = {},
+}) {
   validateBrowserFixture(fixture);
+  assert.equal(typeof replayApprovedImage, "boolean");
+  report.completed = false;
+  report.imageAnalysisReplayed = replayApprovedImage;
+  report.liveProviderScenarios = 0;
   const imagePath = join(process.env.USERPROFILE, "OneDrive/Desktop/Winesnap/54456874_400.webp");
   const original = await readFile(imagePath);
   const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -26,10 +37,29 @@ export async function acceptOwnedLiveJourneys({ page, fixture, phase, pass }) {
       assert.equal(expected, "scan");
       assert.equal(++count.scan, 1);
       assert.equal(digest(Buffer.from(body.imageBase64, "base64")), digest(original));
+      if (replayApprovedImage) {
+        const archived = JSON.parse(
+          await readFile(
+            new URL("../../dist/owned-public/original-scan-result.json", import.meta.url),
+            "utf8",
+          ),
+        );
+        assert.equal(archived.fixture, "previously-approved-zehn-morgen-image");
+        verifyOwnedScanFixture({ identity: archived.identity });
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            wine: { identity: archived.identity, label_text: archived.labelText, taste: {} },
+          }),
+        });
+      }
+      report.liveProviderScenarios++;
     } else {
       assert.equal(expected, "chef");
       assert.equal(body.action, "generate");
       assert.equal(++count.chef, 1);
+      report.liveProviderScenarios++;
     }
     return route.continue();
   };
@@ -50,6 +80,12 @@ export async function acceptOwnedLiveJourneys({ page, fixture, phase, pass }) {
     assert.equal(scan.status(), 200);
     const scanBody = await scan.json();
     const identity = verifyOwnedScanFixture(scanBody.wine);
+    report.identity = identity;
+    pass(
+      replayApprovedImage
+        ? "approved_label_analysis_replayed_for_upload_probe"
+        : "live_original_label_identity_verified",
+    );
     await page.getByRole("button", { name: "Spara i k\u00e4llaren", exact: true }).click();
     await page.getByText("Sparat i din k\u00e4llare", { exact: true }).waitFor();
     const imageResponse = page.waitForResponse(
@@ -58,11 +94,35 @@ export async function acceptOwnedLiveJourneys({ page, fixture, phase, pass }) {
     await page.getByRole("button", { name: "Visa detaljer", exact: true }).click();
     const downloaded = await imageResponse;
     assert.equal(downloaded.status(), 200);
-    assert.equal(digest(await downloaded.body()), digest(original));
-    await page.locator("img").first().waitFor();
     await page.waitForFunction(() =>
-      [...document.images].some((i) => i.naturalWidth > 100 && i.complete),
+      [...document.images].some(
+        (i) => i.src.startsWith("blob:") && i.naturalWidth > 100 && i.complete,
+      ),
     );
+    // Compare the app's rendered Blob; CDP may expose an empty cached POST body.
+    const rendered = await page.evaluate(async () => {
+      const image = [...document.images].find(
+        (i) => i.src.startsWith("blob:") && i.naturalWidth > 100 && i.complete,
+      );
+      const blob = await (await fetch(image.src)).blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = () => reject(new Error("rendered_image_read_failed"));
+        reader.readAsDataURL(blob);
+      });
+    });
+    const bytes = Buffer.from(rendered, "base64");
+    report.image = {
+      originalBytes: original.length,
+      fetchedBytes: bytes.length,
+      type: downloaded.headers()["content-type"],
+      method: downloaded.request().method(),
+      signature: bytes.subarray(0, 12).toString("hex"),
+      bytesMatched: digest(bytes) === digest(original),
+      source: "rendered_app_blob",
+    };
+    assert.equal(report.image.bytesMatched, true);
     pass("live_original_identity_review_save_and_identical_private_image");
 
     phase("live_chef_review_save");
@@ -97,13 +157,8 @@ export async function acceptOwnedLiveJourneys({ page, fixture, phase, pass }) {
     await page.locator(".k-detail h1").filter({ hasText: answer.draft.title }).waitFor();
     pass("live_chef_draft_explicit_review_save_and_reload");
     assert.deepEqual(count, { scan: 1, chef: 1 });
-    return {
-      completed: true,
-      liveProviderScenarios: 2,
-      identity,
-      imageBytesMatched: true,
-      recipePersisted: true,
-    };
+    Object.assign(report, { completed: true, imageBytesMatched: true, recipePersisted: true });
+    return report;
   } finally {
     expected = "closed";
     await page.unroute(scanPattern, gate);
@@ -151,6 +206,7 @@ export async function exerciseMemoryControls(page, phase, pass) {
   await page.getByRole("dialog").waitFor({ state: "hidden" });
   await page.getByText("Inga bekr\u00e4ftade matpreferenser \u00e4nnu.", { exact: true }).waitFor();
   pass("memory_correction_and_forgetting_in_ui");
+  await page.getByRole("combobox", { name: "Inst\u00e4llning", exact: true }).selectOption("1");
   await page.getByRole("textbox", { name: "Matpreferens", exact: true }).fill("dragonfrukt");
   await page.getByRole("button", { name: "L\u00e4gg till", exact: true }).click();
   await page.getByRole("heading", { name: "Gillar dragonfrukt", exact: true }).waitFor();

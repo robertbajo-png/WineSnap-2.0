@@ -106,6 +106,13 @@ export async function showOwnedPilotDemo(keys, { fixture: previous, remember, ar
     await page.waitForURL(ownedApp + "/");
     await page.locator(".pilot-recent-wine").waitFor();
     await page.evaluate(() => document.fonts.ready);
+    await page.waitForFunction(() => {
+      const image = document.querySelector(".pilot-hero img");
+      return !image || (image.complete && image.naturalWidth > 0);
+    });
+    await page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+    );
     await page.screenshot({ path: join(artifactDirectory, "home.png"), animations: "disabled" });
     const expiresAt = new Date(Date.now() + demoLifetimeMs).toISOString();
     await writeFile(
@@ -121,6 +128,7 @@ export async function showOwnedPilotDemo(keys, { fixture: previous, remember, ar
     );
     await new Promise((resolve) => {
       browser.once("disconnected", resolve);
+      page.once("close", resolve);
       timer = setTimeout(() => void browser.close().finally(resolve), demoLifetimeMs);
     });
     report.completed = true;

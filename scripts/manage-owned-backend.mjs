@@ -805,6 +805,7 @@ try {
         fixture,
         remember,
         liveJourneys: action === "PilotJourneys",
+        replayApprovedImage: process.env.WINESNAP_OWNED_REPLAY_APPROVED_IMAGE === "1",
         peerFixture,
         rememberPeer: (value) =>
           writeFile(peerPath, JSON.stringify(validateBrowserFixture(value)), {

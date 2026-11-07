@@ -19,12 +19,15 @@ export async function acceptOwnedPilotUi(
     peerFixture: previousPeer,
     rememberPeer,
     liveJourneys = false,
+    replayApprovedImage = false,
     artifactDirectory,
     progress = () => {},
   },
 ) {
   validateOwnedKeys(keys);
   assert.equal(typeof liveJourneys, "boolean");
+  assert.equal(typeof replayApprovedImage, "boolean");
+  if (replayApprovedImage) assert.equal(liveJourneys, true);
   assert.equal(typeof rememberPeer, "function");
   assert.equal(typeof remember, "function");
   if (previous) await ownedBrowserFixture(keys, "absent", previous);
@@ -274,7 +277,15 @@ export async function acceptOwnedPilotUi(
         })
         .check();
       await page.getByRole("link", { name: "Visa vinet", exact: true }).click();
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll(".pilot-journey a")].some(
+          (link) =>
+            link.textContent.trim() === "Forts\u00e4tt laga" &&
+            Object.keys(link).some((k) => k.startsWith("__reactProps")),
+        ),
+      );
       await page.getByRole("link", { name: "Forts\u00e4tt laga", exact: true }).press("Enter");
+      await page.waitForURL((url) => url.pathname === "/kitchen" && url.hash.startsWith("#cook?"));
       await page.getByText("Steg 1 av 3", { exact: true }).waitFor();
       assert.equal(await page.getByRole("timer").count(), 1);
       const afterJourney = await ownedBrowserFixture(keys, "inspect", fixture);
@@ -371,11 +382,14 @@ export async function acceptOwnedPilotUi(
     }
     if (liveJourneys) {
       const { acceptOwnedLiveJourneys } = await import("./owned-pilot-live.mjs");
-      report.liveJourneys = await acceptOwnedLiveJourneys({
+      report.liveJourneys = {};
+      await acceptOwnedLiveJourneys({
         page,
         fixture,
         phase,
         pass: (name) => report.passed.push(name),
+        replayApprovedImage,
+        report: report.liveJourneys,
       });
     }
     const { acceptOwnedCoreStates } = await import("./owned-core-states.mjs");

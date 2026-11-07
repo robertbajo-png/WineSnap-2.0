@@ -180,9 +180,8 @@ describe("owned Windows lifecycle", () => {
   });
   it("restarts only the validated app and reinstalls its RAM credentials", () => {
     const manager = readFileSync(new URL("../manage-owned-backend.mjs", import.meta.url), "utf8");
-    const restart = manager
-      .split('if (action === "RestartApp") {')[1]
-      ?.split("if (action.startsWith")[0];
+    const start = manager.indexOf('if (action === "RestartApp") {');
+    const restart = manager.slice(start, manager.indexOf('\n  if (["PilotDemo"', start));
     expect(restart).toContain('await existing("web")');
     expect(restart).toContain('command(["restart", name("web")])');
     expect(restart).toContain("await wait(() => verify())");

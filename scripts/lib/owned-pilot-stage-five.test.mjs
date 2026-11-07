@@ -53,7 +53,8 @@ describe("owned pilot acceptance and demo boundaries", () => {
     );
     expect(live).toContain("++count.scan,1");
     expect(live).toContain("++count.chef,1");
-    expect(live).toContain("digest(awaitdownloaded.body()),digest(original)");
+    expect(live).toContain("bytesMatched:digest(bytes)===digest(original)");
+    expect(live).toContain("assert.equal(report.image.bytesMatched,true)");
     expect(live).toContain("awaitpage.unroute(scanPattern,gate)");
     expect(live).not.toMatch(/storageState\(|writeFile|console\./);
     const demo = readFileSync(new URL("./owned-pilot-demo.mjs", import.meta.url), "utf8");
