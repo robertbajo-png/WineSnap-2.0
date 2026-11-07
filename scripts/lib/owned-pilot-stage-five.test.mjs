@@ -55,6 +55,7 @@ describe("owned pilot acceptance and demo boundaries", () => {
     expect(live).toContain("++count.chef,1");
     expect(live).toContain("bytesMatched:digest(bytes)===digest(original)");
     expect(live).toContain("assert.equal(report.image.bytesMatched,true)");
+    expect(live).toContain('source:"rendered_app_blob"');
     expect(live).toContain("awaitpage.unroute(scanPattern,gate)");
     expect(live).not.toMatch(/storageState\(|writeFile|console\./);
     const demo = readFileSync(new URL("./owned-pilot-demo.mjs", import.meta.url), "utf8");
@@ -62,5 +63,9 @@ describe("owned pilot acceptance and demo boundaries", () => {
     expect(demo).toContain('model: "Demo');
     expect(demo).not.toMatch(/storageState\(|setSession\(|console\.|api\.openai\.com/);
     expect(demo).toContain('ownedBrowserFixture(keys, "cleanup", fixture');
+    const browser = readFileSync(new URL("./owned-pilot-browser.mjs", import.meta.url), "utf8");
+    expect(
+      browser.match(/getByText\(\/Logga in f\.r att forts\.tta\/\)\.waitFor\(\)/g),
+    ).toHaveLength(2);
   });
 });

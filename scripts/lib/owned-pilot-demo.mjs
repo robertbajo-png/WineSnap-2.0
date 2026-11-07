@@ -107,13 +107,32 @@ export async function showOwnedPilotDemo(keys, { fixture: previous, remember, ar
     await page.locator(".pilot-recent-wine").waitFor();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForFunction(() => {
-      const image = document.querySelector(".pilot-hero img");
-      return !image || (image.complete && image.naturalWidth > 0);
+      const image = document.querySelector(".pilot-hero");
+      return image?.complete && image.naturalWidth > 0;
     });
     await page.evaluate(
       () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
     );
     await page.screenshot({ path: join(artifactDirectory, "home.png"), animations: "disabled" });
+    const mobile = await context.newPage();
+    try {
+      await mobile.setViewportSize({ width: 390, height: 844 });
+      await mobile.goto(ownedApp + "/");
+      await mobile.locator(".pilot-resume").waitFor();
+      await mobile.waitForFunction(() => document.querySelector(".pilot-hero")?.naturalWidth > 0);
+      await mobile.evaluate(() => document.fonts.ready);
+      assert.equal(
+        await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        true,
+      );
+      await mobile.screenshot({
+        path: join(artifactDirectory, "home-mobile.png"),
+        animations: "disabled",
+      });
+    } finally {
+      await mobile.close();
+      await page.bringToFront();
+    }
     const expiresAt = new Date(Date.now() + demoLifetimeMs).toISOString();
     await writeFile(
       readyFile,

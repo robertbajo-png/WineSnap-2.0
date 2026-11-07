@@ -30,7 +30,7 @@ weeks, plus owner review and pilot sessions. This is an estimate, not a deadline
    See [implementation and acceptance](connected-journeys-2026-11-06.md).
 4. Complete and consistent core states: complete in the owned installation,
    with browser/offline acceptance. See [the receipt](core-states-2026-11-06.md).
-5. Actual owned-app regression and controlled installation: in progress.
+5. Actual owned-app regression and controlled candidate: complete for local pilot.
    See [regression and demo](pilot-regression-2026-11-07.md).
 6. Guided pilot and corrective iteration: pending.
 

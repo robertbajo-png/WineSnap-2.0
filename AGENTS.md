@@ -182,7 +182,18 @@ Pilot stage 4 is installed and verified: `docs/core-states-2026-11-06.md`.
 Preserve explicit AI retries, owner-bound save IDs/tokens and read reconciliation
 before retrying uncertain wine inserts. Browser fault probes use synthetic AI,
 not provider calls; separate Offline acceptance covers real network loss and SW.
-Stage 5 broader five-journey regression is next; release/pilot gates remain pending.
+Stage 5 broader five-journey regression is verified for the local guided pilot:
+`docs/pilot-regression-2026-11-07.md`. The installed frontend remains `2d98270`;
+test/demo operator changes do not require an app rebuild. `PilotJourneys` is a
+manual one-label/one-Chef opt-in; `-ReplayApprovedImage` replays the existing
+approved public-label response and does not resend the image to AI. Never repeat
+a successful paid scenario to debug unrelated UI probes. `PilotAccept` now also
+checks memory correction/forgetting and ordinary synthetic-account switching.
+`PilotDemo` is a separate visible 15-minute example-account viewer, with paid and
+external calls blocked. It holds the operation lock until closed/expired, then
+removes its exact tagged account and images. Use `PilotDemoCleanup` after an
+interrupted viewer, never general account deletion. No browser state is exported.
+Stage 6 human guided pilot is next; public-release gates remain separate.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See

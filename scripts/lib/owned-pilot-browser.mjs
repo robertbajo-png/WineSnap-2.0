@@ -408,6 +408,7 @@ export async function acceptOwnedPilotUi(
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Logga ut", exact: true }).click();
+    await page.getByText(/Logga in f.r att forts.tta/).waitFor();
     await page.goto(ownedApp + "/", { waitUntil: "domcontentloaded" });
     await page.getByRole("link", { name: "Logga in", exact: true }).waitFor();
     assert.equal(await page.locator(".pilot-resume").count(), 0);
@@ -456,6 +457,7 @@ export async function acceptOwnedPilotUi(
       assert.equal(await cachedKitchenOwnerPresent(page, fixture.userId), false);
       await page.goto(ownedApp + "/me");
       await page.getByRole("button", { name: "Logga ut", exact: true }).click();
+      await page.getByText(/Logga in f.r att forts.tta/).waitFor();
       await page.goto(ownedApp + "/");
       await page.getByRole("link", { name: "Logga in", exact: true }).waitFor();
       assert.equal(await cachedKitchenOwnerPresent(page, peer.userId), false);
