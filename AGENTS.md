@@ -79,6 +79,12 @@ Never run `owned-device-operator.mjs` directly: Prepare returns private enrollme
 material. Real authenticator approval must remain human-only; no virtual passkeys
 on the real account or exported browser state. See `docs/owned-device-access-2026-11-05.md`.
 Do not equate a prepared binding or Status read with completed device enrollment.
+The device opt-in adds an owner-only two-factor rule for the existing `/admin`
+view so pinned Authelia exposes registration; all ordinary app routes keep their
+one-factor policy. Do not use a fake/bypass rule or experimental factor policy.
+The helper must verify `webauthn` capability and the exact vendor Add control,
+not a generic menu button, before asking for human approval. The isolated
+`check-owned-gate.mjs --device-access` probe tests this without a real passkey.
 `run-owned-windows.ps1 -Action Update -PublicOrigin https://winesnap.boleoai.se`
 is an explicit owned-only build/auth change, not a tunnel activation. Ordinary
 updates preserve an installed public-origin label; `-LocalOnly` is the explicit

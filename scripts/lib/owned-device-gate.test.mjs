@@ -74,15 +74,30 @@ describe("owned device gate opt-in", () => {
       attestation_conveyance_preference: "none",
       selection_criteria: { discoverability: "required", user_verification: "required" },
     });
-    expect(after.access_control).toEqual(before.access_control);
+    expect(after.access_control.default_policy).toBe("deny");
+    expect(after.access_control.rules.slice(1)).toEqual(before.access_control.rules);
     expect(after.session).toEqual(before.session);
     expect(after.storage).toEqual(before.storage);
-    expect(after.access_control.rules[0]).toEqual({
+    expect(after.access_control.rules[1]).toEqual({
       domain: "winesnap.boleoai.se",
       subject: "user:robert",
       policy: "one_factor",
     });
     expect(after.webauthn.experimental_enable_passkey_uv_two_factors).toBeUndefined();
+  });
+  it("enables registration with an owner-only admin step-up, never a bypass or global 2FA change", () => {
+    const rule = ownedDeviceGateConfiguration(keys, true).access_control.rules[0];
+    expect(rule).toEqual({
+      domain: "winesnap.boleoai.se",
+      subject: "user:robert",
+      policy: "two_factor",
+      resources: ["^/admin([/?].*)?$"],
+    });
+    const pattern = new RegExp(rule.resources[0]);
+    for (const path of ["/admin", "/admin/", "/admin?tab=users", "/admin/users"])
+      expect(pattern.test(path)).toBe(true);
+    for (const path of ["/", "/kitchen", "/api/health", "/administrator", "/api/admin"])
+      expect(pattern.test(path)).toBe(false);
   });
   it("refuses unknown activation inputs", () => {
     for (const value of ["true", undefined, 1, {}])
@@ -91,6 +106,17 @@ describe("owned device gate opt-in", () => {
 });
 
 describe("private installation-bound owner mapping", () => {
+  it("hands off only after the real vendor registration control is visible", () => {
+    const helper = readFileSync(new URL("../owned-device-operator.mjs", import.meta.url), "utf8");
+    expect(helper).toContain('gateRequest("/gate/api/configuration")');
+    expect(helper).toContain('methods.includes("webauthn")');
+    expect(helper).toContain('page.locator("#webauthn-credential-add")');
+    expect(helper).toContain('registrationControl.waitFor({ state: "visible", timeout: 60000 })');
+    expect(helper).not.toContain('page.getByRole("button").first().waitFor');
+    expect(helper).not.toMatch(
+      /registrationControl\.click|navigator\.credentials\.create|WebAuthn\.addVirtualAuthenticator/,
+    );
+  });
   it("protects staged credentials explicitly and uses a real null backup name for atomic replacement", () => {
     const wrapper = readFileSync(
       new URL("../configure-owned-device-access.ps1", import.meta.url),

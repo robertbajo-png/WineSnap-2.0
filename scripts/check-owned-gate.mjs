@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { checkOwnedContainer, ownedEgress } from "./lib/owned-backend.mjs";
+import { ownedDeviceGateConfiguration } from "./lib/owned-device-gate.mjs";
 import {
   ownedGateConfiguration,
   ownedGateUsers,
@@ -11,7 +12,10 @@ import {
 } from "./lib/owned-gate.mjs";
 
 assert.equal(process.platform, "win32");
-assert.equal(process.argv.length, 2);
+assert.ok(
+  process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === "--device-access"),
+);
+const deviceAccess = process.argv[2] === "--device-access";
 const run = randomBytes(8).toString("hex");
 const scope = "owned-gate-check";
 const network = `winesnap-owned-gate-check-${run}`;
@@ -28,6 +32,7 @@ const report = {
   productionTouched: false,
   publicTunnelStarted: false,
   cleanupCompleted: false,
+  deviceAccess,
 };
 const labelArgs = ["--label", `winesnap.scope=${scope}`, "--label", `winesnap.check=${run}`];
 let phase = "owned_validation";
@@ -88,14 +93,14 @@ try {
   passwordBytes.fill(0);
   const users = ownedGateUsers(hash);
   users.users.intruder = { ...users.users.robert, displayname: "Denied test identity", groups: [] };
-  const config = ownedGateConfiguration(
-    {
-      sessionSecret: randomBytes(32).toString("hex"),
-      storageKey: randomBytes(32).toString("hex"),
-      resetSecret: randomBytes(32).toString("hex"),
-    },
-    { persistent: true },
-  );
+  const gateSecrets = {
+    sessionSecret: randomBytes(32).toString("hex"),
+    storageKey: randomBytes(32).toString("hex"),
+    resetSecret: randomBytes(32).toString("hex"),
+  };
+  const config = deviceAccess
+    ? ownedDeviceGateConfiguration(gateSecrets, true)
+    : ownedGateConfiguration(gateSecrets, { persistent: true });
   phase = "isolated_vendor_service";
   networkCreated = true;
   await command(["network", "create", "--internal", ...labelArgs, network]);
@@ -239,6 +244,10 @@ try {
       step='browser_cookie_scope';const cookieAttributes=Object.fromEntries(cookieLine.split(';').slice(1).map(value=>{const [key,...parts]=value.trim().split('=');return [key.toLowerCase(),parts.join('=')];}));assert.equal(cookieAttributes.path,'/');assert.equal(cookieAttributes.domain?.replace(/^\\./,''),'winesnap.boleoai.se');if(cookieAttributes.expires)assert(Date.parse(cookieAttributes.expires)>Date.now());if(cookieAttributes['max-age'])assert(Number(cookieAttributes['max-age'])>0);count++;
       for(const path of ['/api/health','/login','/backend/auth/v1/health','/backend/storage/v1/status']){step='owner:'+path;assert.equal((await request(path,{headers:{Cookie:cookie,Authorization:'Bearer winesnap-token-must-not-be-replaced'}})).status,200);count++;}
       for(const path of ['/backend/auth/v1/admin/users','/backend/mail/api/v1/messages','/api/public/hooks/check-wishlist-prices']){step='blocked:'+path;assert.equal((await request(path,{headers:{Cookie:cookie}})).status,404);count++;}
+      if(${deviceAccess}){
+        step='passkey_registration_available';const available=await request('/gate/api/configuration',{headers:{Cookie:cookie}});assert.equal(available.status,200);assert(JSON.parse(available.body).data.available_methods.includes('webauthn'));count++;
+        step='admin_requires_step_up';const admin=await request('/admin',{headers:{Cookie:cookie}});assert.equal(admin.status,302);assert(admin.headers.location.startsWith(origin+'/gate'));count++;
+      }
       step='logout';assert.equal((await request('/gate/api/logout',{method:'POST',headers:{Cookie:cookie}})).status,200);assert.equal((await request('/api/health',{headers:{Cookie:cookie}})).status,302);count++;
       step='wrong_owner';const other=await request('/gate/api/firstfactor',{method:'POST',body:{username:'intruder',password:${JSON.stringify(password)},targetURL:origin,keepMeLoggedIn:false}});const otherCookie=other.headers['set-cookie']?.find(v=>v.startsWith('__Secure-winesnap_gate='))?.split(';')[0];const denied=await request('/api/health',{headers:otherCookie?{Cookie:otherCookie}:{}});assert([302,403].includes(denied.status));count++;
       step='oversized_login';assert.equal((await request('/gate/api/firstfactor',{method:'POST',body:{username:'robert',password:'x'.repeat(8192)}})).status,413);count++;

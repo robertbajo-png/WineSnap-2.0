@@ -49,12 +49,20 @@ export function validateOwnedDeviceBinding(value, installationId) {
 export function ownedDeviceGateConfiguration(keys, enabled) {
   assert.equal(typeof enabled, "boolean");
   const config = ownedGateConfiguration(keys, { persistent: true });
-  if (enabled)
+  if (enabled) {
     config.webauthn = {
       enable_passkey_login: true,
       display_name: "WineSnap",
       attestation_conveyance_preference: "none",
       selection_criteria: { discoverability: "required", user_verification: "required" },
     };
+    // The vendor hides credential registration without any two-factor resource.
+    // Step up only the existing admin view; ordinary app/passkey access stays 1FA.
+    config.access_control.rules.unshift({
+      ...config.access_control.rules[0],
+      policy: "two_factor",
+      resources: ["^/admin([/?].*)?$"],
+    });
+  }
   return config;
 }

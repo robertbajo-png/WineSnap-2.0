@@ -12,7 +12,9 @@ are out of scope. No DNS/tunnel/firewall/OS-security change is involved.
   provider. No custom WebAuthn engine, virtual owner authenticator, experimental
   factor policy or credential synchronization service is introduced.
 - The gate stays default-deny and permits only `robert` on the approved leaf
-  hostname. Existing Secure/HttpOnly/SameSite cookies, 30-minute inactivity and
+  hostname. Device access now adds an owner-only two-factor step-up for the
+  existing `/admin` view; ordinary app routes keep their one-factor policy.
+  Existing Secure/HttpOnly/SameSite cookies, 30-minute inactivity and
   two-hour maximum sessions remain. An unlocked approved device/browser can still
   access its active session; device locks and safe passkey storage are required.
 - After that provider authenticates the owner, the app exchanges the verified
@@ -156,3 +158,39 @@ sign-in are still pending. Do not record these as completed or claim that all
 personal devices are paired. A prepared binding, activated gate or green source
 build alone is not proof of password-free owner sign-in. The old production was
 not changed.
+
+## Registration Control Follow-Up, 2026-11-08
+
+The November 7 viewer reached the settings page, but its generic first-button
+readiness check did not establish that registration was available. The operator
+window expired without a credential. A read-only vendor CLI check on November 8
+confirmed that `robert` had no registered WebAuthn credential; neither enrollment
+nor mobile sign-in was retrospectively recorded as successful.
+
+The owner then reported that Add was missing. The pinned provider's
+[configuration handler](https://github.com/authelia/authelia/blob/v4.39.28/internal/handlers/handler_configuration.go)
+only exposes enrollment methods when an access-control rule enables two-factor
+protection. Its
+[authorizer](https://github.com/authelia/authelia/blob/v4.39.28/internal/authorization/authorizer.go)
+checks for such a rule globally. A passkey-login flag alone is insufficient.
+
+The owned device opt-in therefore prepends a stricter `user:robert` rule for
+`^/admin([/?].*)?$` on the same leaf hostname. The existing admin view is real,
+not a fake route used as a feature switch. The ordinary owner rule, default deny,
+cookies, keys, TTLs, proxy/DNS boundaries and non-experimental passkey settings
+are unchanged. Admin may require additional verification; normal WineSnap access
+is not changed to two-factor/password login. The portal still uses the vendor's
+own session-elevation and credential-registration controls.
+
+The helper now checks the real provider capability and waits for the exact
+`#webauthn-credential-add` control before handing off. It scrolls/focuses that
+button and reports its visibility and bounded registration deadline, never
+clicking it or creating/approving a credential. No owner screenshot, cookie,
+OTP, browser state or key material is exported.
+
+`check-owned-gate.mjs --device-access` passed 32 isolated vendor/proxy checks,
+including real registration availability, admin step-up, normal app access,
+anonymous/forged-identity denial, restart persistence and exact cleanup. No real
+account or authenticator was used. The focused device/gate suites passed 96
+tests and PowerShell parsing passed. Live installation and human mobile
+registration remain separate evidence, not implied by these tests.

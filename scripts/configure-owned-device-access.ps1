@@ -62,7 +62,7 @@ try {
     $path=Join-Path $directory 'device-access.json'
     if(Test-Path -LiteralPath $path){Assert-File $path;$binding=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json;$report.passwordlessEnabled=($binding.enabled -eq $true)}
     $path=Join-Path $directory 'device-enrollment-status.json'
-    if(Test-Path -LiteralPath $path){$saved=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json;$report.enrollment=$saved|Select-Object completed,phase,failedPhase,failureKind,providerStatus,gateCookieCount,localCodeAvailable,passkeyRegistered,passkeyBackupVerified,passkeyLoginVerified,appOwnerSessionVerified,failure,checkedAt}
+    if(Test-Path -LiteralPath $path){$saved=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json;$report.enrollment=$saved|Select-Object completed,phase,failedPhase,failureKind,providerStatus,gateCookieCount,localCodeAvailable,registrationAvailable,registrationControlVisible,registrationDeadline,passkeyRegistered,passkeyBackupVerified,passkeyLoginVerified,appOwnerSessionVerified,failure,checkedAt}
     $report.completed=$true
   }else{
     $lock=Open-OwnedRuntimeLock -Name operation -WaitMs 300000

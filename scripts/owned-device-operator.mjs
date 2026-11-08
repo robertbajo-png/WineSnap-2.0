@@ -249,6 +249,11 @@ try {
     const state = await gateRequest("/gate/api/state");
     assert.equal(state.data?.username, "robert");
     assert.ok(state.data.authentication_level >= 1);
+    await status("checking_registration_capability");
+    const methods = (await gateRequest("/gate/api/configuration")).data?.available_methods;
+    assert.ok(Array.isArray(methods));
+    report.registrationAvailable = methods.includes("webauthn");
+    assert.equal(report.registrationAvailable, true);
     await status("elevating_private_setup_session");
     const elevated = await gateRequest("/gate/api/user/session/elevation");
     if (elevated.data?.elevated !== true) {
@@ -294,9 +299,14 @@ try {
     });
     assert.equal(opened?.status(), 200);
     await status("rendering_owner_passkey_settings");
-    await page.getByRole("button").first().waitFor({ state: "visible", timeout: 60000 });
-    await status("awaiting_owner_passkey_registration");
+    const registrationControl = page.locator("#webauthn-credential-add");
+    await registrationControl.waitFor({ state: "visible", timeout: 60000 });
+    await registrationControl.scrollIntoViewIfNeeded();
+    await registrationControl.focus();
+    report.registrationControlVisible = true;
     const deadline = Date.now() + 30 * 60000;
+    report.registrationDeadline = new Date(deadline).toISOString();
+    await status("awaiting_owner_passkey_registration");
     let registered = false;
     while (Date.now() < deadline && !page.isClosed()) {
       try {
