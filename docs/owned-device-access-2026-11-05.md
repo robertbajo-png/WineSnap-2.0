@@ -194,3 +194,21 @@ anonymous/forged-identity denial, restart persistence and exact cleanup. No real
 account or authenticator was used. The focused device/gate suites passed 96
 tests and PowerShell parsing passed. Live installation and human mobile
 registration remain separate evidence, not implied by these tests.
+
+Live follow-up: source `a6c1eb7` passed Quality and Database Safety for push and
+PR. The full CI suite passed 1,313 tests; a local concurrent run hit five existing
+5-second time limits, and all five affected files passed (154 tests) when rerun
+with one worker and unchanged limits. Local typecheck and focused lint passed.
+
+Before the owned-only gate restart, retained archive
+`gate-20261108-171231277.dpapi` passed isolated restoration at 20:34 UTC: 26
+tables, one file, SQLite integrity, credential recovery and temporary cleanup.
+The existing gate/proxy restarted at 20:35 UTC, with all seven denial probes
+passing and no DNS, connector, published-port, app-image or password changes.
+
+At 20:36 UTC the real enrollment helper confirmed `registrationAvailable=true`
+from the provider and `registrationControlVisible=true` for the exact vendor
+Add button. The button was scrolled into view and focused. The human registration
+window ends at 21:06 UTC. This verifies the missing-button fix, not registration
+or mobile sign-in; those still require the real human authenticator and a fresh
+passwordless-login/account-handoff check. No credential has been fabricated.
