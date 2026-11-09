@@ -199,7 +199,15 @@ checks memory correction/forgetting and ordinary synthetic-account switching.
 external calls blocked. It holds the operation lock until closed/expired, then
 removes its exact tagged account and images. Use `PilotDemoCleanup` after an
 interrupted viewer, never general account deletion. No browser state is exported.
-Stage 6 human guided pilot is next; public-release gates remain separate.
+Stage 6 preparation is ready: `docs/guided-pilot-2026-11-09.md`. Five neutral task
+cards and a blank observation method are provided; human sessions remain pending.
+`PilotDemoAccept` rehearses the same guarded demo headlessly; it never counts as
+a human participant or live AI. Only the pinned previously approved image is
+allowed. If CDP omits multipart file bytes, the demo sends only the canonical
+local fixture after a matching analysis; never forward uninspected file data.
+Cleanup checks the exact fixture owner before a bounded flat-folder inventory,
+including orphan uploads. Never delete other folders or record participant data
+in Git. Public-release and real-mobile authentication gates remain separate.
 
 Phase-2 recipes and Cook Mode run in the actual local app at `/kitchen`, not
 the illustrative Chef prototype on port 5200. See

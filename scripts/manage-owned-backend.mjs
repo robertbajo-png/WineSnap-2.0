@@ -39,6 +39,7 @@ assert.ok(
     "PilotAccept",
     "PilotJourneys",
     "PilotDemo",
+    "PilotDemoAccept",
     "PilotDemoCleanup",
     "BrowserPrepare",
     "BrowserInspect",
@@ -724,7 +725,7 @@ try {
     await wait(() => verify());
     report.restartedApplication = true;
   }
-  if (["PilotDemo", "PilotDemoCleanup"].includes(action)) {
+  if (["PilotDemo", "PilotDemoAccept", "PilotDemoCleanup"].includes(action)) {
     assert.equal(pilotUi.enabled, true);
     const { showOwnedPilotDemo } = await import("./lib/owned-pilot-demo.mjs");
     const { validateBrowserFixture } = await import("./lib/owned-browser-fixture.mjs");
@@ -747,13 +748,19 @@ try {
         : { completed: true, alreadyClean: true };
     } else
       report.demo = await showOwnedPilotDemo(keys, {
+        acceptance: action === "PilotDemoAccept",
         fixture: previous,
         remember: (value) =>
           writeFile(manifest, JSON.stringify(validateBrowserFixture(value)), {
             flag: previous ? "w" : "wx",
             mode: 0o600,
           }),
-        artifactDirectory: fileURLToPath(new URL("../dist/owned-demo", import.meta.url)),
+        artifactDirectory: fileURLToPath(
+          new URL(
+            action === "PilotDemoAccept" ? "../dist/owned-demo-accept" : "../dist/owned-demo",
+            import.meta.url,
+          ),
+        ),
       });
     assert.equal(report.demo.completed, true);
     assert.equal(Boolean(report.demo.cleanupCompleted || report.demo.alreadyClean), true);

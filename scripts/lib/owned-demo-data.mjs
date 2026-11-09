@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 
+export const approvedDemoImageSha256 =
+  "3f52f3110c65dcb490a2b99e0b8d30eafce0492ffa6074e871261c6c49570a20";
+
 export function ownedDemoRecipe() {
   return {
     title: "Rostad blomk\u00e5l & vita b\u00f6nor",

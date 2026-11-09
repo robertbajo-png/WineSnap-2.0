@@ -59,8 +59,7 @@ describe("owned pilot acceptance and demo boundaries", () => {
     expect(live).toContain("awaitpage.unroute(scanPattern,gate)");
     expect(live).not.toMatch(/storageState\(|writeFile|console\./);
     const demo = readFileSync(new URL("./owned-pilot-demo.mjs", import.meta.url), "utf8");
-    expect(demo).toContain("offlineRequestPolicy");
-    expect(demo).toContain('model: "Demo');
+    expect(demo).toContain("createOwnedDemoPolicy");
     expect(demo).not.toMatch(/storageState\(|setSession\(|console\.|api\.openai\.com/);
     expect(demo).toContain('ownedBrowserFixture(keys, "cleanup", fixture');
     const browser = readFileSync(new URL("./owned-pilot-browser.mjs", import.meta.url), "utf8");

@@ -243,11 +243,27 @@ export async function ownedBrowserFixture(
           .limit(101),
       );
       assert.ok(wines.length <= 100 && photos.length <= 100);
-      const paths = fixtureImagePaths(
+      const referenced = fixtureImagePaths(
         [...wines.map((w) => w.image_url), ...photos.map((p) => p.storage_path)],
         fixture,
       );
-      if (paths.length) ok(await admin.storage.from("wine-labels").remove(paths));
+      const storage = admin.storage.from("wine-labels");
+      const objects = ok(await storage.list(fixture.userId, { limit: 101, offset: 0 }));
+      assert.ok(
+        objects.length <= 100 &&
+          objects.every((object) => typeof object.id === "string" && object.id.length > 0),
+      );
+      const paths = fixtureImagePaths(
+        [
+          ...new Set([
+            ...referenced,
+            ...objects.map((object) => `${fixture.userId}/${object.name}`),
+          ]),
+        ],
+        fixture,
+      );
+      if (paths.length) ok(await storage.remove(paths));
+      assert.equal(ok(await storage.list(fixture.userId, { limit: 101, offset: 0 })).length, 0);
     }
     ok(await admin.auth.admin.deleteUser(fixture.userId));
     const after = await admin.auth.admin.getUserById(fixture.userId);

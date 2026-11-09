@@ -213,6 +213,93 @@ describe("owned browser fixtures", () => {
     expect(remove).not.toHaveBeenCalled();
     expect(deleteUser).not.toHaveBeenCalled();
   });
+  it("removes an uploaded orphan only below the verified fixture folder before deleting its account", async () => {
+    const value = fixture(),
+      name = randomUUID() + ".webp";
+    const getUser = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          user: {
+            id: value.userId,
+            email: value.email,
+            app_metadata: { owned_browser_run: value.run },
+          },
+        },
+        error: null,
+      })
+      .mockResolvedValue({ data: { user: null }, error: { status: 404 } });
+    const deleteUser = vi.fn().mockResolvedValue({ data: {}, error: null });
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [{ name, id: randomUUID() }], error: null })
+      .mockResolvedValue({ data: [], error: null });
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null });
+    mocks.createClient.mockReturnValue({
+      auth: { admin: { getUserById: getUser, deleteUser } },
+      from: vi.fn().mockReturnValue(query),
+      storage: { from: vi.fn().mockReturnValue({ list, remove }) },
+    });
+    expect(
+      (await ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupImages: true }))
+        .cleanupCompleted,
+    ).toBe(true);
+    expect(list).toHaveBeenNthCalledWith(1, value.userId, { limit: 101, offset: 0 });
+    expect(remove).toHaveBeenCalledExactlyOnceWith([value.userId + "/" + name]);
+    expect(remove.mock.invocationCallOrder[0]).toBeLessThan(deleteUser.mock.invocationCallOrder[0]);
+  });
+  it.each([
+    [{ name: "nested", id: null }],
+    [{ name: "../other.webp", id: "file" }],
+    Array.from({ length: 101 }, () => ({ name: "image.webp", id: "file" })),
+  ])("refuses folders, traversal or an oversized fixture image inventory", async (...objects) => {
+    const value = fixture(),
+      deleteUser = vi.fn(),
+      remove = vi.fn();
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    mocks.createClient.mockReturnValue({
+      auth: {
+        admin: {
+          getUserById: vi.fn().mockResolvedValue({
+            data: {
+              user: {
+                id: value.userId,
+                email: value.email,
+                app_metadata: { owned_browser_run: value.run },
+              },
+            },
+            error: null,
+          }),
+          deleteUser,
+        },
+      },
+      from: vi.fn().mockReturnValue(query),
+      storage: {
+        from: vi.fn().mockReturnValue({
+          list: vi.fn().mockResolvedValue({ data: objects, error: null }),
+          remove,
+        }),
+      },
+    });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupImages: true }),
+    ).rejects.toThrow();
+    expect(remove).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
   it("creates a remote conflict only for the exact owned synthetic recipe and revision", async () => {
     const value = fixture();
     const state = {

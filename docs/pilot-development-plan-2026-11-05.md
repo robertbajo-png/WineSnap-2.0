@@ -32,7 +32,9 @@ weeks, plus owner review and pilot sessions. This is an estimate, not a deadline
    with browser/offline acceptance. See [the receipt](core-states-2026-11-06.md).
 5. Actual owned-app regression and controlled candidate: complete for local pilot.
    See [regression and demo](pilot-regression-2026-11-07.md).
-6. Guided pilot and corrective iteration: pending.
+6. Guided pilot and corrective iteration: preparation and demo rehearsal complete;
+   human sessions and observation-driven corrections remain pending.
+   See [the runbook and five task cards](guided-pilot-2026-11-09.md).
 
 Concept illustrations are not running UI, device testing, data changes or release
 evidence. Stage 1 changed no application component or deployed image. Stage 2 now

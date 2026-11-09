@@ -1,19 +1,28 @@
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
-import { lstat, mkdir, writeFile } from "node:fs/promises";
+import { createHash, createHmac } from "node:crypto";
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ownedApp, validateOwnedKeys } from "./owned-backend.mjs";
 import { ownedBrowserFixture } from "./owned-browser-fixture.mjs";
-import { offlineRequestPolicy } from "./owned-offline.mjs";
-import { ownedDemoRecipe } from "./owned-demo-data.mjs";
+import { createOwnedDemoPolicy } from "./owned-demo-policy.mjs";
+import { approvedDemoImageSha256 } from "./owned-demo-data.mjs";
 
 export const demoLifetimeMs = 15 * 60 * 1000;
 
 // Manual visible demo, normal synthetic-account Auth; no provider requests.
-export async function showOwnedPilotDemo(keys, { fixture: previous, remember, artifactDirectory }) {
+export async function showOwnedPilotDemo(
+  keys,
+  { fixture: previous, remember, artifactDirectory, acceptance = false },
+) {
   validateOwnedKeys(keys);
   assert.equal(typeof remember, "function");
+  assert.equal(typeof acceptance, "boolean");
+  const imagePath = join(process.env.USERPROFILE, "OneDrive/Desktop/Winesnap/54456874_400.webp");
+  const file = await lstat(imagePath);
+  assert.ok(file.isFile() && !file.isSymbolicLink() && file.size <= 5 * 1024 * 1024);
+  const original = await readFile(imagePath);
+  assert.equal(createHash("sha256").update(original).digest("hex"), approvedDemoImageSha256);
   if (previous) await ownedBrowserFixture(keys, "absent", previous);
   await mkdir(artifactDirectory, { recursive: true });
   const directory = await lstat(artifactDirectory);
@@ -25,12 +34,13 @@ export async function showOwnedPilotDemo(keys, { fixture: previous, remember, ar
     if (error.code !== "ENOENT") throw error;
   }
   await writeFile(readyFile, JSON.stringify({ ready: false }));
-  let fixture, browser, timer;
+  let fixture, browser, page, timer;
   const report = {
     completed: false,
     cleanupCompleted: false,
     productionTouched: false,
     liveProvider: false,
+    humanSessions: 0,
   };
   try {
     const created = await ownedBrowserFixture(
@@ -52,43 +62,52 @@ export async function showOwnedPilotDemo(keys, { fixture: previous, remember, ar
         ),
       ).href
     );
-    browser = await chromium.launch({ headless: false, args: ["--window-size=1280,900"] });
+    browser = await chromium.launch({ headless: acceptance, args: ["--window-size=1280,900"] });
     const context = await browser.newContext({
       viewport: null,
       locale: "sv-SE",
       serviceWorkers: "block",
     });
     await context.addInitScript(() => localStorage.setItem("lang", "sv"));
+    const policy = createOwnedDemoPolicy(
+      fixture,
+      original,
+      acceptance
+        ? (evidence) => {
+            report.uploadEvidence = evidence;
+          }
+        : undefined,
+    );
     await context.route("**/*", async (route) => {
-      const policy = offlineRequestPolicy(route.request().url());
-      if (policy !== "local") return route.abort();
-      const url = new URL(route.request().url());
-      if (url.pathname.includes("/storage/v1/object/") && route.request().method() !== "GET")
-        return route.abort();
+      const request = route.request();
+      const decision = await policy({
+        url: request.url(),
+        method: request.method(),
+        headers: request.headers(),
+        body: request.postDataBuffer(),
+      });
+      if (decision.kind === "abort") return route.abort();
+      if (decision.kind === "reply")
+        return route.fulfill({
+          status: decision.status,
+          contentType: "application/json",
+          body: JSON.stringify(decision.body),
+        });
+      if (decision.kind === "upload") {
+        const headers = { ...request.headers(), "content-type": decision.contentType };
+        delete headers["content-length"];
+        const response = await route.fetch({
+          headers,
+          postData: decision.body,
+          maxRedirects: 0,
+          timeout: 30000,
+        });
+        if (response.status() >= 300 && response.status() < 400) return route.abort();
+        return route.fulfill({ response });
+      }
       return route.continue();
     });
-    const page = await context.newPage();
-    // Clearly attributed local examples, not an AI gateway or a saved user conversation.
-    await page.route("**/api/chef", (route) => {
-      const body = route.request().postDataJSON();
-      if (!["chat", "generate", "adapt"].includes(body.action)) return route.abort();
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ...(body.action === "chat"
-            ? {
-                answer:
-                  "Exempelsvar (demo): citron, rostade gr\u00f6nsaker och ett friskt vitt vin kan fungera fint tillsammans.",
-              }
-            : { draft: ownedDemoRecipe() }),
-          model: "Demo \u2013 lokalt exempel, ingen AI",
-          inputTokens: 0,
-          outputTokens: 0,
-          durationMs: 0,
-        }),
-      });
-    });
+    page = await context.newPage();
     page.setDefaultTimeout(30000);
     await page.goto(ownedApp + "/login");
     await page.waitForFunction(() =>
@@ -133,6 +152,26 @@ export async function showOwnedPilotDemo(keys, { fixture: previous, remember, ar
       await mobile.close();
       await page.bringToFront();
     }
+    if (acceptance) {
+      const { acceptOwnedDemo } = await import("./owned-demo-acceptance.mjs");
+      report.acceptance = { completed: false, humanSessions: 0, liveProvider: false, passed: [] };
+      await acceptOwnedDemo({
+        page,
+        fixture,
+        imagePath,
+        original,
+        report: report.acceptance,
+        progress: async (phase) => {
+          report.phase = phase;
+          await writeFile(
+            join(artifactDirectory, "progress.json"),
+            JSON.stringify({ phase, passed: report.acceptance.passed }),
+          );
+        },
+      });
+      report.completed = true;
+      return report;
+    }
     const expiresAt = new Date(Date.now() + demoLifetimeMs).toISOString();
     await writeFile(
       readyFile,
@@ -151,6 +190,14 @@ export async function showOwnedPilotDemo(keys, { fixture: previous, remember, ar
       timer = setTimeout(() => void browser.close().finally(resolve), demoLifetimeMs);
     });
     report.completed = true;
+  } catch (error) {
+    report.failure = "owned_demo_not_ready";
+    if (["AssertionError", "TimeoutError", "TypeError"].includes(error?.name))
+      report.errorKind = error.name;
+    if (acceptance && report.phase && page && new URL(page.url()).origin === ownedApp)
+      await page
+        .screenshot({ path: join(artifactDirectory, "failure.png"), fullPage: true })
+        .catch(() => undefined);
   } finally {
     clearTimeout(timer);
     await browser?.close().catch(() => undefined);
