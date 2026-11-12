@@ -72,7 +72,15 @@ with the explicitly supplied local account email. The human chooses both passwor
 in masked fields; no guessed passwords, root-key regeneration or hosted resets.
 Never run its private worker directly or print its gate envelope. See
 `docs/owned-password-recovery-2026-11-05.md` for partial-completion and recovery rules.
-The owner subsequently requested private password-free access, not public account
+The owner chose saved-password autofill instead of passkey enrollment on
+2026-11-12. Use the human-only `reset-owned-passwords.ps1 -Action Window -GateOnly`
+with the explicit owner email. It requires the installed, enabled owner handoff,
+changes only the gate login/session secret, and verifies the exact app identity
+without changing the app password. Mobile saving needs human approval on that
+device; do not access password-manager UI, reopen Enroll or claim mobile success
+from a backend probe. Existing TTLs, denial rules and admin step-up stay intact.
+See the saved-password addendum in `docs/owned-password-recovery-2026-11-05.md`.
+The owner previously requested private password-free access, not public account
 exposure. `configure-owned-device-access.ps1` prepares an exact existing-owner
 binding and enables vendor passkeys plus a verified gate-to-GoTrue handoff.
 Never run `owned-device-operator.mjs` directly: Prepare returns private enrollment

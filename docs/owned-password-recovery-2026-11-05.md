@@ -54,3 +54,45 @@ unit regressions, and a local real-Argon2id synthetic test. CI's Node 22 skips o
 the real Argon2 call, while the immutable rotation payload and API isolation tests
 still run. Actual owner credential verification is deliberately performed only
 after human submission, never with a guessed/generated real-owner password.
+
+## Saved-Password Alternative, 2026-11-12
+
+The owner declined further passkey enrollment and chose an ordinary saved
+password instead. Use the existing owner-only gate and its installed account
+handoff, not anonymous access or a new remembered-device credential:
+
+```powershell
+./scripts/reset-owned-passwords.ps1 -Action Window -GateOnly -OwnerEmail '<local owner email>'
+./scripts/reset-owned-passwords.ps1 -Action Status
+```
+
+This opt-in window has only a new gate password and its confirmation, both
+masked. The human enters and submits them. Before rotation, the private worker
+verifies the existing enabled installation-bound handoff and the exact confirmed
+owner. A disabled/foreign binding, ambiguous account, anonymous user or QA fixture
+fails closed. The app password and its existing refresh sessions are not changed;
+only the outer gate's password hash and session secret rotate. The ordinary
+two-password recovery remains available without `-GateOnly`.
+
+After the existing encrypted gate replacement and scoped restart, the private
+probe checks normal password-factor login, opens a normal authenticated app
+session for the exact bound owner and verifies it against GoTrue's user endpoint.
+It signs out only that probe's app session and its own gate session. Neither
+passwords, session bodies, tokens nor cookies appear in the status report.
+`ownerSessionVerified` is backend handoff proof, not a mobile/browser acceptance.
+`appLoginVerified` remains false in gate-only mode: no app password was tested.
+
+The mobile user opens
+`https://winesnap.boleoai.se/?device_login=1`, signs in as `robert` with the chosen
+password and saves it in their own password manager. The query contains only
+explicit sign-in intent, never credentials. It clears this browser's earlier
+explicit-sign-out suppression. Saving/autofill must be approved on the device;
+the Windows operator does not access password managers or synchronize a password
+to a phone. The server retains a password hash, not a reusable plaintext copy.
+
+Default deny, one owner, login throttling, TLS, cookie protections, existing
+session lifetimes and the admin step-up stay unchanged. No passkey registration,
+public bypass, DNS/tunnel change, app rebuild or old-production action is needed.
+Previously staged private passkey setup no longer matches the rotated gate;
+do not resume it or overwrite the owner's new password. Verification and actual
+mobile saving remain pending until the human completes the respective steps.

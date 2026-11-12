@@ -212,3 +212,13 @@ Add button. The button was scrolled into view and focused. The human registratio
 window ends at 21:06 UTC. This verifies the missing-button fix, not registration
 or mobile sign-in; those still require the real human authenticator and a fresh
 passwordless-login/account-handoff check. No credential has been fabricated.
+
+## Owner's Saved-Password Choice, 2026-11-12
+
+The November 11 setup window expired without a stored credential. The owner then
+declined further passkey registration and approved a saved password on their own
+mobile instead. Do not reopen Enroll on a generic request to continue. Keep the
+existing protected gate-to-account handoff, which also accepts a normal verified
+owner password login. The scoped `-GateOnly` password window and its verification
+are documented in `owned-password-recovery-2026-11-05.md`. This does not claim
+passkey enrollment, remove authentication or change existing session lifetimes.

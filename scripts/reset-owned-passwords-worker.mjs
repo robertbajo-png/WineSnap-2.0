@@ -14,6 +14,7 @@ import {
   resetOwnedOwnerLogin,
   rotateOwnedGatePassword,
   validateOwnedResetPasswords,
+  verifyOwnedGateOwner,
 } from "./lib/owned-password-reset.mjs";
 
 assert.equal(process.platform, "win32");
@@ -21,10 +22,11 @@ assert.equal(process.env.WINESNAP_OWNED_PASSWORD_RESET_PIPE, "1");
 assert.ok(!process.stdin.isTTY && !process.stdout.isTTY);
 assert.equal(process.argv.length, 3);
 const action = process.argv[2];
-assert.ok(["Rotate", "VerifyGate"].includes(action));
+assert.ok(["Rotate", "RotateGate", "VerifyGate", "VerifyOwnerGate"].includes(action));
 const report = { project: "winesnap-owned-local", completed: false, productionTouched: false };
 const chunks = [];
 let input, payload, gate;
+const gateOnly = ["RotateGate", "VerifyOwnerGate"].includes(action);
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
 const command = (args, data) =>
   new Promise((resolve, reject) => {
@@ -51,6 +53,7 @@ try {
   validateOwnedGateKeys(payload.gate);
   assert.deepEqual(Object.keys(payload).sort(), [
     "appPassword",
+    ...(gateOnly ? ["binding"] : []),
     "gate",
     "gatePassword",
     "keys",
@@ -71,7 +74,31 @@ try {
     checkOwnedContainer(info, name, payload.keys.installationId);
     assert.equal(info.State.Running, true);
   }
-  if (action === "Rotate") {
+  let ownerId;
+  if (gateOnly) {
+    const admin = createClient(ownedApi, ownedToken(payload.keys, "service_role"), {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: {
+        fetch: (url, init) => {
+          const target = new URL(String(url));
+          assert.equal(target.origin, ownedApi);
+          assert.ok(target.pathname.startsWith("/auth/v1/"));
+          return fetch(url, { ...init, redirect: "error", signal: AbortSignal.timeout(20000) });
+        },
+      },
+    });
+    ownerId = await verifyOwnedGateOwner(
+      admin,
+      payload.binding,
+      payload.keys.installationId,
+      payload.ownerEmail,
+    );
+    report.ownerBindingVerified = true;
+    report.appPasswordUnchanged = true;
+  }
+  if (action === "RotateGate") {
+    gate = await rotateOwnedGatePassword(payload.gate, payload.gatePassword);
+  } else if (action === "Rotate") {
     gate = await rotateOwnedGatePassword(payload.gate, payload.gatePassword);
     const options = {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -105,13 +132,17 @@ try {
           "--eval",
           ownedGatePasswordProbe,
         ],
-        JSON.stringify({ password: payload.gatePassword }),
+        JSON.stringify({ password: payload.gatePassword, ...(gateOnly ? { ownerId } : {}) }),
       ),
     );
     assert.equal(result.completed, true);
     assert.equal(result.gateLoginVerified, true);
     assert.equal(result.probeSessionLoggedOut, true);
     report.gateLoginVerified = true;
+    if (gateOnly) {
+      assert.equal(result.ownerSessionVerified, true);
+      report.ownerSessionVerified = true;
+    }
   }
   report.completed = true;
 } catch {
@@ -121,7 +152,10 @@ try {
   for (const chunk of chunks) chunk.fill(0);
   payload = undefined;
   console.log(
-    JSON.stringify({ report, ...(action === "Rotate" && report.completed ? { gate } : {}) }),
+    JSON.stringify({
+      report,
+      ...(["Rotate", "RotateGate"].includes(action) && report.completed ? { gate } : {}),
+    }),
   );
   gate = undefined;
   if (!report.completed) process.exitCode = 1;
