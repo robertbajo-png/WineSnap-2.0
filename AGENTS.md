@@ -24,6 +24,16 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
+Current access decision, 2026-11-12: the owner abandoned mobile/password setup
+for now and requested local-only development. The owned tunnel is deliberately
+stopped with supervisor recovery disabled. Do not restart it, reset passwords or
+reopen passkey enrollment on generic continuation requests. Use the private
+`open-owned-local.ps1` wrapper and the `WineSnap lokalt` desktop shortcut for the
+real existing owner account; never replace it with a synthetic demo. The wrapper
+uses CurrentUser-protected operator access and normal loopback GoTrue Auth/RLS,
+not a public or anonymous login bypass. Never run its private worker directly or
+print grants/tokens/browser state. See `docs/local-development-access-2026-11-12.md`.
+
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
 preparation and must not override the current standalone default.
