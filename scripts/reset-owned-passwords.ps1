@@ -27,6 +27,15 @@ function Read-Private([string]$Name) {
   $bytes=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($path),$null,'CurrentUser')
   try{return ([Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json -AsHashtable)}finally{[Array]::Clear($bytes,0,$bytes.Length)}
 }
+function Protect-PasswordFile([string]$Path) {
+  $acl=[Security.AccessControl.FileSecurity]::new()
+  $acl.SetAccessRuleProtection($true,$false)
+  $owner=[Security.Principal.WindowsIdentity]::GetCurrent().User
+  $acl.SetOwner($owner)
+  foreach($sid in @($owner,[Security.Principal.SecurityIdentifier]::new('S-1-5-18'))){$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid,'FullControl','Allow'))}
+  [IO.FileSystemAclExtensions]::SetAccessControl((Get-Item -LiteralPath $Path),$acl)
+  Assert-PrivateFile $Path
+}
 function Write-Status {
   if(Test-Path -LiteralPath $statusFile){Assert-PrivateFile $statusFile}
   $report.checkedAt=[DateTime]::UtcNow.ToString('o')
@@ -72,7 +81,7 @@ try {
     Assert-PrivateFile $statusFile
     $saved=Get-Content -LiteralPath $statusFile -Raw|ConvertFrom-Json
     if($saved.project -ne 'winesnap-owned-local'){throw 'Unexpected password status.'}
-    $saved|Select-Object project,completed,productionTouched,phase,gateOnly,appPasswordUpdated,appLoginVerified,appRefreshSessionsRevoked,gateStoreUpdated,gateLoginVerified,ownerBindingVerified,ownerSessionVerified,appPasswordUnchanged,cancelled,failure,checkedAt|ConvertTo-Json -Depth 4
+    $saved|Select-Object project,completed,productionTouched,phase,storageStep,errorType,gateOnly,appPasswordUpdated,appLoginVerified,appRefreshSessionsRevoked,gateStoreUpdated,gateLoginVerified,ownerBindingVerified,ownerSessionVerified,appPasswordUnchanged,cancelled,failure,checkedAt|ConvertTo-Json -Depth 4
     exit 0
   }
   if($OwnerEmail -cnotmatch '^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$'){throw 'An explicit normalized owner email is required.'}
@@ -120,6 +129,7 @@ try {
   $report.phase=$(if($GateOnly){'updating_owned_gate'}else{'updating_owned_account'});Write-Status
   $result=Invoke-PrivateWorker $(if($GateOnly){'RotateGate'}else{'Rotate'}) $appPassword;$appPassword=$null
   $gate=$result.gate;$result=$null
+  $report.phase='saving_encrypted_gate';$report.storageStep='encrypt_pending';Write-Status
   $plain=[Text.Encoding]::UTF8.GetBytes(($gate|ConvertTo-Json -Compress))
   try {$fingerprint=[Security.Cryptography.SHA256]::HashData($plain);$cipher=[Security.Cryptography.ProtectedData]::Protect($plain,$null,'CurrentUser')}finally{[Array]::Clear($plain,0,$plain.Length);$plain=$null}
   $suffix=[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'-'+[guid]::NewGuid().ToString('N')
@@ -127,11 +137,13 @@ try {
   $backup=Join-Path $directory ('password-reset-'+$suffix+'.previous.dpapi')
   $handle=[IO.File]::Open($pending,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
   try{$handle.Write($cipher,0,$cipher.Length)}finally{$handle.Dispose()}
-  $acl=Get-Acl -LiteralPath $gateFile
-  [IO.FileSystemAclExtensions]::SetAccessControl((Get-Item -LiteralPath $pending),$acl)
-  Assert-PrivateFile $pending;Assert-PrivateFile $gateFile
+  $report.storageStep='protect_pending_acl';Write-Status
+  Protect-PasswordFile $pending
+  Assert-PrivateFile $gateFile
+  $report.storageStep='verify_encrypted_roundtrip';Write-Status
   $roundtrip=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($pending),$null,'CurrentUser')
   try{if(-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals($fingerprint,[Security.Cryptography.SHA256]::HashData($roundtrip))){throw 'Encrypted gate verification failed.'}}finally{[Array]::Clear($roundtrip,0,$roundtrip.Length);$roundtrip=$null}
+  $report.storageStep='replace_existing_gate';Write-Status
   [IO.File]::Replace($pending,$gateFile,$backup,$false);$pending=$null;$report.gateStoreUpdated=$true
   Assert-PrivateFile $gateFile;Assert-PrivateFile $backup
   $report.phase='restarting_private_gate';Write-Status
@@ -148,6 +160,7 @@ try {
 } catch {
   if($Action -eq 'Status'){throw 'Password status is unavailable.'}
   $report.failure='owned_password_reset_incomplete'
+  $report.errorType=$_.Exception.GetType().Name
 } finally {
   $appPassword=$null;$gatePassword=$null;$result=$null;$cipher=$null;$binding=$null
   if($keys){$keys.Clear()};if($gate){$gate.Clear()}

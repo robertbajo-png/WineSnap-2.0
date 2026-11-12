@@ -196,6 +196,11 @@ describe("explicit owned owner password recovery", () => {
     expect(wrapper).toContain("$process.StandardInput.Write($payload)");
     expect(wrapper).toContain("[IO.File]::Replace($pending,$gateFile,$backup,$false)");
     expect(wrapper).toContain("ProtectedData]::Protect");
+    expect(wrapper).toContain("function Protect-PasswordFile");
+    expect(wrapper).toContain("[Security.AccessControl.FileSecurity]::new()");
+    expect(wrapper).toContain("$acl.SetAccessRuleProtection($true,$false)");
+    expect(wrapper).toContain("Protect-PasswordFile $pending");
+    expect(wrapper).not.toContain("$acl=Get-Acl -LiteralPath $gateFile");
     expect(wrapper).toContain("[switch]$GateOnly");
     expect(wrapper).toContain("$fieldCount=if($GateOnly){2}else{4}");
     expect(wrapper).toContain("Read-OwnedDeviceAccess -InstallationId $keys.installationId");

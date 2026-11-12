@@ -80,6 +80,11 @@ without changing the app password. Mobile saving needs human approval on that
 device; do not access password-manager UI, reopen Enroll or claim mobile success
 from a backend probe. Existing TTLs, denial rules and admin step-up stay intact.
 See the saved-password addendum in `docs/owned-password-recovery-2026-11-05.md`.
+Pending password stores require a newly constructed owner/System-only protected
+ACL; copying a clean `Get-Acl` object can silently leave inherited permissions.
+The manual `check-owned-password-storage.ps1` probe tests the exact functions on
+synthetic temporary bytes, including replacement/rollback and cleanup. A pending
+encrypted hash is not an activated password or proof of a successful login.
 The owner previously requested private password-free access, not public account
 exposure. `configure-owned-device-access.ps1` prepares an exact existing-owner
 binding and enables vendor passkeys plus a verified gate-to-GoTrue handoff.

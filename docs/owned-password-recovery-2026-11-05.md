@@ -96,3 +96,25 @@ public bypass, DNS/tunnel change, app rebuild or old-production action is needed
 Previously staged private passkey setup no longer matches the rotated gate;
 do not resume it or overwrite the owner's new password. Verification and actual
 mobile saving remain pending until the human completes the respective steps.
+
+### Windows ACL Follow-Up
+
+The first gate-only submission verified the existing owner but stopped before
+replacing the live gate store. A newly encrypted pending file retained inherited
+owner/System permissions: copying a clean `Get-Acl` descriptor through .NET did
+not persist the protection flag. No password was activated and the app account
+was unchanged. Pending ciphertext must not be treated as a successful login.
+
+The writer now constructs an explicit protected owner/System `FileSecurity`,
+like the existing device-enrollment writer, and verifies it before replacement.
+Safe status includes a storage step and exception type, never an exception
+message or credential. Retrying requires human entry: the retained encrypted
+gate contains only a hash and cannot verify the chosen plaintext password.
+
+`scripts/check-owned-password-storage.ps1` tests the exact writer/validator
+functions in a random temporary directory with synthetic CurrentUser-encrypted
+bytes. On November 12 it reproduced the ineffective legacy ACL copy and verified
+protected pending/replacement/rollback files, decrypt roundtrips and exact cleanup.
+It opens no real store or account and takes no arguments. The failed real pending
+file was subsequently protected without changing its ciphertext or the live gate.
+The next human submission and actual new-password login remain separate checks.
