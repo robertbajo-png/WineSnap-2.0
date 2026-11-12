@@ -118,3 +118,33 @@ protected pending/replacement/rollback files, decrypt roundtrips and exact clean
 It opens no real store or account and takes no arguments. The failed real pending
 file was subsequently protected without changing its ciphertext or the live gate.
 The next human submission and actual new-password login remain separate checks.
+
+### Verified Gate-Only Activation
+
+The human retry completed at 2026-11-12T20:21:28Z. The private operator verified
+normal password-factor gate login, the exact existing owner binding, a normal
+authenticated app session and its identity at GoTrue's user endpoint. Probe app
+and gate sessions were signed out. Safe status records `completed=true`,
+`gateStoreUpdated=true`, `gateLoginVerified=true`, `ownerSessionVerified=true`
+and `appPasswordUnchanged=true`. No app password or existing app refresh session
+was changed; `appLoginVerified=false` is expected in this mode.
+
+Source `f71b004` passed all four Quality/Database Safety push and PR workflows;
+the local full suite passed 1,336 tests across 131 files. The actual Windows
+storage regression, focused lint and same-PC restore checks passed. Fresh gate
+archive `gate-20261112-202759660.dpapi` restored successfully with 26 tables,
+one file, SQLite integrity, credential recovery and exact clone cleanup. This
+is not off-device recovery.
+
+The owned core and Windows supervisor checks passed, as did all seven private
+ingress denial probes. Two initial external probe runs did not complete and
+were not recorded as success. Individual anonymous checks returned protected
+302/no-store responses. A subsequent diagnostic run of the same full external
+checker passed all 25 checks with validated TLS, no cache hits and expected
+denials; no exception, authentication bypass or public configuration was added.
+
+The old published site, hosted test, DNS, tunnel routing and session lifetimes
+were not changed. Backend password login/account handoff is verified. Actual
+mobile password-manager saving and later autofill/re-login remain human-device
+checks, not implied by the operator or anonymous probes. Do not repeat recovery
+or passkey enrollment on a generic request to continue or check login status.

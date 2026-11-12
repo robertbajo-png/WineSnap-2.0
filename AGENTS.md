@@ -80,6 +80,9 @@ without changing the app password. Mobile saving needs human approval on that
 device; do not access password-manager UI, reopen Enroll or claim mobile success
 from a backend probe. Existing TTLs, denial rules and admin step-up stay intact.
 See the saved-password addendum in `docs/owned-password-recovery-2026-11-05.md`.
+Gate-only password activation and normal owner-account handoff were verified on
+2026-11-12. Check Status rather than opening recovery again on generic login or
+continuation requests. Mobile password-manager saving/autofill is not yet attested.
 Pending password stores require a newly constructed owner/System-only protected
 ACL; copying a clean `Get-Acl` object can silently leave inherited permissions.
 The manual `check-owned-password-storage.ps1` probe tests the exact functions on
