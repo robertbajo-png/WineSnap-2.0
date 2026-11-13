@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   Wine,
@@ -47,6 +48,7 @@ import { wineRating, type RatedWine } from "@/lib/wineRatings";
 import { useAuth } from "@/hooks/useAuth";
 import { WineKitchenJourney } from "@/features/meals/WineKitchenJourney";
 import { publicWineSharingAllowed } from "@/lib/publicWineSharing";
+import { accountWriteClient } from "@/lib/accountWriteScope";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -116,11 +118,30 @@ function WineRoute() {
   const isDetail = useRouterState({
     select: (state) => state.matches[state.matches.length - 1]?.routeId === "/wine/$id",
   });
-  return isDetail ? <WineDetailPage /> : <Outlet />;
+  const { id } = Route.useParams();
+  const { user, loading } = useAuth();
+  const { lang } = useI18n();
+  return isDetail ? (
+    <WineDetailPage
+      key={`${id}:${user?.id ?? "guest"}:${lang}`}
+      id={id}
+      user={user}
+      authLoading={loading}
+    />
+  ) : (
+    <Outlet />
+  );
 }
 
-function WineDetailPage() {
-  const { id } = Route.useParams();
+function WineDetailPage({
+  id,
+  user,
+  authLoading,
+}: {
+  id: string;
+  user: User | null;
+  authLoading: boolean;
+}) {
   const navigate = useNavigate();
   const t = useT();
   const { lang } = useI18n();
@@ -132,7 +153,8 @@ function WineDetailPage() {
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestFeedback, setSuggestFeedback] = useState<Record<string, "like" | "dislike">>({});
   const [notes, setNotes] = useState<TastingNote[]>([]);
-  const { user, loading: authLoading } = useAuth();
+  const alive = useRef(true),
+    suggestionRequest = useRef<AbortController | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [revision, setRevision] = useState(0);
   const [sharingOrigin, setSharingOrigin] = useState<string | null>(null);
@@ -140,13 +162,35 @@ function WineDetailPage() {
   const sharingAvailable = publicWineSharingAllowed(sharingOrigin, ownedBackend);
 
   useEffect(() => setSharingOrigin(window.location.origin), []);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      suggestionRequest.current?.abort();
+    };
+  }, []);
+
+  const writeScope = () => (user ? { owner: user.id, current: () => alive.current } : null);
 
   const loadSuggestions = async () => {
-    if (!w || suggestLoading) return;
+    if (!w || suggestLoading || suggestionRequest.current) return;
+    const scope = writeScope();
+    if (!scope) {
+      setSuggestError(t("state.chefAuth"));
+      return;
+    }
+    const controller = new AbortController();
+    suggestionRequest.current?.abort();
+    suggestionRequest.current = controller;
     setSuggestLoading(true);
     setSuggestError(null);
     try {
-      const { data, error } = await invokeAi("wine-suggestions", { wineId: w.id, language: lang });
+      const { data, error } = await invokeAi(
+        "wine-suggestions",
+        { wineId: w.id, language: lang },
+        { scope, signal: controller.signal },
+      );
+      if (controller.signal.aborted || !scope.current()) return;
       if (error) throw error;
       const payload = data as { error?: string; suggestions?: Suggestion[] } | null;
       if (payload?.error) throw new Error(payload.error);
@@ -156,18 +200,29 @@ function WineDetailPage() {
         ),
       );
     } catch (e) {
-      setSuggestError(e instanceof Error ? e.message : "Failed to load suggestions");
+      if (!controller.signal.aborted && scope.current())
+        setSuggestError(e instanceof Error ? e.message : "Failed to load suggestions");
     } finally {
-      setSuggestLoading(false);
+      if (suggestionRequest.current === controller) suggestionRequest.current = null;
+      if (!controller.signal.aborted && scope.current()) setSuggestLoading(false);
     }
   };
 
   const sendSuggestionFeedback = async (suggestion: Suggestion, event: "like" | "dislike") => {
+    const scope = writeScope();
+    if (!scope || !scope.current()) return;
     if (suggestFeedback[recommendationKey(suggestion)] === event) return;
-    const saved = await recordRecommendationEvent(event, "similar", suggestion, {
-      reference_wine_id: w?.id,
-      match_score: suggestion.match_score,
-    });
+    const saved = await recordRecommendationEvent(
+      event,
+      "similar",
+      suggestion,
+      {
+        reference_wine_id: w?.id,
+        match_score: suggestion.match_score,
+      },
+      scope,
+    );
+    if (!scope.current()) return;
     if (!saved) {
       toast.error(t("recommendation.feedbackError"));
       return;
@@ -180,22 +235,33 @@ function WineDetailPage() {
   };
 
   const saveSuggestion = async (suggestion: Suggestion) => {
-    const saved = await addToWishlist({
-      producer: suggestion.producer,
-      wine_name: suggestion.wine_name,
-      vintage: suggestion.vintage,
-      region: suggestion.region,
-      country: suggestion.country,
-      wine_type: suggestion.wine_type,
-      grape_varieties: suggestion.grape_varieties,
-      source: "ai",
-      ai_data: suggestion as never,
-    });
-    if (saved) {
-      await recordRecommendationEvent("save", "similar", suggestion, {
-        reference_wine_id: w?.id,
-        match_score: suggestion.match_score,
-      });
+    const scope = writeScope();
+    if (!scope || !scope.current()) return;
+    const saved = await addToWishlist(
+      {
+        producer: suggestion.producer,
+        wine_name: suggestion.wine_name,
+        vintage: suggestion.vintage,
+        region: suggestion.region,
+        country: suggestion.country,
+        wine_type: suggestion.wine_type,
+        grape_varieties: suggestion.grape_varieties,
+        source: "ai",
+        ai_data: suggestion as never,
+      },
+      scope,
+    );
+    if (saved && scope.current()) {
+      await recordRecommendationEvent(
+        "save",
+        "similar",
+        suggestion,
+        {
+          reference_wine_id: w?.id,
+          match_score: suggestion.match_score,
+        },
+        scope,
+      );
     }
   };
 
@@ -243,10 +309,19 @@ function WineDetailPage() {
   const remove = async () => {
     if (!w || w.user_id !== user?.id) return;
     if (!confirm(t("wine.deleteConfirm"))) return;
-    const { error } = await supabase.from("wines").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(t("wine.removed"));
-    navigate({ to: "/cellar" });
+    const scope = writeScope();
+    if (!scope) return;
+    try {
+      const client = await accountWriteClient(scope);
+      if (!scope.current()) return;
+      const { error } = await client.from("wines").delete().eq("id", id).eq("user_id", scope.owner);
+      if (!scope.current()) return;
+      if (error) return toast.error(t("common.error"));
+      toast.success(t("wine.removed"));
+      navigate({ to: "/cellar" });
+    } catch {
+      if (scope.current()) toast.error(t("common.error"));
+    }
   };
 
   if (loading || authLoading)

@@ -34,7 +34,8 @@ describe("wine photo viewer", () => {
   it("does not render an empty photo control without a stored image", () => {
     const html = renderToStaticMarkup(<PhotoGallery wineId="wine" />);
     expect(html).not.toContain('aria-label="photos.view"');
-    expect(html).toContain("photos.empty");
+    expect(html).toContain("photos.loading");
+    expect(html).not.toContain("photos.empty");
   });
   it("portals the full-height, contained image outside page stacking contexts", () => {
     const source = readFileSync(new URL("./PhotoGallery.tsx", import.meta.url), "utf8");

@@ -816,6 +816,19 @@ const en = {
   "photos.view": "View wine photo",
   "photos.image": "Wine photo",
   "photos.add": "Add photo",
+  "photos.loading": "Loading photos...",
+  "photos.invalidImage":
+    "Choose a JPEG, PNG, WebP, GIF or AVIF image up to 10 MB, or crop it to reduce its size.",
+  "photos.loadFailed": "Photos could not be loaded. This does not mean the gallery is empty.",
+  "photos.offline":
+    "Connect to load photos or confirm a change. Saving and deletion will not retry automatically.",
+  "photos.saveUnconfirmed":
+    "Saving could not be confirmed. Keep this page open; your image and save ID are retained for a manual retry.",
+  "photos.deleteUnconfirmed":
+    "Deletion could not be confirmed. Retry checks the same photo; no new deletion is started automatically.",
+  "photos.removed": "Photo removed",
+  "photos.removedRetained":
+    "Photo removed from the gallery. Its file is still referenced elsewhere or could not be safely identified, so it was retained.",
   "photos.empty": "No extra photos yet.",
   "photos.delete": "Delete photo",
   "photos.deleteConfirm": "Delete this photo?",
@@ -1653,6 +1666,19 @@ const sv: Record<keyof typeof en, string> = {
   "photos.view": "Visa vinbild",
   "photos.image": "Vinbild",
   "photos.add": "Lägg till bild",
+  "photos.loading": "Hämtar bilder...",
+  "photos.invalidImage":
+    "Välj en JPEG-, PNG-, WebP-, GIF- eller AVIF-bild på högst 10 MB, eller beskär bilden för att minska storleken.",
+  "photos.loadFailed": "Bilderna kunde inte hämtas. Det betyder inte att galleriet är tomt.",
+  "photos.offline":
+    "Anslut för att hämta bilder eller bekräfta en ändring. Sparande och radering återförsöks inte automatiskt.",
+  "photos.saveUnconfirmed":
+    "Sparandet kunde inte bekräftas. Behåll sidan öppen; bilden och samma spar-ID finns kvar för ett manuellt återförsök.",
+  "photos.deleteUnconfirmed":
+    "Raderingen kunde inte bekräftas. Ett återförsök kontrollerar samma bild; ingen ny radering startas automatiskt.",
+  "photos.removed": "Bilden är borttagen",
+  "photos.removedRetained":
+    "Bilden är borttagen från galleriet. Filen används fortfarande på annat håll eller kunde inte identifieras säkert och har därför behållits.",
   "photos.empty": "Inga extra bilder än.",
   "photos.delete": "Radera bild",
   "photos.deleteConfirm": "Radera den här bilden?",

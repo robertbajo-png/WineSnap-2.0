@@ -46,6 +46,41 @@ const wine = {
   tannin: 1,
   description: "Synthetic UI fixture. No real account or wine data.",
 };
+const authKey = "sb-example-auth-token";
+const fixtureOwner = wine.user_id;
+const fixturePeer = "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa";
+function simulatedSession(id) {
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const token = [
+    Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+    Buffer.from(
+      JSON.stringify({ sub: id, role: "authenticated", aud: "authenticated", exp }),
+    ).toString("base64url"),
+    "synthetic-not-a-valid-signature",
+  ].join(".");
+  return {
+    access_token: token,
+    refresh_token: `synthetic-only-${id}`,
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: exp,
+    user: {
+      id,
+      role: "authenticated",
+      aud: "authenticated",
+      email: `${id}@example.invalid`,
+      app_metadata: { provider: "email", providers: ["email"] },
+      user_metadata: {},
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  };
+}
+const ownerSession = simulatedSession(fixtureOwner),
+  peerSession = simulatedSession(fixturePeer);
+const syntheticUsers = new Map([
+  ["Bearer " + ownerSession.access_token, ownerSession.user],
+  ["Bearer " + peerSession.access_token, peerSession.user],
+]);
 const report = {
   synthetic: true,
   fixtureDataMocked: true,
@@ -56,6 +91,8 @@ const report = {
   cleanupCompleted: false,
   externalRequests: 0,
   mutations: 0,
+  authenticationSimulated: false,
+  simulatedAiRequests: 0,
   pageErrors: 0,
   passed: [],
   phase: "artifact_guard",
@@ -143,6 +180,22 @@ try {
     viewport: { width: 390, height: 844 },
   });
   await context.addInitScript(() => localStorage.setItem("lang", "en"));
+  let galleryFailed = false,
+    delayNextGallery = false,
+    releaseGallery;
+  let galleryArrived = () => {};
+  let currentGallery = [];
+  let delayOwnerAi = false,
+    releaseOwnerAi,
+    ownerAiArrived = () => {};
+  const aiRequests = { owner: 0, peer: 0 };
+  const json = (route, data, status = 200) =>
+    route.fulfill({
+      status,
+      contentType: "application/json",
+      headers: { "access-control-allow-origin": base },
+      body: JSON.stringify(data),
+    });
   await context.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url());
@@ -152,13 +205,72 @@ try {
       return route.abort();
     }
     if (url.origin === fixtureOrigin && request.method() === "GET") {
-      const data = url.pathname === "/rest/v1/wines" ? [wine] : [];
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        headers: { "access-control-allow-origin": base },
-        body: JSON.stringify(data),
-      });
+      if (url.pathname === "/auth/v1/user") {
+        const user = syntheticUsers.get(request.headers().authorization);
+        return json(route, user ?? { error: "synthetic_unauthorized" }, user ? 200 : 401);
+      }
+      if (url.pathname === "/rest/v1/wine_photos") {
+        if (galleryFailed) return json(route, { message: "synthetic_read_failure" }, 503);
+        if (delayNextGallery) {
+          delayNextGallery = false;
+          galleryArrived();
+          await new Promise((resolve) => {
+            releaseGallery = resolve;
+          });
+          return json(route, [
+            {
+              id: "eeeeeeee-aaaa-4bbb-8ccc-dddddddddddd",
+              wine_id: wineId,
+              user_id: fixtureOwner,
+              url: image + "#stale-gallery",
+              storage_path: null,
+              kind: "bottle",
+              sort_order: 1,
+            },
+          ]);
+        }
+        return json(route, currentGallery);
+      }
+      return json(route, url.pathname === "/rest/v1/wines" ? [wine] : []);
+    }
+    if (
+      url.origin === fixtureOrigin &&
+      url.pathname === "/functions/v1/wine-suggestions" &&
+      request.method() === "POST"
+    ) {
+      const body = request.postDataJSON(),
+        user = syntheticUsers.get(request.headers().authorization);
+      assert.ok(user && body.wineId === wineId && body.language === "en");
+      report.simulatedAiRequests++;
+      const isOwner = user.id === fixtureOwner;
+      aiRequests[isOwner ? "owner" : "peer"]++;
+      if (isOwner && delayOwnerAi) {
+        ownerAiArrived();
+        await new Promise((resolve) => {
+          releaseOwnerAi = resolve;
+        });
+      }
+      const suggestion = {
+        producer: "Synthetic",
+        wine_name: isOwner ? "Delayed owner-only suggestion" : "Current peer-only suggestion",
+        vintage: 2023,
+        country: "QA",
+        region: "QA",
+        wine_type: "white",
+        identity_verified: true,
+        source_url: "https://example.invalid/catalog/fixture",
+        match_score: 70,
+        match_confidence: "low",
+        match_evidence: [],
+        reason: "Synthetic fixture only",
+      };
+      // The old request may already be cancelled by the real source AbortController.
+      try {
+        await json(route, { suggestions: [suggestion] });
+      } catch {
+        if (!isOwner) throw new Error("Current synthetic response failed");
+      }
+      return;
     }
     if (url.origin === fixtureOrigin && request.method() === "OPTIONS")
       return route.fulfill({
@@ -166,7 +278,7 @@ try {
         headers: {
           "access-control-allow-origin": base,
           "access-control-allow-headers": "*",
-          "access-control-allow-methods": "GET,OPTIONS",
+          "access-control-allow-methods": "GET,POST,OPTIONS",
         },
       });
     if (url.origin === fixtureOrigin) report.mutations++;
@@ -174,6 +286,11 @@ try {
     return route.abort();
   });
   const page = await context.newPage();
+  const styleFixture = () =>
+    page.evaluate(() => {
+      document.documentElement.classList.add("pilot-ui");
+      document.documentElement.style.fontSize = "125%";
+    });
   page.setDefaultTimeout(30000);
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
@@ -182,7 +299,7 @@ try {
   const title = page.getByRole("heading", { level: 1, name: longName + " 2023", exact: true });
   await title.waitFor();
   // The same shipped stylesheet, with the selected dark palette, without enabling backend features.
-  await page.evaluate(() => document.documentElement.classList.add("pilot-ui"));
+  await styleFixture();
   await page.getByRole("tab", { name: "AI Suggestions", exact: true }).click();
   await page.getByText(aroma, { exact: true }).waitFor();
   for (const width of [320, 390, 1440]) {
@@ -260,6 +377,139 @@ try {
   await page.keyboard.press("Escape");
   assert.equal(await viewPhoto.evaluate((el) => el === document.activeElement), true);
   report.passed.push("read-only-photo-keyboard-return");
+  report.phase = "gallery_read_failure";
+  galleryFailed = true;
+  await page.reload();
+  await title.waitFor();
+  await styleFixture();
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page
+    .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(await page.getByText("No extra photos yet.", { exact: true }).count(), 0);
+  await page.screenshot({
+    path: join(artifacts, "gallery-error-390.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  galleryFailed = false;
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await page
+    .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
+      exact: true,
+    })
+    .waitFor({ state: "hidden" });
+  report.passed.push("gallery-read-error-is-not-empty-and-retry");
+  report.phase = "gallery_read_generation";
+  delayNextGallery = true;
+  const firstRead = new Promise((resolve) => {
+    galleryArrived = resolve;
+  });
+  await page.reload();
+  await title.waitFor();
+  await styleFixture();
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await firstRead;
+  currentGallery = [
+    {
+      id: "ffffffff-aaaa-4bbb-8ccc-dddddddddddd",
+      wine_id: wineId,
+      user_id: fixtureOwner,
+      url: image + "#current-gallery",
+      storage_path: null,
+      kind: "bottle",
+      sort_order: 2,
+    },
+  ];
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await page.locator('img[src$="#current-gallery"]').waitFor();
+  const oldRead = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/rest/v1/wine_photos",
+  );
+  releaseGallery();
+  await (await oldRead).finished();
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  assert.equal(await page.locator('img[src$="#stale-gallery"]').count(), 0);
+  assert.equal(await page.locator('img[src$="#current-gallery"]').count(), 1);
+  report.passed.push("late-gallery-read-does-not-replace-a-newer-read");
+  currentGallery = [];
+  report.authenticationSimulated = true;
+  await context.addInitScript(
+    ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+    { key: authKey, session: ownerSession },
+  );
+  const switchAccount = (session) =>
+    page.evaluate(
+      ({ key, session }) => {
+        localStorage.setItem(key, JSON.stringify(session));
+        const channel = new BroadcastChannel(key);
+        channel.postMessage({ event: "SIGNED_IN", session });
+        channel.close();
+      },
+      { key: authKey, session },
+    );
+  report.phase = "pending_photo_account_change";
+  await page.reload();
+  await title.waitFor();
+  await styleFixture();
+  const ownerControl = page.getByRole("button", { name: "Delete wine", exact: true });
+  await ownerControl.waitFor({ state: "attached" });
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.locator('input[type="file"]').waitFor({ state: "attached" });
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 60;
+    canvas.height = 180;
+    const draw = canvas.getContext("2d");
+    draw.fillStyle = "#355d45";
+    draw.fillRect(10, 0, 40, 180);
+    draw.fillStyle = "#f2f5f2";
+    draw.fillRect(10, 70, 40, 60);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "synthetic-only.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(png, "base64"),
+  });
+  await page.getByText("Adjust label", { exact: true }).waitFor();
+  await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
+  await switchAccount(peerSession);
+  await page.getByText("Adjust label", { exact: true }).waitFor({ state: "hidden" });
+  await page.waitForFunction(() => !document.querySelector('input[type="file"]'));
+  await ownerControl.waitFor({ state: "hidden" });
+  report.passed.push("pending-photo-clears-on-account-change");
+  report.phase = "late_ai_account_change";
+  await switchAccount(ownerSession);
+  await ownerControl.waitFor({ state: "attached" });
+  delayOwnerAi = true;
+  const firstAi = new Promise((resolve) => {
+    ownerAiArrived = resolve;
+  });
+  await page.getByRole("button", { name: "AI Picks", exact: true }).click();
+  await firstAi;
+  await switchAccount(peerSession);
+  await ownerControl.waitFor({ state: "hidden" });
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('button[aria-pressed="true"]')].some(
+      (button) => button.textContent === "Aromas",
+    ),
+  );
+  assert.equal(aiRequests.peer, 0);
+  await page.getByRole("button", { name: "AI Picks", exact: true }).click();
+  await page.getByText("Current peer-only suggestion", { exact: true }).waitFor();
+  releaseOwnerAi();
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  assert.equal(await page.getByText("Delayed owner-only suggestion", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("Current peer-only suggestion", { exact: true }).count(), 1);
+  assert.deepEqual(aiRequests, { owner: 1, peer: 1 });
+  report.passed.push("late-ai-answer-isolated-and-no-automatic-new-account-request");
   assert.equal(report.externalRequests, 0);
   assert.equal(report.mutations, 0);
   assert.equal(report.pageErrors, 0);

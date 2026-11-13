@@ -1,23 +1,23 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Trash2, X, Loader2, Wine } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
 import { WineImage } from "./WineImage";
+import { OperationNotice } from "./OperationNotice";
+import {
+  createPhotoSaveAttempt,
+  loadWinePhotos,
+  removeWinePhoto,
+  saveWinePhoto,
+  type PhotoSaveAttempt,
+  type WinePhoto,
+} from "@/lib/winePhotos";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Dialog, DialogPortal, DialogOverlay, DialogClose, DialogTitle } from "./ui/dialog";
 const LabelCropper = lazy(() =>
   import("./LabelCropper").then((m) => ({ default: m.LabelCropper })),
 );
-
-type Photo = {
-  id: string;
-  url: string;
-  storage_path: string | null;
-  kind: string;
-  sort_order: number;
-};
 
 type Props = {
   wineId: string;
@@ -26,72 +26,151 @@ type Props = {
 };
 
 export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
-  const t = useT();
   const { user } = useAuth();
-  const [photos, setPhotos] = useState<Photo[] | null>(null);
+  return (
+    <PhotoGallerySession
+      key={`${wineId}:${user?.id ?? "guest"}:${editable}`}
+      wineId={wineId}
+      fallbackUrl={fallbackUrl}
+      editable={editable}
+      owner={user?.id}
+    />
+  );
+}
+
+function PhotoGallerySession({ wineId, fallbackUrl, editable, owner }: Props & { owner?: string }) {
+  const t = useT();
+  const [photos, setPhotos] = useState<WinePhoto[]>([]);
+  const [readState, setReadState] = useState<"loading" | "ready" | "error" | "offline">("loading");
   const [pending, setPending] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [saveAttempt, setSaveAttempt] = useState<PhotoSaveAttempt | null>(null);
+  const [deleteAttempt, setDeleteAttempt] = useState<WinePhoto | null>(null);
+  const alive = useRef(true),
+    readGeneration = useRef(0),
+    mutationGeneration = useRef(0),
+    working = useRef(false);
   const [lightbox, setLightbox] = useState<{ url: string; storagePath: string | null } | null>(
     null,
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const lightboxTriggerRef = useRef<HTMLButtonElement | null>(null);
 
-  const load = async () => {
-    const { data } = await supabase
-      .from("wine_photos")
-      .select("id,url,storage_path,kind,sort_order")
-      .eq("wine_id", wineId)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
-    setPhotos((data as Photo[]) ?? []);
-  };
-
-  useEffect(() => {
-    void load(); /* eslint-disable-next-line */
+  const load = useCallback(async () => {
+    const generation = ++readGeneration.current;
+    setPhotos([]);
+    if (!navigator.onLine) {
+      setReadState("offline");
+      return;
+    }
+    setReadState("loading");
+    try {
+      const rows = await loadWinePhotos(wineId);
+      if (alive.current && generation === readGeneration.current) {
+        setPhotos(rows);
+        setReadState("ready");
+      }
+    } catch {
+      if (alive.current && generation === readGeneration.current) setReadState("error");
+    }
   }, [wineId]);
 
+  useEffect(() => {
+    alive.current = true;
+    void load();
+    const invalidate = () => {
+      ++readGeneration.current;
+      ++mutationGeneration.current;
+    };
+    const offline = () => {
+      invalidate();
+      setPhotos([]);
+      setLightbox(null);
+      setReadState("offline");
+    };
+    const online = () => {
+      void load();
+    };
+    window.addEventListener("offline", offline);
+    window.addEventListener("online", online);
+    return () => {
+      alive.current = false;
+      invalidate();
+      window.removeEventListener("offline", offline);
+      window.removeEventListener("online", online);
+    };
+  }, [load]);
+
+  const locked = uploading || Boolean(saveAttempt || deleteAttempt) || readState !== "ready";
+
   const onFile = (f: File | null) => {
-    if (editable && user && f) setPending(f);
+    if (editable && owner && !locked && f) setPending(f);
+  };
+
+  const save = async (attempt: PhotoSaveAttempt) => {
+    if (!editable || !owner || working.current || !navigator.onLine) return;
+    const generation = mutationGeneration.current;
+    const scope = {
+      owner,
+      current: () => alive.current && generation === mutationGeneration.current,
+    };
+    working.current = true;
+    setUploading(true);
+    try {
+      await saveWinePhoto(attempt, scope);
+      if (!scope.current()) return;
+      setSaveAttempt(null);
+      toast.success(t("photos.add"));
+      await load();
+    } catch {
+      if (scope.current()) toast.error(t("photos.saveUnconfirmed"));
+    } finally {
+      working.current = false;
+      if (alive.current) setUploading(false);
+    }
   };
 
   const uploadCropped = async (blob: Blob) => {
-    if (!editable || !user) return;
-    setUploading(true);
+    if (!editable || !owner || working.current || saveAttempt || deleteAttempt) return;
     try {
-      const path = `${user.id}/${wineId}/${crypto.randomUUID()}.jpg`;
-      const { error: upErr } = await supabase.storage
-        .from("wine-labels")
-        .upload(path, blob, { contentType: "image/jpeg", cacheControl: "0" });
-      if (upErr) throw upErr;
-      const nextOrder = (photos?.[photos.length - 1]?.sort_order ?? 0) + 1;
-      const { error: insErr } = await supabase.from("wine_photos").insert({
-        wine_id: wineId,
-        user_id: user.id,
-        url: path,
-        storage_path: path,
-        kind: "bottle",
-        sort_order: nextOrder,
-      });
-      if (insErr) throw insErr;
-      toast.success(t("photos.add"));
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("common.error"));
-    } finally {
-      setUploading(false);
+      const attempt = createPhotoSaveAttempt(
+        owner,
+        wineId,
+        blob,
+        Math.min(2147483647, (photos.at(-1)?.sort_order ?? 0) + 1),
+      );
+      setSaveAttempt(attempt);
       setPending(null);
+      await save(attempt);
+    } catch {
+      toast.error(t("photos.invalidImage"));
     }
   };
 
-  const remove = async (p: Photo) => {
-    if (!editable || !user) return;
-    if (!confirm(t("photos.deleteConfirm"))) return;
-    if (p.storage_path) {
-      await supabase.storage.from("wine-labels").remove([p.storage_path]);
+  const remove = async (photo: WinePhoto, retry = false) => {
+    if (!editable || !owner || working.current || !navigator.onLine || (!retry && locked)) return;
+    if (!retry && !confirm(t("photos.deleteConfirm"))) return;
+    const generation = mutationGeneration.current;
+    const scope = {
+      owner,
+      current: () => alive.current && generation === mutationGeneration.current,
+    };
+    setDeleteAttempt(photo);
+    working.current = true;
+    setUploading(true);
+    try {
+      const result = await removeWinePhoto(photo, scope);
+      if (!scope.current()) return;
+      setDeleteAttempt(null);
+      setLightbox(null);
+      toast.success(t(result === "retained" ? "photos.removedRetained" : "photos.removed"));
+      await load();
+    } catch {
+      if (scope.current()) toast.error(t("photos.deleteUnconfirmed"));
+    } finally {
+      working.current = false;
+      if (alive.current) setUploading(false);
     }
-    await supabase.from("wine_photos").delete().eq("id", p.id);
-    await load();
   };
 
   const combined: Array<{
@@ -99,7 +178,7 @@ export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
     url: string;
     storagePath: string | null;
     kind: string;
-    photo?: Photo;
+    photo?: WinePhoto;
   }> = [];
   if ((!photos || photos.length === 0) && fallbackUrl) {
     combined.push({ id: "__fallback", url: fallbackUrl, storagePath: null, kind: "label" });
@@ -116,6 +195,59 @@ export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
 
   return (
     <>
+      {readState !== "ready" && (
+        <OperationNotice
+          kind={readState === "loading" ? "loading" : readState === "offline" ? "offline" : "error"}
+          action={
+            readState !== "loading"
+              ? {
+                  label: t("common.retry"),
+                  onClick: () => {
+                    void load();
+                  },
+                  disabled: readState === "offline",
+                }
+              : undefined
+          }
+        >
+          {t(
+            readState === "loading"
+              ? "photos.loading"
+              : readState === "offline"
+                ? "photos.offline"
+                : "photos.loadFailed",
+          )}
+        </OperationNotice>
+      )}
+      {uploading && <OperationNotice kind="loading">{t("state.saving")}</OperationNotice>}
+      {saveAttempt && !uploading && (
+        <OperationNotice
+          kind="pending"
+          action={{
+            label: t("common.retry"),
+            onClick: () => {
+              void save(saveAttempt);
+            },
+            disabled: readState === "offline",
+          }}
+        >
+          {t("photos.saveUnconfirmed")}
+        </OperationNotice>
+      )}
+      {deleteAttempt && !uploading && (
+        <OperationNotice
+          kind="pending"
+          action={{
+            label: t("common.retry"),
+            onClick: () => {
+              void remove(deleteAttempt, true);
+            },
+            disabled: readState === "offline",
+          }}
+        >
+          {t("photos.deleteUnconfirmed")}
+        </OperationNotice>
+      )}
       <div className="grid grid-cols-3 gap-2">
         {combined.map((c) => (
           <div
@@ -142,10 +274,11 @@ export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
             <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 py-0.5 text-xs font-display uppercase tracking-wide text-cream/85">
               {t(`photos.kind.${c.kind}` as never) || c.kind}
             </span>
-            {editable && user && c.photo && (
+            {editable && owner && c.photo && (
               <button
                 type="button"
                 onClick={() => remove(c.photo!)}
+                disabled={locked}
                 aria-label={t("photos.delete")}
                 className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
               >
@@ -154,11 +287,11 @@ export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
             )}
           </div>
         ))}
-        {editable && user && (
+        {editable && owner && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={uploading}
+            disabled={locked}
             className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 bg-white/[0.02] text-sm text-cream/90 hover:border-gold/40 hover:text-gold disabled:opacity-50 min-h-11 min-w-11"
           >
             {uploading ? (
@@ -171,13 +304,13 @@ export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
         )}
       </div>
 
-      {combined.length === 0 && !uploading && (
+      {readState === "ready" && combined.length === 0 && !uploading && (
         <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
           <Wine className="h-3.5 w-3.5" /> {t("photos.empty")}
         </div>
       )}
 
-      {editable && user && (
+      {editable && owner && (
         <input
           ref={inputRef}
           type="file"
@@ -216,7 +349,7 @@ export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
             }}
             onCloseAutoFocus={(event) => {
               event.preventDefault();
-              lightboxTriggerRef.current?.focus();
+              if (lightboxTriggerRef.current?.isConnected) lightboxTriggerRef.current.focus();
             }}
           >
             <DialogTitle className="sr-only">{t("photos.image")}</DialogTitle>
