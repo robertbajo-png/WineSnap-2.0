@@ -129,7 +129,12 @@ try {
   assert.equal(focused, 1);
   report.checks++;
   await cdp.detach();
+  const { waitForOwnedViewerClose } = await import("./lib/owned-viewer-close.mjs");
+  const closed = waitForOwnedViewerClose(browser);
   await page.close();
+  await closed;
+  assert.equal(browser.isConnected(), true);
+  report.checks++;
   await lifecycle.tick();
   assert.equal(latest.phase, "closed");
   assert.equal(latest.ready, false);

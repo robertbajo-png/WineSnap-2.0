@@ -46,7 +46,7 @@ const report = {
 const statusFile = join(process.env.USERPROFILE, "WineSnapOwned/local-view-status.json");
 const controlFile = join(process.env.USERPROFILE, "WineSnapOwned/local-view-control.json");
 const chunks = [];
-let payload, login, browser, lifecycle, browserClosed;
+let payload, login, browser, lifecycle;
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
 async function status(phase) {
   report.phase = phase;
@@ -139,7 +139,6 @@ try {
     ).href
   );
   browser = await chromium.launch({ headless: acceptance, args: ["--window-size=1280,900"] });
-  browserClosed = new Promise((resolve) => browser.once("disconnected", resolve));
   report.viewerRunning = true;
   const context = await browser.newContext({
     viewport: null,
@@ -222,7 +221,8 @@ try {
       },
     });
     await lifecycle.tick();
-    await browserClosed;
+    const { waitForOwnedViewerClose } = await import("./lib/owned-viewer-close.mjs");
+    await waitForOwnedViewerClose(browser);
     report.completed = true;
   }
 } catch (error) {

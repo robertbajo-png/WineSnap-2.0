@@ -417,6 +417,18 @@ export async function acceptOwnedPilotUi(
       });
       assert.equal(report.chatStates.completed, true);
     }
+    {
+      const { acceptOwnedCollectorStates } = await import("./owned-collector-states.mjs");
+      report.collectorStates = await acceptOwnedCollectorStates({
+        page,
+        context,
+        fixture,
+        phase,
+        capture,
+        pass: (name) => report.passed.push(name),
+      });
+      assert.equal(report.collectorStates.completed, true);
+    }
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Logga ut", exact: true }).click();
