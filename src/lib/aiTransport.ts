@@ -1,5 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
-import { accountWriteClient, type AccountWriteScope } from "./accountWriteScope";
+import {
+  accountWriteClient,
+  readSessionWithDeadline,
+  type AccountWriteScope,
+} from "./accountWriteScope";
 
 export type LocalAiFunction =
   | "analyze-wine"
@@ -16,8 +20,10 @@ export async function invokeAi(
 ) {
   let captured: Awaited<ReturnType<typeof accountWriteClient>> | undefined;
   if (options) {
+    if (options.signal.aborted || !options.scope.current())
+      return { data: null, error: { context: new Response(null, { status: 401 }) } };
     try {
-      captured = await accountWriteClient(options.scope, 75000);
+      captured = await accountWriteClient(options.scope, 75000, options.signal);
     } catch {
       return { data: null, error: { context: new Response(null, { status: 401 }) } };
     }
@@ -30,18 +36,20 @@ export async function invokeAi(
       ...(options ? { signal: options.signal } : {}),
     });
   }
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-  if (error || !session)
-    return { data: null, error: { context: new Response(null, { status: 401 }) } };
-  if (
-    options &&
-    (options.signal.aborted || !options.scope.current() || session.user.id !== options.scope.owner)
-  )
-    return { data: null, error: { context: new Response(null, { status: 401 }) } };
   try {
+    const {
+      data: { session },
+      error,
+    } = await readSessionWithDeadline(options?.signal);
+    if (error || !session)
+      return { data: null, error: { context: new Response(null, { status: 401 }) } };
+    if (
+      options &&
+      (options.signal.aborted ||
+        !options.scope.current() ||
+        session.user.id !== options.scope.owner)
+    )
+      return { data: null, error: { context: new Response(null, { status: 401 }) } };
     const response = await fetch(`/api/ai/${name}`, {
       method: "POST",
       headers: {
