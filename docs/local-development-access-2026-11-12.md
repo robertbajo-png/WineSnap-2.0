@@ -123,9 +123,18 @@ Open first uses the established bounded Resume action for only the exact existin
 owned core containers. It does not provision missing roots, start/restart Docker,
 resume a tunnel or touch hosted services. The shared operation lock is not held
 while invoking Resume, and the enabled owner binding is checked again afterward.
+Normal operation-lock contention waits for up to 120 seconds using elapsed time;
+it does not turn a busy backup into a destructive retry or an early six-second
+failure. A second Open during v2 startup reports starting, not a legacy viewer.
 Errors show a fixed, non-secret Windows message, never raw provider exceptions
 or a password input. A duplicate legacy Open asks the owner to save and close
 the old window; it never closes unsaved work automatically.
+
+Each browser focus/probe has an eight-second host deadline as well as the probe's
+in-page fetch timeout. A stalled renderer cannot block later heartbeats or queue
+unlimited evaluations: only one pending action of each kind is retained. Transient
+empty/partial status JSON is retried consistently, at most ten times, with file
+permissions and scope still validated. Invalid scope is never treated as ready.
 
 Manual synthetic checks (no real account, backend requests or provider calls):
 
@@ -134,11 +143,15 @@ Manual synthetic checks (no real account, backend requests or provider calls):
 node ./scripts/check-owned-local-lifecycle.mjs --headed
 ```
 
-Source verification: 26 focused unit tests passed; eight Windows checks passed,
-including stale status, legacy compatibility, exact Resume scope and cleanup.
+Source verification: 27 focused unit tests passed; twelve Windows checks passed,
+including stale status, legacy/startup compatibility, bounded contention, exact
+Resume scope, concurrent-read retry limits, stalled browser actions and cleanup.
 The isolated headed-browser acceptance passed seven lifecycle checks, including
 real minimize/restore and a single focused page. Authentication/outage states in
 that browser acceptance are explicitly simulated, not real-owner login evidence.
+Full GitHub Quality and Database Safety passed for `da9ecb0` (both push and PR).
+The subsequent source-review fixes have focused local verification; their full
+CI remains a separate check at the current branch head.
 
 Activation checkpoint: the earlier owner viewer is still running. Its current
 read-only Status correctly reports `legacy_viewer` and does not attest current

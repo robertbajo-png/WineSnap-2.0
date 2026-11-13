@@ -217,4 +217,53 @@ describe("local viewer lifecycle and private focus", () => {
       await rmdir(directory);
     }
   });
+  it("bounds stalled browser operations without stacking more work or freezing status", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "winesnap-stalled-lifecycle-"));
+    const controlFile = join(directory, "local-view-control.json");
+    const never = () => new Promise(() => {});
+    const focus = vi.fn(never),
+      probe = vi.fn(never),
+      publish = vi.fn();
+    let time = now;
+    const lifecycle = startOwnedLocalLifecycle({
+      page: { isClosed: () => false },
+      runId,
+      controlFile,
+      focus,
+      probe,
+      publish,
+      now: () => time,
+      intervalMs: 0,
+      operationTimeoutMs: 10,
+    });
+    try {
+      await writeFile(controlFile, JSON.stringify(request()));
+      await lifecycle.tick();
+      expect(publish.mock.lastCall[0]).toMatchObject({
+        phase: "backend_unavailable",
+        ready: false,
+        focusResult: "focus_failed",
+        lastFocusRequestId: requestId,
+      });
+      time += 5000;
+      await writeFile(
+        controlFile,
+        JSON.stringify({
+          ...request(),
+          requestId: "11111111-2222-4333-8444-555555555555",
+          issuedAt: new Date(time).toISOString(),
+        }),
+      );
+      await lifecycle.tick();
+      expect(focus).toHaveBeenCalledTimes(1);
+      expect(probe).toHaveBeenCalledTimes(1);
+      expect(publish).toHaveBeenCalledTimes(2);
+      expect(publish.mock.lastCall[0].ready).toBe(false);
+      await lifecycle.stop();
+    } finally {
+      await lifecycle.stop();
+      await rm(controlFile, { force: true });
+      await rmdir(directory);
+    }
+  });
 });

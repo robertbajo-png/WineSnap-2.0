@@ -40,12 +40,27 @@ try {
   $script:messages=@();function Show-LocalOpenMessage([string]$Kind){$script:messages+=,$Kind}
   $reply=Focus-LocalViewer
   if($reply.focused -or $script:messages[-1] -ne 'legacy'){throw 'Legacy viewer was replaced.'};$report.checks++
-  $script:resumeCalls=@();$script:resumeBusy=$true
-  function Invoke-OwnedRuntimeAction([string]$Action){$script:resumeCalls+=,$Action;if($script:resumeBusy){$script:resumeBusy=$false;return @{project='winesnap-owned-local';productionTouched=$false;hostedTestTouched=$false;completed=$false;skipped='operation_already_running'}};return @{project='winesnap-owned-local';productionTouched=$false;hostedTestTouched=$false;completed=$true}}
+  $value.version=2;$value.phase='starting_backend';$value.supportsFocus=$false
+  [IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+  $reply=Focus-LocalViewer
+  if($reply.focused -or $reply.phase -ne 'starting' -or $script:messages[-1] -ne 'starting'){throw 'New startup was treated as legacy.'};$report.checks++
+  $script:resumeCalls=@();$script:resumeBusy=6;$script:waits=@()
+  function Start-Sleep([int]$Milliseconds){$script:waits+=,$Milliseconds}
+  function Invoke-OwnedRuntimeAction([string]$Action){$script:resumeCalls+=,$Action;if($script:resumeBusy -gt 0){$script:resumeBusy--;return @{project='winesnap-owned-local';productionTouched=$false;hostedTestTouched=$false;completed=$false;skipped='operation_already_running'}};return @{project='winesnap-owned-local';productionTouched=$false;hostedTestTouched=$false;completed=$true}}
   Resume-LocalBackend
-  if(($script:resumeCalls -join ',') -ne 'Resume,Resume'){throw 'Startup used another action.'};$report.checks++
+  if($script:resumeCalls.Count -ne 7 -or @($script:resumeCalls|Where-Object {$_ -ne 'Resume'}).Count -or $script:waits.Count -ne 6){throw 'Startup contention did not wait safely.'};$report.checks++
+  $script:resumeBusy=1;$script:resumeCalls=@();$denied=$false
+  try{Resume-LocalBackend -WaitMs 0}catch{$denied=$true}
+  if(-not $denied -or $script:resumeCalls.Count -ne 1){throw 'Startup contention was not bounded.'};$report.checks++
   function Invoke-OwnedRuntimeAction([string]$Action){return @{project='unexpected';productionTouched=$false;hostedTestTouched=$false;completed=$true}}
   $denied=$false;try{Resume-LocalBackend}catch{$denied=$true};if(-not $denied){throw 'Foreign startup scope accepted.'};$report.checks++
+  $script:readAttempts=0;$script:completeJson=$value|ConvertTo-Json
+  function Get-Content([string]$LiteralPath,[switch]$Raw){$script:readAttempts++;if($script:readAttempts -eq 1){return '{"project":'};return $script:completeJson}
+  $recovered=Read-LocalReport
+  if($script:readAttempts -ne 2 -or $recovered.runId -ne $value.runId){throw 'Incomplete concurrent status was not retried.'};$report.checks++
+  function Get-Content([string]$LiteralPath,[switch]$Raw){$script:readAttempts++;return ''}
+  $script:readAttempts=0;$denied=$false;try{Read-LocalReport|Out-Null}catch{$denied=$true}
+  if(-not $denied -or $script:readAttempts -ne 10){throw 'Incomplete status read was not bounded.'};$report.checks++
   $report.completed=$true
 }catch{$report.failure='synthetic_local_control_not_accepted';$report.errorType=$_.Exception.GetType().Name}
 finally{

@@ -121,10 +121,35 @@ export function startOwnedLocalLifecycle({
   focus = () => focusOwnedLocalPage(page),
   now = Date.now,
   intervalMs = 1000,
+  operationTimeoutMs = 8000,
 }) {
   assert.match(runId, uuid);
   assert.equal(typeof publish, "function");
   assert.ok(intervalMs === 0 || intervalMs >= 100);
+  assert.ok(
+    Number.isInteger(operationTimeoutMs) && operationTimeoutMs > 0 && operationTimeoutMs <= 10000,
+  );
+  const pending = new Map();
+  async function bounded(kind, operation) {
+    assert.ok(!pending.has(kind), "Previous browser operation is still pending.");
+    const work = Promise.resolve().then(operation);
+    pending.set(kind, work);
+    void work.finally(() => pending.delete(kind)).catch(() => undefined);
+    let deadline;
+    try {
+      return await Promise.race([
+        work,
+        new Promise((_, reject) => {
+          deadline = setTimeout(
+            () => reject(new Error("Local browser operation timed out.")),
+            operationTimeoutMs,
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(deadline);
+    }
+  }
   let stopped = false,
     timer,
     inFlight,
@@ -160,7 +185,7 @@ export function startOwnedLocalLifecycle({
           lastControlTime = file.mtimeMs;
           if (request.requestId !== lastFocusId) {
             try {
-              await focus();
+              await bounded("focus", focus);
               changed.focusResult = "focused";
             } catch {
               changed.focusResult = "focus_failed";
@@ -174,7 +199,7 @@ export function startOwnedLocalLifecycle({
       }
       if (now() - lastProbe >= localViewHeartbeatMs) {
         try {
-          current = await probe();
+          current = await bounded("probe", probe);
         } catch {
           current = {
             windowOpen: !page.isClosed(),

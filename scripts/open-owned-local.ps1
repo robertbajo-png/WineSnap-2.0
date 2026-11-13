@@ -27,8 +27,15 @@ function Protect-LocalReport([string]$Path=$statusFile) {
   Assert-LocalPrivateFile $Path
 }
 function Read-LocalReport {
-  Assert-LocalPrivateFile $statusFile
-  $value=Get-Content -LiteralPath $statusFile -Raw|ConvertFrom-Json
+  for($attempt=0;$attempt -lt 10;$attempt++){
+    Assert-LocalPrivateFile $statusFile
+    try{
+      $raw=Get-Content -LiteralPath $statusFile -Raw
+      if([string]::IsNullOrWhiteSpace($raw)){throw [FormatException]::new('Incomplete local status.')}
+      $value=$raw|ConvertFrom-Json -ErrorAction Stop
+      break
+    }catch{if($attempt -eq 9){throw};Start-Sleep -Milliseconds 50}
+  }
   if($value.project -ne 'winesnap-owned-local' -or $value.productionTouched -ne $false -or $value.loopbackOnly -ne $true){throw 'Unexpected local view scope.'}
   return $value|Select-Object project,version,runId,completed,ready,authenticated,viewerRunning,supportsFocus,lastFocusRequestId,focusResult,lastVerifiedAt,productionTouched,loopbackOnly,internetPaused,acceptance,ownerSessionVerified,app,phase,blockedExternalRequests,blockedAiRequests,probeSessionLoggedOut,failure,errorType,checkedAt
 }
@@ -60,7 +67,8 @@ function Get-LocalStatus([DateTimeOffset]$Now=[DateTimeOffset]::UtcNow) {
 }
 function Focus-LocalViewer {
   $current=Read-LocalReport
-  if($current.version -ne 2 -or $current.supportsFocus -ne $true -or $current.runId -notmatch '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$'){Show-LocalOpenMessage legacy;return [pscustomobject]@{alreadyOpen=$true;focused=$false;phase='legacy_viewer';productionTouched=$false}}
+  if($current.version -ne 2 -or $current.runId -notmatch '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$'){Show-LocalOpenMessage legacy;return [pscustomobject]@{alreadyOpen=$true;focused=$false;phase='legacy_viewer';productionTouched=$false}}
+  if($current.supportsFocus -ne $true){Show-LocalOpenMessage starting;return [pscustomobject]@{alreadyOpen=$true;focused=$false;phase='starting';productionTouched=$false}}
   Protect-LocalReport $controlFile
   $requestId=[guid]::NewGuid().ToString('D')
   $request=@{project='winesnap-owned-local';version=1;action='focus';runId=$current.runId;requestId=$requestId;issuedAt=[DateTime]::UtcNow.ToString('o')}
@@ -73,15 +81,17 @@ function Focus-LocalViewer {
   Show-LocalOpenMessage $(if($current.ready){'focus_failed'}else{'starting'})
   return [pscustomobject]@{alreadyOpen=$true;focused=$false;phase='focus_not_confirmed';productionTouched=$false}
 }
-function Resume-LocalBackend {
-  for($attempt=0;$attempt -lt 3;$attempt++){
+function Resume-LocalBackend([ValidateRange(0,120000)][int]$WaitMs=120000) {
+  $clock=[Diagnostics.Stopwatch]::StartNew()
+  do{
     $result=Invoke-OwnedRuntimeAction -Action Resume
     if($result.project -ne 'winesnap-owned-local' -or $result.productionTouched -ne $false -or $result.hostedTestTouched -ne $false){throw 'Unexpected startup scope.'}
     if($result.completed -eq $true){return}
     if($result.skipped -ne 'operation_already_running'){throw 'Existing owned runtime could not resume.'}
-    Start-Sleep -Seconds 2
-  }
-  throw 'Owned runtime is busy.'
+    $remaining=$WaitMs-$clock.ElapsedMilliseconds
+    if($remaining -le 0){throw 'Owned runtime is busy.'}
+    Start-Sleep -Milliseconds ([Math]::Min(2000,$remaining))
+  }while($true)
 }
 try {
   if($Action -eq 'Status'){$report=Get-LocalStatus;$report|ConvertTo-Json;exit 0}
@@ -90,6 +100,10 @@ try {
   if(Test-Path -LiteralPath $lockPath){$item=Get-Item -LiteralPath $lockPath -Force;if($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Unexpected local view lock.'}}
   try{$viewLock=[IO.File]::Open($lockPath,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None);$ownsView=$true}
   catch [IO.IOException]{if(($_.Exception.HResult -band 0xffff) -in @(32,33)){if($Action -eq 'Check'){[pscustomobject]@{alreadyOpen=$true;productionTouched=$false}|ConvertTo-Json;exit 1}else{Focus-LocalViewer|ConvertTo-Json;exit 0}};throw}
+  Protect-LocalReport
+  Protect-LocalReport $controlFile
+  $report.phase='validating_local_wrapper';$report.checkedAt=[DateTime]::UtcNow.ToString('o')
+  [IO.File]::WriteAllText($statusFile,($report|ConvertTo-Json))
   $store=Join-Path $directory 'backend.dpapi';Assert-LocalPrivateFile $store
   $plain=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($store),$null,'CurrentUser')
   try{$keys=[Text.Encoding]::UTF8.GetString($plain)|ConvertFrom-Json -AsHashtable}finally{[Array]::Clear($plain,0,$plain.Length)}
