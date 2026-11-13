@@ -21,6 +21,9 @@ ARG VITE_RECIPE_NUTRITION_ENABLED=false
 ARG VITE_PILOT_UI_ENABLED=false
 RUN npm run build
 
+FROM scratch AS artifact
+COPY --from=build /app/dist/independent-runtime/ /
+
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production NITRO_HOST=0.0.0.0 NITRO_PORT=3000
 WORKDIR /app

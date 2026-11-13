@@ -200,6 +200,7 @@ try {
       assert.equal(await target.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
     const bottle = title.locator("../..").locator("img");
     await bottle.waitFor();
+    await bottle.evaluate((el) => el.decode());
     assert.equal(
       await bottle.evaluate(
         (el) =>
@@ -246,6 +247,7 @@ try {
   await viewPhoto.click();
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
+  await dialog.locator("img").evaluate((el) => el.decode());
   assert.equal(
     await dialog
       .locator("img")

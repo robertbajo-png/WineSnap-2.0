@@ -40,6 +40,15 @@ disabled local sharing, keyboard return and read-only gallery controls. Ignored
 screenshots and a credential-free status report live in `dist/core-experience`.
 This is source UI evidence, not installed backend/RLS or physical-device proof.
 
+On this slow Windows checkout, the compiled fixture can also be exported with
+the Dockerfile's separate `artifact` target and the same fake public URL/key.
+That target copies only `dist/independent-runtime`; the normal final `runtime`
+stage remains the default. No image needs to be started or connected to an owned
+network. The existing Docker build-input allowlist remains unchanged. Never pass
+server/provider secrets as build arguments or run this fixture as the real app.
+An earlier full development-image export was cancelled after compilation; it is
+not a completed export or installation.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:

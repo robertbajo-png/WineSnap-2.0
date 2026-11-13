@@ -2,6 +2,24 @@ import { readFileSync, existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("owner-controlled deployment", () => {
+  it("exports only compiled files without changing the default runtime stage", () => {
+    const docker = readFileSync("Dockerfile", "utf8");
+    const artifact = docker.indexOf("FROM scratch AS artifact");
+    const runtime = docker.indexOf("FROM node:22-bookworm-slim AS runtime");
+    expect(artifact).toBeGreaterThan(-1);
+    expect(runtime).toBeGreaterThan(artifact);
+    expect(docker.slice(artifact, runtime).trim().split(/\r?\n/)).toEqual([
+      "FROM scratch AS artifact",
+      "COPY --from=build /app/dist/independent-runtime/ /",
+    ]);
+    expect(
+      docker
+        .match(/^FROM .+$/gm)
+        ?.at(-1)
+        ?.trim(),
+    ).toBe("FROM node:22-bookworm-slim AS runtime");
+    expect(docker.slice(runtime)).toContain("USER node");
+  });
   it("ships the whole standalone artifact as a non-root Node process", () => {
     const docker = readFileSync("Dockerfile", "utf8");
     expect(docker).toContain("npm ci");
