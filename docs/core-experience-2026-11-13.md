@@ -450,7 +450,8 @@ Four write requests were mocked, AI requests were zero, forbidden requests/write
 and page/fixture errors were zero, and process cleanup passed. The 320/1440px
 screenshots and additional 320px unknown-save/manual-provenance views were
 inspected. Eight focused files / 64 tests, local typecheck and targeted lint
-passed. Full CI is pending. Small lint/format failures during development were
+passed. Full Quality and Database Safety passed for `3983d66` (push/PR), with
+145 files / 1,487 passing tests and one existing skipped test. Small lint/format failures during development were
 corrected, not counted as passes.
 
 This is source-only: the real viewer remains open on installed `1f5bd5f`. No
@@ -475,7 +476,7 @@ These are substeps of the canonical roadmap, not a competing development plan:
   tests, typecheck, lint and full CI. Retain this fixture with the
   prior wine/kitchen source checks, separately from live and installed evidence.
 - Collector safety now passes 10 isolated browser checks and 64 focused tests;
-  full CI and a later safe owned update/installed collector acceptance remain.
+  full CI passed. A later safe owned update/installed collector acceptance remains.
 - Next source review: overview price-refresh session/deadline/account guards and
   read-error recovery, then remaining family/meal states. Keep verified retail
   prices separate from user estimates and preserve unknown values/currencies.
