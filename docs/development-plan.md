@@ -370,6 +370,10 @@ that observed the next interval's signal instead of the timed-out first signal;
 the corrected focused run passed. The kitchen browser attempt timed out at
 runtime readiness before authentication/scenarios; cleanup passed, but it is
 not accepted browser evidence. Full CI is pending for this slice.
+The first full CI run caught the generated database type excluding meals_access;
+the meal API keeps its existing generic SupabaseClient contract while reusing
+the verified account client. This is a type compatibility correction, not a
+permission/gate change. That failed run is not accepted as passing evidence.
 
 Immediate handoff: resolve resource/operation contention, rerun fresh owner
 Check, obtain a current encrypted backup and isolated same-PC restore, update

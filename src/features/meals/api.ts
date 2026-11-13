@@ -27,7 +27,7 @@ export class MealsError extends Error {
 async function scoped(owner: string, signal?: AbortSignal): Promise<SupabaseClient> {
   if (!mealsEnabled) throw new MealsError();
   try {
-    const client = await accountWriteClient(
+    const client: SupabaseClient = await accountWriteClient(
       { owner, current: () => !signal?.aborted },
       15000,
       signal,
