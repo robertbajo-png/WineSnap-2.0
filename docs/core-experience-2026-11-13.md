@@ -567,6 +567,41 @@ No owner session/data, running app/backend, actual catalog lookup, provider,
 old production, hosted test, password or internet setting was changed. Safe
 installation and actual owner use remain separate from synthetic source tests.
 
+## Shared Family And Meal Read Lifetimes
+
+The existing meal API now reuses the verified ordinary-owner client with its
+15-second auth/network bounds; the independent meals_access gate and generic
+SupabaseClient RPC contract remain. Family, cellar and meal-history queries share
+the view's cancellation signal. Shared profiles still rely on existing RLS and
+membership rules, not a new owner-only filter that would hide allowed sharing.
+Existing row limits, revisions, child safety and write payloads are unchanged.
+
+useFreshData now bounds the whole read to 15 seconds, coalesces background
+focus/visibility/interval events while one read is active, permits explicit read
+retry, clears shared values on failure/offline and aborts on unmount. Late
+results cannot publish after cancellation. Reconnect starts reads only, never
+mutations or AI. The two new API/lifecycle test files passed 16 tests. The mock
+React harness deliberately tests async lifetimes without a real DOM renderer;
+browser acceptance is separate. An initial interval test inspected the next
+read's signal instead of the original timed-out signal; that assertion was
+corrected before accepting the focused run.
+
+The first kitchen browser attempt timed out at runtime readiness and is not
+accepted. After host resource pressure improved, the rerun passed all 29 cases,
+including family/meal/pairing layouts, read-error/retry, child-only diners and
+account changes. Seventy-two reads were mocked; AI requests, writes, forbidden
+requests, page/fixture errors were zero and process cleanup passed. Family
+320/1440px and meal-history 390px screenshots were inspected. Full Quality and
+Database Safety passed for `5e07b8d` (push/PR), 154 files / 1,542 passing tests and
+one existing skip. Earlier typecheck and test-harness lint failures were fixed,
+not waived or counted as successful runs.
+
+This is not installed acceptance: the owned frontend is still `e4740ff` while
+fresh activation/backup/update gates are resolved. Family/meal mutation
+cancellation, uncertain-save reconciliation and post-write read-failure notices
+remain the next review. No actual household/invitation, provider request, role,
+password, old production or hosted test was changed in these source checks.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -588,8 +623,9 @@ These are substeps of the canonical roadmap, not a competing development plan:
   full CI and the narrower installed collector acceptance above passed.
 - Price-refresh scope/deadline/read recovery passes 83 focused tests and 15
   isolated browser cases and full CI. Later safe owned activation remains;
-  do not rebuild under the open real viewer. Next source review is remaining
-  family/meal error/account states. Preserve verified retail prices separately
+  do not rebuild under an open real viewer. Shared family/meal reads now pass
+  16 focused tests, 29 kitchen browser cases and full CI; mutation lifetimes and
+  uncertain-save/read-back states remain. Preserve verified retail prices separately
   from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.

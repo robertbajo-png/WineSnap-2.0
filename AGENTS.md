@@ -66,10 +66,12 @@ severe host resource pressure were observed. The frontend is still `e4740ff`;
 do not claim an update, fresh owner login or backup acceptance. The read-only
 `inspect-owned-operation-lock.ps1` can classify only the owned operation lock;
 never remove it or terminate a holder merely because it is busy. A close-after-
-flush stdin helper passes unit/host binary and small Docker probes, but the
-larger Docker probe and fresh backup/restore are not accepted yet. Family/meal
-read cancellation and coalescing pass 16 focused tests; their browser run timed
-out at readiness and is not passing evidence. Read the canonical current handoff
+flush stdin helper passes unit/host binary and a full 1 MB Docker digest probe;
+fresh backup/restore are not accepted yet. Family/meal read cancellation and
+coalescing pass 16 focused tests, all 29 isolated kitchen browser checks and full
+CI for `5e07b8d` (1,542 passing tests, one existing skip). An earlier readiness
+timeout remains failed evidence. The latest read-only supervisor status is
+healthy; fresh actual-owner Check and installation are still pending. Read the canonical current handoff
 before retrying. No Windows/Docker restart or unrelated-process stop is approved.
 
 Current migration status and cutover order:
