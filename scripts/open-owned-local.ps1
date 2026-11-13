@@ -7,7 +7,7 @@ $directory=Assert-OwnedRuntimeDirectory
 $statusFile=Join-Path $directory 'local-view-status.json'
 $controlFile=Join-Path $directory 'local-view-control.json'
 $viewLock=$null;$lock=$null;$job=$null;$process=$null;$start=$null;$keys=$null;$payload=$null;$ownsView=$false
-$report=[ordered]@{project='winesnap-owned-local';version=2;completed=$false;ready=$false;authenticated=$false;viewerRunning=$false;productionTouched=$false;loopbackOnly=$true;runId=[guid]::NewGuid().ToString('D')}
+$report=[ordered]@{project='winesnap-owned-local';version=2;completed=$false;ready=$false;authenticated=$false;viewerRunning=$false;productionTouched=$false;loopbackOnly=$true;runId=[guid]::NewGuid().ToString('D');startupDeadlineAt=[DateTime]::UtcNow.AddSeconds(660).ToString('o')}
 function Assert-LocalPrivateFile([string]$Path) {
   $item=Get-Item -LiteralPath $Path -Force
   if($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $item.Length -gt 32KB){throw 'Unexpected local operator file.'}
@@ -37,7 +37,7 @@ function Read-LocalReport {
     }catch{if($attempt -eq 9){throw};Start-Sleep -Milliseconds 50}
   }
   if($value.project -ne 'winesnap-owned-local' -or $value.productionTouched -ne $false -or $value.loopbackOnly -ne $true){throw 'Unexpected local view scope.'}
-  return $value|Select-Object project,version,runId,completed,ready,authenticated,viewerRunning,supportsFocus,lastFocusRequestId,focusResult,lastVerifiedAt,productionTouched,loopbackOnly,internetPaused,acceptance,ownerSessionVerified,app,phase,blockedExternalRequests,blockedAiRequests,probeSessionLoggedOut,failure,errorType,checkedAt
+  return $value|Select-Object project,version,runId,completed,ready,authenticated,viewerRunning,supportsFocus,lastFocusRequestId,focusResult,lastVerifiedAt,startupDeadlineAt,productionTouched,loopbackOnly,internetPaused,acceptance,ownerSessionVerified,app,phase,blockedExternalRequests,blockedAiRequests,probeSessionLoggedOut,failure,errorType,checkedAt
 }
 function Test-LocalViewerActive {
   $path=Join-Path $directory 'local-view.lock'
@@ -60,9 +60,14 @@ function Get-LocalStatus([DateTimeOffset]$Now=[DateTimeOffset]::UtcNow) {
   $fresh=$false
   try{$stamp=[DateTimeOffset]$value.checkedAt;$age=($Now-$stamp).TotalSeconds;$fresh=$age -ge -5 -and $age -le 30}catch{}
   $value|Add-Member NoteProperty heartbeatFresh $fresh -Force
+  $starting=$false
+  if($value.phase -in @('validating_local_wrapper','starting_backend','opening_local_owner','validating_owned_installation','opening_existing_owner','authenticating_local_browser') -and $value.ready -ne $true -and $value.authenticated -ne $true){
+    try{$deadline=[DateTimeOffset]$value.startupDeadlineAt;$duration=($deadline-[DateTimeOffset]$value.checkedAt).TotalSeconds;$starting=$duration -gt 0 -and $duration -le 660 -and $age -ge -5 -and $Now -lt $deadline}catch{}
+  }
+  $value|Add-Member NoteProperty startingWithinDeadline ($active -and $starting) -Force
   if(-not $active){$value.ready=$false;$value.authenticated=$false;$value.viewerRunning=$false;if($value.phase -notin @('complete','closed','needs_attention')){$value.phase='interrupted'}}
   elseif($value.version -ne 2){$value.ready=$false;$value.authenticated=$false;$value.phase='legacy_viewer'}
-  elseif(-not $fresh){$value.ready=$false;$value.authenticated=$false;$value.phase='unresponsive'}
+  elseif(-not $fresh -and -not $starting){$value.ready=$false;$value.authenticated=$false;$value.phase='unresponsive'}
   return $value
 }
 function Focus-LocalViewer {
@@ -73,7 +78,7 @@ function Focus-LocalViewer {
   $requestId=[guid]::NewGuid().ToString('D')
   $request=@{project='winesnap-owned-local';version=1;action='focus';runId=$current.runId;requestId=$requestId;issuedAt=[DateTime]::UtcNow.ToString('o')}
   [IO.File]::WriteAllText($controlFile,($request|ConvertTo-Json -Compress))
-  $deadline=[DateTimeOffset]::UtcNow.AddSeconds(15)
+  $deadline=[DateTimeOffset]::UtcNow.AddSeconds(25)
   do{
     try{$reply=Read-LocalReport;if($reply.runId -eq $current.runId -and $reply.lastFocusRequestId -eq $requestId){$focused=$reply.focusResult -eq 'focused';if(-not $focused){Show-LocalOpenMessage focus_failed};return [pscustomobject]@{alreadyOpen=$true;focused=$focused;phase=$reply.phase;productionTouched=$false}}}catch{}
     Start-Sleep -Milliseconds 250

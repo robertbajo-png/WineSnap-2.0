@@ -112,6 +112,7 @@ when the heartbeat is over thirty seconds old. `lastVerifiedAt` is historical;
 | --- | --- |
 | `starting_backend`, `opening_local_owner` and other startup phases | Existing local runtime/browser checks are in progress |
 | `ready` | Live viewer, fresh heartbeat and server-verified bound owner |
+| `checking_session` | Window action acknowledged; no authentication claim while the session probe is pending |
 | `signed_out` | Viewer exists but no valid bound-owner session; Open does not sign it back in |
 | `backend_unavailable` | Viewer exists but the local server/session could not currently be verified |
 | `closed`, `complete` | Open viewer closed, or isolated Check finished; no running-login claim |
@@ -135,6 +136,12 @@ in-page fetch timeout. A stalled renderer cannot block later heartbeats or queue
 unlimited evaluations: only one pending action of each kind is retained. Transient
 empty/partial status JSON is retried consistently, at most ten times, with file
 permissions and scope still validated. Invalid scope is never treated as ready.
+Window acknowledgement is published before the session probe, and the caller's
+25-second wait covers an already pending probe plus focus/polling. Startup has
+an explicit bounded deadline: at most eleven minutes across wrapper Resume/lock/
+browser limits, and two minutes in the worker. Only known, unauthenticated startup
+phases can use it; an expired/excessive deadline is not a fresh heartbeat or a
+ready login. A held lock alone never grants authenticated status.
 
 Manual synthetic checks (no real account, backend requests or provider calls):
 
@@ -143,9 +150,10 @@ Manual synthetic checks (no real account, backend requests or provider calls):
 node ./scripts/check-owned-local-lifecycle.mjs --headed
 ```
 
-Source verification: 27 focused unit tests passed; twelve Windows checks passed,
+Source verification: 28 focused unit tests passed; fourteen Windows checks passed,
 including stale status, legacy/startup compatibility, bounded contention, exact
-Resume scope, concurrent-read retry limits, stalled browser actions and cleanup.
+Resume scope, concurrent-read retry limits, stalled browser actions, early focus
+acknowledgement, bounded startup classification and cleanup.
 The isolated headed-browser acceptance passed seven lifecycle checks, including
 real minimize/restore and a single focused page. Authentication/outage states in
 that browser acceptance are explicitly simulated, not real-owner login evidence.

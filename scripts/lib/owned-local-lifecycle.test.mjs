@@ -147,12 +147,14 @@ describe("local viewer lifecycle and private focus", () => {
       await lifecycle.tick();
       await lifecycle.tick();
       expect(focus).toHaveBeenCalledTimes(1);
-      expect(publish.mock.calls[0][0]).toMatchObject({
-        phase: "ready",
-        lastFocusRequestId: requestId,
-        focusResult: "focused",
-        authenticated: true,
-      });
+      expect(publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phase: "ready",
+          lastFocusRequestId: requestId,
+          focusResult: "focused",
+          authenticated: true,
+        }),
+      );
       time += 5000;
       state = { ...state, ownerPresent: false, serverVerified: false };
       await lifecycle.tick();
@@ -257,9 +259,50 @@ describe("local viewer lifecycle and private focus", () => {
       await lifecycle.tick();
       expect(focus).toHaveBeenCalledTimes(1);
       expect(probe).toHaveBeenCalledTimes(1);
-      expect(publish).toHaveBeenCalledTimes(2);
+      expect(publish).toHaveBeenCalledTimes(4);
       expect(publish.mock.lastCall[0].ready).toBe(false);
       await lifecycle.stop();
+    } finally {
+      await lifecycle.stop();
+      await rm(controlFile, { force: true });
+      await rmdir(directory);
+    }
+  });
+  it("acknowledges completed focus before awaiting a stalled session probe", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "winesnap-focus-ack-"));
+    const controlFile = join(directory, "local-view-control.json");
+    const publish = vi.fn();
+    let acknowledgementAtProbe;
+    const probe = vi.fn(() => {
+      acknowledgementAtProbe = publish.mock.lastCall?.[0];
+      return new Promise(() => {});
+    });
+    const lifecycle = startOwnedLocalLifecycle({
+      page: { isClosed: () => false },
+      runId,
+      controlFile,
+      publish,
+      probe,
+      focus: async () => {},
+      now: () => now,
+      intervalMs: 0,
+      operationTimeoutMs: 10,
+    });
+    try {
+      await writeFile(controlFile, JSON.stringify(request()));
+      await lifecycle.tick();
+      expect(probe).toHaveBeenCalledTimes(1);
+      expect(acknowledgementAtProbe).toMatchObject({
+        lastFocusRequestId: requestId,
+        focusResult: "focused",
+        phase: "checking_session",
+        ready: false,
+        authenticated: false,
+      });
+      expect(publish.mock.lastCall[0]).toMatchObject({
+        phase: "backend_unavailable",
+        ready: false,
+      });
     } finally {
       await lifecycle.stop();
       await rm(controlFile, { force: true });

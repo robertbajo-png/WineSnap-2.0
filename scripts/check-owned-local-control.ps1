@@ -34,6 +34,15 @@ try {
     $stale=Get-LocalStatus -Now $clock
     if($stale.phase -ne 'unresponsive'){throw 'Stale session state accepted.'}
   };$report.checks++
+  $value.phase='starting_backend';$value.checkedAt=$clock.AddSeconds(-60).ToString('o');$value.startupDeadlineAt=$clock.AddSeconds(60).ToString('o')
+  [IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+  $starting=Get-LocalStatus -Now $clock
+  if($starting.ready -or $starting.authenticated -or $starting.heartbeatFresh -or -not $starting.startingWithinDeadline -or $starting.phase -ne 'starting_backend'){throw 'Expected bounded startup was misclassified.'};$report.checks++
+  foreach($deadline in @($clock.AddSeconds(-1),$clock.AddSeconds(900))){
+    $value.startupDeadlineAt=$deadline.ToString('o');[IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+    $expired=Get-LocalStatus -Now $clock
+    if($expired.phase -ne 'unresponsive' -or $expired.startingWithinDeadline){throw 'Expired or excessive startup deadline accepted.'}
+  };$report.checks++
   $value.version=1;$value.checkedAt=$clock.ToString('o');[IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
   $legacy=Get-LocalStatus -Now $clock
   if($legacy.ready -or $legacy.phase -ne 'legacy_viewer'){throw 'Legacy result attested as current.'};$report.checks++

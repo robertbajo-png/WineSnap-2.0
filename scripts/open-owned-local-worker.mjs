@@ -34,6 +34,7 @@ const report = {
   viewerRunning: false,
   authenticated: false,
   supportsFocus: !acceptance,
+  startupDeadlineAt: new Date(Date.now() + 120000).toISOString(),
   productionTouched: false,
   loopbackOnly: true,
   acceptance,

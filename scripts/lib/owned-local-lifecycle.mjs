@@ -163,6 +163,17 @@ export function startOwnedLocalLifecycle({
     serverVerified: true,
   };
   let verifiedAt = new Date(now()).toISOString();
+  async function publishState(changed, checking = false) {
+    const phase = checking ? "checking_session" : localViewPhase(current);
+    await publish({
+      ...changed,
+      phase,
+      viewerRunning: current.windowOpen,
+      authenticated: phase === "ready",
+      ready: phase === "ready",
+      lastVerifiedAt: verifiedAt,
+    });
+  }
   async function update() {
     const changed = {};
     if (page.isClosed())
@@ -192,6 +203,8 @@ export function startOwnedLocalLifecycle({
             }
             lastFocusId = request.requestId;
             changed.lastFocusRequestId = lastFocusId;
+            // A slow session check must not withhold an already completed window action.
+            await publishState(changed, true);
           }
         }
       } catch {
@@ -212,15 +225,7 @@ export function startOwnedLocalLifecycle({
         if (current.serverVerified) verifiedAt = new Date(now()).toISOString();
       }
     }
-    const phase = localViewPhase(current);
-    await publish({
-      ...changed,
-      phase,
-      viewerRunning: current.windowOpen,
-      authenticated: phase === "ready",
-      ready: phase === "ready",
-      lastVerifiedAt: verifiedAt,
-    });
+    await publishState(changed);
   }
   function tick() {
     if (stopped) return Promise.resolve();
