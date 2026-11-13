@@ -354,11 +354,41 @@ try {
   report.passed.push("private-share-disabled-and-keyboard-return");
   report.phase = "read_only_gallery";
   await page.getByRole("button", { name: "Overview", exact: true }).click();
+  for (const width of [320, 390, 1440]) {
+    report.phase = `overview-layout-${width}`;
+    await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
+    const facts = page.locator("dl");
+    assert.equal(await facts.count(), 6);
+    for (const row of await facts.all()) {
+      assert.equal(
+        await row.evaluate((element) => {
+          const [label, value] = element.children;
+          const bounds = value.getBoundingClientRect();
+          return (
+            value.scrollWidth <= value.clientWidth + 1 &&
+            label.scrollWidth <= label.clientWidth + 1 &&
+            label.getBoundingClientRect().right <= bounds.left + 1 &&
+            bounds.right <= innerWidth + 1
+          );
+        }),
+        true,
+      );
+    }
+    await page.screenshot({
+      path: join(artifacts, `wine-overview-${width}.png`),
+      fullPage: true,
+      animations: "disabled",
+    });
+    report.passed.push(`overview-facts-fit-${width}`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  report.phase = "read_only_gallery";
   const viewPhoto = page.getByRole("button", { name: "View wine photo", exact: true });
   await viewPhoto.waitFor();
   assert.equal(await page.getByText("Add photo", { exact: true }).count(), 0);
   assert.equal(await page.locator('input[type="file"]').count(), 0);
   assert.equal(await page.getByRole("button", { name: "Delete wine", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Add note", exact: true }).count(), 0);
   report.passed.push("read-only-gallery-no-upload");
   report.phase = "read_only_lightbox";
   await viewPhoto.click();

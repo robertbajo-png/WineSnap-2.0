@@ -606,7 +606,9 @@ function WineDetailPage({
             </Section>
             {w.description && (
               <Card className="bg-card/50 p-4">
-                <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>
+                <p className="font-display text-base leading-relaxed text-cream [overflow-wrap:anywhere]">
+                  {w.description}
+                </p>
               </Card>
             )}
             {(() => {
@@ -631,15 +633,15 @@ function WineDetailPage({
               );
               return (
                 <Card className="bg-card/50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gold" />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Clock className="h-4 w-4 shrink-0 text-gold" />
                       <span className="text-sm uppercase tracking-wider text-muted-foreground">
                         {t("wine.window")}
                       </span>
                     </div>
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-cream">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-cream">
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
                       {t(statusKey as TKey)}
                     </span>
                   </div>
@@ -677,13 +679,15 @@ function WineDetailPage({
               {notes.length === 0 ? (
                 <Card className="bg-card/50 p-4 text-center">
                   <p className="text-base text-muted-foreground">{t("wine.notesEmpty")}</p>
-                  <Link
-                    to="/wine/$id/notes"
-                    params={{ id: w.id }}
-                    className="mt-3 inline-flex items-center gap-1 text-sm text-burgundy hover:underline"
-                  >
-                    <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
-                  </Link>
+                  {w.user_id === user?.id && (
+                    <Link
+                      to="/wine/$id/notes"
+                      params={{ id: w.id }}
+                      className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm text-burgundy hover:underline"
+                    >
+                      <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
+                    </Link>
+                  )}
                 </Card>
               ) : (
                 <div className="space-y-2.5">
@@ -718,13 +722,15 @@ function WineDetailPage({
                       )}
                     </Card>
                   ))}
-                  <Link
-                    to="/wine/$id/notes"
-                    params={{ id: w.id }}
-                    className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-sm text-gold hover:bg-gold/5"
-                  >
-                    <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
-                  </Link>
+                  {w.user_id === user?.id && (
+                    <Link
+                      to="/wine/$id/notes"
+                      params={{ id: w.id }}
+                      className="flex min-h-11 items-center justify-center gap-1 rounded-lg border border-dashed border-gold/40 py-2 text-sm text-gold hover:bg-gold/5"
+                    >
+                      <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
+                    </Link>
+                  )}
                 </div>
               )}
             </Section>
@@ -930,10 +936,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function KV({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between border-b border-white/8 pb-2.5">
-      <span className="text-sm uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-right font-display text-base text-cream">{value}</span>
-    </div>
+    <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-baseline gap-x-3 border-b border-white/8 pb-2.5">
+      <dt className="min-w-0 text-sm uppercase tracking-wider text-muted-foreground [overflow-wrap:anywhere]">
+        {label}
+      </dt>
+      <dd className="min-w-0 text-right font-display text-base text-cream [overflow-wrap:anywhere]">
+        {value}
+      </dd>
+    </dl>
   );
 }
 

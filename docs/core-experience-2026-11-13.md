@@ -34,7 +34,7 @@ counted as passes. Full CI and browser results must be recorded separately.
 artifact with the known fake URL/key markers and no hosted project URL. Its
 server has outbound fetch blocked and listens on a separate random loopback
 port, never the installed app/API/inbox ports. Browser data comes from mocked
-fixture GETs; no real login, stored session, user image or AI provider is used.
+fixture GETs; no real login, owner session, user image or AI provider is used.
 It checks long labels and contained media at 320/390/1440 px and 125% root text,
 disabled local sharing, keyboard return and read-only gallery controls. Ignored
 screenshots and a credential-free status report live in `dist/core-experience`.
@@ -99,16 +99,50 @@ not a completed export or installation.
 Focused verification passed eight files / 56 tests, including lost replies,
 cross-account guards, denied metadata deletion, retained references on a later
 page, uncertain cleanup, MIME validation, cancellation and existing wishlist
-deduplication. Local typecheck passed before the final narrow additions; current
-full CI and extended browser acceptance remain separate pending evidence.
+deduplication. Full Quality and Database Safety passed for `2de367a` (push and
+PR). The earlier `9ebc470` Quality run caught a redundant abort after the
+controller had already been narrowed to null; it was corrected, not waived.
+The slow local typecheck attempt was interrupted; full CI supplies the current
+typecheck evidence.
+
+The extended isolated browser run passed ten cases. In addition to the original
+six, it verified read-error/retry instead of false empty state, a delayed read
+not replacing a newer gallery, an open crop closing on account change, and an
+old AI reply not entering the next account. The latter uses deliberately invalid
+synthetic sessions and two mocked AI replies, not real Auth/RLS or provider calls.
+Forbidden requests, writes and page errors were zero; process cleanup passed.
+
+## Overview Follow-up And Remaining View Inventory
+
+Visual inspection of the new error-state screenshot caught long fact values
+overflowing their mobile row. Overview facts now use semantic definition rows
+with bounded label/value columns and anywhere wrapping. The window header can
+wrap without shrinking its status dot/clock. Note-creation links are owner-only
+with a minimum touch height, consistent with the existing gallery/edit controls.
+Three overview widths are added to source browser acceptance; their fresh
+artifact/run is pending. These changes are not installed yet.
+
+The source inventory also covered the remaining core views:
+
+| View | Reused implementation / next evidence |
+| --- | --- |
+| Home | Owner-keyed recent-wine state, loading/error/retry and offline handling already exist in PilotHome; verify in the affected owned fixture after safe update |
+| Scan | Explicit review, owner-scoped token and insert reconciliation already exist; follow up stable paths after a lost upload reply and bounded waits, then fault-test |
+| Cookbook / Cook Mode | Existing version-pinned recipe, conflict/offline cache, bounded timers and return journeys are retained; rerun affected installed journeys rather than rebuilding them |
+| Food memory | Generation-guarded loading, read retry, correction and forgetting exist; broader installed isolation and focus checks remain |
+| Family / pairing / meals | Existing keyed kitchen workspace and scoped APIs are retained; history lacks an initial loading notice and explicit read retry; address as a focused follow-up |
+| Prices / collector | Currency-separated totals, manual estimates/source/date and retail matching states already exist; do not replace them with invented market values; installed regression remains |
+
+This is a source inventory, not a claim that the wider DEV-03 UI/keyboard or
+installed backend acceptance has passed.
 
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
 
 - The first source slice is verified; retain its checks during subsequent work.
-- Finish extended source browser and full CI checks for the second slice, then
-  retain the scenarios in broader regression. Mocked auth/AI is not live-provider,
+- The second slice passed extended source browser/full CI; retain its scenarios
+  and finish the overview follow-up. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
