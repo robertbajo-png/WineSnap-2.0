@@ -333,6 +333,14 @@ follow-up only after safe closure, fresh Check, current backup/rehearsal, Update
 and fixture acceptance; then visible owner Open/focus/heartbeat last. Broader
 DEV-03 owner observations and live quality remain separate gates.
 
+Installation continuation: the owner reported saving/closing the viewer. V2
+Status confirmed closed/completed with operatorActive=false, without ending a
+worker or deleting locks. This is actual post-fix closure evidence. Fresh owner
+Check/backup/update are in progress, not yet accepted. A manual installed price
+probe is prepared behind PilotAccept: exact tagged fixture, normal private reads,
+injected read errors and one mocked price POST that is never forwarded. Three
+focused helper files / six tests passed; its browser acceptance is pending.
+
 ### Earlier Collector Follow-Up
 
 Collector review found first-page truncation, unsafe late-save UI state, duplicate

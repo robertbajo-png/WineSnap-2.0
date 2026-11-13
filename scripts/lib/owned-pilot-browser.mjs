@@ -429,6 +429,18 @@ export async function acceptOwnedPilotUi(
       });
       assert.equal(report.collectorStates.completed, true);
     }
+    {
+      const { acceptOwnedPriceStates } = await import("./owned-price-states.mjs");
+      report.priceStates = await acceptOwnedPriceStates({
+        page,
+        context,
+        fixture,
+        phase,
+        capture,
+        pass: (name) => report.passed.push(name),
+      });
+      assert.equal(report.priceStates.completed, true);
+    }
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Logga ut", exact: true }).click();
