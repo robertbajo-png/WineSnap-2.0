@@ -146,6 +146,13 @@ const en = {
   "collector.pending":
     "Collector cellar is unavailable: its database migration has not been deployed.",
   "collector.retry": "Retry",
+  "collector.reload": "Reload acquisitions",
+  "collector.uncertain":
+    "This acquisition may already be saved. Save again to check the same attempt before retrying.",
+  "collector.uncertainLeave":
+    "The save result is unknown. Close the form and reload acquisitions before adding anything again?",
+  "collector.changed":
+    "This acquisition changed or was removed. Reload acquisitions before editing again; this draft will be discarded.",
   "collector.invalid":
     "Check dates, amounts and bottle counts. An estimate requires a source, date, currency and confidence.",
   "collector.stockError":
@@ -1026,6 +1033,13 @@ const sv: Record<keyof typeof en, string> = {
   "collector.pending":
     "Samlarkällaren är inte tillgänglig: databasuppdateringen har inte driftsatts.",
   "collector.retry": "Försök igen",
+  "collector.reload": "Hämta inköp igen",
+  "collector.uncertain":
+    "Inköpet kan redan vara sparat. Tryck Spara igen för att kontrollera samma försök innan något upprepas.",
+  "collector.uncertainLeave":
+    "Resultatet av sparandet är okänt. Stäng formuläret och hämta inköpen igen innan du lägger till något på nytt?",
+  "collector.changed":
+    "Inköpet har ändrats eller tagits bort. Hämta inköpen igen innan du redigerar; detta utkast kommer att försvinna.",
   "collector.invalid":
     "Kontrollera datum, belopp och antal. En värdering kräver källa, datum, valuta och säkerhet.",
   "collector.stockError":

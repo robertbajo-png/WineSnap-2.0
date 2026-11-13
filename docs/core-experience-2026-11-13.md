@@ -403,6 +403,60 @@ the changes in the separate real local viewer without a password request. The
 shortcut/current supervisor were verified. No old production/test project,
 password, account role, DNS or tunnel setting was changed.
 
+## Collector Source Follow-Up
+
+After the installed checkpoint, review found collector queries loading only the
+first server page and save callbacks surviving owner changes. New acquisitions
+used a server-generated ID, so retrying a lost insert reply could duplicate a
+purchase. Edits lacked a revision guard, and same-tick submits could write twice.
+
+`collectorStore` reuses the existing verified normal-JWT scoped client and
+readAllPages helper. Both inventories load fully in stable order; totals are
+published only after complete successful reads and row/owner checks. Keyed owner
+state resets forms/data immediately. Writes have abort/current guards and a
+synchronous lock. A validated immutable payload and stable acquisition UUID
+survive an explicit retry; a prior uncertain write is read and compared before
+any repetition. A failed read leaves the result unknown, not an assumed failure.
+Unknown drafts stay read-only until reconciled; an explicit leave/reload path
+remains. Edits filter on captured owner, ID and original updated_at, so another
+revision is not overwritten. Conflict reload explicitly discards the draft.
+Native wine/purpose selectors also have explicit accessible names.
+
+No migration, new API, service-role client, policy change, FX conversion, market
+price invention or live quote request is involved. Existing server stock checks,
+manual estimate source/date/currency/confidence, zero values and unknowns remain.
+Backend constraints still decide whether stock allocation can commit; client
+cancellation does not promise cancellation of an already-started server write.
+
+The isolated `--collector` runner uses a separate `dist/core-collector-runtime`
+artifact, the same dummy-key/owned public flags as the chat build and an in-memory
+backend. Every API request, including those addressed to the installed loopback
+origin, is intercepted; no real JWT or data is used. Seven boundary tests reject
+unknown hosts/APIs, nonfixture credentials and cross-owner writes. Screenshots
+and safe reports stay ignored under `dist/core-collector`.
+
+```powershell
+node scripts/check-core-experience-browser.mjs --collector
+```
+
+Initial attempts hit an exact-label locator problem on the legacy native select;
+those timeouts are not application evidence. After fixing the fixture locator,
+the red run passed read-error recovery and reproduced five pagination/save
+failures, with zero fixture errors. The final fixed artifact passed all 10
+checks: complete 1,001-row inventories, loading/error/retry, lost insert reply
+reconciliation, account-switch isolation, revision conflict/reload, double submit,
+manual zero-estimate provenance and loaded 320/390/1440px layouts at 125% text.
+Four write requests were mocked, AI requests were zero, forbidden requests/writes
+and page/fixture errors were zero, and process cleanup passed. The 320/1440px
+screenshots and additional 320px unknown-save/manual-provenance views were
+inspected. Eight focused files / 64 tests, local typecheck and targeted lint
+passed. Full CI is pending. Small lint/format failures during development were
+corrected, not counted as passes.
+
+This is source-only: the real viewer remains open on installed `1f5bd5f`. No
+owner data, installed backend/frontend, old production, hosted test, password,
+provider configuration or internet setting changed.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -420,6 +474,11 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Chat/account isolation passes all 20 isolated browser checks and 54 focused
   tests, typecheck, lint and full CI. Retain this fixture with the
   prior wine/kitchen source checks, separately from live and installed evidence.
+- Collector safety now passes 10 isolated browser checks and 64 focused tests;
+  full CI and a later safe owned update/installed collector acceptance remain.
+- Next source review: overview price-refresh session/deadline/account guards and
+  read-error recovery, then remaining family/meal states. Keep verified retail
+  prices separate from user estimates and preserve unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - The accumulated source changes are installed and the narrower 61-case owned
