@@ -363,7 +363,9 @@ double submit, plus 320/390/1440px layouts at 125% text size. The 320px and 1440
 screenshots were inspected. Forbidden requests/writes, page/fixture errors were
 zero; process cleanup passed. Thirteen AI requests and two deletes were mocked,
 not sent to providers or real storage/databases. Seven focused files / 54 tests,
-local typecheck and targeted lint passed. Full CI remains pending for this slice.
+local typecheck and targeted lint passed. Full Quality and Database Safety
+passed for `2afabab` (push/PR), including 142 files / 1,465 passing tests and
+one existing skipped test.
 
 The installed owner viewer still reports `legacy_viewer` with internet paused.
 No owner window, session, password, installed frontend or old production changed.
@@ -383,7 +385,7 @@ These are substeps of the canonical roadmap, not a competing development plan:
   full CI. Keep its mocked transport evidence separate from live AI
   and from the still-pending installed update.
 - Chat/account isolation passes all 20 isolated browser checks and 54 focused
-  tests, typecheck and lint; full CI is pending. Retain this fixture with the
+  tests, typecheck, lint and full CI. Retain this fixture with the
   prior wine/kitchen source checks, separately from live and installed evidence.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
