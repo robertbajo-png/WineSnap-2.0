@@ -49,11 +49,29 @@ server/provider secrets as build arguments or run this fixture as the real app.
 An earlier full development-image export was cancelled after compilation; it is
 not a completed export or installation.
 
+## Observed Source Acceptance
+
+- The isolated artifact export completed successfully. The deployment contract
+  suite passed four tests, including the artifact-only copy and unchanged final
+  non-root runtime stage. These are separate from the 22 focused UI/domain tests.
+- The source browser check passed all six cases: full bottle/long-label layouts
+  at 320, 390 and 1440 px with 125% root text; unavailable local sharing and menu
+  keyboard return; read-only gallery; full-height contained photo and focus return.
+- Browser page errors, forbidden external requests and mutations were all zero.
+  Its isolated server/browser were closed and cleanup was confirmed. No provider
+  request, real login, installed-app rebuild or real owner data was involved.
+- The three detail screenshots and mobile photo view were visually inspected.
+  They contain deliberately long synthetic names and a synthetic bottle only.
+- Full GitHub Quality and Database Safety passed for `eb7a011` and the final
+  source/tooling checkpoint `5e866da`, both push and PR. This includes typecheck,
+  lint, the full unit suite, synthetic build/runtime and client budget, not a
+  new real-owner or installed-feature acceptance.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
 
-- Finish the synthetic browser run and full CI for this source slice.
+- The first source slice is verified; retain its checks during subsequent work.
 - Review gallery read failures versus empty state and account/wine changes while
   an image load or mutation is pending; preserve exact ownership and uncertain
   outcomes. Review late recommendation responses after wine/account changes.
