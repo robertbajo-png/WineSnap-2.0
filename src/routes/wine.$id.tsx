@@ -180,7 +180,6 @@ function WineDetailPage({
       return;
     }
     const controller = new AbortController();
-    suggestionRequest.current?.abort();
     suggestionRequest.current = controller;
     setSuggestLoading(true);
     setSuggestError(null);

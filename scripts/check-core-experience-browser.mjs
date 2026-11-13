@@ -460,6 +460,11 @@ try {
   await ownerControl.waitFor({ state: "attached" });
   await page.getByRole("button", { name: "Overview", exact: true }).click();
   await page.locator('input[type="file"]').waitFor({ state: "attached" });
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent === "Add photo" && !button.disabled,
+    ),
+  );
   const png = await page.evaluate(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 60;
