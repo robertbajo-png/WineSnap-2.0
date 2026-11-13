@@ -208,3 +208,14 @@
     grid-template-columns: 1fr;
   }
 }
+@media (max-width: 360px) {
+  .k-tabs.has-chef {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .k-tabs.has-chef button {
+    flex-direction: row;
+    gap: 6px;
+    min-height: 48px;
+    font-size: 14px;
+  }
+}

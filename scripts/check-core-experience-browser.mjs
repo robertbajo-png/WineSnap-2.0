@@ -9,13 +9,15 @@ import {
   IndependentRuntimeRequestError,
   waitForIndependentRuntime,
 } from "./lib/independent-readiness.mjs";
+import { createCoreKitchenFixture, acceptCoreKitchen } from "./lib/core-kitchen-browser.mjs";
 
 // Synthetic source UI only. No installed backend, real account or provider credentials.
-assert.equal(process.argv.length, 2);
+const kitchenOnly = process.argv.length === 3 && process.argv[2] === "--kitchen";
+assert.ok(process.argv.length === 2 || kitchenOnly);
 const root = fileURLToPath(new URL("../", import.meta.url));
-const output = join(root, "dist/independent-runtime");
-const artifacts = join(root, "dist/core-experience");
-const fixtureOrigin = "https://example.invalid";
+const output = join(root, kitchenOnly ? "dist/core-kitchen-runtime" : "dist/independent-runtime");
+const artifacts = join(root, kitchenOnly ? "dist/core-kitchen" : "dist/core-experience");
+const fixtureOrigin = kitchenOnly ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
 const wineId = "11111111-2222-4333-8444-555555555555";
 const longName = "SyntheticBottleWithAVeryLongUnbrokenWineNameForLayoutVerification";
@@ -46,7 +48,7 @@ const wine = {
   tannin: 1,
   description: "Synthetic UI fixture. No real account or wine data.",
 };
-const authKey = "sb-example-auth-token";
+const authKey = kitchenOnly ? "sb-127-auth-token" : "sb-example-auth-token";
 const fixtureOwner = wine.user_id;
 const fixturePeer = "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa";
 function simulatedSession(id) {
@@ -84,6 +86,7 @@ const syntheticUsers = new Map([
 const report = {
   synthetic: true,
   fixtureDataMocked: true,
+  sourceViewScope: kitchenOnly ? "core-kitchen" : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -122,7 +125,10 @@ try {
   for (const name of await readdir(assets)) {
     if (!name.endsWith(".js")) continue;
     const content = await readFile(join(assets, name), "utf8");
-    assert.ok(!/https:\/\/[a-z0-9]+\.supabase\.co/i.test(content));
+    for (const [url] of content.matchAll(/https:\/\/[a-z0-9]+\.supabase\.co/gi)) {
+      // The shared feature-gate module retains this historical comparison constant.
+      assert.ok(kitchenOnly && url === "https://pzniyupmgwvlldvztzqh.supabase.co");
+    }
     assert.ok(!/sb_secret_[A-Za-z0-9_-]{16,}/.test(content));
     fixtureSeen ||= content.includes(fixtureOrigin) && content.includes(fixtureKey);
   }
@@ -145,7 +151,7 @@ try {
     PORT: String(port),
     NITRO_HOST: "127.0.0.1",
     NITRO_PORT: String(port),
-    SUPABASE_URL: fixtureOrigin,
+    SUPABASE_URL: "https://example.invalid",
     SUPABASE_PUBLISHABLE_KEY: fixtureKey,
   });
   child = spawn(
@@ -194,7 +200,27 @@ try {
     serviceWorkers: "block",
     viewport: { width: 390, height: 844 },
   });
-  await context.addInitScript(() => localStorage.setItem("lang", "en"));
+  await context.addInitScript(
+    (lang) => localStorage.setItem("lang", lang),
+    kitchenOnly ? "sv" : "en",
+  );
+  if (kitchenOnly) {
+    report.authenticationSimulated = true;
+    await context.addInitScript(
+      ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+      { key: authKey, session: ownerSession },
+    );
+  }
+  const kitchenFixture = kitchenOnly
+    ? createCoreKitchenFixture({
+        origin: fixtureOrigin,
+        key: fixtureKey,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        report,
+        base,
+      })
+    : null;
   let galleryFailed = false,
     delayNextGallery = false,
     releaseGallery;
@@ -215,6 +241,7 @@ try {
       body: JSON.stringify(data),
     });
   const routeFixture = async (route) => {
+    if (kitchenFixture) return kitchenFixture.route(route);
     const request = route.request(),
       url = new URL(request.url());
     if (url.origin === base && ["GET", "HEAD"].includes(request.method())) return route.continue();
@@ -377,294 +404,324 @@ try {
   page.setDefaultTimeout(30000);
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
-  report.phase = "wine_detail";
-  await page.goto(base + "/wine/" + wineId, { waitUntil: "domcontentloaded" });
-  const title = page.getByRole("heading", { level: 1, name: longName + " 2023", exact: true });
-  await title.waitFor();
-  // The same shipped stylesheet, with the selected dark palette, without enabling backend features.
-  await styleFixture();
-  await page.getByRole("tab", { name: "AI Suggestions", exact: true }).click();
-  await page.getByText(aroma, { exact: true }).waitFor();
-  for (const width of [320, 390, 1440]) {
-    report.phase = `layout-${width}`;
-    await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
-    await page.evaluate(() => {
-      document.documentElement.style.fontSize = "125%";
+  if (kitchenFixture) {
+    await acceptCoreKitchen({
+      page,
+      context,
+      base,
+      artifacts,
+      report,
+      fixture: kitchenFixture,
+      authKey,
+      ownerSession,
+      peerSession,
     });
-    await page.evaluate(() => document.fonts.ready);
-    assert.equal(
-      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
-      true,
-    );
-    for (const target of [title, page.getByText(aroma, { exact: true })])
-      assert.equal(await target.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
-    const bottle = title.locator("../..").locator("img");
-    await bottle.waitFor();
-    await bottle.evaluate((el) => el.decode());
-    assert.equal(
-      await bottle.evaluate(
-        (el) =>
-          el.complete &&
-          el.naturalHeight > el.naturalWidth &&
-          getComputedStyle(el).objectFit === "contain",
-      ),
-      true,
-    );
-    await page.screenshot({
-      path: join(artifacts, `wine-detail-${width}.png`),
-      fullPage: true,
-      animations: "disabled",
-    });
-    report.passed.push(`contained-image-and-long-labels-${width}`);
-  }
-  report.phase = "private_sharing";
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "More", exact: true }).click();
-  assert.equal(await page.getByRole("menuitem", { name: "Share", exact: true }).isDisabled(), true);
-  await page
-    .getByText(
-      "Public sharing is unavailable in this private installation. Your wine remains unchanged.",
-      { exact: true },
-    )
-    .waitFor();
-  await page.keyboard.press("Escape");
-  assert.equal(
-    await page
-      .getByRole("button", { name: "More", exact: true })
-      .evaluate((el) => el === document.activeElement),
-    true,
-  );
-  report.passed.push("private-share-disabled-and-keyboard-return");
-  report.phase = "read_only_gallery";
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
-  for (const width of [320, 390, 1440]) {
-    report.phase = `overview-layout-${width}`;
-    await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
-    const facts = page.locator("dl");
-    assert.equal(await facts.count(), 6);
-    for (const row of await facts.all()) {
+  } else {
+    report.phase = "wine_detail";
+    await page.goto(base + "/wine/" + wineId, { waitUntil: "domcontentloaded" });
+    const title = page.getByRole("heading", { level: 1, name: longName + " 2023", exact: true });
+    await title.waitFor();
+    // The same shipped stylesheet, with the selected dark palette, without enabling backend features.
+    await styleFixture();
+    await page.getByRole("tab", { name: "AI Suggestions", exact: true }).click();
+    await page.getByText(aroma, { exact: true }).waitFor();
+    for (const width of [320, 390, 1440]) {
+      report.phase = `layout-${width}`;
+      await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = "125%";
+      });
+      await page.evaluate(() => document.fonts.ready);
       assert.equal(
-        await row.evaluate((element) => {
-          const [label, value] = element.children;
-          const bounds = value.getBoundingClientRect();
-          return (
-            value.scrollWidth <= value.clientWidth + 1 &&
-            label.scrollWidth <= label.clientWidth + 1 &&
-            label.getBoundingClientRect().right <= bounds.left + 1 &&
-            bounds.right <= innerWidth + 1
-          );
-        }),
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         true,
       );
+      for (const target of [title, page.getByText(aroma, { exact: true })])
+        assert.equal(await target.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
+      const bottle = title.locator("../..").locator("img");
+      await bottle.waitFor();
+      await bottle.evaluate((el) => el.decode());
+      assert.equal(
+        await bottle.evaluate(
+          (el) =>
+            el.complete &&
+            el.naturalHeight > el.naturalWidth &&
+            getComputedStyle(el).objectFit === "contain",
+        ),
+        true,
+      );
+      await page.screenshot({
+        path: join(artifacts, `wine-detail-${width}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      report.passed.push(`contained-image-and-long-labels-${width}`);
     }
+    report.phase = "private_sharing";
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    assert.equal(
+      await page.getByRole("menuitem", { name: "Share", exact: true }).isDisabled(),
+      true,
+    );
+    await page
+      .getByText(
+        "Public sharing is unavailable in this private installation. Your wine remains unchanged.",
+        { exact: true },
+      )
+      .waitFor();
+    await page.keyboard.press("Escape");
+    assert.equal(
+      await page
+        .getByRole("button", { name: "More", exact: true })
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    report.passed.push("private-share-disabled-and-keyboard-return");
+    report.phase = "read_only_gallery";
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    for (const width of [320, 390, 1440]) {
+      report.phase = `overview-layout-${width}`;
+      await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
+      const facts = page.locator("dl");
+      assert.equal(await facts.count(), 6);
+      for (const row of await facts.all()) {
+        assert.equal(
+          await row.evaluate((element) => {
+            const [label, value] = element.children;
+            const bounds = value.getBoundingClientRect();
+            return (
+              value.scrollWidth <= value.clientWidth + 1 &&
+              label.scrollWidth <= label.clientWidth + 1 &&
+              label.getBoundingClientRect().right <= bounds.left + 1 &&
+              bounds.right <= innerWidth + 1
+            );
+          }),
+          true,
+        );
+      }
+      await page.screenshot({
+        path: join(artifacts, `wine-overview-${width}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      report.passed.push(`overview-facts-fit-${width}`);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    report.phase = "read_only_gallery";
+    const viewPhoto = page.getByRole("button", { name: "View wine photo", exact: true });
+    await viewPhoto.waitFor();
+    assert.equal(await page.getByText("Add photo", { exact: true }).count(), 0);
+    assert.equal(await page.locator('input[type="file"]').count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Delete wine", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("link", { name: "Add note", exact: true }).count(), 0);
+    report.passed.push("read-only-gallery-no-upload");
+    report.phase = "read_only_lightbox";
+    await viewPhoto.click();
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor();
+    await dialog.locator("img").evaluate((el) => el.decode());
+    assert.equal(
+      await dialog
+        .locator("img")
+        .evaluate(
+          (el) =>
+            el.complete && el.naturalHeight > 0 && getComputedStyle(el).objectFit === "contain",
+        ),
+      true,
+    );
+    await page.screenshot({ path: join(artifacts, "wine-photo-390.png"), animations: "disabled" });
+    await page.keyboard.press("Escape");
+    assert.equal(await viewPhoto.evaluate((el) => el === document.activeElement), true);
+    report.passed.push("read-only-photo-keyboard-return");
+    report.phase = "gallery_read_failure";
+    galleryFailed = true;
+    await page.reload();
+    await title.waitFor();
+    await styleFixture();
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await page
+      .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(await page.getByText("No extra photos yet.", { exact: true }).count(), 0);
     await page.screenshot({
-      path: join(artifacts, `wine-overview-${width}.png`),
+      path: join(artifacts, "gallery-error-390.png"),
       fullPage: true,
       animations: "disabled",
     });
-    report.passed.push(`overview-facts-fit-${width}`);
-  }
-  await page.setViewportSize({ width: 390, height: 844 });
-  report.phase = "read_only_gallery";
-  const viewPhoto = page.getByRole("button", { name: "View wine photo", exact: true });
-  await viewPhoto.waitFor();
-  assert.equal(await page.getByText("Add photo", { exact: true }).count(), 0);
-  assert.equal(await page.locator('input[type="file"]').count(), 0);
-  assert.equal(await page.getByRole("button", { name: "Delete wine", exact: true }).count(), 0);
-  assert.equal(await page.getByRole("link", { name: "Add note", exact: true }).count(), 0);
-  report.passed.push("read-only-gallery-no-upload");
-  report.phase = "read_only_lightbox";
-  await viewPhoto.click();
-  const dialog = page.getByRole("dialog");
-  await dialog.waitFor();
-  await dialog.locator("img").evaluate((el) => el.decode());
-  assert.equal(
-    await dialog
-      .locator("img")
-      .evaluate(
-        (el) => el.complete && el.naturalHeight > 0 && getComputedStyle(el).objectFit === "contain",
-      ),
-    true,
-  );
-  await page.screenshot({ path: join(artifacts, "wine-photo-390.png"), animations: "disabled" });
-  await page.keyboard.press("Escape");
-  assert.equal(await viewPhoto.evaluate((el) => el === document.activeElement), true);
-  report.passed.push("read-only-photo-keyboard-return");
-  report.phase = "gallery_read_failure";
-  galleryFailed = true;
-  await page.reload();
-  await title.waitFor();
-  await styleFixture();
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
-  await page
-    .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
-      exact: true,
-    })
-    .waitFor();
-  assert.equal(await page.getByText("No extra photos yet.", { exact: true }).count(), 0);
-  await page.screenshot({
-    path: join(artifacts, "gallery-error-390.png"),
-    fullPage: true,
-    animations: "disabled",
-  });
-  galleryFailed = false;
-  await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await page
-    .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
-      exact: true,
-    })
-    .waitFor({ state: "hidden" });
-  report.passed.push("gallery-read-error-is-not-empty-and-retry");
-  report.phase = "gallery_read_generation";
-  delayNextGallery = true;
-  const firstRead = new Promise((resolve) => {
-    galleryArrived = resolve;
-  });
-  await page.reload();
-  await title.waitFor();
-  await styleFixture();
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
-  await fixtureArrival(firstRead);
-  currentGallery = [
-    {
-      id: "ffffffff-aaaa-4bbb-8ccc-dddddddddddd",
-      wine_id: wineId,
-      user_id: fixtureOwner,
-      url: image + "#current-gallery",
-      storage_path: null,
-      kind: "bottle",
-      sort_order: 2,
-    },
-  ];
-  await page.evaluate(() => window.dispatchEvent(new Event("online")));
-  await page.locator('img[src$="#current-gallery"]').waitFor();
-  const oldRead = page.waitForResponse(
-    (response) => new URL(response.url()).pathname === "/rest/v1/wine_photos",
-  );
-  releaseGallery();
-  await (await oldRead).finished();
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-  );
-  assert.equal(await page.locator('img[src$="#stale-gallery"]').count(), 0);
-  assert.equal(await page.locator('img[src$="#current-gallery"]').count(), 1);
-  report.passed.push("late-gallery-read-does-not-replace-a-newer-read");
-  currentGallery = [];
-  report.authenticationSimulated = true;
-  await context.addInitScript(
-    ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
-    { key: authKey, session: ownerSession },
-  );
-  const switchAccount = (session) =>
-    page.evaluate(
-      ({ key, session }) => {
-        localStorage.setItem(key, JSON.stringify(session));
-        const channel = new BroadcastChannel(key);
-        channel.postMessage({ event: "SIGNED_IN", session });
-        channel.close();
+    galleryFailed = false;
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await page
+      .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
+        exact: true,
+      })
+      .waitFor({ state: "hidden" });
+    report.passed.push("gallery-read-error-is-not-empty-and-retry");
+    report.phase = "gallery_read_generation";
+    delayNextGallery = true;
+    const firstRead = new Promise((resolve) => {
+      galleryArrived = resolve;
+    });
+    await page.reload();
+    await title.waitFor();
+    await styleFixture();
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await fixtureArrival(firstRead);
+    currentGallery = [
+      {
+        id: "ffffffff-aaaa-4bbb-8ccc-dddddddddddd",
+        wine_id: wineId,
+        user_id: fixtureOwner,
+        url: image + "#current-gallery",
+        storage_path: null,
+        kind: "bottle",
+        sort_order: 2,
       },
-      { key: authKey, session },
+    ];
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await page.locator('img[src$="#current-gallery"]').waitFor();
+    const oldRead = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/rest/v1/wine_photos",
     );
-  report.phase = "pending_photo_account_change";
-  await page.reload();
-  await title.waitFor();
-  await styleFixture();
-  const ownerControl = page.getByRole("button", { name: "Delete wine", exact: true });
-  await ownerControl.waitFor({ state: "attached" });
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
-  await page.locator('input[type="file"]').waitFor({ state: "attached" });
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll("button")].some(
-      (button) => button.textContent === "Add photo" && !button.disabled,
-    ),
-  );
-  const png = await page.evaluate(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 60;
-    canvas.height = 180;
-    const draw = canvas.getContext("2d");
-    draw.fillStyle = "#355d45";
-    draw.fillRect(10, 0, 40, 180);
-    draw.fillStyle = "#f2f5f2";
-    draw.fillRect(10, 70, 40, 60);
-    return canvas.toDataURL("image/png").split(",")[1];
-  });
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "synthetic-only.png",
-    mimeType: "image/png",
-    buffer: Buffer.from(png, "base64"),
-  });
-  await page.getByText("Adjust label", { exact: true }).waitFor();
-  await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
-  await switchAccount(peerSession);
-  await page.getByText("Adjust label", { exact: true }).waitFor({ state: "hidden" });
-  await page.waitForFunction(() => !document.querySelector('input[type="file"]'));
-  await ownerControl.waitFor({ state: "hidden" });
-  report.passed.push("pending-photo-clears-on-account-change");
-  report.phase = "late_ai_account_change";
-  await switchAccount(ownerSession);
-  await ownerControl.waitFor({ state: "attached" });
-  delayOwnerAi = true;
-  const firstAi = new Promise((resolve) => {
-    ownerAiArrived = resolve;
-  });
-  await page.getByRole("button", { name: "AI Picks", exact: true }).click();
-  await fixtureArrival(firstAi);
-  await switchAccount(peerSession);
-  await ownerControl.waitFor({ state: "hidden" });
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('button[aria-pressed="true"]')].some(
-      (button) => button.textContent === "Aromas",
-    ),
-  );
-  assert.equal(aiRequests.peer, 0);
-  await page.getByRole("button", { name: "AI Picks", exact: true }).click();
-  await page.getByText("Current peer-only suggestion", { exact: true }).waitFor();
-  releaseOwnerAi();
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-  );
-  assert.equal(await page.getByText("Delayed owner-only suggestion", { exact: true }).count(), 0);
-  assert.equal(await page.getByText("Current peer-only suggestion", { exact: true }).count(), 1);
-  assert.deepEqual(aiRequests, { owner: 1, peer: 1 });
-  report.passed.push("late-ai-answer-isolated-and-no-automatic-new-account-request");
-  report.phase = "scan_upload_lost_reply";
-  await switchAccount(ownerSession);
-  await ownerControl.waitFor({ state: "attached" });
-  scanFixtureActive = true;
-  scanPng = Buffer.from(png, "base64");
-  await page.goto(base + "/scan", { waitUntil: "domcontentloaded" });
-  await styleFixture();
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "synthetic-only.png",
-    mimeType: "image/png",
-    buffer: scanPng,
-  });
-  await page.getByText("Adjust label", { exact: true }).waitFor();
-  await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
-  await page.getByRole("button", { name: "Use the whole photo", exact: true }).click();
-  await page.getByRole("heading", { name: "Synthetic Scan", exact: true }).waitFor();
-  const saveWine = page.getByRole("button", { name: "Save to cellar", exact: true });
-  await saveWine.click();
-  await page.locator('.operation-notice[data-kind="error"]').waitFor();
-  assert.equal(scanWrites.uploads.length, 1);
-  assert.equal(scanWrites.wines.length, 0);
-  await saveWine.click();
-  await page.getByText("Saved to your cellar", { exact: true }).waitFor();
-  assert.deepEqual(scanWrites.uploads, [scanWrites.uploads[0], scanWrites.uploads[0]]);
-  assert.equal(scanWrites.wines.length, 1);
-  assert.equal(scanWrites.photos.length, 1);
-  await page.screenshot({ path: join(artifacts, "scan-save-390.png"), animations: "disabled" });
-  report.passed.push("scan-lost-upload-retry-reuses-path-bytes-and-one-wine");
+    releaseGallery();
+    await (await oldRead).finished();
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    assert.equal(await page.locator('img[src$="#stale-gallery"]').count(), 0);
+    assert.equal(await page.locator('img[src$="#current-gallery"]').count(), 1);
+    report.passed.push("late-gallery-read-does-not-replace-a-newer-read");
+    currentGallery = [];
+    report.authenticationSimulated = true;
+    await context.addInitScript(
+      ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+      { key: authKey, session: ownerSession },
+    );
+    const switchAccount = (session) =>
+      page.evaluate(
+        ({ key, session }) => {
+          localStorage.setItem(key, JSON.stringify(session));
+          const channel = new BroadcastChannel(key);
+          channel.postMessage({ event: "SIGNED_IN", session });
+          channel.close();
+        },
+        { key: authKey, session },
+      );
+    report.phase = "pending_photo_account_change";
+    await page.reload();
+    await title.waitFor();
+    await styleFixture();
+    const ownerControl = page.getByRole("button", { name: "Delete wine", exact: true });
+    await ownerControl.waitFor({ state: "attached" });
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await page.locator('input[type="file"]').waitFor({ state: "attached" });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll("button")].some(
+        (button) => button.textContent === "Add photo" && !button.disabled,
+      ),
+    );
+    const png = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 60;
+      canvas.height = 180;
+      const draw = canvas.getContext("2d");
+      draw.fillStyle = "#355d45";
+      draw.fillRect(10, 0, 40, 180);
+      draw.fillStyle = "#f2f5f2";
+      draw.fillRect(10, 70, 40, 60);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "synthetic-only.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(png, "base64"),
+    });
+    await page.getByText("Adjust label", { exact: true }).waitFor();
+    await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
+    await switchAccount(peerSession);
+    await page.getByText("Adjust label", { exact: true }).waitFor({ state: "hidden" });
+    await page.waitForFunction(() => !document.querySelector('input[type="file"]'));
+    await ownerControl.waitFor({ state: "hidden" });
+    report.passed.push("pending-photo-clears-on-account-change");
+    report.phase = "late_ai_account_change";
+    await switchAccount(ownerSession);
+    await ownerControl.waitFor({ state: "attached" });
+    delayOwnerAi = true;
+    const firstAi = new Promise((resolve) => {
+      ownerAiArrived = resolve;
+    });
+    await page.getByRole("button", { name: "AI Picks", exact: true }).click();
+    await fixtureArrival(firstAi);
+    await switchAccount(peerSession);
+    await ownerControl.waitFor({ state: "hidden" });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('button[aria-pressed="true"]')].some(
+        (button) => button.textContent === "Aromas",
+      ),
+    );
+    assert.equal(aiRequests.peer, 0);
+    await page.getByRole("button", { name: "AI Picks", exact: true }).click();
+    await page.getByText("Current peer-only suggestion", { exact: true }).waitFor();
+    releaseOwnerAi();
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    assert.equal(await page.getByText("Delayed owner-only suggestion", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Current peer-only suggestion", { exact: true }).count(), 1);
+    assert.deepEqual(aiRequests, { owner: 1, peer: 1 });
+    report.passed.push("late-ai-answer-isolated-and-no-automatic-new-account-request");
+    report.phase = "scan_upload_lost_reply";
+    await switchAccount(ownerSession);
+    await ownerControl.waitFor({ state: "attached" });
+    scanFixtureActive = true;
+    scanPng = Buffer.from(png, "base64");
+    await page.goto(base + "/scan", { waitUntil: "domcontentloaded" });
+    await styleFixture();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "synthetic-only.png",
+      mimeType: "image/png",
+      buffer: scanPng,
+    });
+    await page.getByText("Adjust label", { exact: true }).waitFor();
+    await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
+    await page.getByRole("button", { name: "Use the whole photo", exact: true }).click();
+    await page.getByRole("heading", { name: "Synthetic Scan", exact: true }).waitFor();
+    const saveWine = page.getByRole("button", { name: "Save to cellar", exact: true });
+    await saveWine.click();
+    await page.locator('.operation-notice[data-kind="error"]').waitFor();
+    assert.equal(scanWrites.uploads.length, 1);
+    assert.equal(scanWrites.wines.length, 0);
+    await saveWine.click();
+    await page.getByText("Saved to your cellar", { exact: true }).waitFor();
+    assert.deepEqual(scanWrites.uploads, [scanWrites.uploads[0], scanWrites.uploads[0]]);
+    assert.equal(scanWrites.wines.length, 1);
+    assert.equal(scanWrites.photos.length, 1);
+    await page.screenshot({ path: join(artifacts, "scan-save-390.png"), animations: "disabled" });
+    report.passed.push("scan-lost-upload-retry-reuses-path-bytes-and-one-wine");
+  }
   assert.equal(report.externalRequests, 0);
   assert.equal(report.mutations, 0);
   assert.equal(report.pageErrors, 0);
   assert.equal(report.fixtureErrors, 0);
+  assert.deepEqual(report.layoutFailures ?? [], []);
   assert.equal(logs.includes("INDEPENDENT_CHECK_OUTBOUND_FETCH_BLOCKED"), false);
   report.completed = true;
 } catch (error) {
   report.failure = "synthetic_core_experience_not_accepted";
   report.errorType = error.name === "AssertionError" ? "AssertionError" : "Error";
+  report.runtimeExitCode = child?.exitCode ?? null;
+  report.runtimeOutputSeen = logs.length > 0;
+  report.runtimeDiagnostics = [
+    "ERR_MODULE_NOT_FOUND",
+    "ENOENT",
+    "EADDRINUSE",
+    "SyntaxError",
+    "TypeError",
+  ].filter((code) => logs.includes(code));
+  report.readinessTimedOut =
+    error.message === "Synthetic runtime did not become healthy within 120000ms";
 } finally {
   await browser?.close().catch(() => undefined);
   if (child && child.exitCode === null) child.kill();

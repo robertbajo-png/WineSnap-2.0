@@ -205,6 +205,10 @@
 }
 .k-resume > span {
   flex: 1;
+  overflow-wrap: anywhere;
+}
+.k-resume > svg {
+  flex-shrink: 0;
 }
 .k-resume strong,
 .k-resume small {

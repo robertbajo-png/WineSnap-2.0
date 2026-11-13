@@ -129,8 +129,8 @@ The source inventory also covered the remaining core views:
 
 | View | Reused implementation / next evidence |
 | --- | --- |
-| Home | Owner-keyed recent-wine state, loading/error/retry and offline handling already exist in PilotHome; verify in the affected owned fixture after safe update |
-| Scan | Explicit review and insert reconciliation retained; stable upload paths/bounded account writes now implemented below; expanded browser fault test pending |
+| Home | Recent-wine owner/read states retained; direct cooking-cache owner check now added below; installed verification remains |
+| Scan | Explicit review and insert reconciliation retained; stable upload paths/bounded account writes and expanded fault test passed below |
 | Cookbook / Cook Mode | Existing version-pinned recipe, conflict/offline cache, bounded timers and return journeys are retained; rerun affected installed journeys rather than rebuilding them |
 | Food memory | Generation-guarded loading, read retry, correction and forgetting exist; broader installed isolation and focus checks remain |
 | Family / pairing / meals | Existing keyed kitchen workspace and scoped APIs are retained; history's missing loading/read-retry states are now addressed below; installed journeys remain |
@@ -186,6 +186,41 @@ explicitly counted; fixture-arrival waits have a deadline and cleanup runs on
 failed acceptance too. No real owner session, image, account or provider key
 enters the fixture.
 
+## Wider Source Kitchen Regression
+
+The same isolated runner now accepts an explicit `--kitchen` mode and a separate
+`dist/core-kitchen-runtime` artifact. Build it through the existing artifact-only
+target with the exact owned browser origin, known fake publishable key and the
+existing public cooking/Chef/meals/privacy/pilot flags. This does not enable
+anything in the installed app or change server/database gates.
+
+The normal feature-gate module retains its historical hosted-test comparison
+constant; the guard allows that exact source literal only in this mode, never
+traffic to it. Every browser backend request is intercepted; even requests to
+the installed loopback origin must have the dummy key and a synthetic identity
+and are answered in memory. Only isolated app-page/static GETs are forwarded.
+Unknown hosts, API routes, tables and mutations are blocked. The child server
+still has outbound fetch disabled and no provider/admin credentials. Eight unit
+tests verify this boundary, including read-only RPCs, peer data and delayed errors.
+
+Scenarios cover three widths (320/390/1440), loaded hero/recipe media, cookbook
+and paused Cook Mode, memory read error/retry/focus, meal-history loading/error/
+empty, family/child wine restrictions and account changes. No timer, recipe,
+memory or other remote write or AI call is allowed in this navigation fixture.
+Screenshots/status stay ignored under `dist/core-kitchen` and use synthetic data.
+
+The initial startup timed out and is not acceptance. A subsequent wider run
+verified the nonlayout scenarios but failed the resume row at 320/390 and an
+active cooking tab at 320. The resume title now wraps with stable icons; tabs
+use two columns below 361 px with 48 px controls rather than squeezing labels.
+Fresh artifact/browser verification and current CI are pending.
+
+Source review also found Home reading an old cooking cache before useKitchen's
+account-reset effect ran. Its direct owner check now hides that recipe on the
+first new-account/signed-out render. Three render regressions reproduced both
+failures before the fix and now pass; the combined fixture/Home suite passed
+two files / eleven tests. These are source checks, not installed-owner evidence.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -194,6 +229,8 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
   all fourteen browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
+- Finish fresh wider-kitchen layout/browser and current CI after the three
+  reproduced layout/account fixes; failed startup/layout runs remain failures.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - After the owner naturally closes the existing viewer: complete DEV-02 real

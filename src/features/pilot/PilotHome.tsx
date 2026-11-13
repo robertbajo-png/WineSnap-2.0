@@ -80,7 +80,8 @@ export function PilotHome({ owner }: { owner?: string }) {
   }, [owner, online, revision]);
 
   const current = online && cellar?.owner === owner ? cellar : null;
-  const session = kitchen.cache?.session;
+  const currentKitchen = owner && kitchen.cache?.owner === owner ? kitchen.cache : null;
+  const session = currentKitchen?.session;
   const active = session && ["running", "paused"].includes(session.state.status) ? session : null;
   const recipe = active?.version.document;
 
