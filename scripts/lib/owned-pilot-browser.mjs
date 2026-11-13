@@ -380,6 +380,19 @@ export async function acceptOwnedPilotUi(
       assert.equal(await page.locator(selector).locator(".k-error").count(), 0);
       await capture(screen, 390);
     }
+    // Keep the exact one-wine price fixture before scan journeys create bottles.
+    {
+      const { acceptOwnedPriceStates } = await import("./owned-price-states.mjs");
+      report.priceStates = await acceptOwnedPriceStates({
+        page,
+        context,
+        fixture,
+        phase,
+        capture,
+        pass: (name) => report.passed.push(name),
+      });
+      assert.equal(report.priceStates.completed, true);
+    }
     if (liveJourneys) {
       const { acceptOwnedLiveJourneys } = await import("./owned-pilot-live.mjs");
       report.liveJourneys = {};
@@ -428,18 +441,6 @@ export async function acceptOwnedPilotUi(
         pass: (name) => report.passed.push(name),
       });
       assert.equal(report.collectorStates.completed, true);
-    }
-    {
-      const { acceptOwnedPriceStates } = await import("./owned-price-states.mjs");
-      report.priceStates = await acceptOwnedPriceStates({
-        page,
-        context,
-        fixture,
-        phase,
-        capture,
-        pass: (name) => report.passed.push(name),
-      });
-      assert.equal(report.priceStates.completed, true);
     }
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
