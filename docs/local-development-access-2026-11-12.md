@@ -158,8 +158,10 @@ The isolated headed-browser acceptance passed seven lifecycle checks, including
 real minimize/restore and a single focused page. Authentication/outage states in
 that browser acceptance are explicitly simulated, not real-owner login evidence.
 Full GitHub Quality and Database Safety passed for `da9ecb0` (both push and PR).
-The subsequent source-review fixes have focused local verification; their full
-CI remains a separate check at the current branch head.
+The subsequent source-review fixes passed focused local verification and full
+GitHub Quality/Database Safety for final functional source `f877995` (both push
+and PR). The existing owned supervisor was healthy and the loopback app returned
+HTTP 200; these read-only probes are not current-owner login acceptance.
 
 Activation checkpoint: the earlier owner viewer is still running. Its current
 read-only Status correctly reports `legacy_viewer` and does not attest current

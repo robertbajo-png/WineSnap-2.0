@@ -250,7 +250,10 @@ Current work: **DEV-02**. Private focus IPC, live lifecycle status and bounded
 existing-core Resume are implemented. Source tests (28), synthetic Windows
 controls (14) and isolated headed-browser lifecycle checks (7) passed. See the
 DEV-02 section in [local access](local-development-access-2026-11-12.md).
-Next: finish source review/CI, then fresh actual-owner Check/Open, duplicate focus
+Source review and full CI passed for `f877995` (Quality and Database Safety,
+both push and PR). Read-only checks also confirmed a healthy owned supervisor
+and a loopback app HTTP 200 response; neither proves current owner authentication.
+Next: fresh actual-owner Check/Open, duplicate focus
 and heartbeat verification after the owner safely closes the legacy viewer.
 The earlier local opener is still running and may contain unsaved owner work;
 do not force-close it or equate simulated authentication with installed acceptance.
@@ -270,10 +273,14 @@ entry points passed validation; `git diff --check` passed.
 - DEV-01: canonical-plan/link/instruction checks passed. The standing commit/push
   preference applies; Git history records the resulting documentation commit.
 - DEV-02: 28 focused unit tests, fourteen synthetic Windows checks and seven
-  isolated headed-browser lifecycle checks passed. Real v2 owner activation and
-  final-head CI remain separate, pending evidence. Read-only Status identified the
+  isolated headed-browser lifecycle checks passed. Real v2 owner activation
+  remains separate, pending evidence. Read-only Status identified the
   active legacy viewer rather than falsely reporting current authentication.
 - DEV-02: full Quality and Database Safety passed for `da9ecb0` (push and PR).
   Review follow-up adds bounded contention, startup classification, host-side
   browser deadlines without stacked operations, early window acknowledgement,
   bounded startup deadlines and bounded partial-JSON retries.
+- DEV-02: full Quality and Database Safety passed for the final functional source
+  `f877995` (push and PR). The read-only supervisor check was healthy and the
+  installed loopback app returned HTTP 200. The legacy viewer was still active;
+  no fresh owner grant, forced closure, password change or tunnel action occurred.
