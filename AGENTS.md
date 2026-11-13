@@ -41,6 +41,16 @@ uses CurrentUser-protected operator access and normal loopback GoTrue Auth/RLS,
 not a public or anonymous login bypass. Never run its private worker directly or
 print grants/tokens/browser state. See `docs/local-development-access-2026-11-12.md`.
 
+Installed checkpoint, 2026-11-13: the owned frontend was updated from the clean
+`1f5bd5f` checkout, preserving dark/public-origin labels with zero new migrations.
+The tunnel remains disabled. Fresh encrypted backup/isolated restore and 61
+installed fixture checks passed, including mocked-AI chat cancellation. V2 actual-
+owner Check, visible Open, duplicate focus and a later authenticated heartbeat
+passed. The `WineSnap lokalt` shortcut targets the current wrapper. Reuse/focus
+this viewer; never force-close it for another update. DEV-02 is complete; broader
+DEV-03 review and actual owner usage remain. See the canonical plan's current
+installation checkpoint; older source-only pending statements are historical.
+
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
 preparation and must not override the current standalone default.
@@ -222,7 +232,8 @@ Preserve explicit AI retries, owner-bound save IDs/tokens and read reconciliatio
 before retrying uncertain wine inserts. Browser fault probes use synthetic AI,
 not provider calls; separate Offline acceptance covers real network loss and SW.
 Stage 5 broader five-journey regression is verified for the local guided pilot:
-`docs/pilot-regression-2026-11-07.md`. The installed frontend remains `2d98270`;
+`docs/pilot-regression-2026-11-07.md`. That checkpoint used frontend `2d98270`,
+superseded by the owned update recorded above;
 test/demo operator changes do not require an app rebuild. `PilotJourneys` is a
 manual one-label/one-Chef opt-in; `-ReplayApprovedImage` replays the existing
 approved public-label response and does not resend the image to AI. Never repeat

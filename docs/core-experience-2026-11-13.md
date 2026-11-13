@@ -1,9 +1,10 @@
 # DEV-03 Core Experience Checkpoint
 
-Scope: source and an isolated synthetic frontend only. The real owned viewer is
-still the earlier opener and may contain unsaved work. No installed app update,
-backend migration, owner mutation, password action or internet change is part of
-this checkpoint. Old production and abandoned hosted test are excluded.
+Scope: source and isolated synthetic frontend work, followed by the November 13
+owned installation checkpoint below. Earlier source sections describe their
+recorded stage, not the latest installed state. Source-only tests, installed
+fixture checks, actual owner authentication and human usage are separate evidence.
+Old production, abandoned hosted test and internet activation remain excluded.
 
 ## First Source Slice
 
@@ -123,7 +124,8 @@ Three overview widths are added to source browser acceptance. A fresh isolated
 artifact passed all thirteen cases, with zero forbidden requests, mutations or
 page errors and verified cleanup. The 320/390/1440 overview screenshots were
 inspected. Full Quality/Database Safety passed for `e65f00d` (push and PR).
-These changes are not installed yet.
+At that source checkpoint these changes were not installed; see the later
+installed acceptance section for the current state.
 
 The source inventory also covered the remaining core views:
 
@@ -367,8 +369,39 @@ local typecheck and targeted lint passed. Full Quality and Database Safety
 passed for `2afabab` (push/PR), including 142 files / 1,465 passing tests and
 one existing skipped test.
 
-The installed owner viewer still reports `legacy_viewer` with internet paused.
-No owner window, session, password, installed frontend or old production changed.
+At the source checkpoint the owner viewer still reported `legacy_viewer` with
+internet paused; no installed change had yet occurred. The following checkpoint
+supersedes that installation status, not the source-test evidence above.
+
+## Installed Acceptance: November 13
+
+The owned Update from clean `1f5bd5f` installed the accumulated DEV-03 changes,
+including chat source `2afabab`. Dark-v1/public-origin labels were retained;
+all 37 existing migrations matched and none ran anew. The web remains loopback
+bound and the internet connector/recovery remain off. A current encrypted backup
+and isolated same-PC restore of 75 tables/one image passed first; the prior web
+image is retained under `winesnap-owned:rollback-20261113-dev03`.
+
+Installed PilotAccept passed 61 checks across 360/390/430/1024/1440px: home,
+cellar, cooking/version-pinned wine returns, unavailable-target choices,
+Chef/memory/pairing/nutrition views, read errors/retry, uncertain save handling,
+memory correction/forgetting, logout and peer isolation. A new manual chat probe
+uses the existing guarded wrapper/tagged fixture: normal Auth/RLS history reads,
+New while an old mocked answer is pending, retained current draft, and a current
+mocked answer. Its 390px screenshot was inspected. The two chat responses and six
+core fault responses were mocked; no provider scenario ran. Forbidden external/
+AI requests, page/fixture errors were zero. Both exact test accounts/data were
+cleaned. This does not claim the full twenty source races were repeated against
+real backend records, nor that live AI quality or human use passed.
+
+The new helper's local suite passed three files / 23 tests. Full Quality and
+Database Safety passed for `1f5bd5f` (push/PR): 143 files / 1,467 tests and one
+existing skip. Actual-owner headless Check passed before/after Update, logging
+out only each probe. Visible Open, same-window duplicate focus and a later fresh,
+server-verified owner heartbeat passed. DEV-02 is complete; the owner can now see
+the changes in the separate real local viewer without a password request. The
+shortcut/current supervisor were verified. No old production/test project,
+password, account role, DNS or tunnel setting was changed.
 
 ## Remaining DEV-03 Work
 
@@ -383,14 +416,15 @@ These are substeps of the canonical roadmap, not a competing development plan:
   acceptance. Installed journeys and broader actual-owner use remain separate.
 - The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
   full CI. Keep its mocked transport evidence separate from live AI
-  and from the still-pending installed update.
+  and from the narrower installed fixture/actual-owner checks above.
 - Chat/account isolation passes all 20 isolated browser checks and 54 focused
   tests, typecheck, lint and full CI. Retain this fixture with the
   prior wine/kitchen source checks, separately from live and installed evidence.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- After the owner safely closes the existing viewer: use headless actual-owner
-  Check, take/rehearse the current owned backup, update only the owned app and
-  run affected fixture journeys. Visible Open/focus/heartbeat comes last, so it
-  does not recreate the unsaved-work barrier before Update.
-  Do not waive those gates or mark DEV-03 complete from this source checkpoint.
+- The accumulated source changes are installed and the narrower 61-case owned
+  regression passed. Broader remaining review and actual owner observations are
+  still required; do not mark DEV-03 complete from installation/auth alone.
+- For future updates, wait for safe owner closure, use headless Check, current
+  backup/rehearsal, owned Update/fixture journeys, then visible Open/focus/heartbeat
+  last. Do not interrupt the now-open real owner viewer for another rebuild.

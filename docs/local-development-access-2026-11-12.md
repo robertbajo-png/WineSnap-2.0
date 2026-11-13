@@ -163,7 +163,7 @@ GitHub Quality/Database Safety for final functional source `f877995` (both push
 and PR). The existing owned supervisor was healthy and the loopback app returned
 HTTP 200; these read-only probes are not current-owner login acceptance.
 
-Activation checkpoint: the earlier owner viewer is still running. Its current
+Earlier activation checkpoint (superseded below): the older owner viewer was still running. Its
 read-only Status correctly reports `legacy_viewer` and does not attest current
 authentication. Save/close that viewer before running the fresh actual-owner
 Check and Open, followed by duplicate-Open/fresh-heartbeat verification. These
@@ -172,3 +172,32 @@ installation checks remain pending; no owner window has been forcibly closed.
 Focused source tests passed. A broader local run hit existing five-second
 subprocess timeouts under PC load and was stopped to avoid slowing the real
 viewer; limits were not relaxed. Full CI verification remains separate evidence.
+
+## V2 Installed Acceptance: November 13
+
+The owner approved the local installation and reported closing the old window.
+Two read-only inspections found no open/minimized window in the exact legacy
+worker's same-session tree. Only that verified windowless worker was ended; its
+original wrapper/job exited and released its lock. No lock file was deleted,
+password reset, real window force-closed or unrelated browser stopped.
+
+Fresh v2 headless Check passed against the actual existing bound owner. The
+current encrypted backup and isolated restore passed before Update. The owned
+frontend was rebuilt from clean `1f5bd5f`, preserving dark-v1/public-origin labels
+and applying zero new migrations. No internet connector or recovery was started.
+Installed fixture acceptance passed 61 checks and cleaned both exact test accounts;
+its AI fault/chat replies were mocked, not live-provider or owner usage evidence.
+
+Post-update Check again verified the actual owner and logged out only its probe.
+Visible Open then showed the real account/home. Duplicate Open returned
+`alreadyOpen=true`, `focused=true`, `phase=ready` without a second window/grant.
+Subsequent Status returned v2 ready/authenticated/viewerRunning/operatorActive,
+fresh heartbeat, `focusResult=focused` and advancing server-verification timestamps
+from 19:41:31 to 19:42:03 UTC. External/AI blocked counters were zero and internet
+remained paused. This is actual normal owner Auth evidence, not synthetic login.
+
+The shortcut was checked: it uses the current wrapper/PowerShell and Open action,
+with no credential arguments. The supervisor is healthy. `completed=false` is
+normal while the visible Open viewer stays open; do not close it merely to make
+that field true. V2 activation (DEV-02) is complete. Actual owner usage, physical
+mobile access, paid AI quality and public release remain separate gates.
