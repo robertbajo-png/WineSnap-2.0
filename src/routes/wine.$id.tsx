@@ -46,6 +46,7 @@ import { addToWishlist } from "@/lib/wishlist";
 import { wineRating, type RatedWine } from "@/lib/wineRatings";
 import { useAuth } from "@/hooks/useAuth";
 import { WineKitchenJourney } from "@/features/meals/WineKitchenJourney";
+import { publicWineSharingAllowed } from "@/lib/publicWineSharing";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -134,6 +135,11 @@ function WineDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const [loadError, setLoadError] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [sharingOrigin, setSharingOrigin] = useState<string | null>(null);
+  const ownedBackend = import.meta.env.VITE_OWNED_BACKEND_ENABLED === "true";
+  const sharingAvailable = publicWineSharingAllowed(sharingOrigin, ownedBackend);
+
+  useEffect(() => setSharingOrigin(window.location.origin), []);
 
   const loadSuggestions = async () => {
     if (!w || suggestLoading) return;
@@ -235,6 +241,7 @@ function WineDetailPage() {
   }, [id, user?.id, authLoading, revision, t]);
 
   const remove = async () => {
+    if (!w || w.user_id !== user?.id) return;
     if (!confirm(t("wine.deleteConfirm"))) return;
     const { error } = await supabase.from("wines").delete().eq("id", id);
     if (error) return toast.error(error.message);
@@ -284,7 +291,8 @@ function WineDetailPage() {
         <header className="flex items-center justify-between">
           <button
             onClick={() => window.history.back()}
-            aria-label="Back"
+            aria-label={t("common.back")}
+            title={t("common.back")}
             className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11 min-w-11"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -323,9 +331,16 @@ function WineDetailPage() {
                     {t("compare.title")}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild disabled={!sharingAvailable}>
                   <button
+                    disabled={!sharingAvailable}
+                    aria-describedby={
+                      !sharingAvailable && (ownedBackend || sharingOrigin)
+                        ? "wine-sharing-unavailable"
+                        : undefined
+                    }
                     onClick={async () => {
+                      if (!publicWineSharingAllowed(window.location.origin, ownedBackend)) return;
                       // Ensure the wine is public and has a share_id, then share the public /w/:shareId link
                       const { data: row } = await supabase
                         .from("wines")
@@ -381,17 +396,27 @@ function WineDetailPage() {
                     {t("wine.share")}
                   </button>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/wine/$id/edit"
-                    params={{ id: w.id }}
-                    aria-label={t("wine.edit")}
-                    className="flex min-h-11 w-full items-center gap-3 text-base"
+                {!sharingAvailable && (ownedBackend || sharingOrigin) && (
+                  <p
+                    id="wine-sharing-unavailable"
+                    className="max-w-64 px-3 py-2 text-sm leading-relaxed text-muted-foreground"
                   >
-                    <Pencil className="h-5 w-5" />
-                    {t("wine.edit")}
-                  </Link>
-                </DropdownMenuItem>
+                    {t("wine.shareUnavailable")}
+                  </p>
+                )}
+                {w.user_id === user?.id && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/wine/$id/edit"
+                      params={{ id: w.id }}
+                      aria-label={t("wine.edit")}
+                      className="flex min-h-11 w-full items-center gap-3 text-base"
+                    >
+                      <Pencil className="h-5 w-5" />
+                      {t("wine.edit")}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -401,20 +426,22 @@ function WineDetailPage() {
         <section className="mt-4 flex gap-4">
           <div className="flex h-36 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-burgundy/40 to-background/60 shadow-elegant">
             {w.image_url ? (
-              <WineImage src={w.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage src={w.image_url} alt="" className="h-full w-full object-contain" />
             ) : (
               <Wine className="h-9 w-9 text-gold/60" />
             )}
           </div>
           <div className="min-w-0 flex-1 pt-1">
-            <h1 className="font-display text-[26px] leading-tight text-cream">
+            <h1 className="break-words font-display text-[26px] leading-tight text-cream">
               {w.wine_name ?? w.producer ?? t("type.unknown")}
               {w.vintage ? ` ${w.vintage}` : ""}
             </h1>
-            <p className="mt-1 text-base text-gold">
+            <p className="mt-1 break-words text-base text-gold">
               {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
             </p>
-            <p className="text-sm text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
+            <p className="break-words text-sm text-muted-foreground">
+              {w.grape_varieties?.join(", ") || "—"}
+            </p>
             {rating != null && (
               <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <span className="flex items-center gap-1 text-sm">
@@ -497,7 +524,11 @@ function WineDetailPage() {
         {tab === "overview" && (
           <div className="mt-5 space-y-4">
             <Section title={t("photos.title")}>
-              <PhotoGallery wineId={w.id} fallbackUrl={w.image_url} />
+              <PhotoGallery
+                wineId={w.id}
+                fallbackUrl={w.image_url}
+                editable={w.user_id === user?.id}
+              />
             </Section>
             {w.description && (
               <Card className="bg-card/50 p-4">
@@ -800,13 +831,15 @@ function WineDetailPage() {
           </div>
         )}
 
-        <Button
-          variant="ghost"
-          onClick={remove}
-          className="mt-8 mb-4 w-full text-red-300 hover:bg-destructive/10 hover:text-red-200 min-h-11"
-        >
-          <Trash2 className="h-5 w-5" /> {t("wine.delete")}
-        </Button>
+        {w.user_id === user?.id && (
+          <Button
+            variant="ghost"
+            onClick={remove}
+            className="mt-8 mb-4 w-full text-red-300 hover:bg-destructive/10 hover:text-red-200 min-h-11"
+          >
+            <Trash2 className="h-5 w-5" /> {t("wine.delete")}
+          </Button>
+        )}
       </div>
     </AppShell>
   );

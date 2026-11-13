@@ -22,9 +22,10 @@ type Photo = {
 type Props = {
   wineId: string;
   fallbackUrl?: string | null;
+  editable?: boolean;
 };
 
-export function PhotoGallery({ wineId, fallbackUrl }: Props) {
+export function PhotoGallery({ wineId, fallbackUrl, editable = false }: Props) {
   const t = useT();
   const { user } = useAuth();
   const [photos, setPhotos] = useState<Photo[] | null>(null);
@@ -51,11 +52,11 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
   }, [wineId]);
 
   const onFile = (f: File | null) => {
-    if (f) setPending(f);
+    if (editable && user && f) setPending(f);
   };
 
   const uploadCropped = async (blob: Blob) => {
-    if (!user) return;
+    if (!editable || !user) return;
     setUploading(true);
     try {
       const path = `${user.id}/${wineId}/${crypto.randomUUID()}.jpg`;
@@ -84,6 +85,7 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
   };
 
   const remove = async (p: Photo) => {
+    if (!editable || !user) return;
     if (!confirm(t("photos.deleteConfirm"))) return;
     if (p.storage_path) {
       await supabase.storage.from("wine-labels").remove([p.storage_path]);
@@ -133,14 +135,14 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
                 src={c.url}
                 storagePath={c.storagePath}
                 alt=""
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
                 loading="lazy"
               />
             </button>
             <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 py-0.5 text-xs font-display uppercase tracking-wide text-cream/85">
               {t(`photos.kind.${c.kind}` as never) || c.kind}
             </span>
-            {c.photo && (
+            {editable && user && c.photo && (
               <button
                 type="button"
                 onClick={() => remove(c.photo!)}
@@ -152,15 +154,21 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
             )}
           </div>
         ))}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 bg-white/[0.02] text-sm text-cream/90 hover:border-gold/40 hover:text-gold disabled:opacity-50 min-h-11 min-w-11"
-        >
-          {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-          <span>{uploading ? t("photos.uploading") : t("photos.add")}</span>
-        </button>
+        {editable && user && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 bg-white/[0.02] text-sm text-cream/90 hover:border-gold/40 hover:text-gold disabled:opacity-50 min-h-11 min-w-11"
+          >
+            {uploading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Plus className="h-5 w-5" />
+            )}
+            <span>{uploading ? t("photos.uploading") : t("photos.add")}</span>
+          </button>
+        )}
       </div>
 
       {combined.length === 0 && !uploading && (
@@ -169,16 +177,18 @@ export function PhotoGallery({ wineId, fallbackUrl }: Props) {
         </div>
       )}
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          onFile(e.target.files?.[0] ?? null);
-          e.target.value = "";
-        }}
-      />
+      {editable && user && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            onFile(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+      )}
 
       {pending && (
         <Suspense fallback={null}>

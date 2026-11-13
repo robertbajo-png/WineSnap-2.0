@@ -686,6 +686,8 @@ const en = {
 
   // Wine detail — share & edit
   "wine.share": "Share",
+  "wine.shareUnavailable":
+    "Public sharing is unavailable in this private installation. Your wine remains unchanged.",
   "wine.edit": "Edit",
   "wine.shareText": "Check out this wine on WineSnap",
   "wine.linkCopied": "Link copied",
@@ -1525,6 +1527,8 @@ const sv: Record<keyof typeof en, string> = {
   "cellar.sort.name": "Namn",
 
   "wine.share": "Dela",
+  "wine.shareUnavailable":
+    "Publik delning är inte tillgänglig i den privata installationen. Ditt vin ändras inte.",
   "wine.edit": "Redigera",
   "wine.shareText": "Kolla in det här vinet på WineSnap",
   "wine.linkCopied": "Länk kopierad",

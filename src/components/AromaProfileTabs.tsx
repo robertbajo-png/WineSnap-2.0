@@ -107,7 +107,9 @@ export function AromaRows({
           )}
           <AromaIcon name={aroma.name} size={48} />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-lg leading-tight text-cream">{aroma.name}</p>
+            <p className="break-words font-display text-lg leading-tight text-cream">
+              {aroma.name}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">{aromaFamilyLabel(aroma.name)}</p>
             {!readOnly && (
               <div className="mt-2">

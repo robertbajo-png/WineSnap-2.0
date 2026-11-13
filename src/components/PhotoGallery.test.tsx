@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const account = vi.hoisted(() => ({ user: null as { id: string } | null }));
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null }) }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => account }));
 vi.mock("@/i18n", () => ({ useT: () => (key: string) => key }));
 vi.mock("./WineImage", () => ({
   WineImage: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
@@ -11,11 +13,23 @@ vi.mock("./WineImage", () => ({
 import { PhotoGallery } from "./PhotoGallery";
 
 describe("wine photo viewer", () => {
+  beforeEach(() => {
+    account.user = null;
+  });
   it("names the photo control independently of its decorative thumbnail", () => {
     const html = renderToStaticMarkup(<PhotoGallery wineId="wine" fallbackUrl="/label.jpg" />);
     expect(html).toContain('aria-label="photos.view"');
     expect(html).toContain('src="/label.jpg"');
-    expect(html).toContain("photos.add");
+    expect(html).not.toContain("photos.add");
+  });
+  it("offers upload only for an authenticated, explicitly editable wine", () => {
+    account.user = { id: "fixture-owner" };
+    expect(renderToStaticMarkup(<PhotoGallery wineId="wine" editable />)).toContain("photos.add");
+    expect(renderToStaticMarkup(<PhotoGallery wineId="wine" />)).not.toContain('type="file"');
+    account.user = null;
+    expect(renderToStaticMarkup(<PhotoGallery wineId="wine" editable />)).not.toContain(
+      "photos.add",
+    );
   });
   it("does not render an empty photo control without a stored image", () => {
     const html = renderToStaticMarkup(<PhotoGallery wineId="wine" />);
