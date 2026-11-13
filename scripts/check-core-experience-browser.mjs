@@ -12,33 +12,39 @@ import {
 import { createCoreKitchenFixture, acceptCoreKitchen } from "./lib/core-kitchen-browser.mjs";
 import { createCoreChatFixture, acceptCoreChat } from "./lib/core-chat-browser.mjs";
 import { createCoreCollectorFixture, acceptCoreCollector } from "./lib/core-collector-browser.mjs";
+import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-browser.mjs";
 
 // Synthetic source UI only. No installed backend, real account or provider credentials.
 const kitchenOnly = process.argv.length === 3 && process.argv[2] === "--kitchen";
 const chatOnly = process.argv.length === 3 && process.argv[2] === "--chat";
 const collectorOnly = process.argv.length === 3 && process.argv[2] === "--collector";
-assert.ok(process.argv.length === 2 || kitchenOnly || chatOnly || collectorOnly);
-const ownedFixture = kitchenOnly || chatOnly || collectorOnly;
+const pricesOnly = process.argv.length === 3 && process.argv[2] === "--prices";
+assert.ok(process.argv.length === 2 || kitchenOnly || chatOnly || collectorOnly || pricesOnly);
+const ownedFixture = kitchenOnly || chatOnly || collectorOnly || pricesOnly;
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = join(
   root,
-  kitchenOnly
-    ? "dist/core-kitchen-runtime"
-    : chatOnly
-      ? "dist/core-chat-runtime"
-      : collectorOnly
-        ? "dist/core-collector-runtime"
-        : "dist/independent-runtime",
+  pricesOnly
+    ? "dist/core-prices-runtime"
+    : kitchenOnly
+      ? "dist/core-kitchen-runtime"
+      : chatOnly
+        ? "dist/core-chat-runtime"
+        : collectorOnly
+          ? "dist/core-collector-runtime"
+          : "dist/independent-runtime",
 );
 const artifacts = join(
   root,
-  kitchenOnly
-    ? "dist/core-kitchen"
-    : chatOnly
-      ? "dist/core-chat"
-      : collectorOnly
-        ? "dist/core-collector"
-        : "dist/core-experience",
+  pricesOnly
+    ? "dist/core-prices"
+    : kitchenOnly
+      ? "dist/core-kitchen"
+      : chatOnly
+        ? "dist/core-chat"
+        : collectorOnly
+          ? "dist/core-collector"
+          : "dist/core-experience",
 );
 const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
@@ -109,13 +115,15 @@ const syntheticUsers = new Map([
 const report = {
   synthetic: true,
   fixtureDataMocked: true,
-  sourceViewScope: kitchenOnly
-    ? "core-kitchen"
-    : chatOnly
-      ? "core-chat"
-      : collectorOnly
-        ? "core-collector"
-        : "wine-detail-scan",
+  sourceViewScope: pricesOnly
+    ? "core-prices"
+    : kitchenOnly
+      ? "core-kitchen"
+      : chatOnly
+        ? "core-chat"
+        : collectorOnly
+          ? "core-collector"
+          : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -271,6 +279,16 @@ try {
         base,
       })
     : null;
+  const pricesFixture = pricesOnly
+    ? createCorePricesFixture({
+        origin: fixtureOrigin,
+        key: fixtureKey,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        report,
+        base,
+      })
+    : null;
   let galleryFailed = false,
     delayNextGallery = false,
     releaseGallery;
@@ -291,6 +309,7 @@ try {
       body: JSON.stringify(data),
     });
   const routeFixture = async (route) => {
+    if (pricesFixture) return pricesFixture.route(route);
     if (kitchenFixture) return kitchenFixture.route(route);
     if (chatFixture) return chatFixture.route(route);
     if (collectorFixture) return collectorFixture.route(route);
@@ -462,7 +481,18 @@ try {
   page.setDefaultTimeout(30000);
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
-  if (collectorFixture) {
+  if (pricesFixture) {
+    await acceptCorePrices({
+      page,
+      base,
+      artifacts,
+      report,
+      fixture: pricesFixture,
+      authKey,
+      ownerSession,
+      peerSession,
+    });
+  } else if (collectorFixture) {
     await acceptCoreCollector({
       page,
       base,

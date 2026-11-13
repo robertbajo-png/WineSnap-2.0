@@ -496,6 +496,76 @@ passed. Keep that real viewer open. Old production, hosted test, passwords, DNS,
 provider configuration and internet enablement were not changed. Broader DEV-03
 review, live quality and actual owner observations remain separate.
 
+## Price Refresh Source Follow-Up
+
+Review found an unbounded global-session lookup in the price POST, unscoped
+overview reads, no initial-read retry and a confirmation toast surviving an
+account switch while its read-back waited. A failed read-back had already
+advanced the batch cursor without providing a read-only recovery path. Deleted
+wines could retain an old reference in the overview after read-back.
+
+`cellarOverviewStore` now reuses the ordinary-owner verifier and scoped client.
+The shared `accountAccessToken` factors the existing bounded cached-session and
+server-user verification out of client construction; other client callers keep
+the same verification/authorization and receive no elevated access. Price POSTs
+capture that verified token, validate input/output and use a 15-second HTTP/body
+deadline with no-store/no-redirect transport. Session/user verification each keeps
+its existing bounded wait. Cancellation or a changed scope rejects late results.
+Client cancellation is not a promise to undo a server write already in flight.
+
+The overview is keyed by owner; reads are cancellable, fully paginated and
+published only after completion and owner/ID checks. Legacy missing price columns
+still fall back to read-only prices. Initial loading/error/empty states remain
+distinct, with explicit Retry on failure. Price read-back uses its operation's
+signal and removes requested IDs that no longer exist.
+
+The panel keeps its synchronous operation lock. Unknown responses and failed
+read-back expose Reload saved prices before another price check/confirmation.
+This action reads only: repeated read errors do not repeat the price POST.
+Completed batch IDs remain completed; an explicit later Resume checks remaining
+IDs. Every progress/error/finally/toast update checks the current mounted attempt,
+including after confirmation reload. Leaving/switching owner aborts the attempt
+and discards its local progress. No automatic catalog retry, price-source,
+freshness, valuation, currency, quota, RLS or server revision-rule change was made.
+
+The new `--prices` mode uses a separate `dist/core-prices-runtime` artifact and
+the same dummy-key owned build flags shown for the kitchen fixture. Its server
+blocks outbound fetch; every browser API request, including the price hook at
+the fixture app origin and the installed loopback API origin, is intercepted.
+Only same-app non-API static/document reads continue. Eight boundary tests reject
+unknown hosts/APIs/credentials, nonfixture writes and cross-owner price IDs, and
+keep mocked automatic quotes consistent with their fixture wine identities.
+Ignored safe reports/screenshots live under `dist/core-prices`.
+
+```powershell
+node scripts/check-core-experience-browser.mjs --prices
+```
+
+The earlier artifact reproduced four missing-recovery cases and the stale
+confirmation toast with zero fixture errors. The missing verification path also
+timed out; that timeout is not passing account-security evidence. An initial
+14-case run missed a header/button overlap at 320px despite no page overflow;
+visual inspection caught it. A rectangle-based assertion then failed and passed
+after stacking the command on small screens. The deleted-row scenario initially
+had an invalid mock quote name; it was corrected and guarded by a boundary test
+before accepting verified-price coverage. Do not count those failed runs as passes.
+
+The final fresh artifact passed all 15 cases: initial read error/retry; repeated
+failed read-back with keyboard read-only retry; malformed/uncertain responses;
+transport error; account change during verification; late confirmation read,
+initial read and refresh across accounts; removed wine; row errors without false
+success; double submit/pause/resume; logout; and three responsive widths at
+320/390/1440px and 125% text. Verified coverage is asserted separately from batch
+progress. All final screenshots were inspected. Fifteen price requests were
+mocked; AI requests, forbidden requests/writes and page/fixture errors were zero,
+and process cleanup passed. Nine focused files / 83 tests, local typecheck and
+targeted lint passed. Full CI remains pending for this source checkpoint.
+
+This slice is not installed over the still-open owner viewer on `e4740ff`.
+No owner session/data, running app/backend, actual catalog lookup, provider,
+old production, hosted test, password or internet setting was changed. Safe
+installation and actual owner use remain separate from synthetic source tests.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -515,9 +585,11 @@ These are substeps of the canonical roadmap, not a competing development plan:
   prior wine/kitchen source checks, separately from live and installed evidence.
 - Collector safety now passes 10 isolated browser checks and 64 focused tests;
   full CI and the narrower installed collector acceptance above passed.
-- Next source review: overview price-refresh session/deadline/account guards and
-  read-error recovery, then remaining family/meal states. Keep verified retail
-  prices separate from user estimates and preserve unknown values/currencies.
+- Price-refresh scope/deadline/read recovery passes 83 focused tests and 15
+  isolated browser cases. Full CI and later safe owned activation remain;
+  do not rebuild under the open real viewer. Next source review is remaining
+  family/meal error/account states. Preserve verified retail prices separately
+  from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - The accumulated source changes are installed and the narrower 65-case owned

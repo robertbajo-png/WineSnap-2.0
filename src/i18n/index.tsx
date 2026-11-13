@@ -392,6 +392,9 @@ const en = {
   "prices.checked": "checked",
   "prices.finished": "Price check finished",
   "prices.failed": "Price check interrupted. Remaining wines are saved in this view.",
+  "prices.reload": "Reload saved prices",
+  "prices.readBeforeRetry":
+    "The check or read-back failed. Reload saved prices before trying again; the previous check may already have finished.",
   "prices.setup": "The price update requires a database update. Existing prices are preserved.",
   "prices.confirm": "Confirm product",
   "prices.acknowledge": "I confirm the wine, vintage (if stated) and bottle size match.",
@@ -1268,6 +1271,9 @@ const sv: Record<keyof typeof en, string> = {
   "prices.checked": "kontrollerade",
   "prices.finished": "Priskontrollen klar",
   "prices.failed": "Priskontrollen avbröts. Återstående viner är sparade i denna vy.",
+  "prices.reload": "Läs in sparade priser",
+  "prices.readBeforeRetry":
+    "Kontrollen eller återläsningen misslyckades. Läs in sparade priser före ett nytt försök; den tidigare kontrollen kan redan vara klar.",
   "prices.setup": "Prisuppdateringen kräver en databasuppdatering. Befintliga priser är bevarade.",
   "prices.confirm": "Bekräfta produkt",
   "prices.acknowledge": "Jag bekräftar att vin, årgång (om angiven) och flaskstorlek stämmer.",

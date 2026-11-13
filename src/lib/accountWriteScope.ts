@@ -31,7 +31,7 @@ export function readSessionWithDeadline(signal?: AbortSignal) {
   return bounded(() => supabase.auth.getSession(), 15000, signal);
 }
 
-export async function accountWriteClient(
+export async function accountAccessToken(
   scope: AccountWriteScope,
   requestTimeoutMs = 15000,
   signal?: AbortSignal,
@@ -51,5 +51,15 @@ export async function accountWriteClient(
     signal?.aborted
   )
     throw new Error("account_unavailable");
+  return token;
+}
+
+export async function accountWriteClient(
+  scope: AccountWriteScope,
+  requestTimeoutMs = 15000,
+  signal?: AbortSignal,
+) {
+  const token = await accountAccessToken(scope, requestTimeoutMs, signal);
+  if (!scope.current() || signal?.aborted) throw new Error("account_scope_changed");
   return scopedClient(token, requestTimeoutMs) as unknown as typeof supabase;
 }
