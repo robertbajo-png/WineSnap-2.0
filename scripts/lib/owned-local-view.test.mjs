@@ -125,7 +125,12 @@ describe("private Windows local owner login", () => {
     expect(wrapper).toContain("ProtectedData]::Unprotect");
     expect(wrapper).toContain("$process.StandardInput.Write($payload)");
     expect(wrapper).toContain("$tunnel.enabled -ne $false");
-    expect(wrapper).toContain("if($Action -eq 'Check'){exit 1}else{exit 0}");
+    expect(wrapper).toContain("Focus-LocalViewer|ConvertTo-Json");
+    expect(wrapper).toContain("Invoke-OwnedRuntimeAction -Action Resume");
+    expect(wrapper).not.toMatch(
+      /Invoke-OwnedRuntimeAction -Action (?:Start|Update|TunnelResume|IngressResume)/,
+    );
+    expect(wrapper).toContain("$value.phase='unresponsive'");
     expect(worker).toContain("connector.State.Running, false");
     expect(worker).toContain("checkOwnedContainer(container, name, payload.keys.installationId)");
     expect(worker).toContain('redirect: "error"');

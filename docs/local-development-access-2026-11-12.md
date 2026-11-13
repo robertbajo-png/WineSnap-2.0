@@ -84,13 +84,67 @@ at 21:33:59 UTC, with exact owner identity verified, the home visible and zero
 blocked external/AI requests. The desktop shortcut was installed without any
 credential or grant URL in it.
 
-For a running Open viewer, `ready=true`, `ownerSessionVerified=true` and phase
-`ready` record successful startup. `completed=false` is expected until the user
-closes its browser; it is not a failed login. Status is the last operator check,
-not a promise about every later user navigation or explicit logout. Check exits
-unsuccessfully if a viewer is already open, rather than claiming another login
-test passed. The interactive viewer and old sessions are not forcibly closed by
-a duplicate launch.
+For a running Open viewer, `ownerSessionVerified=true` records successful initial
+authentication, not indefinite access. `completed=false` is expected until the
+user closes its browser; it is not a failed login. Check exits unsuccessfully if
+a viewer is already open, rather than claiming another login test passed. The
+interactive viewer and old sessions are not forcibly closed by a duplicate launch.
+
+## DEV-02: Current Status And Private Focus
+
+The version-2 opener adds a private `local-view-control.json` command beside its
+protected status file. Both allow only the current Windows user and SYSTEM. A
+command can only focus the existing owned loopback page. It must match the
+current invocation's UUID, contain a fresh request UUID/timestamp and no extra
+fields, and receives a matching acknowledgement. There is no network listener,
+login command, arbitrary URL, credential or account-switch payload. Duplicate
+Open restores a minimized viewer and brings it forward without a new grant or
+second window. Explicit logout stays logged out while that viewer remains open.
+
+The visible worker checks its existing normal owner session against the local
+Auth server approximately every five seconds. Only booleans leave that page
+evaluation. It never renews a grant or reads administrator credentials during
+the heartbeat. Status is read-only, checks the viewer lock and rejects readiness
+when the heartbeat is over thirty seconds old. `lastVerifiedAt` is historical;
+`ready`/`authenticated` plus a fresh heartbeat describe the latest verified state.
+
+| Phase | Meaning |
+| --- | --- |
+| `starting_backend`, `opening_local_owner` and other startup phases | Existing local runtime/browser checks are in progress |
+| `ready` | Live viewer, fresh heartbeat and server-verified bound owner |
+| `signed_out` | Viewer exists but no valid bound-owner session; Open does not sign it back in |
+| `backend_unavailable` | Viewer exists but the local server/session could not currently be verified |
+| `closed`, `complete` | Open viewer closed, or isolated Check finished; no running-login claim |
+| `interrupted`, `unresponsive` | Operator disappeared or its report expired; not ready |
+| `legacy_viewer` | Earlier opener is still running; its one-time startup report is not current proof |
+| `needs_attention` | Safe startup/operator failure; inspect Status and normal Docker Desktop availability |
+
+Open first uses the established bounded Resume action for only the exact existing
+owned core containers. It does not provision missing roots, start/restart Docker,
+resume a tunnel or touch hosted services. The shared operation lock is not held
+while invoking Resume, and the enabled owner binding is checked again afterward.
+Errors show a fixed, non-secret Windows message, never raw provider exceptions
+or a password input. A duplicate legacy Open asks the owner to save and close
+the old window; it never closes unsaved work automatically.
+
+Manual synthetic checks (no real account, backend requests or provider calls):
+
+```powershell
+./scripts/check-owned-local-control.ps1
+node ./scripts/check-owned-local-lifecycle.mjs --headed
+```
+
+Source verification: 26 focused unit tests passed; eight Windows checks passed,
+including stale status, legacy compatibility, exact Resume scope and cleanup.
+The isolated headed-browser acceptance passed seven lifecycle checks, including
+real minimize/restore and a single focused page. Authentication/outage states in
+that browser acceptance are explicitly simulated, not real-owner login evidence.
+
+Activation checkpoint: the earlier owner viewer is still running. Its current
+read-only Status correctly reports `legacy_viewer` and does not attest current
+authentication. Save/close that viewer before running the fresh actual-owner
+Check and Open, followed by duplicate-Open/fresh-heartbeat verification. These
+installation checks remain pending; no owner window has been forcibly closed.
 
 Focused source tests passed. A broader local run hit existing five-second
 subprocess timeouts under PC load and was stopped to avoid slowing the real

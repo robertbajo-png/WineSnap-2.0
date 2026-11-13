@@ -14,6 +14,11 @@ import {
 } from "./lib/owned-backend.mjs";
 import { createOwnedLocalLogin, ownedLocalViewRequest } from "./lib/owned-local-view.mjs";
 import { checkOwnedTunnelContainer, ownedConnectorName } from "./lib/owned-tunnel.mjs";
+import {
+  probeOwnedLocalPage,
+  focusOwnedLocalPage,
+  startOwnedLocalLifecycle,
+} from "./lib/owned-local-lifecycle.mjs";
 
 assert.equal(process.platform, "win32");
 assert.equal(process.env.WINESNAP_OWNED_LOCAL_VIEW_PIPE, "1");
@@ -23,8 +28,12 @@ assert.ok(["Open", "Check"].includes(process.argv[2]));
 const acceptance = process.argv[2] === "Check";
 const report = {
   project: "winesnap-owned-local",
+  version: 2,
   completed: false,
   ready: false,
+  viewerRunning: false,
+  authenticated: false,
+  supportsFocus: !acceptance,
   productionTouched: false,
   loopbackOnly: true,
   acceptance,
@@ -34,8 +43,9 @@ const report = {
   blockedAiRequests: 0,
 };
 const statusFile = join(process.env.USERPROFILE, "WineSnapOwned/local-view-status.json");
+const controlFile = join(process.env.USERPROFILE, "WineSnapOwned/local-view-control.json");
 const chunks = [];
-let payload, login, browser;
+let payload, login, browser, lifecycle, browserClosed;
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
 async function status(phase) {
   report.phase = phase;
@@ -76,7 +86,9 @@ try {
   } finally {
     bytes.fill(0);
   }
-  assert.deepEqual(Object.keys(payload).sort(), ["binding", "keys", "ownerEmail"]);
+  assert.deepEqual(Object.keys(payload).sort(), ["binding", "keys", "ownerEmail", "runId"]);
+  assert.match(payload.runId, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+  report.runId = payload.runId;
   validateOwnedKeys(payload.keys);
   await status("validating_owned_installation");
   for (const name of ["winesnap-owned-web", "winesnap-owned-gateway", "winesnap-owned-auth"]) {
@@ -126,6 +138,8 @@ try {
     ).href
   );
   browser = await chromium.launch({ headless: acceptance, args: ["--window-size=1280,900"] });
+  browserClosed = new Promise((resolve) => browser.once("disconnected", resolve));
+  report.viewerRunning = true;
   const context = await browser.newContext({
     viewport: null,
     locale: "sv-SE",
@@ -166,32 +180,14 @@ try {
     login.ownerId,
     { timeout: 60000 },
   );
-  report.ownerSessionVerified = await page.evaluate(
-    async ({ ownerId, api }) => {
-      for (const key of Object.keys(localStorage)) {
-        if (!key.startsWith("sb-") || !key.endsWith("auth-token")) continue;
-        try {
-          const session = JSON.parse(localStorage.getItem(key));
-          if (session?.user?.id !== ownerId || session.user.role !== "authenticated") continue;
-          const response = await fetch(api + "/auth/v1/user", {
-            headers: { Authorization: "Bearer " + session.access_token },
-            redirect: "error",
-            cache: "no-store",
-          });
-          return response.ok && (await response.json()).id === ownerId;
-        } catch {
-          return false;
-        }
-      }
-      return false;
-    },
-    { ownerId: login.ownerId, api: ownedApi },
-  );
+  report.ownerSessionVerified = (await probeOwnedLocalPage(page, login.ownerId)).serverVerified;
   assert.equal(report.ownerSessionVerified, true);
   assert.equal(new URL(page.url()).origin, ownedApp);
   assert.equal(new URL(page.url()).hash, "");
   await page.locator(".pilot-hero").waitFor({ state: "visible", timeout: 30000 });
   report.ready = true;
+  report.authenticated = true;
+  report.lastVerifiedAt = new Date().toISOString();
   if (acceptance) {
     report.probeSessionLoggedOut = await page.evaluate(async (api) => {
       for (const key of Object.keys(localStorage)) {
@@ -212,23 +208,40 @@ try {
     report.completed = true;
     await status("verified");
   } else {
-    await page.bringToFront();
+    await focusOwnedLocalPage(page);
     await status("ready");
-    await new Promise((resolve) => browser.once("disconnected", resolve));
+    lifecycle = startOwnedLocalLifecycle({
+      page,
+      ownerId: login.ownerId,
+      runId: report.runId,
+      controlFile,
+      publish: async (patch) => {
+        Object.assign(report, patch);
+        await status(patch.phase);
+      },
+    });
+    await lifecycle.tick();
+    await browserClosed;
     report.completed = true;
   }
 } catch (error) {
+  report.failedPhase = report.phase;
   report.failure = "owned_local_view_not_ready";
   report.errorType = ["AssertionError", "TimeoutError", "TypeError"].includes(error.name)
     ? error.name
     : "Error";
 } finally {
+  await lifecycle?.stop();
   report.ready = false;
+  report.viewerRunning = false;
+  report.authenticated = false;
   payload = undefined;
   login = undefined;
   for (const chunk of chunks) chunk.fill(0);
   await browser?.close().catch(() => undefined);
-  await status(report.completed ? "complete" : "needs_attention").catch(() => undefined);
+  await status(report.completed ? (acceptance ? "complete" : "closed") : "needs_attention").catch(
+    () => undefined,
+  );
   console.log(JSON.stringify(report));
   if (!report.completed) process.exitCode = 1;
 }
