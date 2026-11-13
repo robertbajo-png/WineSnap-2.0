@@ -18,9 +18,9 @@ export function MealHistoryPanel({
   initialSession?: string;
 }) {
   const t = useT();
-  const { data, error, refresh } = useFreshData(async () => ({
-    cellar: await cellarWines(owner),
-    history: await mealHistory(owner),
+  const { data, error, refresh } = useFreshData(async (signal) => ({
+    cellar: await cellarWines(owner, signal),
+    history: await mealHistory(owner, signal),
   }));
   const [editing, setEditing] = useState<{
       id: string;

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { finishOwnedInput } from "./lib/owned-process-input.mjs";
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -82,7 +83,7 @@ function command(args, input, timeout = 120000) {
       },
     );
     child.stdin.on("error", () => {});
-    child.stdin.end(input);
+    finishOwnedInput(child.stdin, input);
   });
 }
 const json = async (args) => JSON.parse((await command(args)).toString());

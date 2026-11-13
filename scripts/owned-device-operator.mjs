@@ -1,5 +1,6 @@
 // Private stdin/stdout protocol. Only run through configure-owned-device-access.ps1.
 import assert from "node:assert/strict";
+import { finishOwnedInput } from "./lib/owned-process-input.mjs";
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { writeFile, lstat } from "node:fs/promises";
@@ -46,7 +47,7 @@ const command = (args, data) =>
         error ? reject(new Error("device_operator_command_failed")) : resolve(output),
     );
     child.stdin.on("error", () => {});
-    child.stdin.end(data);
+    finishOwnedInput(child.stdin, data);
   });
 async function status(phase) {
   report.phase = phase;

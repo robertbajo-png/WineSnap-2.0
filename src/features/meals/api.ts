@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { versionSchema } from "../kitchen/domain";
 import {
@@ -12,7 +11,7 @@ import {
   wineSchema,
 } from "./domain";
 import { mealsEnabled } from "./feature";
-import { scopedClient } from "@/lib/scopedClient";
+import { accountWriteClient } from "@/lib/accountWriteScope";
 
 export class MealsError extends Error {
   constructor(code = "") {
@@ -25,31 +24,37 @@ export class MealsError extends Error {
     );
   }
 }
-async function scoped(owner: string): Promise<SupabaseClient> {
+async function scoped(owner: string, signal?: AbortSignal): Promise<SupabaseClient> {
   if (!mealsEnabled) throw new MealsError();
-  const { data } = await supabase.auth.getSession();
-  if (!data.session || data.session.user.id !== owner) throw new MealsError();
-  const token = data.session.access_token;
-  const verified = await supabase.auth.getUser(token);
-  if (verified.error || verified.data.user?.id !== owner) throw new MealsError();
-  const client = scopedClient(token);
-  const gate = await client.rpc("meals_access");
-  if (gate.error || gate.data !== true) throw new MealsError();
-  return client;
+  try {
+    const client = await accountWriteClient(
+      { owner, current: () => !signal?.aborted },
+      15000,
+      signal,
+    );
+    if (signal?.aborted) throw new MealsError();
+    const gate = await client.rpc("meals_access").abortSignal(signal ?? AbortSignal.timeout(15000));
+    if (signal?.aborted || gate.error || gate.data !== true) throw new MealsError();
+    return client;
+  } catch {
+    throw new MealsError();
+  }
 }
-export async function familyData(owner: string) {
-  const client = await scoped(owner);
+export async function familyData(owner: string, signal?: AbortSignal) {
+  const client = await scoped(owner, signal);
   const groups = await client
     .from("kitchen_households")
     .select("id,user_id,name,revision")
-    .limit(6);
+    .limit(6)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
   const diners: z.infer<typeof dinerSchema>[] = [];
   for (let from = 0; from < 1500; from += 500) {
     const page = await client
       .from("kitchen_diners")
       .select("*")
       .order("id")
-      .range(from, from + 499);
+      .range(from, from + 499)
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
     if (page.error) throw new MealsError();
     diners.push(...z.array(dinerSchema).parse(page.data));
     if ((page.data?.length ?? 0) < 500) break;
@@ -57,14 +62,16 @@ export async function familyData(owner: string) {
   const members = await client
     .from("kitchen_household_members")
     .select("id,user_id,household_id,display_name")
-    .limit(61);
+    .limit(61)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
   const invites = await client
     .from("kitchen_household_invites")
     .select("id,user_id,household_id,expires_at,revoked_at,used_at")
     .gt("expires_at", new Date().toISOString())
     .is("revoked_at", null)
     .is("used_at", null)
-    .limit(61);
+    .limit(61)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
   if (
     [groups, members, invites].some((r) => r.error) ||
     (groups.data?.length ?? 0) > 5 ||
@@ -132,9 +139,9 @@ export async function inviteAccept(owner: string, token: string, display: string
   });
   if (r.error || r.data?.status !== "joined") throw new MealsError(r.data?.status);
 }
-export async function cellarWines(owner: string) {
+export async function cellarWines(owner: string, signal?: AbortSignal) {
   const result = await (
-    await scoped(owner)
+    await scoped(owner, signal)
   )
     .from("wines")
     .select(
@@ -142,21 +149,23 @@ export async function cellarWines(owner: string) {
     )
     .eq("user_id", owner)
     .order("created_at", { ascending: false })
-    .limit(201);
+    .limit(201)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
   if (result.error) throw new MealsError(result.error.code);
   return {
     wines: z.array(wineSchema).parse(result.data?.slice(0, 200)),
     truncated: result.data?.length === 201,
   };
 }
-export async function mealHistory(owner: string) {
-  const client = await scoped(owner);
+export async function mealHistory(owner: string, signal?: AbortSignal) {
+  const client = await scoped(owner, signal);
   const r = await client
     .from("meal_wine_links")
     .select("*")
     .eq("user_id", owner)
     .order("updated_at", { ascending: false })
-    .limit(51);
+    .limit(51)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
   if (r.error) throw new MealsError(r.error.code);
   const meals = z.array(mealSchema).parse(r.data?.slice(0, 50));
   const titles: Record<string, string> = {},
@@ -169,7 +178,8 @@ export async function mealHistory(owner: string) {
       .in(
         "id",
         meals.map((m) => m.session_id),
-      );
+      )
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
     if (sessions.error || sessions.data.length !== meals.length) throw new MealsError();
     const versions = await client
       .from("kitchen_recipe_versions")
@@ -178,7 +188,8 @@ export async function mealHistory(owner: string) {
       .in(
         "id",
         sessions.data.map((s) => s.recipe_version_id),
-      );
+      )
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
     const wines = await client
       .from("wines")
       .select("id,wine_name")
@@ -186,7 +197,8 @@ export async function mealHistory(owner: string) {
       .in(
         "id",
         meals.map((m) => m.wine_id),
-      );
+      )
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
     if (versions.error || wines.error) throw new MealsError();
     const parsed = z.array(versionSchema).parse(versions.data);
     for (const s of sessions.data) {

@@ -60,9 +60,9 @@ export function PairingPanel({
   onOpen: (document: RecipeDocument, version?: RecipeVersion, wine?: string) => void;
 }) {
   const t = useT();
-  const { data, error, refresh } = useFreshData(async () => ({
-    cellar: await cellarWines(owner),
-    family: await familyData(owner),
+  const { data, error, refresh } = useFreshData(async (signal) => ({
+    cellar: await cellarWines(owner, signal),
+    family: await familyData(owner, signal),
   }));
   const choices = useMemo<RecipeChoice[]>(
     () => [

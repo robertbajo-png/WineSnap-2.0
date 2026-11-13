@@ -50,7 +50,8 @@ closure cleanup passes unit and isolated headed-browser checks; this is not a
 new real-owner closure test. V2 actual-owner Check, visible Open, duplicate focus
 and a later authenticated heartbeat passed. The `WineSnap lokalt` shortcut targets
 the current wrapper. Reuse/focus this viewer; never force-close it for another
-update. DEV-02 is complete; broader DEV-03 review and actual owner usage remain.
+update. The earlier DEV-02 activation passed; current reactivation is reopened
+below. Broader DEV-03 review and actual owner usage remain.
 Overview price-refresh account/deadline guards and explicit read recovery are
 now source-tested (15 isolated browser cases, 83 focused tests, full CI green
 for `b6738f9`), not installed
@@ -58,6 +59,18 @@ over the still-open owner viewer. Next source review is remaining family/meal
 states; safe activation of this follow-up remains separate. See the canonical
 plan's current installation checkpoint; older source-only pending statements
 are historical.
+
+Current installation continuation: the owner safely closed the viewer and its
+lock released normally. Fresh Check has not passed: owned Resume contention and
+severe host resource pressure were observed. The frontend is still `e4740ff`;
+do not claim an update, fresh owner login or backup acceptance. The read-only
+`inspect-owned-operation-lock.ps1` can classify only the owned operation lock;
+never remove it or terminate a holder merely because it is busy. A close-after-
+flush stdin helper passes unit/host binary and small Docker probes, but the
+larger Docker probe and fresh backup/restore are not accepted yet. Family/meal
+read cancellation and coalescing pass 16 focused tests; their browser run timed
+out at readiness and is not passing evidence. Read the canonical current handoff
+before retrying. No Windows/Docker restart or unrelated-process stop is approved.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

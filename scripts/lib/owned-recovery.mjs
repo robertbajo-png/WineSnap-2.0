@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { finishOwnedInput } from "./owned-process-input.mjs";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { ownedProject, ownedServices, validateOwnedKeys } from "./owned-backend.mjs";
@@ -144,7 +145,7 @@ export function inspectOwnedTar(bytes) {
       },
     );
     child.stdin.on("error", () => {});
-    child.stdin.end(bytes);
+    finishOwnedInput(child.stdin, bytes);
   });
 }
 export function assertOwnedRestoreContainer(value, names, run) {

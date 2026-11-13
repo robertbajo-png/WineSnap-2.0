@@ -19,6 +19,7 @@ import {
 import { ownedResumeOrder, planOwnedMigrations } from "./lib/owned-lifecycle.mjs";
 import { selectOwnedPublicOrigin } from "./lib/owned-public-origin.mjs";
 import { selectOwnedPilotUi } from "./lib/owned-pilot-ui.mjs";
+import { finishOwnedInput } from "./lib/owned-process-input.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -102,7 +103,7 @@ const command = (args, input, extraEnv = {}, timeout = 180000) =>
         error ? reject(new Error("owned_backend_operation_failed")) : resolve(stdout),
     );
     child.stdin.on("error", () => {});
-    child.stdin.end(input);
+    finishOwnedInput(child.stdin, input);
   });
 const json = async (args) => JSON.parse((await command(args)).toString());
 const name = (service) => `winesnap-owned-${service}`;

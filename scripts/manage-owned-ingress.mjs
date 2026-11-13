@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { finishOwnedInput } from "./lib/owned-process-input.mjs";
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -60,7 +61,7 @@ const command = (args, input) =>
         error ? reject(new Error("private_ingress_command_failed")) : resolve(output),
     );
     child.stdin.on("error", () => {});
-    child.stdin.end(input);
+    finishOwnedInput(child.stdin, input);
   });
 const inspect = async (name) => JSON.parse(await command(["inspect", name]))[0];
 const labels = () => [

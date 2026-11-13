@@ -6,7 +6,7 @@ import { useFreshData } from "./useFreshData";
 import "./meals.css";
 
 export function FamilyPanel({ owner }: { owner: string }) {
-  const { data, error, refresh } = useFreshData(() => familyData(owner));
+  const { data, error, refresh } = useFreshData((signal) => familyData(owner, signal));
   const [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   const [group, setGroup] = useState(""),
