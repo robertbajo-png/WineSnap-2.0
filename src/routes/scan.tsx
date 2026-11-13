@@ -2,12 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { X, Loader2, Type, Camera, Sparkles } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { scopedClient } from "@/lib/scopedClient";
+import { accountWriteClient } from "@/lib/accountWriteScope";
 import { LiveCamera } from "@/components/LiveCamera";
 import { Button } from "@/components/ui/button";
 import { ScanResult } from "@/components/ScanResult";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT, useI18n } from "@/i18n";
@@ -17,7 +16,7 @@ import { scanFailure } from "@/lib/scanFailure";
 import { analyzeWine } from "@/lib/analyzeWine";
 import { useOnline } from "@/hooks/useOnline";
 import { OperationNotice } from "@/components/OperationNotice";
-import { saveScanOnce, ScanSaveError, type ScanSaveAttempt } from "@/lib/scanSave";
+import { saveScanOnce, scanUploadPath, ScanSaveError, type ScanSaveAttempt } from "@/lib/scanSave";
 import {
   checkImageInput,
   createAttemptGuard,
@@ -72,6 +71,8 @@ function ScanPage() {
   const { lang } = useI18n();
   const online = useOnline();
   const ownerRef = useRef(user?.id);
+  const alive = useRef(true);
+  const saveGeneration = useRef(0);
   ownerRef.current = user?.id;
   const [scopeOwner, setScopeOwner] = useState(user?.id);
   const attemptRef = useRef<ScanSaveAttempt | null>(null);
@@ -95,6 +96,7 @@ function ScanPage() {
   const guardRef = useRef(createAttemptGuard());
   const previewUrlRef = useRef<string | null>(null);
   useEffect(() => {
+    ++saveGeneration.current;
     guardRef.current.cancel();
     setPendingMatch(null);
     setPendingFile(null);
@@ -133,7 +135,9 @@ function ScanPage() {
 
   useEffect(() => {
     const guard = guardRef.current;
+    alive.current = true;
     return () => {
+      alive.current = false;
       guard.cancel();
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
@@ -337,16 +341,16 @@ function ScanPage() {
       return;
     const saveGuard = saveGuardRef.current;
     const owner = user.id;
+    const generation = saveGeneration.current;
+    const scope = {
+      owner,
+      current: () =>
+        alive.current && ownerRef.current === owner && saveGeneration.current === generation,
+    };
     setSaving(true);
     setSaveError(false);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session?.user.id !== owner) throw new Error("Account changed");
-      const token = sessionData.session.access_token;
-      const { data: auth, error: authError } = await supabase.auth.getUser(token);
-      if (authError || auth.user?.id !== owner || ownerRef.current !== owner)
-        throw new Error("Account changed");
-      const client = scopedClient(token);
+      const client = (await accountWriteClient(scope)) as unknown as SupabaseClient;
       const attempt = attemptRef.current ?? {
         id: crypto.randomUUID(),
         owner,
@@ -356,6 +360,7 @@ function ScanPage() {
       attemptRef.current = attempt;
       const inserted = await saveScanOnce<ScannedWine>(attempt, {
         find: async () => {
+          if (!scope.current()) throw new Error("Account changed");
           const r = await client
             .from("wines")
             .select(
@@ -370,22 +375,26 @@ function ScanPage() {
         ...(pendingMatch.image && pendingMatch.mimeType
           ? {
               upload: async () => {
-                const path = `${owner}/${crypto.randomUUID()}.${extensionForMime(pendingMatch.mimeType!)}`;
+                if (!scope.current()) throw new Error("Account changed");
+                const path = scanUploadPath(attempt, extensionForMime(pendingMatch.mimeType!));
                 const r = await client.storage
                   .from("wine-labels")
                   .upload(path, pendingMatch.image!, {
                     contentType: pendingMatch.mimeType!,
                     cacheControl: "0",
+                    upsert: true,
                   });
                 if (r.error) throw r.error;
                 return path;
               },
             }
           : {}),
-        insert: (id, path) =>
-          persistWine(client, id, owner, pendingMatch.wine, path, pendingMatch.originalWine),
+        insert: (id, path) => {
+          if (!scope.current()) throw new Error("Account changed");
+          return persistWine(client, id, owner, pendingMatch.wine, path, pendingMatch.originalWine);
+        },
       });
-      if (ownerRef.current !== owner) return;
+      if (!scope.current()) return;
       savedIdRef.current = inserted.id;
       setSavedId(inserted.id);
       setSaveUncertain(false);
@@ -398,6 +407,7 @@ function ScanPage() {
           kind: "label",
           sort_order: 0,
         });
+        if (!scope.current()) return;
         if (photoError) toast.warning(t("scan.photoWarning"));
       }
       logEvent("wine_scanned", {
@@ -407,14 +417,14 @@ function ScanPage() {
         partial: pendingMatch.partial,
       });
     } catch (e) {
-      if (ownerRef.current !== owner) return;
+      if (!scope.current()) return;
       const uncertain =
         e instanceof ScanSaveError ? e.uncertain : !!attemptRef.current?.insertStarted;
       setSaveError(true);
       setSaveUncertain(uncertain);
-      if (!uncertain) attemptRef.current = null;
+      // Retain the same ID/path even when only the upload acknowledgement was lost.
     } finally {
-      if (ownerRef.current === owner) setSaving(false);
+      if (scope.current()) setSaving(false);
       saveGuard.finish();
     }
   };

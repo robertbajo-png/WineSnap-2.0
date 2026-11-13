@@ -269,6 +269,11 @@ describe("image input checks", () => {
       mimeType: "image/png",
     });
     expect(checkImageInput({ type: "", size: 1000 })).toEqual({ ok: true, mimeType: "image/jpeg" });
+    expect(MAX_IMAGE_BYTES).toBe(10 * 1024 * 1024);
+    expect(checkImageInput({ type: "image/png", size: MAX_IMAGE_BYTES })).toEqual({
+      ok: true,
+      mimeType: "image/png",
+    });
     expect(extensionForMime("image/png")).toBe("png");
     expect(extensionForMime("image/jpeg")).toBe("jpg");
   });

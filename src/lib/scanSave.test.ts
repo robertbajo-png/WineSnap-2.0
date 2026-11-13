@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { saveScanOnce, type ScanSaveAttempt } from "./scanSave";
+import { saveScanOnce, scanUploadPath, type ScanSaveAttempt } from "./scanSave";
 const intent = (): ScanSaveAttempt => ({
   id: "synthetic-wine",
   owner: "synthetic-owner",
@@ -13,6 +13,47 @@ const row = {
 };
 
 describe("explicit scan-save reconciliation", () => {
+  it("retries lost upload replies with one stable private path and the same bytes", async () => {
+    const attempt = {
+      ...intent(),
+      id: "11111111-2222-4333-8444-555555555555",
+      owner: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    };
+    const blob = new Blob(["synthetic"], { type: "image/png" });
+    const path = scanUploadPath(attempt, "png");
+    const storage = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("lost upload reply"))
+      .mockResolvedValue({ error: null });
+    const upload = async () => {
+      await storage(scanUploadPath(attempt, "png"), blob, { upsert: true });
+      return path;
+    };
+    const saved = { id: attempt.id, user_id: attempt.owner, image_url: path };
+    const insert = vi.fn(async () => saved);
+    const find = vi.fn(async () => null);
+    await expect(saveScanOnce(attempt, { upload, insert, find })).rejects.toThrow();
+    expect(insert).not.toHaveBeenCalled();
+    expect(await saveScanOnce(attempt, { upload, insert, find })).toEqual(saved);
+    expect(storage).toHaveBeenNthCalledWith(1, path, blob, { upsert: true });
+    expect(storage).toHaveBeenNthCalledWith(2, path, blob, { upsert: true });
+    expect(insert).toHaveBeenCalledTimes(1);
+  });
+  it.each(["../jpg", "jpeg/other", "", "svg"])(
+    "rejects unsafe upload extensions: %s",
+    (extension) => {
+      expect(() =>
+        scanUploadPath(
+          {
+            ...intent(),
+            id: "11111111-2222-4333-8444-555555555555",
+            owner: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          },
+          extension,
+        ),
+      ).toThrow();
+    },
+  );
   it("recovers a committed insert after a lost reply without inserting or uploading twice", async () => {
     const attempt = intent();
     let saved: typeof row | null = null;

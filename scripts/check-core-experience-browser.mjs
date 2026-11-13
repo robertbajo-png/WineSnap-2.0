@@ -93,6 +93,7 @@ const report = {
   mutations: 0,
   authenticationSimulated: false,
   simulatedAiRequests: 0,
+  simulatedWrites: 0,
   pageErrors: 0,
   passed: [],
   phase: "artifact_guard",
@@ -189,6 +190,9 @@ try {
     releaseOwnerAi,
     ownerAiArrived = () => {};
   const aiRequests = { owner: 0, peer: 0 };
+  let scanFixtureActive = false;
+  let scanPng;
+  const scanWrites = { uploads: [], wines: [], photos: [] };
   const json = (route, data, status = 200) =>
     route.fulfill({
       status,
@@ -203,6 +207,63 @@ try {
     if (url.origin === base) {
       report.mutations++;
       return route.abort();
+    }
+    if (scanFixtureActive && url.origin === fixtureOrigin && request.method() === "POST") {
+      assert.equal(syntheticUsers.get(request.headers().authorization)?.id, fixtureOwner);
+      if (url.pathname === "/functions/v1/analyze-wine") {
+        const body = request.postDataJSON();
+        assert.equal(body.mimeType, "image/png");
+        assert.deepEqual(Buffer.from(body.imageBase64, "base64"), scanPng);
+        report.simulatedAiRequests++;
+        const field = (value) => ({ value, source: "label", confidence: 90, evidence: value });
+        return json(route, {
+          wine: {
+            label_text: "Synthetic Scan 2023",
+            identity: { wine_name: field("Synthetic Scan"), vintage: field("2023") },
+            taste: {},
+          },
+        });
+      }
+      const storagePrefix = `/storage/v1/object/wine-labels/${fixtureOwner}/`;
+      if (url.pathname.startsWith(storagePrefix)) {
+        const path = url.pathname.slice("/storage/v1/object/wine-labels/".length);
+        const [owner, id, file] = path.split("/");
+        assert.equal(owner, fixtureOwner);
+        assert.match(id, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i);
+        assert.equal(file, `${id}.png`);
+        assert.equal(request.headers()["x-upsert"], "true");
+        const form = await new Response(request.postDataBuffer(), {
+          headers: { "content-type": request.headers()["content-type"] },
+        }).formData();
+        const uploaded = form.get("");
+        assert.ok(uploaded instanceof Blob);
+        assert.equal(uploaded.type, "image/png");
+        assert.equal(form.get("cacheControl"), "0");
+        assert.deepEqual(Buffer.from(await uploaded.arrayBuffer()), scanPng);
+        scanWrites.uploads.push(path);
+        report.simulatedWrites++;
+        if (scanWrites.uploads.length === 1) return route.abort("failed");
+        assert.equal(scanWrites.uploads.length, 2);
+        return json(route, { Key: "wine-labels/" + path });
+      }
+      if (url.pathname === "/rest/v1/wines") {
+        const row = request.postDataJSON();
+        assert.equal(row.user_id, fixtureOwner);
+        assert.equal(row.image_url, scanWrites.uploads[0]);
+        assert.equal(row.id, row.image_url.split("/")[1]);
+        scanWrites.wines.push(row);
+        report.simulatedWrites++;
+        return json(route, row, 201);
+      }
+      if (url.pathname === "/rest/v1/wine_photos") {
+        const row = request.postDataJSON();
+        assert.equal(row.user_id, fixtureOwner);
+        assert.equal(row.wine_id, scanWrites.wines[0].id);
+        assert.equal(row.storage_path, scanWrites.uploads[0]);
+        scanWrites.photos.push(row);
+        report.simulatedWrites++;
+        return json(route, null, 201);
+      }
     }
     if (url.origin === fixtureOrigin && request.method() === "GET") {
       if (url.pathname === "/auth/v1/user") {
@@ -545,6 +606,34 @@ try {
   assert.equal(await page.getByText("Current peer-only suggestion", { exact: true }).count(), 1);
   assert.deepEqual(aiRequests, { owner: 1, peer: 1 });
   report.passed.push("late-ai-answer-isolated-and-no-automatic-new-account-request");
+  report.phase = "scan_upload_lost_reply";
+  await switchAccount(ownerSession);
+  await ownerControl.waitFor({ state: "attached" });
+  scanFixtureActive = true;
+  scanPng = Buffer.from(png, "base64");
+  await page.goto(base + "/scan", { waitUntil: "domcontentloaded" });
+  await styleFixture();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "synthetic-only.png",
+    mimeType: "image/png",
+    buffer: scanPng,
+  });
+  await page.getByText("Adjust label", { exact: true }).waitFor();
+  await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
+  await page.getByRole("button", { name: "Use the whole photo", exact: true }).click();
+  await page.getByRole("heading", { name: "Synthetic Scan", exact: true }).waitFor();
+  const saveWine = page.getByRole("button", { name: "Save to cellar", exact: true });
+  await saveWine.click();
+  await page.locator('.operation-notice[data-kind="error"]').waitFor();
+  assert.equal(scanWrites.uploads.length, 1);
+  assert.equal(scanWrites.wines.length, 0);
+  await saveWine.click();
+  await page.getByText("Saved to your cellar", { exact: true }).waitFor();
+  assert.deepEqual(scanWrites.uploads, [scanWrites.uploads[0], scanWrites.uploads[0]]);
+  assert.equal(scanWrites.wines.length, 1);
+  assert.equal(scanWrites.photos.length, 1);
+  await page.screenshot({ path: join(artifacts, "scan-save-390.png"), animations: "disabled" });
+  report.passed.push("scan-lost-upload-retry-reuses-path-bytes-and-one-wine");
   assert.equal(report.externalRequests, 0);
   assert.equal(report.mutations, 0);
   assert.equal(report.pageErrors, 0);

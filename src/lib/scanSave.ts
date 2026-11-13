@@ -4,6 +4,17 @@ export type ScanSaveAttempt = {
   imagePath: string | null;
   insertStarted: boolean;
 };
+
+export function scanUploadPath(attempt: ScanSaveAttempt, extension: string) {
+  const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+  if (
+    !uuid.test(attempt.owner) ||
+    !uuid.test(attempt.id) ||
+    !/^(jpg|png|webp|heic|heif)$/.test(extension)
+  )
+    throw new Error("Invalid scan upload identity");
+  return `${attempt.owner}/${attempt.id}/${attempt.id}.${extension}`;
+}
 type SavedRow = { id: string; user_id: string; image_url: string | null };
 export class ScanSaveError extends Error {
   constructor(public uncertain: boolean) {

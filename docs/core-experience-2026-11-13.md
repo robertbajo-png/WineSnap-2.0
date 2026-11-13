@@ -130,7 +130,7 @@ The source inventory also covered the remaining core views:
 | View | Reused implementation / next evidence |
 | --- | --- |
 | Home | Owner-keyed recent-wine state, loading/error/retry and offline handling already exist in PilotHome; verify in the affected owned fixture after safe update |
-| Scan | Explicit review, owner-scoped token and insert reconciliation already exist; follow up stable paths after a lost upload reply and bounded waits, then fault-test |
+| Scan | Explicit review and insert reconciliation retained; stable upload paths/bounded account writes now implemented below; expanded browser fault test pending |
 | Cookbook / Cook Mode | Existing version-pinned recipe, conflict/offline cache, bounded timers and return journeys are retained; rerun affected installed journeys rather than rebuilding them |
 | Food memory | Generation-guarded loading, read retry, correction and forgetting exist; broader installed isolation and focus checks remain |
 | Family / pairing / meals | Existing keyed kitchen workspace and scoped APIs are retained; history's missing loading/read-retry states are now addressed below; installed journeys remain |
@@ -147,19 +147,40 @@ shown only after data has been obtained; no write, AI request, recipe version or
 meal record is changed by this status improvement.
 
 Three component-render tests cover initial loading, error/retry and confirmed
-empty history. The combined focused run passed nine files / 72 tests. Full CI
-for this follow-up is pending; source-render tests are not a substitute for the
+empty history. The combined focused run passed nine files / 72 tests. Full
+Quality/Database Safety passed for `3f8fa37` (push and PR); source-render tests are not a substitute for the
 real installed meal-history view. The existing owned app continues to respond
 HTTP 200, while safe read-only access Status still reports the active legacy
 viewer and paused internet. No fresh owner grant or forced closure occurred.
+
+## Scan Upload Follow-up
+
+Scan saves now retain their attempt ID after an unsuccessful upload and derive
+one private owner/wine/UUID path from it. Manual retry uploads the same Blob to
+that path with upsert, rather than leaving a new uncertain file on every attempt.
+Successful uploads/uncertain wine inserts still use the existing reconciliation.
+Explicit identity edits/discard start a separate attempt, as before.
+
+The normal owner JWT is verified/captured through the bounded account client.
+View liveness, owner and account generation guard each save phase, feedback and
+completion; leaving and returning to the same account cannot revive an old save
+result. The accepted input limit is now 10 MB, matching existing Storage and
+image-read limits, instead of allowing a paid analysis of an unsavable 10-12 MB
+image. No provider, schema, policy or saved row is changed.
+
+Three focused files / 41 tests passed, including identical path/Blob retry,
+unsafe extensions, insert reconciliation and the exact size boundary. The
+expanded source browser test will mock one analysis, a lost upload reply, a
+manual retry and one wine/photo insert; these are explicitly simulated writes,
+not installed storage/RLS or live AI evidence. Its fresh run and CI are pending.
 
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
 
 - The first source slice is verified; retain its checks during subsequent work.
-- The second slice and overview passed extended source browser/full CI; retain
-  their scenarios and finish the current meal-history CI. Mocked auth/AI is not live-provider,
+- The gallery, overview and meal-history source slices passed full CI; retain
+  their scenarios and finish the scan browser/CI follow-up. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
