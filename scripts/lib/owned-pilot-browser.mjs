@@ -405,6 +405,18 @@ export async function acceptOwnedPilotUi(
       const { exerciseMemoryControls } = await import("./owned-pilot-live.mjs");
       await exerciseMemoryControls(page, phase, (name) => report.passed.push(name));
     }
+    {
+      const { acceptOwnedChatStates } = await import("./owned-chat-states.mjs");
+      report.chatStates = await acceptOwnedChatStates({
+        page,
+        context,
+        fixture,
+        phase,
+        capture,
+        pass: (name) => report.passed.push(name),
+      });
+      assert.equal(report.chatStates.completed, true);
+    }
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Logga ut", exact: true }).click();
