@@ -252,7 +252,7 @@ flat format, while keeping stable IDs, identical retry bytes and reconciliation.
 No stored path is moved. Existing nested gallery files/access rules are unchanged;
 fixture cleanup is not expanded to arbitrary folders. Three cross-contract tests
 use the actual fixture path validator for JPEG/PNG/WebP. The combined focused
-suite passed four files / 47 tests. Fresh wine browser/current CI are pending.
+suite passed four files / 47 tests. Full CI passed for `78302b4` (push/PR).
 
 The same review found raw HEIC/HEIF accepted by scan while the private image
 reader cannot display those native original types. Scan now rejects them before
@@ -261,7 +261,20 @@ unviewable original. No native decoder, migration or conversion of saved images
 is introduced. The existing cropper's JPEG/PNG output remains accepted. Five
 focused files / 69 tests passed. Two browser MIME-rejection cases use synthetic
 PNG bytes in unsupported-type File objects; they are not HEIC decoding evidence.
-Fresh browser/current CI remain pending.
+A fresh artifact passed all 16 wine-browser cases, with zero forbidden requests/
+writes or page/fixture errors and confirmed cleanup. The same three AI calls and
+four writes are mocked; unsupported original types add neither AI nor uploads.
+Full Quality/Database Safety passed for `1323d6b` (push/PR).
+
+An earlier wine-navigation run failed and was not accepted. The final run used
+a clean extraction of the synthetic artifact rather than mixed generated files.
+The old generated directory was retained after checking both move paths stayed
+inside the repository's dist directory and rejecting reparse points. TAR export
+can avoid slow Docker per-file copying on this PC; `dist/core-wine-runtime.tar`
+contains only compiled synthetic source, not owner data or an operational backup.
+No owned runtime directory or saved image was moved. Safe failure diagnostics
+record only phase, HTTP status/error classes and synthetic screenshots, never
+browser sessions or raw server/provider errors.
 
 ## Remaining DEV-03 Work
 
@@ -269,11 +282,11 @@ These are substeps of the canonical roadmap, not a competing development plan:
 
 - The first source slice is verified; retain its checks during subsequent work.
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
-  all fourteen browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
+  all sixteen wine-browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
-- Wider kitchen source checks and CI passed; retain all 29 cases and finish the
-  fresh wine-browser/CI scan-path compatibility follow-up. Failed startup/layout
-  runs remain failures, not partial acceptance.
+- Wider kitchen source checks and CI passed; retain all 29 cases alongside the
+  16 wine cases. Failed startup/layout/navigation runs remain failures, not partial
+  acceptance. Installed journeys and broader actual-owner use remain separate.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - After the owner safely closes the existing viewer: use headless actual-owner

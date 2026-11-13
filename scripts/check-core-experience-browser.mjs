@@ -105,6 +105,7 @@ const report = {
 let child,
   closed,
   browser,
+  page,
   logs = "";
 async function fixtureArrival(promise) {
   let timer;
@@ -397,7 +398,11 @@ try {
       await route.abort().catch(() => undefined);
     }
   });
-  const page = await context.newPage();
+  page = await context.newPage();
+  page.on("response", (response) => {
+    if (response.request().isNavigationRequest() && new URL(response.url()).origin === base)
+      report.lastDocumentStatus = response.status();
+  });
   const styleFixture = () =>
     page.evaluate(() => {
       document.documentElement.classList.add("pilot-ui");
@@ -733,7 +738,7 @@ try {
   report.completed = true;
 } catch (error) {
   report.failure = "synthetic_core_experience_not_accepted";
-  report.errorType = error.name === "AssertionError" ? "AssertionError" : "Error";
+  report.errorType = ["AssertionError", "TimeoutError"].includes(error.name) ? error.name : "Error";
   report.runtimeExitCode = child?.exitCode ?? null;
   report.runtimeOutputSeen = logs.length > 0;
   report.runtimeDiagnostics = [
@@ -745,6 +750,12 @@ try {
   ].filter((code) => logs.includes(code));
   report.readinessTimedOut =
     error.message === "Synthetic runtime did not become healthy within 120000ms";
+  if (page) {
+    await mkdir(artifacts, { recursive: true });
+    await page
+      .screenshot({ path: join(artifacts, "failure.png"), animations: "disabled", timeout: 10000 })
+      .catch(() => undefined);
+  }
 } finally {
   await browser?.close().catch(() => undefined);
   if (child && child.exitCode === null) child.kill();
