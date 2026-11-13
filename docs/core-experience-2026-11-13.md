@@ -559,7 +559,8 @@ success; double submit/pause/resume; logout; and three responsive widths at
 progress. All final screenshots were inspected. Fifteen price requests were
 mocked; AI requests, forbidden requests/writes and page/fixture errors were zero,
 and process cleanup passed. Nine focused files / 83 tests, local typecheck and
-targeted lint passed. Full CI remains pending for this source checkpoint.
+targeted lint passed. Full Quality and Database Safety passed for `b6738f9`
+(push/PR), including 149 files / 1,518 passing tests and one existing skip.
 
 This slice is not installed over the still-open owner viewer on `e4740ff`.
 No owner session/data, running app/backend, actual catalog lookup, provider,
@@ -586,7 +587,7 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Collector safety now passes 10 isolated browser checks and 64 focused tests;
   full CI and the narrower installed collector acceptance above passed.
 - Price-refresh scope/deadline/read recovery passes 83 focused tests and 15
-  isolated browser cases. Full CI and later safe owned activation remain;
+  isolated browser cases and full CI. Later safe owned activation remains;
   do not rebuild under the open real viewer. Next source review is remaining
   family/meal error/account states. Preserve verified retail prices separately
   from user estimates and retain unknown values/currencies.

@@ -52,7 +52,8 @@ and a later authenticated heartbeat passed. The `WineSnap lokalt` shortcut targe
 the current wrapper. Reuse/focus this viewer; never force-close it for another
 update. DEV-02 is complete; broader DEV-03 review and actual owner usage remain.
 Overview price-refresh account/deadline guards and explicit read recovery are
-now source-tested (15 isolated browser cases, 83 focused tests), not installed
+now source-tested (15 isolated browser cases, 83 focused tests, full CI green
+for `b6738f9`), not installed
 over the still-open owner viewer. Next source review is remaining family/meal
 states; safe activation of this follow-up remains separate. See the canonical
 plan's current installation checkpoint; older source-only pending statements
