@@ -374,6 +374,10 @@ The first full CI run caught the generated database type excluding meals_access;
 the meal API keeps its existing generic SupabaseClient contract while reusing
 the verified account client. This is a type compatibility correction, not a
 permission/gate change. That failed run is not accepted as passing evidence.
+The following CI run passed typecheck but rejected the deliberately mocked React
+test harness call under rules-of-hooks. Its one direct harness call is now
+explicitly documented/exempted; production hook rules are unchanged. This failed
+run is also retained as a failure, not passing full-CI evidence.
 
 Immediate handoff: resolve resource/operation contention, rerun fresh owner
 Check, obtain a current encrypted backup and isolated same-PC restore, update

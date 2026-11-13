@@ -43,6 +43,8 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 function mount(load: (signal: AbortSignal) => Promise<string>) {
+  // React primitives are mocked to test request lifetimes without a DOM renderer.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const value = useFreshData(load);
   clean = harness.effects[0]();
   return value;

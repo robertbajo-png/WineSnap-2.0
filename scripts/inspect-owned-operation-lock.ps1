@@ -56,6 +56,7 @@ $owners=@(foreach($ownerId in $ownerIds){
   }
   $action='unknown'
   if($owned -and $process.CommandLine -match '(?i)(?:-Action\s+)(Resume|Verify|Maintain|Backup|Update|Install|Start|Stop)(?:\s|"|$)'){$action=$Matches[1]}
-  [ordered]@{processId=$ownerId;ownedWrapper=$owned;kind=$kind;action=$action;sameSession=($process.SessionId -eq $session)}
+  $parent=if($process){Get-CimInstance Win32_Process -Filter "ProcessId=$($process.ParentProcessId)"}else{$null}
+  [ordered]@{processId=$ownerId;ownedWrapper=$owned;kind=$kind;action=$action;sameSession=($process.SessionId -eq $session);startedAt=$process.CreationDate;parentExists=[bool]$parent;parentStartedAfterChild=[bool]($parent -and $parent.CreationDate -gt $process.CreationDate)}
 })
 [ordered]@{project='winesnap-owned-local';readOnly=$true;productionTouched=$false;held=$held;ownerIdentified=($owners.Count -gt 0);owners=$owners;checkedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Depth 4
