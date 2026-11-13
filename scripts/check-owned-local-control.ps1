@@ -6,7 +6,7 @@ try {
   $tokens=$null;$errors=$null
   $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'open-owned-local.ps1'),[ref]$tokens,[ref]$errors)
   if($errors.Count){throw 'Local wrapper syntax failed.'}
-  $names=@('Assert-LocalPrivateFile','Protect-LocalReport','Read-LocalReport','Test-LocalViewerActive','Get-LocalStatus','Focus-LocalViewer','Resume-LocalBackend')
+  $names=@('Assert-LocalPrivateFile','Protect-LocalReport','Read-LocalReport','Test-LocalViewerActive','Get-LocalStatus','Focus-LocalViewer','Resume-LocalBackend','Test-CompletedLocalCheck')
   $definitions=@($ast.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -in $names},$false))
   if($definitions.Count -ne $names.Count){throw 'Unexpected local control functions.'}
   foreach($definition in $definitions){. ([scriptblock]::Create($definition.Extent.Text))}
@@ -70,6 +70,17 @@ try {
   function Get-Content([string]$LiteralPath,[switch]$Raw){$script:readAttempts++;return ''}
   $script:readAttempts=0;$denied=$false;try{Read-LocalReport|Out-Null}catch{$denied=$true}
   if(-not $denied -or $script:readAttempts -ne 10){throw 'Incomplete status read was not bounded.'};$report.checks++
+  $checkRun=[guid]::NewGuid().ToString('D')
+  $check=@{project='winesnap-owned-local';version=2;runId=$checkRun;completed=$true;acceptance=$true;ownerSessionVerified=$true;probeSessionLoggedOut=$true;loopbackOnly=$true;internetPaused=$true;productionTouched=$false;phase='verified';blockedExternalRequests=0;blockedAiRequests=0}
+  if(-not (Test-CompletedLocalCheck $check $checkRun)){throw 'Completed synthetic check was rejected.'};$report.checks++
+  foreach($field in @('completed','acceptance','ownerSessionVerified','probeSessionLoggedOut','loopbackOnly','internetPaused')){
+    $bad=@{}+$check;$bad[$field]=$false
+    if(Test-CompletedLocalCheck $bad $checkRun){throw 'Incomplete synthetic check permitted forced cleanup.'};$report.checks++
+  }
+  foreach($patch in @(@{runId=[guid]::NewGuid().ToString('D')},@{project='foreign'},@{phase='needs_attention'},@{failure='synthetic'},@{blockedExternalRequests=1},@{blockedAiRequests=1},@{productionTouched=$true},@{acceptance='true'},@{version=1})){
+    $bad=@{}+$check;foreach($key in $patch.Keys){$bad[$key]=$patch[$key]}
+    if(Test-CompletedLocalCheck $bad $checkRun){throw 'Foreign or unsafe check permitted forced cleanup.'};$report.checks++
+  }
   $report.completed=$true
 }catch{$report.failure='synthetic_local_control_not_accepted';$report.errorType=$_.Exception.GetType().Name}
 finally{

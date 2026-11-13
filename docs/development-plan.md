@@ -388,6 +388,15 @@ confirmed cleanup. Family 320/1440px and meal-history 390px screenshots were
 inspected. Full Quality and Database Safety passed for `5e07b8d` (push/PR),
 154 files / 1,542 passing tests and one existing skip. A later read-only supervisor
 report was healthy; this does not replace fresh owner Check/backup/install gates.
+The next real Check reached current-owner verification and scoped probe logout,
+but the worker stayed in browser.close past the existing 30-second completion
+grace, so the wrapper correctly rejected the overall attempt. A bounded fallback
+now retains that grace, requires the protected current run's completed Check,
+owner verification/logout and zero blocked requests, and closes only its own
+private kill-on-close job. It still requires process exit and closed output
+streams, preserves a non-live complete report and never affects visible Open.
+Thirty synthetic Windows control checks passed, including incomplete/foreign/
+wrong-mode/non-boolean rejection. Fresh real Check and full CI remain required.
 
 Immediate handoff: resolve resource/operation contention, rerun fresh owner
 Check, obtain a current encrypted backup and isolated same-PC restore, update

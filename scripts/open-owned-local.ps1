@@ -86,6 +86,13 @@ function Focus-LocalViewer {
   Show-LocalOpenMessage $(if($current.ready){'focus_failed'}else{'starting'})
   return [pscustomobject]@{alreadyOpen=$true;focused=$false;phase='focus_not_confirmed';productionTouched=$false}
 }
+function Test-CompletedLocalCheck($Value,[string]$RunId) {
+  if(-not $Value -or -not $RunId){return $false}
+  foreach($field in @('completed','acceptance','ownerSessionVerified','probeSessionLoggedOut','loopbackOnly','internetPaused')){
+    if($Value.$field -isnot [bool] -or $Value.$field -ne $true){return $false}
+  }
+  return ($Value.project -ceq 'winesnap-owned-local' -and $Value.version -eq 2 -and $Value.runId -ceq $RunId -and $Value.productionTouched -is [bool] -and $Value.productionTouched -eq $false -and $Value.phase -in @('verified','complete') -and -not $Value.failure -and $Value.blockedExternalRequests -eq 0 -and $Value.blockedAiRequests -eq 0)
+}
 function Resume-LocalBackend([ValidateRange(0,120000)][int]$WaitMs=120000) {
   $clock=[Diagnostics.Stopwatch]::StartNew()
   do{
@@ -148,13 +155,25 @@ try {
     if($progress.ready -eq $true -and $progress.ownerSessionVerified -eq $true){$lock.Dispose();$lock=$null;break}
     Start-Sleep -Milliseconds 500
   }
-  if($Action -eq 'Check'){if(-not $process.WaitForExit(30000)){throw 'Local login check timed out.'}}else{$process.WaitForExit()}
+  $completedCheck=$null
+  if($Action -eq 'Check'){
+    if(-not $process.WaitForExit(30000)){
+      $progress=Read-LocalReport
+      if(-not (Test-CompletedLocalCheck $progress $report.runId)){throw 'Local login check timed out.'}
+      # This private kill-on-close job owns only the headless probe and its children.
+      $job.Dispose();$job=$null
+      if(-not $process.WaitForExit(5000)){throw 'Local check cleanup did not finish.'}
+      $completedCheck=$progress|ConvertTo-Json -Depth 5|ConvertFrom-Json -AsHashtable
+      $completedCheck.ready=$false;$completedCheck.authenticated=$false;$completedCheck.viewerRunning=$false
+      $completedCheck.phase='complete';$completedCheck.checkJobTerminated=$true;$completedCheck.checkedAt=[DateTime]::UtcNow.ToString('o')
+    }
+  }else{$process.WaitForExit()}
   if(-not [Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)){throw 'Local operator did not close.'}
   $raw=$output.GetAwaiter().GetResult();$errors.GetAwaiter().GetResult()|Out-Null
-  if(-not $raw -or $raw.Length -gt 16KB){throw 'Unexpected local operator result.'}
-  $value=$raw|ConvertFrom-Json;$raw=$null
-  if($value.project -ne 'winesnap-owned-local' -or $value.productionTouched -ne $false -or $value.loopbackOnly -ne $true -or $value.completed -ne $true -or $process.ExitCode -ne 0){throw 'Local view was not accepted.'}
-  $report=Read-LocalReport
+  if($raw.Length -gt 16KB -or (-not $raw -and -not $completedCheck)){throw 'Unexpected local operator result.'}
+  $value=if($completedCheck){$completedCheck}else{$raw|ConvertFrom-Json};$raw=$null
+  if($value.project -ne 'winesnap-owned-local' -or $value.productionTouched -ne $false -or $value.loopbackOnly -ne $true -or $value.completed -ne $true -or ($process.ExitCode -ne 0 -and -not $completedCheck)){throw 'Local view was not accepted.'}
+  if($completedCheck){$report=$completedCheck;Protect-LocalReport;[IO.File]::WriteAllText($statusFile,($report|ConvertTo-Json -Depth 5))}else{$report=Read-LocalReport}
 }catch{$report=[ordered]@{project='winesnap-owned-local';version=2;completed=$false;ready=$false;authenticated=$false;viewerRunning=$false;productionTouched=$false;loopbackOnly=$true;phase='needs_attention';failure='owned_local_view_not_ready';errorType=$_.Exception.GetType().Name;checkedAt=[DateTime]::UtcNow.ToString('o')};if($ownsView){Protect-LocalReport;[IO.File]::WriteAllText($statusFile,($report|ConvertTo-Json))};Show-LocalOpenMessage unavailable}
 finally{$payload=$null;if($keys){$keys.Clear()};if($lock){$lock.Dispose()};if($viewLock){$viewLock.Dispose()};if($job){$job.Dispose()};if($process){$process.Dispose()};if($start){$start.Environment.Clear()}}
 $report|ConvertTo-Json

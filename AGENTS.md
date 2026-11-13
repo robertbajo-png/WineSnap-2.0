@@ -73,6 +73,10 @@ CI for `5e07b8d` (1,542 passing tests, one existing skip). An earlier readiness
 timeout remains failed evidence. The latest read-only supervisor status is
 healthy; fresh actual-owner Check and installation are still pending. Read the canonical current handoff
 before retrying. No Windows/Docker restart or unrelated-process stop is approved.
+The completed-headless-Check fallback may close only its own private kill-on-close
+job after current-run owner verification and scoped logout are proved. It retains
+the original 30-second grace and verifies process/output completion. Never apply
+this fallback to the visible Open viewer or accept an incomplete/foreign report.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
