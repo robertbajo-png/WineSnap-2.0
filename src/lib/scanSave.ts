@@ -13,7 +13,7 @@ export function scanUploadPath(attempt: ScanSaveAttempt, extension: string) {
     !/^(jpg|png|webp|heic|heif)$/.test(extension)
   )
     throw new Error("Invalid scan upload identity");
-  return `${attempt.owner}/${attempt.id}/${attempt.id}.${extension}`;
+  return `${attempt.owner}/${attempt.id}.${extension}`;
 }
 type SavedRow = { id: string; user_id: string; image_url: string | null };
 export class ScanSaveError extends Error {

@@ -21,6 +21,7 @@ describe("explicit scan-save reconciliation", () => {
     };
     const blob = new Blob(["synthetic"], { type: "image/png" });
     const path = scanUploadPath(attempt, "png");
+    expect(path).toBe(`${attempt.owner}/${attempt.id}.png`);
     const storage = vi
       .fn()
       .mockRejectedValueOnce(new TypeError("lost upload reply"))

@@ -268,8 +268,10 @@ try {
       const storagePrefix = `/storage/v1/object/wine-labels/${fixtureOwner}/`;
       if (url.pathname.startsWith(storagePrefix)) {
         const path = url.pathname.slice("/storage/v1/object/wine-labels/".length);
-        const [owner, id, file] = path.split("/");
+        const [owner, file, extra] = path.split("/");
+        const id = file.replace(/\.png$/, "");
         assert.equal(owner, fixtureOwner);
+        assert.equal(extra, undefined);
         assert.match(id, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i);
         assert.equal(file, `${id}.png`);
         assert.equal(request.headers()["x-upsert"], "true");
@@ -291,7 +293,7 @@ try {
         const row = request.postDataJSON();
         assert.equal(row.user_id, fixtureOwner);
         assert.equal(row.image_url, scanWrites.uploads[0]);
-        assert.equal(row.id, row.image_url.split("/")[1]);
+        assert.equal(row.id, row.image_url.split("/")[1].replace(/\.png$/, ""));
         scanWrites.wines.push(row);
         report.simulatedWrites++;
         return json(route, row, 201);

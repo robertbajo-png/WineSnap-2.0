@@ -157,7 +157,7 @@ viewer and paused internet. No fresh owner grant or forced closure occurred.
 ## Scan Upload Follow-up
 
 Scan saves now retain their attempt ID after an unsuccessful upload and derive
-one private owner/wine/UUID path from it. Manual retry uploads the same Blob to
+one private owner/UUID path from it. Manual retry uploads the same Blob to
 that path with upsert, rather than leaving a new uncertain file on every attempt.
 Successful uploads/uncertain wine inserts still use the existing reconciliation.
 Explicit identity edits/discard start a separate attempt, as before.
@@ -193,6 +193,24 @@ The same isolated runner now accepts an explicit `--kitchen` mode and a separate
 target with the exact owned browser origin, known fake publishable key and the
 existing public cooking/Chef/meals/privacy/pilot flags. This does not enable
 anything in the installed app or change server/database gates.
+The synthetic privacy prerequisite flags do not attest real operator/legal
+approval. A reproducible source-only build from the repository root is:
+
+```powershell
+docker build --target artifact `
+  --build-arg VITE_SUPABASE_URL=http://127.0.0.1:54323 `
+  --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_runtime_check_not_a_real_key `
+  --build-arg VITE_OWNED_BACKEND_ENABLED=true `
+  --build-arg VITE_PRIVACY_CONTROLS_ENABLED=true `
+  --build-arg VITE_PRIVACY_OPERATIONS_VERIFIED=true `
+  --build-arg VITE_LOCAL_AI_ENABLED=true `
+  --build-arg VITE_COOKING_CORE_ENABLED=true `
+  --build-arg VITE_AI_CHEF_ENABLED=true `
+  --build-arg VITE_MEALS_ENABLED=true `
+  --build-arg VITE_PILOT_UI_ENABLED=true `
+  --output type=local,dest=dist/core-kitchen-runtime .
+node scripts/check-core-experience-browser.mjs --kitchen
+```
 
 The normal feature-gate module retains its historical hosted-test comparison
 constant; the guard allows that exact source literal only in this mode, never
@@ -213,13 +231,28 @@ The initial startup timed out and is not acceptance. A subsequent wider run
 verified the nonlayout scenarios but failed the resume row at 320/390 and an
 active cooking tab at 320. The resume title now wraps with stable icons; tabs
 use two columns below 361 px with 48 px controls rather than squeezing labels.
-Fresh artifact/browser verification and current CI are pending.
+The fresh artifact passed all 29 checks. Forbidden requests/mutations, simulated
+writes/AI calls and page/fixture errors were zero; all reads were mocked and
+process cleanup passed. The 320px cookbook/Cook Mode and 390px home screenshots
+were inspected. Full Quality and Database Safety passed for `c332bf0` (push/PR),
+including 141 test files, 1,439 passing tests and one existing skipped test.
 
 Source review also found Home reading an old cooking cache before useKitchen's
 account-reset effect ran. Its direct owner check now hides that recipe on the
 first new-account/signed-out render. Three render regressions reproduced both
 failures before the fix and now pass; the combined fixture/Home suite passed
 two files / eleven tests. These are source checks, not installed-owner evidence.
+
+## Scan Cleanup Compatibility
+
+Before installed acceptance, review caught a conflict between the proposed
+nested initial-label path and the existing fixture's deliberately flat image
+inventory. New scan saves now retain `owner/wine-UUID.extension`, the established
+flat format, while keeping stable IDs, identical retry bytes and reconciliation.
+No stored path is moved. Existing nested gallery files/access rules are unchanged;
+fixture cleanup is not expanded to arbitrary folders. Three cross-contract tests
+use the actual fixture path validator for JPEG/PNG/WebP. The combined focused
+suite passed four files / 47 tests. Fresh wine browser/current CI are pending.
 
 ## Remaining DEV-03 Work
 
@@ -229,11 +262,13 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
   all fourteen browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
-- Finish fresh wider-kitchen layout/browser and current CI after the three
-  reproduced layout/account fixes; failed startup/layout runs remain failures.
+- Wider kitchen source checks and CI passed; retain all 29 cases and finish the
+  fresh wine-browser/CI scan-path compatibility follow-up. Failed startup/layout
+  runs remain failures, not partial acceptance.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- After the owner naturally closes the existing viewer: complete DEV-02 real
-  Check/Open/focus/heartbeat acceptance, take/rehearse the required current owned
-  backup, then update only the owned app and run the affected fixture journeys.
+- After the owner safely closes the existing viewer: use headless actual-owner
+  Check, take/rehearse the current owned backup, update only the owned app and
+  run affected fixture journeys. Visible Open/focus/heartbeat comes last, so it
+  does not recreate the unsaved-work barrier before Update.
   Do not waive those gates or mark DEV-03 complete from this source checkpoint.

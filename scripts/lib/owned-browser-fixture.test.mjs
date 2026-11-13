@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import {
   assertFixtureOwner,
+  fixtureImagePaths,
   ownedBrowserFixture,
   validateBrowserFixture,
 } from "./owned-browser-fixture.mjs";
+import { scanUploadPath } from "../../src/lib/scanSave.ts";
 
 const mocks = vi.hoisted(() => ({ createClient: vi.fn() }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
@@ -36,6 +38,19 @@ const fixture = () => {
 };
 describe("owned browser fixtures", () => {
   beforeEach(() => vi.resetAllMocks());
+  it.each(["jpg", "png", "webp"])(
+    "keeps stable scan uploads compatible with bounded flat cleanup: %s",
+    (extension) => {
+      const value = fixture();
+      const path = scanUploadPath(
+        { id: value.wineId, owner: value.userId, imagePath: null, insertStarted: false },
+        extension,
+      );
+      expect(fixtureImagePaths([path], value)).toEqual([
+        `${value.userId}/${value.wineId}.${extension}`,
+      ]);
+    },
+  );
   it("accepts only an exact synthetic fixture manifest", () => {
     const value = fixture();
     expect(validateBrowserFixture(value)).toBe(value);
