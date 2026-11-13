@@ -42,14 +42,18 @@ not a public or anonymous login bypass. Never run its private worker directly or
 print grants/tokens/browser state. See `docs/local-development-access-2026-11-12.md`.
 
 Installed checkpoint, 2026-11-13: the owned frontend was updated from the clean
-`1f5bd5f` checkout, preserving dark/public-origin labels with zero new migrations.
-The tunnel remains disabled. Fresh encrypted backup/isolated restore and 61
-installed fixture checks passed, including mocked-AI chat cancellation. V2 actual-
-owner Check, visible Open, duplicate focus and a later authenticated heartbeat
-passed. The `WineSnap lokalt` shortcut targets the current wrapper. Reuse/focus
-this viewer; never force-close it for another update. DEV-02 is complete; broader
-DEV-03 review and actual owner usage remain. See the canonical plan's current
-installation checkpoint; older source-only pending statements are historical.
+`e4740ff` checkout, preserving dark/public-origin labels with zero new migrations.
+The tunnel remains disabled. Fresh encrypted backup/isolated restore and 65
+installed fixture checks passed, including mocked-AI chat cancellation and real
+fixture collector insert reconciliation/revision-guarded editing. Last-page
+closure cleanup passes unit and isolated headed-browser checks; this is not a
+new real-owner closure test. V2 actual-owner Check, visible Open, duplicate focus
+and a later authenticated heartbeat passed. The `WineSnap lokalt` shortcut targets
+the current wrapper. Reuse/focus this viewer; never force-close it for another
+update. DEV-02 is complete; broader DEV-03 review and actual owner usage remain.
+Next source review is overview price-refresh account/deadline guards and read
+recovery. See the canonical plan's current installation checkpoint; older
+source-only pending statements are historical.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

@@ -454,9 +454,47 @@ passed. Full Quality and Database Safety passed for `3983d66` (push/PR), with
 145 files / 1,487 passing tests and one existing skipped test. Small lint/format failures during development were
 corrected, not counted as passes.
 
-This is source-only: the real viewer remains open on installed `1f5bd5f`. No
-owner data, installed backend/frontend, old production, hosted test, password,
-provider configuration or internet setting changed.
+At that source checkpoint the real viewer was still on installed `1f5bd5f`;
+no running frontend/backend or real account changed during the source regression.
+The following checkpoint supersedes that installation status, not its synthetic
+source evidence.
+
+## Installed Collector Acceptance
+
+After safe closure and fresh actual-owner Check, the owned app was updated from
+clean `e4740ff`. A current encrypted archive (`owned-20261113-205028298.dpapi`) and
+isolated same-PC 75-table/one-image restore passed first, including Auth, image
+bytes, policies/grants/functions, rows/share IDs and normal-JWT owner isolation.
+The prior web image remains `winesnap-owned:rollback-20261113-collector`.
+Dark-v1/public-origin labels were retained; all 37 migrations matched and zero
+new ones ran. The web remains loopback-only and the connector/recovery remain off.
+
+The manual installed collector probe uses the existing protected PilotAccept
+wrapper and exact tagged disposable fixture, not the real owner's account. It
+forwards one normal-JWT collector insert, verifies its committed 201 response,
+then deliberately loses that response to the browser. The UI reconciles the row
+without a second insert. One owner/ID/original-updated_at-filtered edit changes
+the synthetic acquisition price and retains a manual zero estimate, date,
+currency, source and confidence. The 390px fixture screenshot was inspected.
+The helper rejects nonfixture/cross-owner writes, removes its route afterward
+and never receives administrator keys or exports browser sessions.
+
+All 65 installed checks passed; collector counters were one insert, one update,
+one deliberately lost committed-insert reply and zero fixture errors. Both exact
+test accounts/data were cleaned, and real accounts were unchanged. Page errors,
+external requests and blocked AI requests were zero. The six core fault and two
+chat replies were mocked; no provider scenario ran. This narrower real-backend
+probe does not repeat all ten source fault scenarios or the 1,001-row synthetic
+inventory against actual owner records. Five focused helper files / 36 tests and
+full Quality/Database Safety for `e4740ff` (push/PR) passed: 147 files / 1,492
+passing tests and one existing skip.
+
+The same change fixes an observed closed-page viewer lock; unit and isolated
+headed lifecycle evidence is in the local-access document. Post-update actual-
+owner Check, visible Open, duplicate focus and advancing authenticated heartbeat
+passed. Keep that real viewer open. Old production, hosted test, passwords, DNS,
+provider configuration and internet enablement were not changed. Broader DEV-03
+review, live quality and actual owner observations remain separate.
 
 ## Remaining DEV-03 Work
 
@@ -476,13 +514,13 @@ These are substeps of the canonical roadmap, not a competing development plan:
   tests, typecheck, lint and full CI. Retain this fixture with the
   prior wine/kitchen source checks, separately from live and installed evidence.
 - Collector safety now passes 10 isolated browser checks and 64 focused tests;
-  full CI passed. A later safe owned update/installed collector acceptance remains.
+  full CI and the narrower installed collector acceptance above passed.
 - Next source review: overview price-refresh session/deadline/account guards and
   read-error recovery, then remaining family/meal states. Keep verified retail
   prices separate from user estimates and preserve unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- The accumulated source changes are installed and the narrower 61-case owned
+- The accumulated source changes are installed and the narrower 65-case owned
   regression passed. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.
 - For future updates, wait for safe owner closure, use headless Check, current

@@ -201,3 +201,34 @@ with no credential arguments. The supervisor is healthy. `completed=false` is
 normal while the visible Open viewer stays open; do not close it merely to make
 that field true. V2 activation (DEV-02) is complete. Actual owner usage, physical
 mobile access, paid AI quality and public release remain separate gates.
+
+## Last-Page Closure Follow-Up
+
+The real viewer later reported `closed` with no running page, but Chromium stayed
+connected and the old worker retained the viewer lock. Check correctly refused
+to open another owner grant. Only after exact same-session process inspection
+confirmed no visible/minimized windows was that windowless worker stopped; the
+original wrapper/job exited normally. No lock file was deleted and no real
+window or unrelated browser was forcibly closed.
+
+The new `waitForOwnedViewerClose` helper finishes when Chromium disconnects or
+all pages across all its contexts are closed. It preserves any remaining open
+page and cleans its interval/listener. Three focused files / 31 tests passed;
+eight isolated headed lifecycle checks now include closing the last synthetic
+page while Chromium remains connected. Authentication in that lifecycle probe
+is simulated. This is not a new real-owner close/reopen acceptance after the fix.
+
+Fresh real-owner Check, current backup/isolated restore, Update from clean
+`e4740ff` and all 65 installed fixture checks passed before reopening the owner.
+Full Quality/Database Safety passed (push/PR), 147 files / 1,492 passing tests and
+one existing skip. Post-update Check verified the real owner and logged out only
+its probe. Visible Open and duplicate Open then passed (`alreadyOpen=true`,
+`focused=true`, `phase=ready`) without another grant/window. Later Status verified
+ready/authenticated/viewerRunning/operatorActive and a fresh heartbeat; server
+verification advanced from 21:00:16 to 21:00:42 UTC. The supervisor was healthy,
+internet remained paused and blocked external/AI counts were zero.
+
+DEV-02 is complete again. The real owner viewer stays open; reuse/focus it and
+never close it automatically for another update. No old production, hosted test,
+password, passkey, DNS, tunnel or security setting was changed. Actual human use
+and the other release gates remain separate from these technical checks.
