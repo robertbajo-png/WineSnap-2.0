@@ -185,6 +185,8 @@ const en = {
   "ask.error.empty": "Write a question first.",
   "ask.error.long": "Keep the question under 2,000 characters.",
   "ask.error.generic": "WineSnap could not answer right now.",
+  "ask.error.loadConversation":
+    "This conversation could not be loaded. Load it again or start a new conversation.",
   "restaurant.error.generic": "The wine list could not be analyzed right now. Please try again.",
   "ask.error.rateLimit": "Too many questions. Please wait a few minutes and try again.",
   "ask.error.auth": "Your session has expired. Sign in again to continue.",
@@ -1062,6 +1064,8 @@ const sv: Record<keyof typeof en, string> = {
   "ask.error.empty": "Skriv en fråga först.",
   "ask.error.long": "Håll frågan under 2 000 tecken.",
   "ask.error.generic": "WineSnap kunde inte svara just nu.",
+  "ask.error.loadConversation":
+    "Samtalet kunde inte hämtas. Hämta det igen eller starta ett nytt samtal.",
   "restaurant.error.generic": "Vinlistan kunde inte analyseras just nu. Försök igen.",
   "ask.error.rateLimit": "För många frågor. Vänta några minuter och försök igen.",
   "ask.error.auth": "Din session har gått ut. Logga in igen för att fortsätta.",

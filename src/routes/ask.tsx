@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Clock3,
   History,
@@ -16,7 +16,8 @@ import { AppShell } from "@/components/AppShell";
 import { ChatMessageContent } from "@/components/ChatMessageContent";
 import { ChatViewport } from "@/components/ChatViewport";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { OperationNotice } from "@/components/OperationNotice";
+import { accountWriteClient } from "@/lib/accountWriteScope";
 import { invokeAi } from "@/lib/aiTransport";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -68,132 +69,14 @@ type Message = {
 
 function AskWineSnapPage() {
   const { user, loading } = useAuth();
-  const { lang } = useI18n();
   const t = useT();
-  const search = Route.useSearch();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
-
-  const context = useMemo(
-    () =>
-      sanitizeAskContext({
-        source: search.source ?? (search.wineId ? "wine" : "ask"),
-        wineId: search.wineId,
-        route: search.wineId ? `/wine/${search.wineId}` : "/ask",
-      }),
-    [search.source, search.wineId],
-  );
-
-  const loadConversations = async () => {
-    if (!user) return;
-    const { data, error: loadError } = await supabase
-      .from("ai_conversations")
-      .select("id,title,last_message_at")
-      .eq("user_id", user.id)
-      .order("last_message_at", { ascending: false })
-      .limit(30);
-    if (loadError) setError(t("ask.error.generic"));
-    else setConversations((data as unknown as Conversation[]) ?? []);
-  };
-
-  useEffect(() => {
-    void loadConversations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, busy]);
-
-  const openConversation = async (conversation: Conversation) => {
-    setActiveId(conversation.id);
-    setHistoryOpen(false);
-    setError(null);
-    const { data, error: loadError } = await supabase
-      .from("ai_messages")
-      .select("id,role,content,created_at")
-      .eq("conversation_id", conversation.id)
-      .order("created_at", { ascending: true });
-    if (loadError) setError(t("ask.error.generic"));
-    else
-      setMessages(
-        ((data as unknown as Message[]) ?? []).filter((message) => message.role !== undefined),
-      );
-  };
-
-  const startNew = () => {
-    setActiveId(null);
-    setMessages([]);
-    setInput("");
-    setError(null);
-    setHistoryOpen(false);
-  };
-
-  const removeConversation = async (conversation: Conversation) => {
-    if (!window.confirm(t("ask.deleteConfirm"))) return;
-    const { error: deleteError } = await supabase
-      .from("ai_conversations")
-      .delete()
-      .eq("id", conversation.id);
-    if (deleteError) {
-      setError(t("ask.error.generic"));
-      return;
-    }
-    if (activeId === conversation.id) startNew();
-    setConversations((current) => current.filter((item) => item.id !== conversation.id));
-  };
-
-  const sendMessage = async (event?: FormEvent) => {
-    event?.preventDefault();
-    if (!user || busy) return;
-    const validation = validateAskMessage(input);
-    if (!validation.valid) {
-      setError(t(validation.error === "empty" ? "ask.error.empty" : "ask.error.long"));
-      return;
-    }
-
-    const text = validation.value;
-    const optimisticId = `pending-${Date.now()}`;
-    setMessages((current) => [
-      ...current,
-      { id: optimisticId, role: "user", content: text, created_at: new Date().toISOString() },
-    ]);
-    setInput("");
-    setBusy(true);
-    setError(null);
-
-    try {
-      const { data, error: functionError } = await invokeAi("ask-winesnap", {
-        conversationId: activeId,
-        message: text,
-        context,
-        language: lang,
-      });
-      if (functionError) throw functionError;
-      if (data?.error) throw new Error(data.error);
-
-      const response = data?.message as Message | undefined;
-      if (!response?.id || !response.content) throw new Error("Missing answer");
-      setActiveId(data.conversationId as string);
-      setMessages((current) => [...current, response]);
-      await loadConversations();
-    } catch (sendError) {
-      setMessages((current) => current.filter((message) => message.id !== optimisticId));
-      setInput(text);
-      setError(t(askErrorKey(sendError)));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!loading && !user) {
+  if (loading)
+    return (
+      <AppShell>
+        <p role="status">{t("common.loading")}</p>
+      </AppShell>
+    );
+  if (!user) {
     return (
       <AppShell>
         <div className="mt-20 text-center">
@@ -206,6 +89,254 @@ function AskWineSnapPage() {
       </AppShell>
     );
   }
+  return <AskConversation key={user.id} owner={user.id} />;
+}
+
+function AskConversation({ owner }: { owner: string }) {
+  const { lang } = useI18n();
+  const t = useT();
+  const search = Route.useSearch();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messageReadFailed, setMessageReadFailed] = useState(false);
+  const live = useRef(true);
+  const view = useRef<AbortController | null>(null);
+  const historyRead = useRef<AbortController | null>(null);
+  const sending = useRef<AbortController | null>(null);
+  const readingMessages = useRef<AbortController | null>(null);
+  const deletes = useRef(new Map<string, AbortController>());
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const context = useMemo(
+    () =>
+      sanitizeAskContext({
+        source: search.source ?? (search.wineId ? "wine" : "ask"),
+        wineId: search.wineId,
+        route: search.wineId ? `/wine/${search.wineId}` : "/ask",
+      }),
+    [search.source, search.wineId],
+  );
+
+  const loadConversations = useCallback(async () => {
+    historyRead.current?.abort();
+    const controller = new AbortController();
+    historyRead.current = controller;
+    const scope = {
+      owner,
+      current: () =>
+        live.current && historyRead.current === controller && !controller.signal.aborted,
+    };
+    setHistoryBusy(true);
+    setHistoryError(false);
+    try {
+      const client = await accountWriteClient(scope, 15000, controller.signal);
+      if (!scope.current()) return;
+      const { data, error: loadError } = await client
+        .from("ai_conversations")
+        .select("id,title,last_message_at")
+        .eq("user_id", owner)
+        .order("last_message_at", { ascending: false })
+        .limit(30)
+        .abortSignal(controller.signal);
+      if (!scope.current()) return;
+      if (loadError) throw loadError;
+      setConversations((data as Conversation[]) ?? []);
+    } catch {
+      if (scope.current()) {
+        setConversations([]);
+        setHistoryError(true);
+      }
+    } finally {
+      if (scope.current()) setHistoryBusy(false);
+    }
+  }, [owner]);
+
+  useEffect(() => {
+    live.current = true;
+    void loadConversations();
+    const pendingDeletes = deletes.current;
+    return () => {
+      live.current = false;
+      view.current?.abort();
+      historyRead.current?.abort();
+      for (const controller of pendingDeletes.values()) controller.abort();
+    };
+  }, [loadConversations]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, busy]);
+
+  const replaceView = () => {
+    view.current?.abort();
+    const controller = new AbortController();
+    view.current = controller;
+    sending.current = null;
+    readingMessages.current = null;
+    setBusy(false);
+    setMessagesLoading(false);
+    setMessageReadFailed(false);
+    return {
+      controller,
+      scope: {
+        owner,
+        current: () => live.current && view.current === controller && !controller.signal.aborted,
+      },
+    };
+  };
+
+  const openConversation = async (id: string) => {
+    const { controller, scope } = replaceView();
+    readingMessages.current = controller;
+    setActiveId(id);
+    activeIdRef.current = id;
+    setHistoryOpen(false);
+    setError(null);
+    setInput("");
+    setMessages([]);
+    setMessagesLoading(true);
+    try {
+      const client = await accountWriteClient(scope, 15000, controller.signal);
+      if (!scope.current()) return;
+      const { data, error: loadError } = await client
+        .from("ai_messages")
+        .select("id,role,content,created_at")
+        .eq("conversation_id", id)
+        .eq("user_id", owner)
+        .order("created_at", { ascending: true })
+        .abortSignal(controller.signal);
+      if (!scope.current()) return;
+      if (loadError) throw loadError;
+      setMessages(
+        ((data as Message[]) ?? []).filter((m) => m.role === "user" || m.role === "assistant"),
+      );
+    } catch {
+      if (scope.current()) {
+        setMessageReadFailed(true);
+      }
+    } finally {
+      if (scope.current()) {
+        readingMessages.current = null;
+        setMessagesLoading(false);
+      }
+    }
+  };
+
+  const startNew = () => {
+    replaceView();
+    setActiveId(null);
+    activeIdRef.current = null;
+    setMessages([]);
+    setInput("");
+    setError(null);
+    setHistoryOpen(false);
+  };
+
+  const removeConversation = async (conversation: Conversation) => {
+    if (deletes.current.has(conversation.id)) return;
+    if (!window.confirm(t("ask.deleteConfirm"))) return;
+    if (activeIdRef.current === conversation.id) startNew();
+    const errorView = view.current;
+    const controller = new AbortController();
+    deletes.current.set(conversation.id, controller);
+    const scope = { owner, current: () => live.current && !controller.signal.aborted };
+    try {
+      const client = await accountWriteClient(scope, 15000, controller.signal);
+      if (!scope.current()) return;
+      const { error: deleteError } = await client
+        .from("ai_conversations")
+        .delete()
+        .eq("id", conversation.id)
+        .eq("user_id", owner)
+        .abortSignal(controller.signal);
+      if (!scope.current()) return;
+      if (deleteError) throw deleteError;
+      if (activeIdRef.current === conversation.id) startNew();
+      historyRead.current?.abort();
+      setConversations((current) => current.filter((item) => item.id !== conversation.id));
+      void loadConversations();
+    } catch {
+      if (scope.current() && view.current === errorView) setError(t("ask.error.generic"));
+    } finally {
+      deletes.current.delete(conversation.id);
+    }
+  };
+
+  const sendMessage = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!live.current || sending.current || readingMessages.current || messageReadFailed) return;
+    const validation = validateAskMessage(input);
+    if (!validation.valid) {
+      setError(t(validation.error === "empty" ? "ask.error.empty" : "ask.error.long"));
+      return;
+    }
+
+    const text = validation.value;
+    const conversationId = activeIdRef.current;
+    const { controller, scope } = replaceView();
+    sending.current = controller;
+    const optimisticId = `pending-${crypto.randomUUID()}`;
+    setMessages((current) => [
+      ...current,
+      { id: optimisticId, role: "user", content: text, created_at: new Date().toISOString() },
+    ]);
+    setInput("");
+    setBusy(true);
+    setError(null);
+
+    try {
+      const { data, error: functionError } = await invokeAi(
+        "ask-winesnap",
+        {
+          conversationId,
+          message: text,
+          context,
+          language: lang,
+        },
+        { scope, signal: controller.signal },
+      );
+      if (!scope.current()) return;
+      if (functionError) throw functionError;
+      if (data?.error) throw new Error(data.error);
+
+      const response = data?.message as Message | undefined;
+      if (
+        typeof response?.id !== "string" ||
+        !response.id ||
+        typeof response.content !== "string" ||
+        !response.content.trim() ||
+        response.role !== "assistant" ||
+        typeof data.conversationId !== "string" ||
+        (conversationId && data.conversationId !== conversationId)
+      )
+        throw new Error("Missing answer");
+      setActiveId(data.conversationId as string);
+      activeIdRef.current = data.conversationId;
+      setMessages((current) => [...current, response]);
+      void loadConversations();
+    } catch (sendError) {
+      if (!scope.current()) return;
+      setMessages((current) => current.filter((message) => message.id !== optimisticId));
+      setInput(text);
+      setError(t(askErrorKey(sendError)));
+    } finally {
+      if (scope.current()) {
+        sending.current = null;
+        setBusy(false);
+      }
+    }
+  };
 
   return (
     <AppShell fillViewport hideNav={keyboardOpen}>
@@ -250,7 +381,16 @@ function AskWineSnapPage() {
                 </Link>
               </Button>
             </div>
-            {!conversations.length ? (
+            {historyBusy ? (
+              <OperationNotice kind="loading">{t("state.historyLoading")}</OperationNotice>
+            ) : historyError ? (
+              <OperationNotice
+                kind="error"
+                action={{ label: t("state.retryRead"), onClick: () => void loadConversations() }}
+              >
+                {t("state.historyFailed")}
+              </OperationNotice>
+            ) : !conversations.length ? (
               <p className="py-3 text-sm text-muted-foreground">{t("ask.noHistory")}</p>
             ) : (
               <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
@@ -264,7 +404,7 @@ function AskWineSnapPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => void openConversation(conversation)}
+                      onClick={() => void openConversation(conversation.id)}
                       className="min-w-0 flex-1 text-left min-h-11 min-w-11"
                     >
                       <span className="block truncate text-base text-foreground">
@@ -312,7 +452,21 @@ function AskWineSnapPage() {
             </div>
           )}
 
-          {!messages.length ? (
+          {messagesLoading ? (
+            <OperationNotice kind="loading">{t("common.loading")}</OperationNotice>
+          ) : messageReadFailed ? (
+            <OperationNotice
+              kind="error"
+              action={{
+                label: t("state.retryRead"),
+                onClick: () => {
+                  if (activeId) void openConversation(activeId);
+                },
+              }}
+            >
+              {t("ask.error.loadConversation")}
+            </OperationNotice>
+          ) : !messages.length ? (
             <div className="mx-auto mt-8 max-w-sm text-center">
               <MessageCircleMore className="mx-auto h-10 w-10 text-gold" strokeWidth={1.5} />
               <h2 className="mt-4 font-display text-xl text-cream">{t("ask.emptyTitle")}</h2>
@@ -376,7 +530,7 @@ function AskWineSnapPage() {
             <textarea
               id="ask-input"
               value={input}
-              disabled={busy}
+              disabled={busy || messagesLoading || messageReadFailed}
               maxLength={2000}
               rows={2}
               onChange={(event) => setInput(event.target.value)}
@@ -392,7 +546,7 @@ function AskWineSnapPage() {
             <Button
               type="submit"
               size="icon"
-              disabled={busy || !input.trim()}
+              disabled={busy || messagesLoading || messageReadFailed || !input.trim()}
               aria-label={t("ask.send")}
               className="h-12 w-12 shrink-0 bg-burgundy text-cream hover:bg-burgundy/90 min-h-11"
             >

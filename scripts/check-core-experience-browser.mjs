@@ -10,14 +10,27 @@ import {
   waitForIndependentRuntime,
 } from "./lib/independent-readiness.mjs";
 import { createCoreKitchenFixture, acceptCoreKitchen } from "./lib/core-kitchen-browser.mjs";
+import { createCoreChatFixture, acceptCoreChat } from "./lib/core-chat-browser.mjs";
 
 // Synthetic source UI only. No installed backend, real account or provider credentials.
 const kitchenOnly = process.argv.length === 3 && process.argv[2] === "--kitchen";
-assert.ok(process.argv.length === 2 || kitchenOnly);
+const chatOnly = process.argv.length === 3 && process.argv[2] === "--chat";
+assert.ok(process.argv.length === 2 || kitchenOnly || chatOnly);
 const root = fileURLToPath(new URL("../", import.meta.url));
-const output = join(root, kitchenOnly ? "dist/core-kitchen-runtime" : "dist/independent-runtime");
-const artifacts = join(root, kitchenOnly ? "dist/core-kitchen" : "dist/core-experience");
-const fixtureOrigin = kitchenOnly ? "http://127.0.0.1:54323" : "https://example.invalid";
+const output = join(
+  root,
+  kitchenOnly
+    ? "dist/core-kitchen-runtime"
+    : chatOnly
+      ? "dist/core-chat-runtime"
+      : "dist/independent-runtime",
+);
+const artifacts = join(
+  root,
+  kitchenOnly ? "dist/core-kitchen" : chatOnly ? "dist/core-chat" : "dist/core-experience",
+);
+const fixtureOrigin =
+  kitchenOnly || chatOnly ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
 const wineId = "11111111-2222-4333-8444-555555555555";
 const longName = "SyntheticBottleWithAVeryLongUnbrokenWineNameForLayoutVerification";
@@ -48,7 +61,7 @@ const wine = {
   tannin: 1,
   description: "Synthetic UI fixture. No real account or wine data.",
 };
-const authKey = kitchenOnly ? "sb-127-auth-token" : "sb-example-auth-token";
+const authKey = kitchenOnly || chatOnly ? "sb-127-auth-token" : "sb-example-auth-token";
 const fixtureOwner = wine.user_id;
 const fixturePeer = "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa";
 function simulatedSession(id) {
@@ -86,7 +99,7 @@ const syntheticUsers = new Map([
 const report = {
   synthetic: true,
   fixtureDataMocked: true,
-  sourceViewScope: kitchenOnly ? "core-kitchen" : "wine-detail-scan",
+  sourceViewScope: kitchenOnly ? "core-kitchen" : chatOnly ? "core-chat" : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -128,7 +141,7 @@ try {
     const content = await readFile(join(assets, name), "utf8");
     for (const [url] of content.matchAll(/https:\/\/[a-z0-9]+\.supabase\.co/gi)) {
       // The shared feature-gate module retains this historical comparison constant.
-      assert.ok(kitchenOnly && url === "https://pzniyupmgwvlldvztzqh.supabase.co");
+      assert.ok((kitchenOnly || chatOnly) && url === "https://pzniyupmgwvlldvztzqh.supabase.co");
     }
     assert.ok(!/sb_secret_[A-Za-z0-9_-]{16,}/.test(content));
     fixtureSeen ||= content.includes(fixtureOrigin) && content.includes(fixtureKey);
@@ -205,7 +218,7 @@ try {
     (lang) => localStorage.setItem("lang", lang),
     kitchenOnly ? "sv" : "en",
   );
-  if (kitchenOnly) {
+  if (kitchenOnly || chatOnly) {
     report.authenticationSimulated = true;
     await context.addInitScript(
       ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
@@ -214,6 +227,16 @@ try {
   }
   const kitchenFixture = kitchenOnly
     ? createCoreKitchenFixture({
+        origin: fixtureOrigin,
+        key: fixtureKey,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        report,
+        base,
+      })
+    : null;
+  const chatFixture = chatOnly
+    ? createCoreChatFixture({
         origin: fixtureOrigin,
         key: fixtureKey,
         owner: fixtureOwner,
@@ -243,6 +266,7 @@ try {
     });
   const routeFixture = async (route) => {
     if (kitchenFixture) return kitchenFixture.route(route);
+    if (chatFixture) return chatFixture.route(route);
     const request = route.request(),
       url = new URL(request.url());
     if (url.origin === base && ["GET", "HEAD"].includes(request.method())) return route.continue();
@@ -411,7 +435,18 @@ try {
   page.setDefaultTimeout(30000);
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
-  if (kitchenFixture) {
+  if (chatFixture) {
+    await acceptCoreChat({
+      page,
+      base,
+      artifacts,
+      report,
+      fixture: chatFixture,
+      authKey,
+      ownerSession,
+      peerSession,
+    });
+  } else if (kitchenFixture) {
     await acceptCoreKitchen({
       page,
       context,

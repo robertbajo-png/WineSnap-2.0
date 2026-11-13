@@ -309,6 +309,65 @@ All sessions and HTTP results are synthetic. Full Quality and Database Safety
 passed for `3afdbe5` (push/PR), including 141 files / 1,456 passing tests and one
 existing skip. The earlier browser evidence is not presented as a rerun or live AI.
 
+## Chat Conversation Isolation
+
+Ask WineSnap now mounts its local chat state per authenticated owner. Account
+changes and logout remove the previous messages, draft, errors, active ID and
+pending controls instead of waiting for an asynchronous account-reset effect.
+The existing sign-in/loading views remain; no anonymous or administrator path
+is introduced.
+
+Each transcript read or send captures a view controller; New, a conversation
+switch or unmount invalidates it. Success, error and finally handlers all check
+that same live view, so an old answer cannot append, restore an old draft or
+release a newer send's busy state. A synchronous ref also prevents double submit.
+History-list reads have an independent latest-request controller and cannot
+replace a newer account/list result. History refresh failure does not remove a
+successfully displayed answer. Transcript reads distinguish loading and error;
+sending stays blocked after a failed load until explicit read retry or New.
+
+Reads and deletes capture the normal owner JWT through the existing verified
+account client, with cancellation and bounded requests. Conversation/message
+reads and deletes retain explicit owner filters. Delete completion can remove
+only its captured owner's row and does not reset a different current conversation
+or a new account. Messages remain server-authored; no schema, RLS, provider,
+quota, privilege or automatic AI retry change is made. Client cancellation stops
+waiting and hides late results, not necessarily server processing/persistence.
+
+The new isolated `--chat` fixture uses only the known dummy public key and
+invalid-signature synthetic sessions. It intercepts every backend/AI request,
+including requests addressed to the installed loopback API; no such request is
+forwarded. Only isolated app/static GETs continue. Unknown APIs/writes/hosts and
+nonfixture identities are rejected. Nine fixture-boundary tests are included.
+The artifact is separate (`dist/core-chat-runtime`); screenshots/reports remain
+ignored under `dist/core-chat`. Build through the artifact target with the same
+owned/cooking/privacy/local-AI/pilot public flags as the kitchen example above
+(Chef/meals are not needed here), export to a new TAR and extract into a clean
+chat target. Never use this dummy configuration to update the real installation.
+
+```powershell
+node scripts/check-core-experience-browser.mjs --chat
+```
+
+Initial browser checks reproduced late transcript replacement after conversation
+switch/New. The broader first run also had fixture errors, and two preliminary
+builds rejected incomplete synthetic feature combinations; none is accepted
+as passing evidence. After the source fix, nine of ten cases passed. The remaining
+one-shot 503 database-read error was retried by the existing SDK, so the fixture
+now supplies a deterministic 400 read failure; application retries were not
+changed. The final expanded run passed all 20 checks: conversation switches,
+New, concurrent old/new answers, stale errors, account switches, late history,
+logout, transcript/history retry, mismatched answer IDs, unmount, captured-owner
+deletes, deletion of an active pending conversation, explicit AI retry and
+double submit, plus 320/390/1440px layouts at 125% text size. The 320px and 1440px
+screenshots were inspected. Forbidden requests/writes, page/fixture errors were
+zero; process cleanup passed. Thirteen AI requests and two deletes were mocked,
+not sent to providers or real storage/databases. Seven focused files / 54 tests,
+local typecheck and targeted lint passed. Full CI remains pending for this slice.
+
+The installed owner viewer still reports `legacy_viewer` with internet paused.
+No owner window, session, password, installed frontend or old production changed.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -323,11 +382,9 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
   full CI. Keep its mocked transport evidence separate from live AI
   and from the still-pending installed update.
-- Next source review: Ask WineSnap's conversation/account isolation. The current
-  route lacks request-generation guards for async reads/sends and does not reset
-  chat state when the account changes. Reproduce delayed history/answer results
-  after conversation switches, New and logout/account changes before fixing;
-  retain private RLS/server-authored messages and affected browser acceptance.
+- Chat/account isolation passes all 20 isolated browser checks and 54 focused
+  tests, typecheck and lint; full CI is pending. Retain this fixture with the
+  prior wine/kitchen source checks, separately from live and installed evidence.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - After the owner safely closes the existing viewer: use headless actual-owner
