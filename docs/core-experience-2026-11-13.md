@@ -119,8 +119,11 @@ overflowing their mobile row. Overview facts now use semantic definition rows
 with bounded label/value columns and anywhere wrapping. The window header can
 wrap without shrinking its status dot/clock. Note-creation links are owner-only
 with a minimum touch height, consistent with the existing gallery/edit controls.
-Three overview widths are added to source browser acceptance; their fresh
-artifact/run is pending. These changes are not installed yet.
+Three overview widths are added to source browser acceptance. A fresh isolated
+artifact passed all thirteen cases, with zero forbidden requests, mutations or
+page errors and verified cleanup. The 320/390/1440 overview screenshots were
+inspected. Full Quality/Database Safety passed for `e65f00d` (push and PR).
+These changes are not installed yet.
 
 The source inventory also covered the remaining core views:
 
@@ -130,19 +133,33 @@ The source inventory also covered the remaining core views:
 | Scan | Explicit review, owner-scoped token and insert reconciliation already exist; follow up stable paths after a lost upload reply and bounded waits, then fault-test |
 | Cookbook / Cook Mode | Existing version-pinned recipe, conflict/offline cache, bounded timers and return journeys are retained; rerun affected installed journeys rather than rebuilding them |
 | Food memory | Generation-guarded loading, read retry, correction and forgetting exist; broader installed isolation and focus checks remain |
-| Family / pairing / meals | Existing keyed kitchen workspace and scoped APIs are retained; history lacks an initial loading notice and explicit read retry; address as a focused follow-up |
+| Family / pairing / meals | Existing keyed kitchen workspace and scoped APIs are retained; history's missing loading/read-retry states are now addressed below; installed journeys remain |
 | Prices / collector | Currency-separated totals, manual estimates/source/date and retail matching states already exist; do not replace them with invented market values; installed regression remains |
 
 This is a source inventory, not a claim that the wider DEV-03 UI/keyboard or
 installed backend acceptance has passed.
+
+## Meal-history Read States
+
+Meal history now uses the existing OperationNotice for initial loading and read
+failures, with explicit retry of its read-only refresh. Empty history is still
+shown only after data has been obtained; no write, AI request, recipe version or
+meal record is changed by this status improvement.
+
+Three component-render tests cover initial loading, error/retry and confirmed
+empty history. The combined focused run passed nine files / 72 tests. Full CI
+for this follow-up is pending; source-render tests are not a substitute for the
+real installed meal-history view. The existing owned app continues to respond
+HTTP 200, while safe read-only access Status still reports the active legacy
+viewer and paused internet. No fresh owner grant or forced closure occurred.
 
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
 
 - The first source slice is verified; retain its checks during subsequent work.
-- The second slice passed extended source browser/full CI; retain its scenarios
-  and finish the overview follow-up. Mocked auth/AI is not live-provider,
+- The second slice and overview passed extended source browser/full CI; retain
+  their scenarios and finish the current meal-history CI. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.

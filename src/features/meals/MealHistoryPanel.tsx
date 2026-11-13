@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
+import { OperationNotice } from "@/components/OperationNotice";
+import { useT } from "@/i18n";
 import type { LocalSession } from "../kitchen/domain";
 import { cellarWines, mealHistory, mealSave } from "./api";
 import { mealInputSchema, type Meal } from "./domain";
@@ -15,6 +17,7 @@ export function MealHistoryPanel({
   sessions: LocalSession[];
   initialSession?: string;
 }) {
+  const t = useT();
   const { data, error, refresh } = useFreshData(async () => ({
     cellar: await cellarWines(owner),
     history: await mealHistory(owner),
@@ -103,10 +106,18 @@ export function MealHistoryPanel({
         eller ändring av flaskantal.
       </p>
       {error && (
-        <p role="alert" className="k-error">
+        <OperationNotice
+          kind="error"
+          action={{
+            label: t("state.retryRead"),
+            disabled: busy,
+            onClick: () => void refresh(),
+          }}
+        >
           {error}
-        </p>
+        </OperationNotice>
       )}
+      {!data && !error && <OperationNotice kind="loading">{t("common.loading")}</OperationNotice>}
       {notice && <p role="status">{notice}</p>}
       {data && (
         <>
