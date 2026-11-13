@@ -2,6 +2,21 @@
 
 Scan a wine label (or type the wine), get producer, grape, flavour profile and food pairings, and build a personal cellar, taste profile, wishlist and social feed.
 
+## Current Development
+
+The [development plan](docs/development-plan.md) is the single current roadmap.
+The target is the owner's local Windows app: finish the existing food/wine core
+first, then add the complete culinary vision in its approved order. Read that
+plan before continuing and update its task status/evidence with every delivery.
+
+Use the **WineSnap lokalt** desktop shortcut and its real-account app window,
+not the old Chef prototype or synthetic demo. See the
+[local access guide](docs/local-development-access-2026-11-12.md). Opening the
+plain loopback URL in another browser does not copy the viewer's signed-in session.
+The owned internet connector is deliberately paused; old production and abandoned
+hosted test are not development targets. Older sections/reports are historical
+where they conflict with this decision and the current plan.
+
 ## Stack
 
 - TanStack Start (React 19, Vite 8) — file routes in `src/routes`

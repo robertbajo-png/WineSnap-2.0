@@ -1,5 +1,12 @@
 # WineSnap Repository Guidance
 
+- Read `docs/development-plan.md` before starting or continuing development.
+  It is the canonical approved roadmap; dated plans are historical evidence.
+  Follow the first unblocked task, preserve its stable DEV-ID and update its
+  board, verification evidence and exact handoff after each meaningful step.
+  Log material plan changes and reasons; never mark human use, installation or
+  provider checks complete from source/tests alone. Do not depend on chat memory.
+
 - Continue development in Codex using this Git repository. Do not send tasks,
   source code or credentials to Lovable, or reintroduce its build wrapper,
   preview-auth broker or AI gateway.
