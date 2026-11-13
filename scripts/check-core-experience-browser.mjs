@@ -95,6 +95,7 @@ const report = {
   simulatedAiRequests: 0,
   simulatedWrites: 0,
   pageErrors: 0,
+  fixtureErrors: 0,
   passed: [],
   phase: "artifact_guard",
 };
@@ -102,6 +103,19 @@ let child,
   closed,
   browser,
   logs = "";
+async function fixtureArrival(promise) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Synthetic fixture did not arrive")), 30000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 try {
   const assets = join(output, "public/assets");
   let fixtureSeen = false;
@@ -200,7 +214,7 @@ try {
       headers: { "access-control-allow-origin": base },
       body: JSON.stringify(data),
     });
-  await context.route("**/*", async (route) => {
+  const routeFixture = async (route) => {
     const request = route.request(),
       url = new URL(request.url());
     if (url.origin === base && ["GET", "HEAD"].includes(request.method())) return route.continue();
@@ -345,6 +359,14 @@ try {
     if (url.origin === fixtureOrigin) report.mutations++;
     else report.externalRequests++;
     return route.abort();
+  };
+  await context.route("**/*", async (route) => {
+    try {
+      await routeFixture(route);
+    } catch {
+      report.fixtureErrors++;
+      await route.abort().catch(() => undefined);
+    }
   });
   const page = await context.newPage();
   const styleFixture = () =>
@@ -502,7 +524,7 @@ try {
   await title.waitFor();
   await styleFixture();
   await page.getByRole("button", { name: "Overview", exact: true }).click();
-  await firstRead;
+  await fixtureArrival(firstRead);
   currentGallery = [
     {
       id: "ffffffff-aaaa-4bbb-8ccc-dddddddddddd",
@@ -587,7 +609,7 @@ try {
     ownerAiArrived = resolve;
   });
   await page.getByRole("button", { name: "AI Picks", exact: true }).click();
-  await firstAi;
+  await fixtureArrival(firstAi);
   await switchAccount(peerSession);
   await ownerControl.waitFor({ state: "hidden" });
   await page.waitForFunction(() =>
@@ -637,6 +659,7 @@ try {
   assert.equal(report.externalRequests, 0);
   assert.equal(report.mutations, 0);
   assert.equal(report.pageErrors, 0);
+  assert.equal(report.fixtureErrors, 0);
   assert.equal(logs.includes("INDEPENDENT_CHECK_OUTBOUND_FETCH_BLOCKED"), false);
   report.completed = true;
 } catch (error) {

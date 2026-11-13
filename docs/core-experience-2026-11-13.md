@@ -148,8 +148,9 @@ meal record is changed by this status improvement.
 
 Three component-render tests cover initial loading, error/retry and confirmed
 empty history. The combined focused run passed nine files / 72 tests. Full
-Quality/Database Safety passed for `3f8fa37` (push and PR); source-render tests are not a substitute for the
-real installed meal-history view. The existing owned app continues to respond
+Quality/Database Safety passed for `3f8fa37` (push and PR); source-render tests
+are not a substitute for the real installed meal-history view. The existing
+owned app continues to respond
 HTTP 200, while safe read-only access Status still reports the active legacy
 viewer and paused internet. No fresh owner grant or forced closure occurred.
 
@@ -169,18 +170,29 @@ image-read limits, instead of allowing a paid analysis of an unsavable 10-12 MB
 image. No provider, schema, policy or saved row is changed.
 
 Three focused files / 41 tests passed, including identical path/Blob retry,
-unsafe extensions, insert reconciliation and the exact size boundary. The
-expanded source browser test will mock one analysis, a lost upload reply, a
-manual retry and one wine/photo insert; these are explicitly simulated writes,
-not installed storage/RLS or live AI evidence. Its fresh run and CI are pending.
+unsafe extensions, insert reconciliation and the exact size boundary. Full
+Quality/Database Safety passed for `4a26414` (push and PR), including all 139 unit
+test files. This does not attest an installed owner flow.
+
+The fresh source browser run passed all fourteen cases. It mocked one analysis,
+a lost upload reply, a manual retry and one wine/photo insert. The exact uploaded
+PNG bytes, MIME, cache control, upsert and private path were checked on both
+attempts; no wine insert occurred before the explicit retry. The final UI and
+overview screenshots were inspected. Across the complete runner, three AI
+requests and four writes are simulated; forbidden external requests/writes,
+page errors and fixture errors are zero, and process cleanup passed. These are
+not installed storage/RLS or live AI results. Route assertion failures are
+explicitly counted; fixture-arrival waits have a deadline and cleanup runs on
+failed acceptance too. No real owner session, image, account or provider key
+enters the fixture.
 
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
 
 - The first source slice is verified; retain its checks during subsequent work.
-- The gallery, overview and meal-history source slices passed full CI; retain
-  their scenarios and finish the scan browser/CI follow-up. Mocked auth/AI is not live-provider,
+- Gallery, overview, meal-history and scan source slices passed full CI; retain
+  all fourteen browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
