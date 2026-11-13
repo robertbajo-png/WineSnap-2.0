@@ -243,13 +243,7 @@ export function createAttemptGuard(): AttemptGuard {
 /* ------------------------------------------------------------------ */
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-export const ACCEPTED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-];
+export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export type ImageCheck =
   { ok: true; mimeType: string } | { ok: false; reason: "type" | "size" | "empty" };

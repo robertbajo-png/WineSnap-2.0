@@ -702,6 +702,27 @@ try {
     assert.equal(scanWrites.photos.length, 1);
     await page.screenshot({ path: join(artifacts, "scan-save-390.png"), animations: "disabled" });
     report.passed.push("scan-lost-upload-retry-reuses-path-bytes-and-one-wine");
+    for (const type of ["heic", "heif"]) {
+      report.phase = `unsupported-original-${type}`;
+      await page.goto(base + "/scan", { waitUntil: "domcontentloaded" });
+      // PNG fixture bytes exercise only MIME rejection, not native HEIC decoding.
+      await page.locator('input[type="file"]').setInputFiles({
+        name: `synthetic-only.${type}`,
+        mimeType: `image/${type}`,
+        buffer: scanPng,
+      });
+      await page.getByText("Adjust label", { exact: true }).waitFor();
+      await page.getByRole("button", { name: "Use the whole photo", exact: true }).click();
+      await page
+        .getByText(
+          "This photo format cannot be saved and displayed here. Choose JPEG, PNG or WebP.",
+          { exact: true },
+        )
+        .waitFor();
+      assert.equal(report.simulatedAiRequests, 3);
+      assert.equal(report.simulatedWrites, 4);
+      report.passed.push(`unsupported-original-${type}-rejected-before-ai-and-storage`);
+    }
   }
   assert.equal(report.externalRequests, 0);
   assert.equal(report.mutations, 0);

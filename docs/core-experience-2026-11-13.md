@@ -254,6 +254,15 @@ fixture cleanup is not expanded to arbitrary folders. Three cross-contract tests
 use the actual fixture path validator for JPEG/PNG/WebP. The combined focused
 suite passed four files / 47 tests. Fresh wine browser/current CI are pending.
 
+The same review found raw HEIC/HEIF accepted by scan while the private image
+reader cannot display those native original types. Scan now rejects them before
+AI/storage, with a JPEG/PNG/WebP error, instead of charging for an unsavable or
+unviewable original. No native decoder, migration or conversion of saved images
+is introduced. The existing cropper's JPEG/PNG output remains accepted. Five
+focused files / 69 tests passed. Two browser MIME-rejection cases use synthetic
+PNG bytes in unsupported-type File objects; they are not HEIC decoding evidence.
+Fresh browser/current CI remain pending.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:

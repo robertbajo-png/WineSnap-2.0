@@ -467,7 +467,8 @@ const en = {
   "scan.viewDetails": "View Details",
   "scan.saveToCellar": "Save to Cellar",
   "scan.imageTooLarge": "That photo is too large. Try a smaller one.",
-  "scan.imageType": "That file is not a photo we can read.",
+  "scan.imageType":
+    "This photo format cannot be saved and displayed here. Choose JPEG, PNG or WebP.",
   "scan.imageError": "We couldn't read that photo. Please try again.",
   "scan.error.auth": "Your session could not be verified. Sign in again and retry the scan.",
   "scan.error.rateLimit": "Too many scans. Wait a few minutes and try again.",
@@ -1331,7 +1332,7 @@ const sv: Record<keyof typeof en, string> = {
   "scan.viewDetails": "Visa detaljer",
   "scan.saveToCellar": "Till källaren",
   "scan.imageTooLarge": "Bilden är för stor. Prova en mindre bild.",
-  "scan.imageType": "Filen är inte en bild vi kan läsa.",
+  "scan.imageType": "Bildformatet kan inte sparas och visas här. Välj JPEG, PNG eller WebP.",
   "scan.imageError": "Vi kunde inte läsa bilden. Försök igen.",
   "scan.error.auth": "Din session kunde inte verifieras. Logga in igen och försök skanna på nytt.",
   "scan.error.rateLimit": "För många skanningar. Vänta några minuter och försök igen.",
