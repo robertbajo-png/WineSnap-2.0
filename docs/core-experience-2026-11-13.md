@@ -305,8 +305,9 @@ suite passed eight files / 101 tests. Local typecheck and targeted lint passed.
 Tests cover cancellation in both verification stages and local cached lookup,
 late results, cleanup, the 15-second boundary, synchronous/asynchronous SDK
 errors without raw diagnostic exposure and retained account/hosted contracts.
-All sessions and HTTP results are synthetic. Full CI for this follow-up remains
-pending; the earlier browser evidence is not presented as a rerun or live AI.
+All sessions and HTTP results are synthetic. Full Quality and Database Safety
+passed for `3afdbe5` (push/PR), including 141 files / 1,456 passing tests and one
+existing skip. The earlier browser evidence is not presented as a rerun or live AI.
 
 ## Remaining DEV-03 Work
 
@@ -319,9 +320,14 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Wider kitchen source checks and CI passed; retain all 29 cases alongside the
   16 wine cases. Failed startup/layout/navigation runs remain failures, not partial
   acceptance. Installed journeys and broader actual-owner use remain separate.
-- The bounded AI session follow-up passes 101 focused tests, typecheck and lint;
-  full CI is pending. Keep its mocked transport evidence separate from live AI
+- The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
+  full CI. Keep its mocked transport evidence separate from live AI
   and from the still-pending installed update.
+- Next source review: Ask WineSnap's conversation/account isolation. The current
+  route lacks request-generation guards for async reads/sends and does not reset
+  chat state when the account changes. Reproduce delayed history/answer results
+  after conversation switches, New and logout/account changes before fixing;
+  retain private RLS/server-authored messages and affected browser acceptance.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - After the owner safely closes the existing viewer: use headless actual-owner
