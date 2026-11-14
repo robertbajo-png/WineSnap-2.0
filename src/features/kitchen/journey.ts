@@ -78,6 +78,16 @@ export function wineJourneyHash(input: KitchenDestination) {
   return `kitchen?${params}`;
 }
 
+export function pairingWineJourneyHash(version: RecipeVersion, origin?: KitchenDestination) {
+  const context = origin?.recipe === version.id ? origin : undefined;
+  return wineJourneyHash({
+    view: "recipes",
+    recipe: version.id,
+    servings: context?.servings ?? version.document.servings,
+    ...(context?.fromCook && context.session ? { session: context.session, fromCook: true } : {}),
+  });
+}
+
 export function resolveJourneyRecipe(
   destination: KitchenDestination,
   owner: string,

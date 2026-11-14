@@ -7,6 +7,7 @@ import {
   readWineJourney,
   resolveJourneyRecipe,
   wineJourneyHash,
+  pairingWineJourneyHash,
 } from "./journey";
 
 const owner = "00000000-0000-4000-8000-000000000001";
@@ -30,6 +31,41 @@ const session: LocalSession = {
 };
 
 describe("private food and wine journeys", () => {
+  it("keeps the exact pairing recipe, cooking session and portions in the wine return", () => {
+    const before = structuredClone(session);
+    const origin = {
+      view: "pairings" as const,
+      recipe: version.id,
+      session: session.id,
+      servings: 4,
+      fromCook: true,
+    };
+    expect(readWineJourney(pairingWineJourneyHash(version, origin))).toEqual({
+      kind: "ready",
+      destination: { ...origin, view: "cook" },
+    });
+    expect(session).toEqual(before);
+  });
+  it("never attaches an old cooking session to a different chosen recipe", () => {
+    const other = { ...version, id: peer, document: { ...version.document, servings: 3 } };
+    expect(
+      readWineJourney(
+        pairingWineJourneyHash(other, {
+          view: "pairings",
+          recipe: version.id,
+          session: session.id,
+          servings: 4,
+          fromCook: true,
+        }),
+      ),
+    ).toEqual({ kind: "ready", destination: { view: "recipes", recipe: peer, servings: 3 } });
+  });
+  it("pins base portions for an ordinary recipe return without a cooking origin", () => {
+    expect(readWineJourney(pairingWineJourneyHash(version))).toEqual({
+      kind: "ready",
+      destination: { view: "recipes", recipe: version.id, servings: version.document.servings },
+    });
+  });
   it("round trips a pinned recipe, portions and cooking return without changing the session", () => {
     const before = structuredClone(session);
     const input = {

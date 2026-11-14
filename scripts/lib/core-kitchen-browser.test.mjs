@@ -38,6 +38,22 @@ beforeEach(() => {
   });
 });
 describe("isolated kitchen fixture boundary", () => {
+  it("only replaces wine stock through the known synthetic pairing modes", async () => {
+    expect(() => fixture.changePairingWines("unapproved")).toThrow();
+    fixture.changePairingWines("consumed-and-alternate");
+    const request = route("/rest/v1/wines");
+    await fixture.route(request);
+    const rows = JSON.parse(request.fulfill.mock.calls[0][0].body);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].id).toBe(fixture.wineId);
+    expect(rows[0].quantity).toBe(0);
+    expect(rows[1].id).not.toBe(rows[0].id);
+    expect(rows.every((r) => r.user_id === owner)).toBe(true);
+    expect(request.continue).not.toHaveBeenCalled();
+    const other = route("/rest/v1/wines", { user: "synthetic-peer" });
+    await fixture.route(other);
+    expect(JSON.parse(other.fulfill.mock.calls[0][0].body)).toEqual([]);
+  });
   it("only permits known synthetic pairing profile changes", () => {
     expect(() => fixture.changePairingDiners("unapproved")).toThrow();
     expect(() => fixture.nextRead("unknown_table")).toThrow();

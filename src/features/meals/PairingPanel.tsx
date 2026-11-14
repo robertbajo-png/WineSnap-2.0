@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useT } from "@/i18n";
 import { pilotUiEnabled } from "../pilot/feature";
-import { kitchenJourneyHash, wineJourneyHash, type KitchenDestination } from "../kitchen/journey";
+import {
+  kitchenJourneyHash,
+  pairingWineJourneyHash,
+  type KitchenDestination,
+} from "../kitchen/journey";
 import { ArrowRight, RefreshCw, Utensils, Wine } from "lucide-react";
 import { WineImage } from "@/components/WineImage";
 import { OperationNotice } from "@/components/OperationNotice";
@@ -90,7 +94,7 @@ function PairingsForOwner({
         ? "wine"
         : "dish",
     ),
-    [recipeId, setRecipe] = useState(initial?.id ?? ""),
+    [recipeId, setRecipe] = useState(initial?.id ?? choices[0]?.key ?? ""),
     [wineId, setWine] = useState(
       () =>
         initialWineId ??
@@ -102,10 +106,10 @@ function PairingsForOwner({
   const [selectedTraits, setTraits] = useState<DishTrait[] | null>(null),
     [people, setPeople] = useState<string[]>([]),
     [adultScope, setAdultScope] = useState<string | null>(null);
-  const recipe = recipeId ? choices.find((c) => c.key === recipeId) : choices[0];
+  const recipe = choices.find((c) => c.key === recipeId);
   const available =
     data?.cellar.wines.filter((w) => w.user_id === owner && w.quantity > 0 && !w.consumed_at) ?? [];
-  const wine = wineId ? available.find((w) => w.id === wineId) : available[0];
+  const wine = available.find((w) => w.id === wineId);
   const { diners, missing, onlyChildren, consentKey } = pairingAudience(
     data?.family.diners ?? null,
     people,
@@ -252,18 +256,21 @@ function PairingsForOwner({
               {data.cellar.truncated && (
                 <p>Visar de senaste 200 vinerna. Äldre flaskor ingår inte i förslagen.</p>
               )}
-              {mode === "dish" && recipe && (
+              {mode === "dish" && (
                 <>
                   <label>
                     Rätt
                     <select
                       aria-label="Rätt"
-                      value={recipe.key}
+                      value={recipe?.key ?? ""}
                       onChange={(e) => {
                         setRecipe(e.target.value);
                         setTraits(null);
                       }}
                     >
+                      <option value="" disabled>
+                        Välj rätt
+                      </option>
                       {choices.map((c) => (
                         <option key={c.key} value={c.key}>
                           {c.document.title}
@@ -272,79 +279,80 @@ function PairingsForOwner({
                       ))}
                     </select>
                   </label>
-                  <FamilyNotes fit={familyFit(recipe.document, diners)} />
-                  <fieldset className="meal-traits">
-                    <legend>Antagen smakprofil</legend>
-                    {traits.map((t) => (
-                      <label className="meal-check" key={t}>
-                        <input
-                          type="checkbox"
-                          checked={dish.includes(t)}
-                          onChange={(e) =>
-                            setTraits(e.target.checked ? [...dish, t] : dish.filter((v) => v !== t))
-                          }
-                        />
-                        {traitLabels[t]}
-                      </label>
-                    ))}
-                  </fieldset>
-                  <p className="meal-caption">
-                    Förslag utifrån ingrediensnamn och registrerade vinuppgifter. Justera
-                    smakprofilen efter tillagningen. Inte en garanti för smak eller
-                    allergensäkerhet.
-                  </p>
-                  {!dish.length ? (
-                    <p>Välj minst en smakegenskap.</p>
+                  {!recipe ? (
+                    <OperationNotice kind="error">
+                      Det valda receptet är inte längre tillgängligt. Välj en annan rätt.
+                    </OperationNotice>
                   ) : (
-                    <ul className="meal-results">
-                      {ranked.slice(0, 8).map(({ wine: w, assessment }) => (
-                        <li key={w.id}>
-                          <div className="meal-result-head">
-                            {w.image_url ? (
-                              <WineImage src={w.image_url} alt="" className="meal-wine-photo" />
-                            ) : (
-                              <Wine size={28} />
-                            )}
-                            <div>
-                              <h2>
-                                {w.wine_name ?? "Namnlöst vin"} {w.vintage ?? ""}
-                              </h2>
-                              <p>{[w.region, w.country].filter(Boolean).join(", ")}</p>
-                              <p>{w.quantity} flaskor i din källare</p>
-                            </div>
-                          </div>
-                          <PairingNotes assessment={assessment} />
-                          <Link
-                            to="/wine/$id"
-                            params={{ id: w.id }}
-                            className="k-text"
-                            hash={
-                              pilotUiEnabled && recipe.version
-                                ? wineJourneyHash({
-                                    view: "recipes",
-                                    recipe: recipe.version.id,
-                                    servings:
-                                      recipe.version.id === initial?.id
-                                        ? journey?.servings
-                                        : recipe.document.servings,
-                                    ...(journey?.fromCook && recipe.version.id === initial?.id
-                                      ? { session: journey.session, fromCook: true }
-                                      : {}),
-                                  })
-                                : undefined
-                            }
-                          >
-                            Visa vinet
-                            <ArrowRight size={17} />
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {!ranked.length && (
-                    <p>
-                      Inga tillgängliga flaskor i din vinkällare. Inga köpförslag har hittats på.
-                    </p>
+                    <>
+                      <FamilyNotes fit={familyFit(recipe.document, diners)} />
+                      <fieldset className="meal-traits">
+                        <legend>Antagen smakprofil</legend>
+                        {traits.map((t) => (
+                          <label className="meal-check" key={t}>
+                            <input
+                              type="checkbox"
+                              checked={dish.includes(t)}
+                              onChange={(e) =>
+                                setTraits(
+                                  e.target.checked ? [...dish, t] : dish.filter((v) => v !== t),
+                                )
+                              }
+                            />
+                            {traitLabels[t]}
+                          </label>
+                        ))}
+                      </fieldset>
+                      <p className="meal-caption">
+                        Förslag utifrån ingrediensnamn och registrerade vinuppgifter. Justera
+                        smakprofilen efter tillagningen. Inte en garanti för smak eller
+                        allergensäkerhet.
+                      </p>
+                      {!dish.length ? (
+                        <p>Välj minst en smakegenskap.</p>
+                      ) : (
+                        <ul className="meal-results">
+                          {ranked.slice(0, 8).map(({ wine: w, assessment }) => (
+                            <li key={w.id}>
+                              <div className="meal-result-head">
+                                {w.image_url ? (
+                                  <WineImage src={w.image_url} alt="" className="meal-wine-photo" />
+                                ) : (
+                                  <Wine size={28} />
+                                )}
+                                <div>
+                                  <h2>
+                                    {w.wine_name ?? "Namnlöst vin"} {w.vintage ?? ""}
+                                  </h2>
+                                  <p>{[w.region, w.country].filter(Boolean).join(", ")}</p>
+                                  <p>{w.quantity} flaskor i din källare</p>
+                                </div>
+                              </div>
+                              <PairingNotes assessment={assessment} />
+                              <Link
+                                to="/wine/$id"
+                                params={{ id: w.id }}
+                                className="k-text"
+                                hash={
+                                  pilotUiEnabled && recipe.version
+                                    ? pairingWineJourneyHash(recipe.version, journey)
+                                    : undefined
+                                }
+                              >
+                                Visa vinet
+                                <ArrowRight size={17} />
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {!ranked.length && (
+                        <p>
+                          Inga tillgängliga flaskor i din vinkällare. Inga köpförslag har hittats
+                          på.
+                        </p>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -389,7 +397,15 @@ function PairingsForOwner({
                       </ul>
                     </>
                   ) : (
-                    <p role="status">{t(wineId ? "journey.wineUnavailable" : "journey.noWines")}</p>
+                    <p role="status">
+                      {t(
+                        wineId
+                          ? "journey.wineUnavailable"
+                          : available.length
+                            ? "journey.chooseWine"
+                            : "journey.noWines",
+                      )}
+                    </p>
                   )}
                 </>
               )}

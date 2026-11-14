@@ -137,6 +137,7 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
   const delays = new Map();
   const readArrivals = new Map();
   let pairingDiners = null;
+  let pairingWineMode = "original";
   const json = (route, data, status = 200) =>
     route.fulfill({
       status,
@@ -171,6 +172,13 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
     childName,
     wineName,
     failedTables,
+    changePairingWines(mode) {
+      assert.ok(["original", "consumed-and-alternate", "empty"].includes(mode));
+      pairingWineMode = mode;
+    },
+    wineId: wine.id,
+    recipeId: version.id,
+    sessionId: active.id,
     changePairingDiners(mode) {
       assert.ok(["original", "remove-adult", "adult-becomes-child"].includes(mode));
       pairingDiners =
@@ -468,7 +476,16 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
       if (failedTables.has(table)) return json(route, { message: "synthetic_read_failure" }, 503);
       let rows = [];
       if (user.id === owner) {
-        if (table === "wines") rows = [wine];
+        if (table === "wines")
+          rows =
+            pairingWineMode === "empty"
+              ? []
+              : pairingWineMode === "original"
+                ? [wine]
+                : [
+                    { ...wine, quantity: 0, consumed_at: stamp },
+                    { ...wine, id: id(15), wine_name: "Synthetic alternate bottle" },
+                  ];
         if (table === "kitchen_recipes")
           rows = [{ id: version.recipe_id, current_version_id: version.id, revision: 1 }];
         if (table === "kitchen_recipe_versions") rows = [version];
@@ -627,6 +644,7 @@ export async function acceptCoreKitchen({
         { key: authKey, session: peerSession },
       ),
   });
+  await acceptPairingChoices({ page, base, artifacts, report, fixture });
   await acceptMealWrites({
     page,
     base,
@@ -668,6 +686,91 @@ export async function acceptCoreKitchen({
   assert.equal(report.simulatedWrites, fixture.counts().writeCount);
   assert.equal(report.simulatedAiRequests, 0);
   await context.clearCookies();
+}
+
+async function acceptPairingChoices({ page, base, artifacts, report, fixture }) {
+  const optIn = page.getByRole("checkbox", {
+    name: "Visa vinförslag till vuxna från min vinkällare",
+    exact: true,
+  });
+  const fromWine = page.getByRole("radio", { name: "Från vinet", exact: true });
+  const wine = page.getByRole("combobox", { name: "Vin från din källare", exact: true });
+  const refresh = page.getByRole("button", { name: "Hämta mat- och vinuppgifter", exact: true });
+  report.phase = "pairing-explicit-wine-choice";
+  await optIn.check();
+  await fromWine.check();
+  assert.equal(await wine.inputValue(), "");
+  assert.equal(await page.locator(".meal-results").count(), 0);
+  await wine.selectOption(fixture.wineId);
+  await page.getByRole("button", { name: "Öppna recept", exact: true }).first().waitFor();
+  report.passed.push("pairing-wine-mode-requires-explicit-bottle-choice");
+
+  report.phase = "pairing-consumed-wine-not-substituted";
+  fixture.changePairingWines("consumed-and-alternate");
+  await refresh.click();
+  await page
+    .getByText("Vinet är inte längre tillgängligt i din källare", { exact: false })
+    .waitFor();
+  assert.equal(await wine.inputValue(), "");
+  assert.equal(await page.locator(".meal-results").count(), 0);
+  await layout(page, artifacts, report, "pairing-unavailable-wine");
+  const alternate = await wine.locator("option").last().getAttribute("value");
+  assert.ok(alternate && alternate !== fixture.wineId);
+  await wine.selectOption(alternate);
+  await page.getByRole("button", { name: "Öppna recept", exact: true }).first().waitFor();
+  report.passed.push("pairing-consumed-bottle-requires-explicit-replacement");
+
+  report.phase = "pairing-empty-cellar-not-an-error";
+  fixture.changePairingWines("empty");
+  await page.goto(base + "/kitchen#pairings", { waitUntil: "domcontentloaded" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await optIn.check();
+  await fromWine.check();
+  await page.getByText("Inga tillgängliga flaskor", { exact: false }).waitFor();
+  assert.equal(await page.locator(".meal-results").count(), 0);
+  fixture.changePairingWines("original");
+  report.passed.push("pairing-empty-cellar-has-no-invented-wine-selection");
+
+  report.phase = "pairing-context-wine-selection";
+  await page.goto(base + "/kitchen#pairings?wine=" + fixture.wineId, {
+    waitUntil: "domcontentloaded",
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await optIn.check();
+  assert.equal(await fromWine.isChecked(), true);
+  assert.equal(await wine.inputValue(), fixture.wineId);
+  report.passed.push("pairing-wine-entry-retains-the-exact-requested-bottle");
+
+  report.phase = "pairing-pinned-cooking-return";
+  await page.goto(
+    base +
+      `/kitchen#pairings?recipe=${fixture.recipeId}&session=${fixture.sessionId}&servings=2&fromCook=1`,
+    { waitUntil: "domcontentloaded" },
+  );
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await optIn.check();
+  await page.getByRole("checkbox", { name: "Syrlig", exact: true }).check();
+  const wineLink = page.getByRole("link", { name: "Visa vinet", exact: true }).first();
+  await wineLink.waitFor();
+  const href = new URL(await wineLink.getAttribute("href"), base);
+  const params = new URLSearchParams(href.hash.split("?")[1]);
+  assert.equal(href.pathname, "/wine/" + fixture.wineId);
+  assert.deepEqual(Object.fromEntries(params), {
+    recipe: fixture.recipeId,
+    session: fixture.sessionId,
+    servings: "2",
+    fromCook: "1",
+    view: "cook",
+  });
+  await page.getByRole("combobox", { name: "Rätt", exact: true }).selectOption("starter-0");
+  await page.getByRole("checkbox", { name: "Syrlig", exact: true }).check();
+  assert.equal(new URL(await wineLink.getAttribute("href"), base).hash, "");
+  await page.locator(".meal-panel .pilot-journey a").click();
+  await page.getByRole("heading", { name: fixture.stepTitle, exact: true }).waitFor();
+  assert.equal(await page.getByRole("timer").textContent(), "01:00");
+  assert.equal(report.simulatedWrites, 0);
+  assert.equal(report.simulatedAiRequests, 0);
+  report.passed.push("pairing-pins-wine-return-without-moving-the-live-cooking-timer");
 }
 
 async function acceptPairingReads({ page, artifacts, report, fixture, switchAccount }) {

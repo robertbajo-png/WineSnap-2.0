@@ -1,6 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-const state = vi.hoisted(() => ({ data: null as unknown, error: "", refresh: vi.fn() }));
+const state = vi.hoisted(() => ({
+  data: null as unknown,
+  error: "",
+  refresh: vi.fn(),
+  cursor: 0,
+  forced: {} as Record<number, unknown>,
+}));
+vi.mock("react", async (original) => {
+  const actual = await original<typeof import("react")>();
+  return {
+    ...actual,
+    useState: (initial: unknown) => {
+      const index = state.cursor++;
+      return actual.useState(Object.hasOwn(state.forced, index) ? state.forced[index] : initial);
+    },
+  };
+});
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: { children: import("react").ReactNode }) => <a>{children}</a>,
+}));
 vi.mock("./useFreshData", () => ({ useFreshData: () => state }));
 vi.mock("./api", () => ({ cellarWines: vi.fn(), familyData: vi.fn() }));
 vi.mock("@/i18n", () => ({ useT: () => (key: string) => key }));
@@ -21,8 +40,45 @@ beforeEach(() => {
   state.data = null;
   state.error = "";
   state.refresh.mockReset();
+  state.cursor = 0;
+  state.forced = {};
 });
 describe("pairing owner and read boundaries", () => {
+  it("keeps a missing recipe selection actionable without silently choosing another recipe", () => {
+    state.data = { cellar: { wines: [], truncated: false }, family: { diners: [] } };
+    state.forced = { 0: "dish", 1: "missing-recipe", 5: "[]" };
+    const html = render();
+    expect(html).toContain('aria-label="Rätt"');
+    expect(html).toContain("Det valda receptet är inte längre tillgängligt");
+    expect(html).not.toContain("Antagen smakprofil");
+  });
+  it("requires a wine choice instead of implicitly using the first available bottle", () => {
+    state.data = {
+      cellar: {
+        wines: [{ id: "synthetic-wine", user_id: owner, quantity: 1, consumed_at: null }],
+        truncated: false,
+      },
+      family: { diners: [] },
+    };
+    state.forced = { 0: "wine", 5: "[]" };
+    const html = render();
+    expect(html).toContain("journey.chooseWine");
+    expect(html).not.toContain('class="meal-results"');
+    expect(html).toContain('value="" disabled="" selected=""');
+  });
+  it("does not substitute another bottle for a missing explicit wine", () => {
+    state.data = {
+      cellar: {
+        wines: [{ id: "other-wine", user_id: owner, quantity: 1, consumed_at: null }],
+        truncated: false,
+      },
+      family: { diners: [] },
+    };
+    state.forced = { 0: "wine", 2: "missing-wine", 5: "[]" };
+    const html = render();
+    expect(html).toContain("journey.wineUnavailable");
+    expect(html).not.toContain('class="meal-results"');
+  });
   it("owns its account key and refuses an initial recipe belonging to another owner", () => {
     const first = PairingPanel({ owner, versions: [], initial: version, onOpen: vi.fn() });
     const second = PairingPanel({
