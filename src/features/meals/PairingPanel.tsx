@@ -219,7 +219,7 @@ function PairingsForOwner({
             Visa vinförslag till vuxna från min vinkällare
           </label>
           {onlyChildren && <p>Endast barnprofiler är valda. Vinförslag är avstängda.</p>}
-          {!adults || onlyChildren ? (
+          {missing ? null : !adults || onlyChildren ? (
             <section className="meal-band">
               <h2>Mat till sällskapet</h2>
               <RecipeList choices={choices} diners={diners} onOpen={onOpen} />

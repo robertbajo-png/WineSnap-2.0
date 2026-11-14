@@ -252,7 +252,7 @@ export function pairingAudience(available: Diner[] | null, people: string[]) {
   return {
     diners,
     missing,
-    onlyChildren: diners.length > 0 && diners.every((d) => d.document.kind === "child"),
+    onlyChildren: !missing && diners.length > 0 && diners.every((d) => d.document.kind === "child"),
     consentKey:
       available === null || missing
         ? null

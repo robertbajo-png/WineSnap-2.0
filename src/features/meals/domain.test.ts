@@ -53,7 +53,7 @@ describe("pairing audience consent scope", () => {
     const result = pairingAudience([child], [adult.id, child.id]);
     expect(result.missing).toBe(true);
     expect(result.consentKey).toBeNull();
-    expect(result.onlyChildren).toBe(true);
+    expect(result.onlyChildren).toBe(false);
   });
   it("uses selected profiles only, without assuming every available adult is dining", () => {
     const result = pairingAudience([adult, child], [child.id]);

@@ -701,6 +701,10 @@ async function acceptPairingReads({ page, artifacts, report, fixture, switchAcco
   assert.equal(await optIn.isDisabled(), true);
   assert.equal(await optIn.isChecked(), false);
   assert.equal(await page.locator(".meal-mode").count(), 0);
+  assert.equal(
+    await page.getByRole("heading", { name: "Mat till sällskapet", exact: true }).count(),
+    0,
+  );
   await layout(page, artifacts, report, "pairing-unavailable-diner");
   await page.getByRole("button", { name: "Rensa profilval", exact: true }).focus();
   await page.keyboard.press("Enter");
