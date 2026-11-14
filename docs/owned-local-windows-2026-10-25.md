@@ -75,9 +75,13 @@ need explicit acceptance, not a blind tag refresh. The installer does not expose
 a general-purpose SQL, Docker, URL or credential argument.
 
 `install-owned-windows-startup.ps1` now installs the current user's limited,
-interactive `WineSnap Owned Local` scheduled task. At Windows sign-in it starts
-Docker if needed, resumes the existing stack, restores RAM credentials and runs
-the hidden watcher. A two-minute trigger retries after supervisor termination;
+interactive `WineSnap Owned Local` scheduled task. The independent Startup
+shortcut starts Docker if needed; the task resumes the existing stack, restores
+RAM credentials and runs the hidden watcher. Both entry points use
+`start-owned-windows-hidden.vbs` through `wscript.exe //B //NoLogo`, hiding the
+PowerShell process at creation rather than after its console has opened. The
+launcher accepts only the fixed session/Docker modes, waits for the child and
+retains its exit code for Task Scheduler recovery. A two-minute trigger retries after supervisor termination;
 exclusive physical file locks allow only one active supervisor. No administrator login or stored Windows
 password is used. Only the exact old WineSnap shortcut is retired after task
 verification. See the 2026-10-27 addendum for state migration and recovery checks.

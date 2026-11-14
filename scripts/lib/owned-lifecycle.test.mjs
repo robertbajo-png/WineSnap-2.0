@@ -65,6 +65,9 @@ describe("owned Windows lifecycle", () => {
     expect(startup).toContain("-ExecutionTimeLimit ([TimeSpan]::Zero)");
     expect(startup).toContain("-RestartCount 3");
     expect(startup).toContain("-RepetitionInterval ([TimeSpan]::FromMinutes(2))");
+    expect(startup).toContain("New-ScheduledTaskAction -Execute $scriptHost");
+    expect(startup).toContain('"//B //NoLogo');
+    expect(startup).toContain("$dockerShortcut.TargetPath=$scriptHost");
     expect(startup).toContain("Security.Principal.NTAccount");
     expect(startup).toContain("Unrelated scheduled task refused.");
     expect(startup).not.toMatch(/RunAs|ExecutionPolicy|Highest|-Password\b/);
@@ -78,6 +81,20 @@ describe("owned Windows lifecycle", () => {
     );
     expect(dockerStartup).toContain("-WindowStyle Hidden");
     expect(startup).toContain("WineSnap Docker Engine.lnk");
+  });
+  it("hides startup before PowerShell runs and retains child failure reporting", () => {
+    const launcher = readFileSync(
+      new URL("../start-owned-windows-hidden.vbs", import.meta.url),
+      "utf8",
+    );
+    expect(launcher).toContain("WScript.Arguments.Count <> 2");
+    expect(launcher).toContain('files.GetFileName(runtime)) <> "pwsh.exe"');
+    expect(launcher).toContain('Case "session"');
+    expect(launcher).toContain('Case "docker"');
+    expect(launcher).toMatch(/Case Else\r?\n\s+WScript\.Quit 2/);
+    expect(launcher).toContain("Chr(34) & entry & Chr(34), 0, True)");
+    expect(launcher).toContain("WScript.Quit result");
+    expect(launcher).not.toMatch(/ExecutionPolicy|RunAs|cmd\.exe|powershell\.exe/i);
   });
   it("keeps reports bounded, private and atomic and recognizes operation locks", () => {
     const runtime = readFileSync(new URL("./owned-windows-runtime.ps1", import.meta.url), "utf8");
