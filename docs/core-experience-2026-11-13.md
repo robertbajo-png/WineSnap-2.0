@@ -680,6 +680,44 @@ This slice is NOT installed over the open owner viewer. The previous accepted
 isolated restore, owned Update/fixture acceptance and owner Open/focus/heartbeat
 must pass later. No schema, role, password, internet or old production change.
 
+## Conflict Read Recovery And Household Name Drafts
+
+The shared mutation lifecycle now offers an explicit read-only action after a
+definitive conflict/rejection and after a confirmed save whose list reload fails.
+It never replays an old write. Repeated read failures retain the action and any
+known saved result. Recovery reads have a 15-second bound, synchronous duplicate
+protection and the existing current-owner/unmount cancellation guards. An unknown
+write still uses its separate inspect-before-retry flow, not this read action.
+
+The household rename draft captures its original revision on first edit instead
+of pairing old typed text with a newer revision from background reads. The draft
+lives in the owner-keyed family panel, so a failed read hides the shared records
+without deleting the local draft. Save is disabled after a revision change until
+the owner explicitly cancels and starts from current data. Edit, save and cancel
+are disabled while a mutation is pending. Nothing merges or saves automatically.
+
+Full Quality/Database Safety passed for `2e21e97` (push/PR): 160 files / 1,619
+tests and one existing skip. Typecheck, lint, synthetic build/runtime and client
+budget passed; the four pre-existing Chef lint warnings remain. The final
+seven-file / 65-test local focused run passed, including both final rename
+render cases.
+
+The fresh isolated kitchen browser run passed all 56 cases at 320/390/1440px and
+125% text. Seven armed RPCs/six commits and 213 reads were simulated. The new
+cases cover a delayed rename, disabled edit/save/cancel, a failed read retaining
+the typed draft, background revision change blocking stale save, explicit cancel
+and meal-conflict read failure/keyboard recovery without another write or lost
+draft. The prior 43 cases remain included. AI, forbidden requests/writes and page/
+fixture errors were zero; process cleanup passed. Rename-conflict 320px, recovered
+meal 390px and pending rename 1440px screenshots were inspected. The synthetic
+build retains the previous artifact inside the verified local, non-OneDrive
+project. It creates no actual privacy/provider attestation.
+
+The installed frontend remains `05172af`. Do not close the verified real owner
+viewer or rebuild it to activate this source-only follow-up. No backend/schema,
+account, provider, password, internet, old production or hosted-test change is
+part of this slice. Installation and actual owner use remain separate gates.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -688,7 +726,7 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
   all sixteen wine-browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
-- Wider kitchen source checks and CI passed; retain all 43 cases alongside the
+- Wider kitchen source checks and CI passed; retain all 56 cases alongside the
   16 wine cases. Failed startup/layout/navigation runs remain failures, not partial
   acceptance. Installed journeys and broader actual-owner use remain separate.
 - The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
@@ -702,11 +740,14 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Price-refresh scope/deadline/read recovery passes 83 focused tests and 15
   isolated browser cases, full CI and the narrower installed acceptance above.
   Do not rebuild under an open real viewer. Shared family/meal reads now pass
-  16 focused tests and full CI; the mutation follow-up above expands kitchen
-  browser coverage to 43 cases. Safe installation remains separate. Preserve verified retail prices separately
+  16 focused tests and full CI; mutation/conflict-read/rename follow-ups above
+  expand kitchen browser coverage to 56 cases. Safe installation remains separate. Preserve verified retail prices separately
   from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
+- Next source review: PairingPanel account/selection read boundaries, changed
+  diner availability and child-only adult-wine opt-in. Its current ranking is
+  deterministic; do not invent an AI workload or start later DEV stages here.
 - Earlier accumulated source changes are installed and the narrower 69-case owned
   regression passed; this latest mutation slice is source-only. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.

@@ -102,9 +102,21 @@ and process cleanup passed. Full Quality/Database Safety passed for `d7b9d9a`
 cache/selector and launch-timeout failures remain failed evidence. Local typecheck
 was interrupted under load, not counted as passing; CI typecheck passed separately.
 No schema/RPC/RLS change is needed. Preserve the owner viewer until safe closure
-and the normal Check/backup/restore/Update/installed-acceptance gates. Next source
-review: definitive-conflict read-recovery affordances and pending rename-form
-editing; do not start later roadmap stages or substitute mocks for installation.
+and the normal Check/backup/restore/Update/installed-acceptance gates.
+The next conflict-read/rename follow-up is also source-verified (`2e21e97`):
+explicit bounded read-only recovery, preserved committed-result notices and
+owner-held rename drafts pinned to the original revision. Pending rename controls
+are disabled; failed shared reads hide records without deleting typed drafts.
+Seven focused files / 65 tests and all 56 isolated kitchen checks passed at
+320/390/1440px and 125% text, with seven
+simulated RPCs/six commits, 213 mocked reads, zero real backend/AI/forbidden calls
+or page/fixture errors, and confirmed process cleanup. Full Quality/Database
+Safety passed on push/PR: 160 files, 1,619 tests and one existing skip. No frontend
+update, backend/schema, real account, password or internet change was made.
+Keep the real owner viewer open. Next source review: PairingPanel selection/read
+state across account changes, changed diner availability and child-only wine
+opt-in. Pairing ranking here is deterministic, not a new AI workload. Retain all
+56 kitchen cases and the separate installation gates; do not start DEV-04 yet.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
