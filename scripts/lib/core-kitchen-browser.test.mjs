@@ -38,6 +38,43 @@ beforeEach(() => {
   });
 });
 describe("isolated kitchen fixture boundary", () => {
+  it("keeps injected meal read errors inside the enabled synthetic scenario", async () => {
+    fixture.beginMealChecks();
+    fixture.failedTables.add("meal_wine_links");
+    const request = route("/rest/v1/meal_wine_links");
+    await fixture.route(request);
+    expect(request.fulfill.mock.calls[0][0].status).toBe(400);
+    expect(request.continue).not.toHaveBeenCalled();
+    expect(fixture.counts().writeCount).toBe(0);
+  });
+  it("rejects an arbitrary rename even when the exact synthetic rename is armed", async () => {
+    fixture.beginMealChecks();
+    fixture.armMealScenario("household-lost");
+    const id = "11111111-2222-4333-8444-555555555555";
+    await fixture.route(
+      route("/rest/v1/rpc/kitchen_family_change", {
+        method: "POST",
+        body: {
+          _action: "create_household",
+          _id: id,
+          _revision: 0,
+          _data: {
+            name: "Synthetic household",
+            displayName: "Synthetic owner",
+            adultConfirmed: true,
+          },
+        },
+      }),
+    );
+    fixture.armMealScenario("rename-late");
+    const request = route("/rest/v1/rpc/kitchen_family_change", {
+      method: "POST",
+      body: { _action: "rename_household", _id: id, _revision: 1, _data: { name: "unapproved" } },
+    });
+    await expect(fixture.route(request)).rejects.toThrow();
+    expect(request.continue).not.toHaveBeenCalled();
+    expect(fixture.counts().commits).toBe(1);
+  });
   it("provides a completed recipe session for the actual history query", async () => {
     fixture.beginMealChecks();
     const request = route("/rest/v1/cooking_sessions?state-%3E%3Estatus=in.(completed,abandoned)");

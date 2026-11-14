@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MealMutationError, type MealAttempt } from "./mutations";
 
 type Pending = { attempt: MealAttempt; saved: (value: unknown) => void; message: string };
+type Recovery = { kind: "conflict" } | { kind: "read"; savedMessage?: string };
 export function useMealMutation(owner: string, refresh: () => Promise<boolean>) {
   const alive = useRef(false),
     ownerRef = useRef(owner),
@@ -9,12 +10,14 @@ export function useMealMutation(owner: string, refresh: () => Promise<boolean>) 
   ownerRef.current = owner;
   const request = useRef<AbortController | null>(null),
     pending = useRef<Pending | null>(null),
-    retryReady = useRef(false);
+    retryReady = useRef(false),
+    recovery = useRef<Recovery | null>(null);
   const [busy, setBusy] = useState(false),
     [waiting, setWaiting] = useState(false),
     [canRetry, setCanRetry] = useState(false),
     [notice, setNotice] = useState(""),
-    [kind, setKind] = useState<"error" | "pending" | "success">("success");
+    [kind, setKind] = useState<"error" | "pending" | "success">("success"),
+    [canReload, setCanReload] = useState(false);
   const current = () => alive.current && ownerRef.current === owner;
   useEffect(() => {
     alive.current = true;
@@ -24,9 +27,66 @@ export function useMealMutation(owner: string, refresh: () => Promise<boolean>) 
       alive.current = false;
       request.current?.abort();
       pending.current = null;
+      recovery.current = null;
       window.removeEventListener("offline", offline);
     };
   }, []);
+  function offerRecovery(value: Recovery | null) {
+    recovery.current = value;
+    setCanReload(value !== null);
+  }
+  async function refreshSafely(signal: AbortSignal) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let abort: (() => void) | undefined;
+    try {
+      return await Promise.race([
+        Promise.resolve().then(() => (signal.aborted ? false : refresh())),
+        new Promise<boolean>((resolve) => {
+          timer = setTimeout(() => resolve(false), 15000);
+          abort = () => resolve(false);
+          signal.addEventListener("abort", abort, { once: true });
+          if (signal.aborted) abort();
+        }),
+      ]);
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+      if (abort) signal.removeEventListener("abort", abort);
+    }
+  }
+  async function reload() {
+    const previous = recovery.current;
+    if (!previous || pending.current || locked.current || !current()) return;
+    locked.current = true;
+    setBusy(true);
+    const controller = new AbortController();
+    request.current = controller;
+    try {
+      const reloaded = await refreshSafely(controller.signal);
+      if (!current()) return;
+      if (reloaded) {
+        offerRecovery(null);
+        setKind("success");
+        setNotice(
+          previous.kind === "conflict"
+            ? "Aktuella uppgifter är inlästa. Ditt utkast finns kvar. Avbryt utkastet och öppna posten igen för att redigera den nya versionen."
+            : (previous.savedMessage ? previous.savedMessage + " " : "") +
+                "Aktuella uppgifter är inlästa.",
+        );
+      } else {
+        setKind("error");
+        setNotice(
+          (previous.kind === "read" && previous.savedMessage ? previous.savedMessage + " " : "") +
+            "Uppgifterna kunde inte läsas om. Kontrollera anslutning och behörighet och försök hämta igen.",
+        );
+      }
+    } finally {
+      if (request.current === controller) request.current = null;
+      locked.current = false;
+      if (current()) setBusy(false);
+    }
+  }
   async function execute(readOnly = false) {
     const operation = pending.current;
     if (!operation || locked.current || !current()) return;
@@ -69,8 +129,9 @@ export function useMealMutation(owner: string, refresh: () => Promise<boolean>) 
       setWaiting(false);
       setCanRetry(false);
       operation.saved(operation.attempt.value);
-      const reloaded = await refresh();
+      const reloaded = await refreshSafely(controller.signal);
       if (current()) {
+        offerRecovery(reloaded ? null : { kind: "read", savedMessage: operation.message });
         setKind(reloaded ? "success" : "error");
         setNotice(
           reloaded
@@ -92,6 +153,7 @@ export function useMealMutation(owner: string, refresh: () => Promise<boolean>) 
         pending.current = null;
         setWaiting(false);
         setCanRetry(false);
+        offerRecovery(kind === "conflict" ? { kind: "conflict" } : { kind: "read" });
         setNotice(
           kind === "rate_limited"
             ? "För många försök. Vänta fem minuter."
@@ -124,6 +186,7 @@ export function useMealMutation(owner: string, refresh: () => Promise<boolean>) 
       const attempt = build();
       if (attempt.owner !== owner) throw new MealMutationError("changed");
       pending.current = { attempt, saved: (value) => saved(value as T), message };
+      offerRecovery(null);
     } catch {
       setKind("error");
       setNotice("Kontrollera valen innan du sparar. Ditt utkast finns kvar.");
@@ -142,6 +205,8 @@ export function useMealMutation(owner: string, refresh: () => Promise<boolean>) 
     canRetry,
     notice,
     kind,
+    canReload,
+    reload,
     current,
     inspect: () => execute(true),
     retry: () => (retryReady.current ? execute() : Promise.resolve()),

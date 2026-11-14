@@ -6,6 +6,7 @@ import { dinerDocumentSchema, type Diner, type DinerDocument } from "./domain";
 import { useFreshData } from "./useFreshData";
 import { useMealMutation } from "./useMealMutation";
 import { MealMutationNotice } from "./MealMutationNotice";
+import { HouseholdNameForm, type HouseholdNameDraft } from "./HouseholdNameForm";
 import "./meals.css";
 
 export function FamilyPanel({ owner }: { owner: string }) {
@@ -16,6 +17,7 @@ function FamilyForOwner({ owner }: { owner: string }) {
   const mutation = useMealMutation(owner, refresh);
   const busy = mutation.locked;
   const [notice, setNotice] = useState("");
+  const [nameDraft, setNameDraft] = useState<HouseholdNameDraft | null>(null);
   const [group, setGroup] = useState(""),
     [name, setName] = useState(""),
     [display, setDisplay] = useState(""),
@@ -388,6 +390,7 @@ function FamilyForOwner({ owner }: { owner: string }) {
                   value={selected?.id ?? ""}
                   onChange={(e) => {
                     setGroup(e.target.value);
+                    setNameDraft(null);
                     setCode("");
                     setConfirm("");
                   }}
@@ -404,32 +407,22 @@ function FamilyForOwner({ owner }: { owner: string }) {
               <>
                 <p>{mine ? "Du äger hushållet." : "Du är inbjuden medlem."}</p>
                 {mine && (
-                  <form
+                  <HouseholdNameForm
                     key={selected.id}
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const name = String(new FormData(e.currentTarget).get("groupName") ?? "");
-                      void run(() =>
-                        familyChange(owner, "rename_household", selected.id, selected.revision, {
-                          name,
-                        }),
-                      );
-                    }}
-                  >
-                    <label>
-                      Hushållets namn
-                      <input
-                        name="groupName"
-                        maxLength={80}
-                        required
-                        defaultValue={selected.name}
-                      />
-                    </label>
-                    <button className="k-text" disabled={busy}>
-                      <Check size={18} />
-                      Spara hushållets namn
-                    </button>
-                  </form>
+                    household={selected}
+                    busy={busy}
+                    draft={nameDraft?.householdId === selected.id ? nameDraft : null}
+                    onDraft={setNameDraft}
+                    onSave={(draft, saved) =>
+                      run(
+                        () =>
+                          familyChange(owner, "rename_household", selected.id, draft.revision, {
+                            name: draft.name,
+                          }),
+                        saved,
+                      )
+                    }
+                  />
                 )}
                 {mine && (
                   <ul className="meal-members">

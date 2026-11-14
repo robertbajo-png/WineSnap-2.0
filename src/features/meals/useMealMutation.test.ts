@@ -45,6 +45,100 @@ function attempt(execute = vi.fn().mockResolvedValue(true)): MealAttempt<string>
   return { owner, started: true, value: "synthetic result", execute };
 }
 describe("meal mutation UI lifetime", () => {
+  it("does not read or write through recovery until an explicit recoverable result exists", async () => {
+    const { value, refresh } = mount();
+    await value.reload();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("recovers a conflict by reading once, without saving or replacing the draft", async () => {
+    const { value, refresh } = mount();
+    const execute = vi.fn().mockRejectedValue(new MealMutationError("conflict"));
+    const saved = vi.fn();
+    value.run(() => attempt(execute), saved);
+    await settle();
+    expect(harness.setters[5]).toHaveBeenLastCalledWith(true);
+    const first = value.reload();
+    const duplicate = value.reload();
+    const build = vi.fn(() => attempt());
+    value.run(build);
+    await first;
+    await duplicate;
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledOnce();
+    expect(saved).not.toHaveBeenCalled();
+    expect(build).not.toHaveBeenCalled();
+    expect(harness.setters[3]).toHaveBeenLastCalledWith(
+      expect.stringContaining("Ditt utkast finns kvar"),
+    );
+    expect(harness.setters[5]).toHaveBeenLastCalledWith(false);
+  });
+  it("never reclassifies a committed write when a reload rejects or fails repeatedly", async () => {
+    const refresh = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("synthetic_read_failure"))
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const { value } = mount(refresh);
+    const execute = vi.fn().mockResolvedValue(true);
+    const saved = vi.fn();
+    value.run(() => attempt(execute), saved, "Måltiden sparades.");
+    await settle();
+    expect(harness.setters[3]).toHaveBeenLastCalledWith(
+      expect.stringContaining("Måltiden sparades. Listan"),
+    );
+    await value.reload();
+    expect(harness.setters[3]).toHaveBeenLastCalledWith(
+      expect.stringContaining("Måltiden sparades. Uppgifterna"),
+    );
+    expect(harness.setters[5]).toHaveBeenLastCalledWith(true);
+    await value.reload();
+    expect(harness.setters[5]).toHaveBeenLastCalledWith(false);
+    expect(execute).toHaveBeenCalledOnce();
+    expect(saved).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("bounds a stalled recovery read without enabling another write", async () => {
+    const refresh = vi.fn(() => new Promise<boolean>(() => {}));
+    const { value } = mount(refresh);
+    const execute = vi.fn().mockRejectedValue(new MealMutationError("conflict"));
+    value.run(() => attempt(execute));
+    await settle();
+    const reading = value.reload();
+    await settle();
+    await vi.advanceTimersByTimeAsync(15000);
+    await reading;
+    expect(harness.setters[0]).toHaveBeenLastCalledWith(false);
+    expect(harness.setters[5]).toHaveBeenLastCalledWith(true);
+    expect(harness.setters[3]).toHaveBeenLastCalledWith(
+      expect.stringContaining("kunde inte läsas om"),
+    );
+    await value.retry();
+    expect(execute).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("ignores a late recovery after unmount and removes its timers", async () => {
+    let resolve!: (v: boolean) => void;
+    const { value } = mount(
+      vi.fn(
+        () =>
+          new Promise<boolean>((r) => {
+            resolve = r;
+          }),
+      ),
+    );
+    value.run(() => attempt(vi.fn().mockRejectedValue(new MealMutationError("conflict"))));
+    await settle();
+    const reading = value.reload();
+    await settle();
+    cleanup?.();
+    cleanup = undefined;
+    harness.setters.forEach((set) => set.mockClear());
+    await reading;
+    resolve(true);
+    await settle();
+    expect(harness.setters.every((set) => set.mock.calls.length === 0)).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it("allows only one submission before React can render disabled controls", async () => {
     const { value, refresh } = mount();
     const saved = vi.fn();

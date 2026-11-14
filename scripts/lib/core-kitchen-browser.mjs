@@ -176,6 +176,7 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
       assert.ok(
         [
           "household-lost",
+          "rename-late",
           "profile-read-error",
           "meal-lost",
           "meal-conflict",
@@ -203,6 +204,14 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
     conflictMeal() {
       assert.equal(mealRows.length, 1);
       mealRows[0] = { ...mealRows[0], revision: 2, note: "Synthetic server edit" };
+    },
+    conflictHousehold() {
+      assert.equal(householdRows.length, 1);
+      householdRows[0] = {
+        ...householdRows[0],
+        revision: 3,
+        name: "Synthetic server household",
+      };
     },
     counts() {
       return { writeCount, commits, inspectionCount };
@@ -287,6 +296,23 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
           commits++;
           return route.abort();
         }
+        if (mode === "rename-late") {
+          assert.equal(table, "rpc/kitchen_family_change");
+          assert.deepEqual(body, {
+            _action: "rename_household",
+            _id: householdRows[0]?.id,
+            _revision: 1,
+            _data: { name: "Synthetic renamed household" },
+          });
+          householdRows[0] = { ...householdRows[0], name: body._data.name, revision: 2 };
+          commits++;
+          const wait = new Promise((resolve) => {
+            heldResponse = resolve;
+          });
+          arrived();
+          await wait;
+          return json(route, null).catch(() => {});
+        }
         if (mode === "profile-read-error" || mode === "profile-late") {
           assert.equal(table, "rpc/kitchen_family_change");
           const name =
@@ -370,6 +396,7 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
           "meal_wine_links",
         ].includes(table)
       ) {
+        if (failedTables.has(table)) return json(route, { code: "synthetic_read_error" }, 400);
         const isInspection = !!url.searchParams.get("id");
         if (isInspection) {
           inspectionCount++;
@@ -637,6 +664,54 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
   assert.equal(fixture.counts().writeCount, 1);
   report.passed.push("household-lost-reply-keeps-one-id-and-keyboard-read-recovery");
 
+  report.phase = "family-rename-pending-lock";
+  const rename = page.getByRole("form", { name: "Ändra hushållets namn", exact: true });
+  const householdName = rename.getByRole("textbox");
+  await householdName.fill("Synthetic renamed household");
+  fixture.armMealScenario("rename-late");
+  const renameArrival = fixture.nextLateWrite();
+  await rename.getByRole("button", { name: "Spara hushållets namn", exact: true }).click();
+  await waitForSyntheticWrite(renameArrival);
+  assert.equal(await householdName.isDisabled(), true);
+  assert.equal(
+    await rename.getByRole("button", { name: "Spara hushållets namn", exact: true }).isDisabled(),
+    true,
+  );
+  assert.equal(
+    await rename.getByRole("button", { name: "Avbryt namnändring", exact: true }).isDisabled(),
+    true,
+  );
+  await layout(page, artifacts, report, "family-rename-pending");
+  fixture.releaseWrite();
+  await page.getByText("Sparat.", { exact: true }).waitFor();
+  assert.equal(await householdName.inputValue(), "Synthetic renamed household");
+  report.passed.push("household-rename-locks-edit-save-and-cancel-until-confirmed");
+
+  report.phase = "family-rename-background-revision";
+  await householdName.fill("Synthetic unsaved name");
+  fixture.failList(true);
+  await page.getByRole("button", { name: "Hämta familjeuppgifter", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Uppgifterna kunde inte hämtas" }).waitFor();
+  assert.equal(await rename.count(), 0);
+  fixture.failList(false);
+  await page.getByRole("button", { name: "Hämta familjeuppgifter", exact: true }).click();
+  await householdName.waitFor();
+  assert.equal(await householdName.inputValue(), "Synthetic unsaved name");
+  report.passed.push("household-name-draft-survives-failed-read-without-retaining-shared-data");
+  fixture.conflictHousehold();
+  await page.getByRole("button", { name: "Hämta familjeuppgifter", exact: true }).click();
+  await rename.getByText("Hushållet har ändrats", { exact: false }).waitFor();
+  assert.equal(await householdName.inputValue(), "Synthetic unsaved name");
+  assert.equal(
+    await rename.getByRole("button", { name: "Spara hushållets namn", exact: true }).isDisabled(),
+    true,
+  );
+  await layout(page, artifacts, report, "family-rename-revision-conflict");
+  await rename.getByRole("button", { name: "Avbryt namnändring", exact: true }).click();
+  assert.equal(await householdName.inputValue(), "Synthetic server household");
+  assert.equal(fixture.counts().writeCount, 2);
+  report.passed.push("household-name-draft-never-silently-rebases-after-background-read");
+
   await page.getByRole("button", { name: "Ny profil", exact: true }).click();
   await page.getByLabel("Namn eller smeknamn", { exact: true }).fill("Synthetic saved profile");
   fixture.armMealScenario("profile-read-error");
@@ -644,9 +719,10 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
   await page.getByText("Sparat. Listan kunde inte läsas om.", { exact: false }).waitFor();
   await layout(page, artifacts, report, "family-save-reload-error");
   fixture.failList(false);
-  await page.getByRole("button", { name: "Hämta familjeuppgifter", exact: true }).click();
+  await page.getByRole("button", { name: "Hämta aktuella uppgifter", exact: true }).focus();
+  await page.keyboard.press("Enter");
   await page.getByText("Synthetic saved profile", { exact: true }).waitFor();
-  assert.equal(fixture.counts().writeCount, 2);
+  assert.equal(fixture.counts().writeCount, 3);
   report.passed.push("family-committed-save-is-not-a-failed-write-after-reload-error");
 
   const views = page.getByRole("combobox", { name: "Fler vyer i köket", exact: true });
@@ -670,9 +746,26 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
   await page.getByText("Uppgifterna har ändrats.", { exact: false }).waitFor();
   assert.equal(await note.inputValue(), "Synthetic draft edit");
   await layout(page, artifacts, report, "meal-save-conflict");
-  assert.equal(fixture.counts().writeCount, 4);
-  assert.equal(fixture.counts().commits, 3);
+  assert.equal(fixture.counts().writeCount, 5);
+  assert.equal(fixture.counts().commits, 4);
   report.passed.push("meal-lost-insert-reconciles-once-and-newer-revision-keeps-draft");
+
+  report.phase = "meal-conflict-read-failure-recovery";
+  fixture.failedTables.add("meal_wine_links");
+  await page.getByRole("button", { name: "Hämta aktuella uppgifter", exact: true }).click();
+  await page.getByText("Uppgifterna kunde inte läsas om.", { exact: false }).waitFor();
+  assert.equal(await note.count(), 0);
+  fixture.failedTables.delete("meal_wine_links");
+  await page.getByRole("button", { name: "Hämta aktuella uppgifter", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await page
+    .getByText("Aktuella uppgifter är inlästa. Ditt utkast finns kvar.", { exact: false })
+    .waitFor();
+  await page.getByText("Synthetic server edit", { exact: true }).waitFor();
+  assert.equal(await note.inputValue(), "Synthetic draft edit");
+  assert.equal(fixture.counts().writeCount, 5);
+  await layout(page, artifacts, report, "meal-conflict-reloaded");
+  report.passed.push("meal-conflict-explicit-read-retries-without-writing-or-replacing-draft");
 
   for (const accountChange of [false, true]) {
     report.phase = accountChange ? "late-family-account-change" : "late-family-view-change";
@@ -682,17 +775,7 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
     fixture.armMealScenario("profile-late");
     const arrival = fixture.nextLateWrite();
     await page.getByRole("button", { name: "Spara profil", exact: true }).click();
-    let arrivalTimer;
-    try {
-      await Promise.race([
-        arrival,
-        new Promise((_, reject) => {
-          arrivalTimer = setTimeout(() => reject(Error("Synthetic write did not arrive")), 30000);
-        }),
-      ]);
-    } finally {
-      clearTimeout(arrivalTimer);
-    }
+    await waitForSyntheticWrite(arrival);
     const before = fixture.counts().inspectionCount;
     if (accountChange) {
       await switchAccount();
@@ -713,6 +796,20 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
         : "late-family-write-cannot-change-another-view",
     );
   }
-  assert.equal(fixture.counts().writeCount, 6);
-  assert.equal(fixture.counts().commits, 5);
+  assert.equal(fixture.counts().writeCount, 7);
+  assert.equal(fixture.counts().commits, 6);
+}
+
+async function waitForSyntheticWrite(arrival) {
+  let timer;
+  try {
+    await Promise.race([
+      arrival,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Error("Synthetic write did not arrive")), 30000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }

@@ -5,7 +5,22 @@ import type { useMealMutation } from "./useMealMutation";
 export function MealMutationNotice({ mutation }: { mutation: ReturnType<typeof useMealMutation> }) {
   return (
     <>
-      {mutation.notice && <OperationNotice kind={mutation.kind}>{mutation.notice}</OperationNotice>}
+      {mutation.notice && (
+        <OperationNotice
+          kind={mutation.kind}
+          action={
+            mutation.canReload
+              ? {
+                  label: "Hämta aktuella uppgifter",
+                  disabled: mutation.busy,
+                  onClick: () => void mutation.reload(),
+                }
+              : undefined
+          }
+        >
+          {mutation.notice}
+        </OperationNotice>
+      )}
       {mutation.waiting && (
         <div className="k-actions">
           <button
