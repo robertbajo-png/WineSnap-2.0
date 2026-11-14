@@ -718,6 +718,57 @@ viewer or rebuild it to activate this source-only follow-up. No backend/schema,
 account, provider, password, internet, old production or hosted-test change is
 part of this slice. Installation and actual owner use remain separate gates.
 
+## Pairing Audience And Adult-Wine Opt-In
+
+Review found that the adult-wine checkbox retained a hidden true value while
+only children were selected. Removing the child selection silently re-enabled
+wine suggestions. A fresh isolated run against the previous accepted artifact
+reproduced this exact assertion failure, with zero fixture/page errors, AI or
+writes and confirmed process cleanup. Its safe status/failure screenshot is
+retained under `dist/core-kitchen-pairing-red-8ef3cc9`; it is not a passing run.
+
+The pairing panel now owns its account key and rejects another owner's initial
+recipe. Adult-wine opt-in is scoped to selected diner IDs, revisions and kinds,
+not a hidden boolean. Selection changes, changed selected revisions, unavailable
+reads and account changes invalidate it. Restoring old read data does not restore
+an old opt-in. The existing shared-profile RLS rules remain: authorized shared
+diners are not wrongly filtered to only the owner's private profiles.
+
+An unavailable selected diner is explicit rather than silently omitted. Wine
+opt-in is disabled, partial-context food/wine results are withheld, and a keyboard-
+accessible reset action lets the owner choose the audience again. An incomplete
+audience is not described as definitely child-only. No preference, rank, quota,
+provider, RPC, RLS or database schema is changed. Ranking remains deterministic.
+
+Full Quality/Database Safety passed for `498f909` and the first source commit
+`8ef3cc9` (push/PR): 161 files / 1,635 tests and one existing skip, including
+46 tests in the three affected focused files. Typecheck, lint, synthetic build/
+runtime and client budget passed; four pre-existing Chef lint warnings remain.
+The extra local focused attempt was interrupted before results and is not
+accepted as a pass. Read-only host/process diagnostics were also interrupted
+without result; they do not establish the cause of slow local startup.
+
+The first artifact-build attempt was canceled before the final refinement and
+is not accepted. The subsequent build compiled but its local-directory export
+failed with EOF; that incomplete output is retained, not used. Retrying the same
+cached artifact through a separate tar export passed. All 339 archive entries
+were checked for unsafe paths before extraction inside the verified local,
+non-OneDrive project. The prior accepted artifact is retained.
+
+The fresh corrected artifact passed all 64 isolated kitchen browser cases at
+320/390/1440px and 125% text, retaining all prior 56 cases. The added checks cover
+selection/child transitions, missing selected profile plus keyboard reset,
+adult-to-child revision change and restoration, failed read/recovery without old
+wine consent, and a delayed owner read across account change. Seven RPCs/six
+commits and 304 reads were simulated. AI, forbidden requests/writes and page/
+fixture errors were zero, with confirmed process cleanup. Missing-profile 320px
+and 1440px screenshots were inspected. No real account or provider was used.
+
+The real owner viewer is preserved on installed `05172af`, with internet paused.
+No real account/data, old production, hosted test, password, tunnel or OS/Docker
+settings are changed. Synthetic source verification is not installed or human
+acceptance. The existing safe-closure/update gates still apply.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -726,7 +777,7 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
   all sixteen wine-browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
-- Wider kitchen source checks and CI passed; retain all 56 cases alongside the
+- Wider kitchen source checks and CI passed; retain all 64 cases alongside the
   16 wine cases. Failed startup/layout/navigation runs remain failures, not partial
   acceptance. Installed journeys and broader actual-owner use remain separate.
 - The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
@@ -741,13 +792,14 @@ These are substeps of the canonical roadmap, not a competing development plan:
   isolated browser cases, full CI and the narrower installed acceptance above.
   Do not rebuild under an open real viewer. Shared family/meal reads now pass
   16 focused tests and full CI; mutation/conflict-read/rename follow-ups above
-  expand kitchen browser coverage to 56 cases. Safe installation remains separate. Preserve verified retail prices separately
+  expand kitchen browser coverage to 56 cases, with the pairing follow-up now
+  extending it to 64. Safe installation remains separate. Preserve verified retail prices separately
   from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- Next source review: PairingPanel account/selection read boundaries, changed
-  diner availability and child-only adult-wine opt-in. Its current ranking is
-  deterministic; do not invent an AI workload or start later DEV stages here.
+- Next source review: unavailable selected recipe/wine choices and return paths
+  in PairingPanel. Audience/read/account boundaries above are source-verified;
+  ranking remains deterministic. Do not start later DEV stages here.
 - Earlier accumulated source changes are installed and the narrower 69-case owned
   regression passed; this latest mutation slice is source-only. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.

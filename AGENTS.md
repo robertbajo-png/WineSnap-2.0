@@ -113,10 +113,22 @@ simulated RPCs/six commits, 213 mocked reads, zero real backend/AI/forbidden cal
 or page/fixture errors, and confirmed process cleanup. Full Quality/Database
 Safety passed on push/PR: 160 files, 1,619 tests and one existing skip. No frontend
 update, backend/schema, real account, password or internet change was made.
-Keep the real owner viewer open. Next source review: PairingPanel selection/read
-state across account changes, changed diner availability and child-only wine
-opt-in. Pairing ranking here is deterministic, not a new AI workload. Retain all
-56 kitchen cases and the separate installation gates; do not start DEV-04 yet.
+Keep the real owner viewer open. The pairing audience follow-up is now also
+source-verified (`498f909`): owner-keyed state, revision/kind-scoped adult-wine
+opt-in, no silent re-enabling after child selection/read errors, and explicit
+missing-profile reset while incomplete-context results are withheld. Authorized
+shared profiles and deterministic ranking remain. All 64 isolated kitchen cases
+passed at 320/390/1440px and 125% text: 304 mocked reads, seven simulated RPCs/six
+commits, no real backend/AI/forbidden requests or page/fixture errors, cleanup
+confirmed. Full Quality/Database Safety passed on push/PR: 161 files / 1,635
+tests and one existing skip, including 46 tests in the three affected files.
+The extra local focused run was interrupted, not passed. A directory export
+failed with EOF after compilation; the cached tar export/extraction succeeded.
+The earlier browser run reproduced the old checkbox bug and remains failed
+evidence. No real viewer, schema, account, provider, password or internet change.
+Next source review: unavailable selected recipe/wine choices and their return
+paths in the pairing view. Preserve all 64 cases, the open owner viewer and the
+separate installed-acceptance gates; do not start DEV-04 yet.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
