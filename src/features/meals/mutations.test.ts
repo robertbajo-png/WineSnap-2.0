@@ -13,9 +13,13 @@ import type { MealsScope } from "./api";
 const owner = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
   id = "11111111-2222-4333-8444-555555555555";
 const other = "99999999-8888-4777-8666-555555555555";
+type WriteRpc = (
+  name: string,
+  input: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { code: string } | null }>;
 let controller: AbortController, scope: MealsScope, rows: Record<string, unknown>;
 let readError: boolean,
-  write: ReturnType<typeof vi.fn>,
+  write: ReturnType<typeof vi.fn<WriteRpc>>,
   reads: { table: string; filters: Record<string, unknown>; signal?: AbortSignal }[];
 function query(table: string) {
   const entry = {
@@ -51,7 +55,7 @@ beforeEach(() => {
   rows = {};
   readError = false;
   reads = [];
-  write = vi.fn(async (_name: string, _input: Record<string, unknown>) => ({
+  write = vi.fn<WriteRpc>(async (_name: string, _input: Record<string, unknown>) => ({
     data: null,
     error: null,
   }));
