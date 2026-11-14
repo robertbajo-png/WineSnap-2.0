@@ -71,8 +71,8 @@ resource pressure remain historical failures, not proof that HTTP 200 is login.
 Read the canonical handoff for current supervisor evidence and the next task.
 No Windows/Docker restart, unrelated-process stop, lock deletion, password reset
 or tunnel activation is approved.
-The next DEV-03 source slice is family/meal mutation cancellation, uncertain-save
-reconciliation and truthful post-write read-failure notices. The shared read
+The DEV-03 family/meal mutation slice is now source-verified, not installed over
+the open owner viewer. The shared read
 lifecycle is installed and source-verified with 16 focused tests and 29 isolated
 kitchen cases; these are distinct from the narrower installed fixture coverage.
 The read-only `inspect-owned-operation-lock.ps1` classifies only the owned lock;
@@ -91,14 +91,20 @@ and one existing skip; the first CI test-formatting failure was corrected.
 The supervisor has verified the new batch and reported fully healthy after Open;
 its earlier busy report was not a proved proxy outage. The helper needs no
 frontend rebuild. See the canonical handoff rather than older pending status.
-DEV-03 family/meal mutation follow-up is now source-implemented, not installed:
+DEV-03 family/meal mutation follow-up is now source-verified, not installed:
 owner-keyed state, bounded cancellable writes, stable in-memory attempt IDs and
 invitation tokens, read reconciliation before explicit retry, and truthful
-post-write read-failure notices. Five focused files / 41 tests passed; newer
-retry guards, full CI and the extended isolated kitchen browser check remain.
-No schema/RPC/RLS change is needed. Keep the real owner viewer open and finish
-source verification before the separate safe installation gates. Local typecheck
-was interrupted under load and must not be called passing evidence.
+post-write read-failure notices. Five focused files / 41 tests and all 43 extended
+isolated kitchen browser checks passed, including 320/390/1440px at 125% text.
+Six RPC requests/five commits were simulated; no real backend/AI was contacted,
+and process cleanup passed. Full Quality/Database Safety passed for `d7b9d9a`
+(push/PR), 158 files / 1,606 tests and one existing skip. Earlier fixture query/
+cache/selector and launch-timeout failures remain failed evidence. Local typecheck
+was interrupted under load, not counted as passing; CI typecheck passed separately.
+No schema/RPC/RLS change is needed. Preserve the owner viewer until safe closure
+and the normal Check/backup/restore/Update/installed-acceptance gates. Next source
+review: definitive-conflict read-recovery affordances and pending rename-form
+editing; do not start later roadmap stages or substitute mocks for installation.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

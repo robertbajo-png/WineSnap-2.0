@@ -631,6 +631,55 @@ passed, 156 files / 1,574 tests and one existing skip. See the canonical plan fo
 current supervisor evidence. The accepted 69 fixture cases above were not rerun
 or relabelled as live-provider, human-use or physical-mobile acceptance.
 
+## Family And Meal Mutation Lifetimes
+
+The source now shares bounded, cancellable mutation handling across household,
+profile, invitation and meal operations. Each panel keys its local state to the
+owner; normal captured-owner JWT verification and the independent meals gate
+remain. Requests abort on offline/unmount and reject late callbacks. A synchronous
+lock prevents duplicate submissions before React renders disabled controls.
+The whole attempt is bounded to 45 seconds alongside existing 15-second auth/
+network deadlines. Reconnect never retries writes or AI automatically.
+
+An attempt retains its original owner, ID, revision and cloned payload in memory.
+Invitation ID/token/hash remain stable for that attempt and are never persisted
+or logged. A missing response triggers exact-owner read reconciliation. A failed
+read cannot authorize another RPC; explicit read recovery must precede retry of
+the same attempt. Changed revisions fail closed without overwriting newer data.
+Invitation acceptance relies only on the existing idempotent token RPC and its
+rate limit; membership alone is not proof that a code was accepted. Existing
+RLS/shared-member visibility, child boundaries and backend RPCs are unchanged.
+
+Confirmed writes close only the current form. Failed post-write reloads explicitly
+say the write was saved but the list could not be fetched; they do not turn a
+successful commit into a claimed failure or an automatic repeated insert.
+Meal registration also excludes another owner's cached recipe sessions.
+
+Five focused files / 41 tests passed locally. Full Quality/Database Safety passed
+for `d7b9d9a` (push/PR), 158 files / 1,606 tests and one existing skip, including
+additional revision/membership/revocation/deletion regressions. Local typecheck
+was interrupted under load, not counted as a pass; CI typecheck passed. The first
+CI mock-type error was corrected without changing app behavior.
+
+All 43 isolated kitchen browser cases passed at 320/390/1440px and 125% text.
+Six RPCs/five commits were simulated, including lost household/meal replies,
+failed read reconciliation, keyboard recovery, post-save read failure, a newer
+meal revision retaining the draft, and late profile responses after view/account
+changes. AI and forbidden requests/writes, page/fixture errors were zero; cleanup
+passed. Pending-family 320px, reload-error 390px and conflict 320/1440px screenshots
+were inspected. No actual account, database or provider was used.
+
+Earlier failed browser attempts exposed synthetic completed-history query/cache
+setup and a prefilled-textarea selector; another launch attempt timed out under
+host load. None is accepted as a partial pass. The initial test build's privacy-
+feature guard also correctly rejected incomplete synthetic flags. No actual
+privacy/supplier attestation was created or changed by the corrected test build.
+
+This slice is NOT installed over the open owner viewer. The previous accepted
+69-case installed checkpoint remains separate. Safe closure, fresh Check/backup/
+isolated restore, owned Update/fixture acceptance and owner Open/focus/heartbeat
+must pass later. No schema, role, password, internet or old production change.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -639,7 +688,7 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
   all sixteen wine-browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
-- Wider kitchen source checks and CI passed; retain all 29 cases alongside the
+- Wider kitchen source checks and CI passed; retain all 43 cases alongside the
   16 wine cases. Failed startup/layout/navigation runs remain failures, not partial
   acceptance. Installed journeys and broader actual-owner use remain separate.
 - The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
@@ -653,13 +702,13 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Price-refresh scope/deadline/read recovery passes 83 focused tests and 15
   isolated browser cases, full CI and the narrower installed acceptance above.
   Do not rebuild under an open real viewer. Shared family/meal reads now pass
-  16 focused tests, 29 kitchen browser cases and full CI; mutation lifetimes and
-  uncertain-save/read-back states remain. Preserve verified retail prices separately
+  16 focused tests and full CI; the mutation follow-up above expands kitchen
+  browser coverage to 43 cases. Safe installation remains separate. Preserve verified retail prices separately
   from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- The accumulated source changes are installed and the narrower 69-case owned
-  regression passed. Broader remaining review and actual owner observations are
+- Earlier accumulated source changes are installed and the narrower 69-case owned
+  regression passed; this latest mutation slice is source-only. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.
 - For future updates, wait for safe owner closure, use headless Check, current
   backup/rehearsal, owned Update/fixture journeys, then visible Open/focus/heartbeat
