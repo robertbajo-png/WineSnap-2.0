@@ -769,6 +769,52 @@ No real account/data, old production, hosted test, password, tunnel or OS/Docker
 settings are changed. Synthetic source verification is not installed or human
 acceptance. The existing safe-closure/update gates still apply.
 
+## Explicit Pairing Choices And Pinned Returns
+
+The recipe selection is now pinned to its initial choice instead of resolving
+an empty key to whichever recipe happens to be first on each render. If that
+choice disappears, the selector remains available with an explicit unavailable
+notice; no substitute or stale taste result is shown. Selecting another recipe
+resets its manual dish traits as before.
+
+Wine mode now requires an explicit available bottle, except for an exact wine
+already supplied by a validated journey. A selected bottle that disappears or
+is consumed is not silently replaced. Empty stock, no choice and an unavailable
+explicit choice retain separate states and the existing read-retry behavior.
+
+Wine return construction reuses the validated journey contract in one tested
+helper. An exact originating recipe retains its known servings/cooking session;
+another saved recipe uses its own base servings and does not inherit that old
+session. Inspiration recipes still have no invented saved-version return.
+Missing origin portions stay unknown rather than defaulting to a base count.
+Opening the return link must not modify a live cooking session or timer.
+
+Full Quality/Database Safety passed for pure follow-up `d1a85c4` (push/PR):
+161 files / 1,643 tests and one existing skip, including 49 tests in the three
+affected files (SSR render states, pure journeys and fixture boundaries).
+Typecheck, lint, synthetic build/runtime and client budget passed; four existing
+Chef lint warnings remain. UI source `aa1c154` also passed CI, with 1,642 tests.
+The extra local render-test attempt was interrupted without results; it is not
+accepted as a pass or a red/green reproduction.
+
+The UI artifact from `aa1c154` passed all 72 isolated kitchen cases at
+320/390/1440px and 125% text, retaining the previous 64 cases. Seven RPCs/six
+commits and 367 reads were simulated. AI, forbidden requests/writes and page/
+fixture errors were zero, with confirmed process cleanup. Missing-wine 320px and
+1440px screenshots were inspected. The new checks cover explicit bottle choice,
+consumed stock with an available alternative, empty stock, exact wine entry,
+generated pinned wine-link metadata, unpinned inspiration links and direct return
+to the paused Cook Mode/timer. This is not a new full wine-detail/backend round
+trip. Missing recipe is SSR state evidence; the pure missing-portions absence
+case in `d1a85c4` is unit/CI evidence, not a relabelled browser case/artifact.
+
+The separate artifact uses only synthetic public configuration and tar export;
+all 339 entry paths were checked before extraction inside the verified local,
+non-OneDrive project. The previous accepted artifact was retained. No installed
+Update or privacy/provider attestation was made. The real owner viewer, old
+production, hosted test, accounts/passwords and internet settings remain
+untouched. Installed and actual-owner acceptance remain separate gates.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -777,7 +823,7 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
   all sixteen wine-browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
-- Wider kitchen source checks and CI passed; retain all 64 cases alongside the
+- Wider kitchen source checks and CI passed; retain all 72 cases alongside the
   16 wine cases. Failed startup/layout/navigation runs remain failures, not partial
   acceptance. Installed journeys and broader actual-owner use remain separate.
 - The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
@@ -793,13 +839,15 @@ These are substeps of the canonical roadmap, not a competing development plan:
   Do not rebuild under an open real viewer. Shared family/meal reads now pass
   16 focused tests and full CI; mutation/conflict-read/rename follow-ups above
   expand kitchen browser coverage to 56 cases, with the pairing follow-up now
-  extending it to 64. Safe installation remains separate. Preserve verified retail prices separately
+  extending it to 64 and explicit choices/returns to 72. Safe installation remains
+  separate. Preserve verified retail prices separately
   from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- Next source review: unavailable selected recipe/wine choices and return paths
-  in PairingPanel. Audience/read/account boundaries above are source-verified;
-  ranking remains deterministic. Do not start later DEV stages here.
+- Next source task: extend existing owned PilotAccept household/meal/pairing
+  fixtures for the accumulated source changes, including exact-owner cleanup,
+  read/conflict/late-response boundaries and returns. Prepare/test helpers only
+  while the owner viewer is open. Ranking remains deterministic; no later DEV stage.
 - Earlier accumulated source changes are installed and the narrower 69-case owned
   regression passed; this latest mutation slice is source-only. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.

@@ -126,9 +126,23 @@ The extra local focused run was interrupted, not passed. A directory export
 failed with EOF after compilation; the cached tar export/extraction succeeded.
 The earlier browser run reproduced the old checkbox bug and remains failed
 evidence. No real viewer, schema, account, provider, password or internet change.
-Next source review: unavailable selected recipe/wine choices and their return
-paths in the pairing view. Preserve all 64 cases, the open owner viewer and the
-separate installed-acceptance gates; do not start DEV-04 yet.
+Explicit pairing choices/returns are now source-verified: UI `aa1c154` passed all
+72 isolated kitchen checks at 320/390/1440px and 125% text, with 367 mocked reads,
+seven simulated RPCs/six commits, zero real backend/AI/forbidden calls or page/
+fixture errors and confirmed cleanup. Missing recipes retain an actionable
+selector; wine mode requires an explicit bottle rather than silently choosing a
+replacement. Return links pin the chosen version and only retain a matching
+cooking context. Pure follow-up `d1a85c4` retains unknown origin portions instead
+of guessing; its absence case is unit-tested, not a new UI-browser case. Full CI
+passed (push/PR), 161 files / 1,643 tests and one existing skip, including 49 tests
+in the three affected files. The extra local render run was interrupted, not
+passed. No installed update, schema, account, provider, password or internet change.
+Next source task: extend the existing owned PilotAccept fixture coverage for the
+accumulated household/meal/pairing changes, including exact-owner cleanup and
+late/read/conflict boundaries. Prepare/test helpers only while the real owner
+viewer remains open; do not run an Update or infer installed acceptance from the
+72 synthetic cases. Preserve all existing cases and normal safe-closure/Check/
+backup/restore/Update/fixture/owner gates. Do not start DEV-04 yet.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
