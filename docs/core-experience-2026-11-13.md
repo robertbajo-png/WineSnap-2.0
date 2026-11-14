@@ -815,6 +815,47 @@ Update or privacy/provider attestation was made. The real owner viewer, old
 production, hosted test, accounts/passwords and internet settings remain
 untouched. Installed and actual-owner acceptance remain separate gates.
 
+## Owned Household/Meal Regression Preparation
+
+The existing owned PilotAccept now has prepared household/meal/pairing probes;
+none was executed against the installed app during this source-only task.
+The helper verifies every intercepted request's normal JWT against fixed local
+Auth, requiring the exact synthetic ID/email/immutable run tag. It rejects
+foreign/unknown/unarmed operations, unexpected payloads and direct table writes;
+Auth and forwarded requests use fixed loopback targets, bounded timeouts and
+no redirects/retries. Closing the probe prevents a late Auth check forwarding.
+No token, cookie, private browser state or root key appears in a status report.
+
+A new fixture action creates a separate stable completed cooking session using
+the ordinary session RPC, after checking meals access and exact owned version/
+original session. It verifies the original state/revision remain unchanged and
+uses an idempotent request ID. It does not complete the running timer session,
+enable features or change schema. Tagged-account cleanup now optionally verifies
+absence in six fixed exact-owner household/meal/cooking tables, including when
+Auth already reports the fixture gone. No broad table deletion is added.
+
+Prepared browser cases: household double submit/lost reply and failed inspection;
+keyboard read-only recovery; pending rename controls; a committed profile with
+failed list reload; private adult/child profiles and explicit adult-wine opt-in;
+explicit fixture bottle choice; recipe-pinned wine return metadata without an
+unrelated session; lost meal insert/reconciliation; an actual revision-guarded
+RPC conflict with retained draft and explicit recovery; a held family reply
+after changing view; and three private-table RLS reads as a verified second
+fixture. Existing PilotAccept stages, logout and both exact cleanups remain.
+The new probe expects at most seven client writes/eight forwarded RPCs/seven
+commits, excluding setup/previous stages. These are not measured browser results.
+The unit conflict response is mocked, not a real backend conflict observation.
+Late write across account change is still distinct from view-change/peer checks.
+
+Local full Vitest passed: 162 files / 1,699 tests; five focused files / 83 tests,
+typecheck and changed-file lint also pass. Two earlier full lint attempts rejected
+test-chain formatting (four then five errors); those attempts are not passes.
+The four existing Chef lint warnings remain outside this slice.
+No real fixture/key/provider/browser/runtime was used. The installed frontend
+remains `05172af`, real owner viewer preserved and internet state unchanged.
+Old production and abandoned hosted test were untouched. A future installed
+run still requires safe owner closure and the ordinary installation gates.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -844,10 +885,10 @@ These are substeps of the canonical roadmap, not a competing development plan:
   from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- Next source task: extend existing owned PilotAccept household/meal/pairing
-  fixtures for the accumulated source changes, including exact-owner cleanup,
-  read/conflict/late-response boundaries and returns. Prepare/test helpers only
-  while the owner viewer is open. Ranking remains deterministic; no later DEV stage.
+- The owned household/meal/pairing fixtures above are now prepared/unit-tested,
+  not executed. Next non-disruptive source preparation can extend held writes
+  across account change, distinctly from view changes and peer reads. Keep the
+  owner viewer open. Ranking remains deterministic; no later DEV stage.
 - Earlier accumulated source changes are installed and the narrower 69-case owned
   regression passed; this latest mutation slice is source-only. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.

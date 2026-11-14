@@ -137,12 +137,22 @@ of guessing; its absence case is unit-tested, not a new UI-browser case. Full CI
 passed (push/PR), 161 files / 1,643 tests and one existing skip, including 49 tests
 in the three affected files. The extra local render run was interrupted, not
 passed. No installed update, schema, account, provider, password or internet change.
-Next source task: extend the existing owned PilotAccept fixture coverage for the
-accumulated household/meal/pairing changes, including exact-owner cleanup and
-late/read/conflict boundaries. Prepare/test helpers only while the real owner
-viewer remains open; do not run an Update or infer installed acceptance from the
-72 synthetic cases. Preserve all existing cases and normal safe-closure/Check/
-backup/restore/Update/fixture/owner gates. Do not start DEV-04 yet.
+Owned PilotAccept household/meal/pairing regression helpers are now prepared in
+source, not executed against the installed app. They verify the immutable fixture
+tag through normal local Auth before forwarding, use an auxiliary completed
+session without altering the original cooking state, bound all fault writes,
+and verify exact-owner household/meal cascades after tagged-account cleanup.
+Prepared cases include lost replies/double submit, pending rename, saved/read
+failure, child-wine opt-in, explicit bottle/pinned recipe links, actual-RPC
+revision conflict, late view replies and three peer-RLS reads. Unit mocks do not
+prove these installed behaviors. Local full Vitest passed: 162 files / 1,699
+tests; five focused files / 83 tests, typecheck and changed-file lint also pass.
+No fixture, browser, account, provider or runtime was started/changed.
+Keep the real owner viewer open. Next non-disruptive source preparation may
+extend the late-write probe across account change (distinct from late view
+and peer reads); installed regression still requires safe closure and the
+normal Check/backup/restore/Update/fixture/owner gates. Do not infer installed
+acceptance from the 72 synthetic cases or start DEV-04 yet.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

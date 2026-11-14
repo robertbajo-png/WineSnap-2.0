@@ -5,6 +5,7 @@ import {
   assertFixtureOwner,
   fixtureImagePaths,
   ownedBrowserFixture,
+  ownedMealSessionId,
   validateBrowserFixture,
 } from "./owned-browser-fixture.mjs";
 import { scanUploadPath } from "../../src/lib/scanSave.ts";
@@ -20,6 +21,266 @@ const keys = () => ({
   jwtSecret: "c".repeat(64),
   cronSecret: "d".repeat(64),
   privacyCronSecret: "e".repeat(64),
+});
+
+describe("owned completed meal fixture preparation", () => {
+  let value, app, original, version, originalQuery, versionQuery;
+  const ok = (data) => ({ data, error: null });
+  const query = (data) => {
+    const result = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      single: vi.fn().mockResolvedValue(ok(data)),
+    };
+    result.select.mockReturnValue(result);
+    result.eq.mockReturnValue(result);
+    return result;
+  };
+  beforeEach(() => {
+    vi.resetAllMocks();
+    value = fixture();
+    original = {
+      user_id: value.userId,
+      recipe_version_id: value.versionId,
+      revision: 4,
+      state: { status: "running", activeStep: 1, servings: 3, timers: [{ remaining: 30 }] },
+    };
+    version = {
+      id: value.versionId,
+      user_id: value.userId,
+      document: { servings: 2, steps: [{}, {}, {}] },
+    };
+    originalQuery = query(original);
+    versionQuery = query(version);
+    app = {
+      auth: {
+        admin: {
+          getUserById: vi.fn().mockResolvedValue(
+            ok({
+              user: {
+                id: value.userId,
+                email: value.email,
+                app_metadata: { owned_browser_run: value.run },
+              },
+            }),
+          ),
+        },
+        signInWithPassword: vi.fn().mockResolvedValue(ok({ session: {} })),
+      },
+      from: vi.fn((table) => {
+        if (table === "kitchen_recipe_versions") return versionQuery;
+        if (table === "cooking_sessions") return originalQuery;
+        throw Error("unexpected_table");
+      }),
+      rpc: vi.fn(async (name, input) => {
+        if (name === "meals_access") return ok(true);
+        if (name === "kitchen_save_session")
+          return ok({
+            id: input._id,
+            user_id: value.userId,
+            recipe_version_id: value.versionId,
+            state: input._state,
+          });
+        throw Error("unexpected_rpc");
+      }),
+    };
+    mocks.createClient.mockReturnValue(app);
+  });
+  it("derives a stable separate UUID without changing the strict manifest", () => {
+    const id = ownedMealSessionId(value);
+    expect(id).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
+    expect(ownedMealSessionId({ ...value })).toBe(id);
+    expect(ownedMealSessionId(fixture())).not.toBe(id);
+    expect(Object.values(value)).not.toContain(id);
+    expect(validateBrowserFixture(value)).toBe(value);
+  });
+  it("uses one idempotent completed session and never writes the original running session", async () => {
+    const before = structuredClone(original);
+    const result = await ownedBrowserFixture(keys(), "meals", value);
+    expect(result).toEqual({
+      completed: true,
+      mealSessionId: ownedMealSessionId(value),
+      activeSessionUnchanged: true,
+    });
+    expect(app.rpc.mock.calls).toEqual([
+      ["meals_access"],
+      [
+        "kitchen_save_session",
+        {
+          _id: result.mealSessionId,
+          _request_id: result.mealSessionId,
+          _version_id: value.versionId,
+          _expected_revision: 0,
+          _feedback: null,
+          _state: {
+            status: "completed",
+            activeStep: 2,
+            servings: 2,
+            checkedIngredientIds: [],
+            timers: [],
+          },
+        },
+      ],
+    ]);
+    expect(originalQuery.single).toHaveBeenCalledTimes(2);
+    expect(originalQuery.eq.mock.calls).toEqual([
+      ["id", value.sessionId],
+      ["user_id", value.userId],
+      ["id", value.sessionId],
+      ["user_id", value.userId],
+    ]);
+    expect(versionQuery.eq.mock.calls).toEqual([
+      ["id", value.versionId],
+      ["user_id", value.userId],
+    ]);
+    expect(original).toEqual(before);
+    app.rpc.mockClear();
+    await ownedBrowserFixture(keys(), "meals", value);
+    expect(app.rpc.mock.calls[1][1]._request_id).toBe(result.mealSessionId);
+  });
+  it("never enables the meals gate when the fixture lacks access", async () => {
+    app.rpc.mockResolvedValue(ok(false));
+    await expect(ownedBrowserFixture(keys(), "meals", value)).rejects.toThrow();
+    expect(app.rpc).toHaveBeenCalledExactlyOnceWith("meals_access");
+    expect(app.from).not.toHaveBeenCalled();
+  });
+  it.each(["id", "email", "tag"])(
+    "rejects a mismatched immutable fixture identity: %s",
+    async (kind) => {
+      const user = {
+        id: value.userId,
+        email: value.email,
+        app_metadata: { owned_browser_run: value.run },
+      };
+      if (kind === "tag") user.app_metadata = {};
+      else user[kind] = kind === "email" ? "real@example.com" : randomUUID();
+      app.auth.admin.getUserById.mockResolvedValue(ok({ user }));
+      await expect(ownedBrowserFixture(keys(), "meals", value)).rejects.toThrow();
+      expect(app.auth.signInWithPassword).not.toHaveBeenCalled();
+      expect(app.rpc).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["versionOwner", "versionId", "sessionOwner", "sessionVersion", "emptySteps"])(
+    "rejects a foreign or invalid source before creating a session: %s",
+    async (kind) => {
+      if (kind === "versionOwner") version.user_id = randomUUID();
+      if (kind === "versionId") version.id = randomUUID();
+      if (kind === "sessionOwner") original.user_id = randomUUID();
+      if (kind === "sessionVersion") original.recipe_version_id = randomUUID();
+      if (kind === "emptySteps") version.document.steps = [];
+      await expect(ownedBrowserFixture(keys(), "meals", value)).rejects.toThrow();
+      expect(app.rpc).toHaveBeenCalledExactlyOnceWith("meals_access");
+    },
+  );
+  it("does not report success if the original session changes during preparation", async () => {
+    originalQuery.single
+      .mockResolvedValueOnce(ok(original))
+      .mockResolvedValueOnce(ok({ ...original, revision: 5 }));
+    await expect(ownedBrowserFixture(keys(), "meals", value)).rejects.toThrow();
+    expect(app.rpc.mock.calls[1][1]._id).not.toBe(value.sessionId);
+  });
+  it("does not accept a malformed committed-session response", async () => {
+    app.rpc.mockResolvedValueOnce(ok(true)).mockResolvedValueOnce(ok({ id: value.sessionId }));
+    await expect(ownedBrowserFixture(keys(), "meals", value)).rejects.toThrow();
+  });
+});
+
+describe("owned meal fixture cascade verification", () => {
+  let value, admin, from, queries;
+  const tables = [
+    "kitchen_households",
+    "kitchen_household_members",
+    "kitchen_household_invites",
+    "kitchen_diners",
+    "meal_wine_links",
+    "cooking_sessions",
+  ];
+  beforeEach(() => {
+    vi.resetAllMocks();
+    value = fixture();
+    queries = new Map();
+    from = vi.fn((table) => {
+      const q = {
+        select: vi.fn(),
+        eq: vi.fn(),
+        limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+      };
+      q.select.mockReturnValue(q);
+      q.eq.mockReturnValue(q);
+      queries.set(table, q);
+      return q;
+    });
+    admin = {
+      getUserById: vi
+        .fn()
+        .mockResolvedValueOnce({
+          data: {
+            user: {
+              id: value.userId,
+              email: value.email,
+              app_metadata: { owned_browser_run: value.run },
+            },
+          },
+          error: null,
+        })
+        .mockResolvedValue({ data: { user: null }, error: { status: 404 } }),
+      deleteUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
+    };
+    mocks.createClient.mockReturnValue({ auth: { admin }, from });
+  });
+  it("checks only fixed exact-owner tables after the tagged account has been deleted", async () => {
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMeals: true }),
+    ).resolves.toMatchObject({ cleanupCompleted: true });
+    expect(admin.deleteUser).toHaveBeenCalledExactlyOnceWith(value.userId);
+    expect(from.mock.calls.map(([table]) => table)).toEqual(tables);
+    for (const q of queries.values()) {
+      expect(q.select).toHaveBeenCalledExactlyOnceWith("id");
+      expect(q.eq).toHaveBeenCalledExactlyOnceWith("user_id", value.userId);
+      expect(q.limit).toHaveBeenCalledExactlyOnceWith(1);
+      expect(q.select.mock.invocationCallOrder[0]).toBeGreaterThan(
+        admin.getUserById.mock.invocationCallOrder[1],
+      );
+    }
+  });
+  it("still checks child rows on an already-deleted fixture without another delete", async () => {
+    await ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMeals: true });
+    from.mockClear();
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMeals: true }),
+    ).resolves.toMatchObject({ alreadyClean: true });
+    expect(admin.deleteUser).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledTimes(6);
+  });
+  it.each([{ rows: [{ id: randomUUID() }] }, { rows: { length: 0 } }, { rows: null }])(
+    "does not treat surviving or malformed child rows as successful cleanup",
+    async ({ rows }) => {
+      from.mockImplementation(() => {
+        const q = {
+          select: () => q,
+          eq: () => q,
+          limit: async () => ({ data: rows, error: null }),
+        };
+        return q;
+      });
+      await expect(
+        ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMeals: true }),
+      ).rejects.toThrow();
+      expect(admin.deleteUser).toHaveBeenCalledExactlyOnceWith(value.userId);
+    },
+  );
+  it("does not query or delete a foreign account", async () => {
+    admin.getUserById.mockReset();
+    admin.getUserById.mockResolvedValue({
+      data: { user: { id: value.userId, email: "real@example.com" } },
+      error: null,
+    });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMeals: true }),
+    ).rejects.toThrow();
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+    expect(from).not.toHaveBeenCalled();
+  });
 });
 
 const fixture = () => {

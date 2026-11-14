@@ -39,6 +39,20 @@ export function assertFixtureOwner(user, fixture) {
   assert.equal(user.app_metadata?.owned_browser_run, fixture.run);
 }
 
+export function ownedMealSessionId(fixture) {
+  validateBrowserFixture(fixture);
+  const bytes = createHash("sha256")
+    .update(`owned-meal-session-v1:${fixture.run}`)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = bytes.toString("hex");
+  const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  assert.ok(![fixture.userId, fixture.sessionId, fixture.versionId, fixture.wineId].includes(id));
+  return id;
+}
+
 // Only synthetic fixtures use this reproducible password. Never persist it or
 // include it in a report. Interactive sign-in uses mail in the local inbox.
 export async function ownedBrowserFixture(
@@ -46,12 +60,15 @@ export async function ownedBrowserFixture(
   action,
   fixture,
   remember = async () => {},
-  { demo = false, cleanupImages = false } = {},
+  { demo = false, cleanupImages = false, cleanupMeals = false } = {},
 ) {
   validateOwnedKeys(keys);
   assert.equal(typeof demo, "boolean");
   assert.equal(typeof cleanupImages, "boolean");
-  assert.ok(["prepare", "inspect", "conflict", "memory", "cleanup", "absent"].includes(action));
+  assert.equal(typeof cleanupMeals, "boolean");
+  assert.ok(
+    ["prepare", "inspect", "conflict", "memory", "meals", "cleanup", "absent"].includes(action),
+  );
   assert.equal(typeof remember, "function");
   if (action !== "prepare") validateBrowserFixture(fixture);
   const client = (role) =>
@@ -85,6 +102,21 @@ export async function ownedBrowserFixture(
     return ok(
       await app.auth.signInWithPassword({ email: fixture.email, password: password(fixture.run) }),
     ).session;
+  }
+  async function assertMealsAbsent() {
+    if (!cleanupMeals) return;
+    for (const table of [
+      "kitchen_households",
+      "kitchen_household_members",
+      "kitchen_household_invites",
+      "kitchen_diners",
+      "meal_wine_links",
+      "cooking_sessions",
+    ]) {
+      const rows = ok(await admin.from(table).select("id").eq("user_id", fixture.userId).limit(1));
+      assert.ok(Array.isArray(rows));
+      assert.equal(rows.length, 0);
+    }
   }
   if (action === "absent") {
     const found = await admin.auth.admin.getUserById(fixture.userId);
@@ -227,8 +259,10 @@ export async function ownedBrowserFixture(
   }
   if (action === "cleanup") {
     const found = await admin.auth.admin.getUserById(fixture.userId);
-    if (!found.data?.user && found.error?.status === 404)
+    if (!found.data?.user && found.error?.status === 404) {
+      await assertMealsAbsent();
       return { completed: true, alreadyClean: true };
+    }
     assertFixtureOwner(ok(found).user, fixture);
     if (demo) assert.equal(found.data.user.app_metadata?.owned_demo_run, fixture.run);
     if (cleanupImages) {
@@ -268,9 +302,58 @@ export async function ownedBrowserFixture(
     ok(await admin.auth.admin.deleteUser(fixture.userId));
     const after = await admin.auth.admin.getUserById(fixture.userId);
     assert.equal(after.error?.status, 404);
+    await assertMealsAbsent();
     return { completed: true, cleanupCompleted: true, realAccountsChanged: false };
   }
   const session = await owner();
+  if (action === "meals") {
+    assert.equal(ok(await app.rpc("meals_access")), true);
+    const version = ok(
+      await app
+        .from("kitchen_recipe_versions")
+        .select("id,user_id,document")
+        .eq("id", fixture.versionId)
+        .eq("user_id", fixture.userId)
+        .single(),
+    );
+    assert.equal(version.id, fixture.versionId);
+    assert.equal(version.user_id, fixture.userId);
+    assert.ok(Array.isArray(version.document.steps) && version.document.steps.length > 0);
+    const original = () =>
+      app
+        .from("cooking_sessions")
+        .select("state,revision,user_id,recipe_version_id")
+        .eq("id", fixture.sessionId)
+        .eq("user_id", fixture.userId)
+        .single();
+    const before = ok(await original());
+    assert.equal(before.user_id, fixture.userId);
+    assert.equal(before.recipe_version_id, fixture.versionId);
+    const id = ownedMealSessionId(fixture);
+    const state = {
+      status: "completed",
+      activeStep: version.document.steps.length - 1,
+      servings: version.document.servings,
+      checkedIngredientIds: [],
+      timers: [],
+    };
+    const saved = ok(
+      await app.rpc("kitchen_save_session", {
+        _id: id,
+        _version_id: fixture.versionId,
+        _expected_revision: 0,
+        _request_id: id,
+        _state: state,
+        _feedback: null,
+      }),
+    );
+    assert.equal(saved.id, id);
+    assert.equal(saved.user_id, fixture.userId);
+    assert.equal(saved.recipe_version_id, fixture.versionId);
+    assert.deepEqual(saved.state, state);
+    assert.deepEqual(ok(await original()), before);
+    return { completed: true, mealSessionId: id, activeSessionUnchanged: true };
+  }
   if (action === "memory") {
     const response = await fetch(ownedApp + "/api/ai/extract-preference-signals", {
       method: "POST",

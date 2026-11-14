@@ -442,6 +442,19 @@ export async function acceptOwnedPilotUi(
       });
       assert.equal(report.collectorStates.completed, true);
     }
+    {
+      const { acceptOwnedMealStates } = await import("./owned-meal-states.mjs");
+      report.mealStates = await acceptOwnedMealStates({
+        page,
+        context,
+        fixture,
+        phase,
+        capture,
+        prepare: () => ownedBrowserFixture(keys, "meals", fixture),
+        pass: (name) => report.passed.push(name),
+      });
+      assert.equal(report.mealStates.completed, true);
+    }
     phase("logout");
     await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Logga ut", exact: true }).click();
@@ -492,6 +505,18 @@ export async function acceptOwnedPilotUi(
       await page.goto(ownedApp + `/kitchen#recipes?recipe=${peer.versionId}`);
       await page.locator(".k-detail h1").waitFor();
       assert.equal(await cachedKitchenOwnerPresent(page, fixture.userId), false);
+      {
+        const { acceptOwnedMealPeerIsolation } = await import("./owned-meal-states.mjs");
+        report.mealIsolation = await acceptOwnedMealPeerIsolation({
+          page,
+          context,
+          fixture: peer,
+          otherFixture: fixture,
+          phase,
+          pass: (name) => report.passed.push(name),
+        });
+        assert.equal(report.mealIsolation.completed, true);
+      }
       await page.goto(ownedApp + "/me");
       await page.getByRole("button", { name: "Logga ut", exact: true }).click();
       await page.getByText(/Logga in f.r att forts.tta/).waitFor();
@@ -532,7 +557,7 @@ export async function acceptOwnedPilotUi(
     await browser?.close().catch(() => undefined);
     if (peer) {
       try {
-        await ownedBrowserFixture(keys, "cleanup", peer);
+        await ownedBrowserFixture(keys, "cleanup", peer, undefined, { cleanupMeals: true });
       } catch {
         report.peerCleanupFailed = true;
         report.completed = false;
@@ -542,6 +567,7 @@ export async function acceptOwnedPilotUi(
       try {
         const cleaned = await ownedBrowserFixture(keys, "cleanup", fixture, undefined, {
           cleanupImages: liveJourneys,
+          cleanupMeals: true,
         });
         report.cleanupCompleted =
           !report.peerCleanupFailed && Boolean(cleaned.cleanupCompleted || cleaned.alreadyClean);
