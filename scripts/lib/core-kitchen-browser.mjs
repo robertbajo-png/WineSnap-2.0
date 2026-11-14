@@ -608,6 +608,8 @@ export async function acceptCoreKitchen({
 async function acceptMealWrites({ page, base, artifacts, report, fixture, switchAccount }) {
   fixture.beginMealChecks();
   await page.goto(base + "/kitchen#family", { waitUntil: "domcontentloaded" });
+  // A hash change does not reload the parent cooking-history cache.
+  await page.reload({ waitUntil: "domcontentloaded" });
   const create = page.getByRole("button", { name: "Skapa hushåll", exact: true });
   await create.waitFor();
   await page.getByLabel("Ditt smeknamn", { exact: true }).fill("Synthetic owner");
