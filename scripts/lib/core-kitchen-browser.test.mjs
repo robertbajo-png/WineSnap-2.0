@@ -9,13 +9,14 @@ const peer = "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa";
 let fixture, report;
 function route(
   path,
-  { target = origin, method = "GET", user = "synthetic-owner", apiKey = key } = {},
+  { target = origin, method = "GET", user = "synthetic-owner", apiKey = key, body = {} } = {},
 ) {
   return {
     request: () => ({
       url: () => target + path,
       method: () => method,
       headers: () => ({ apikey: apiKey, authorization: user }),
+      postDataJSON: () => body,
     }),
     continue: vi.fn(),
     abort: vi.fn(),
@@ -37,6 +38,39 @@ beforeEach(() => {
   });
 });
 describe("isolated kitchen fixture boundary", () => {
+  it("keeps unknown writes blocked even after the meal scenarios are enabled", async () => {
+    fixture.beginMealChecks();
+    const request = route("/rest/v1/rpc/kitchen_save_session", { method: "POST" });
+    await fixture.route(request);
+    expect(request.abort).toHaveBeenCalledOnce();
+    expect(request.continue).not.toHaveBeenCalled();
+  });
+  it("does not allow a peer to execute an armed owner meal scenario", async () => {
+    fixture.beginMealChecks();
+    fixture.armMealScenario("household-lost");
+    const request = route("/rest/v1/rpc/kitchen_family_change", {
+      method: "POST",
+      user: "synthetic-peer",
+    });
+    await expect(fixture.route(request)).rejects.toThrow();
+    expect(request.continue).not.toHaveBeenCalled();
+    expect(fixture.counts().commits).toBe(0);
+  });
+  it("requires the exact armed synthetic body, not arbitrary family changes", async () => {
+    fixture.beginMealChecks();
+    fixture.armMealScenario("household-lost");
+    const request = route("/rest/v1/rpc/kitchen_family_change", {
+      method: "POST",
+      body: {
+        _id: "11111111-2222-4333-8444-555555555555",
+        _action: "delete_household",
+        _revision: 0,
+      },
+    });
+    await expect(fixture.route(request)).rejects.toThrow();
+    expect(request.continue).not.toHaveBeenCalled();
+    expect(fixture.counts().commits).toBe(0);
+  });
   it("mocks installed-origin reads without forwarding even one network request", async () => {
     const request = route("/rest/v1/kitchen_recipes");
     await fixture.route(request);

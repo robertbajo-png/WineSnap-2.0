@@ -5,13 +5,12 @@ import {
   dinerSchema,
   householdSchema,
   inviteSchema,
-  mealInputSchema,
   mealSchema,
   memberSchema,
   wineSchema,
 } from "./domain";
 import { mealsEnabled } from "./feature";
-import { accountWriteClient } from "@/lib/accountWriteScope";
+import { accountWriteClient, type AccountWriteScope } from "@/lib/accountWriteScope";
 
 export class MealsError extends Error {
   constructor(code = "") {
@@ -24,21 +23,29 @@ export class MealsError extends Error {
     );
   }
 }
-async function scoped(owner: string, signal?: AbortSignal): Promise<SupabaseClient> {
+async function scoped(
+  owner: string,
+  signal?: AbortSignal,
+  current = () => true,
+): Promise<SupabaseClient> {
   if (!mealsEnabled) throw new MealsError();
   try {
     const client: SupabaseClient = await accountWriteClient(
-      { owner, current: () => !signal?.aborted },
+      { owner, current: () => current() && !signal?.aborted },
       15000,
       signal,
     );
-    if (signal?.aborted) throw new MealsError();
+    if (!current() || signal?.aborted) throw new MealsError();
     const gate = await client.rpc("meals_access").abortSignal(signal ?? AbortSignal.timeout(15000));
-    if (signal?.aborted || gate.error || gate.data !== true) throw new MealsError();
+    if (!current() || signal?.aborted || gate.error || gate.data !== true) throw new MealsError();
     return client;
   } catch {
     throw new MealsError();
   }
+}
+export type MealsScope = AccountWriteScope & { signal: AbortSignal };
+export function mealMutationClient(scope: MealsScope) {
+  return scoped(scope.owner, scope.signal, scope.current);
 }
 export async function familyData(owner: string, signal?: AbortSignal) {
   const client = await scoped(owner, signal);
@@ -89,56 +96,6 @@ export async function familyData(owner: string, signal?: AbortSignal) {
   };
 }
 export type FamilyData = Awaited<ReturnType<typeof familyData>>;
-export async function familyChange(
-  owner: string,
-  action: string,
-  id: string,
-  revision: number,
-  data: Record<string, unknown> = {},
-) {
-  const client = await scoped(owner);
-  const r = await client.rpc("kitchen_family_change", {
-    _action: action,
-    _id: id,
-    _revision: revision,
-    _data: data,
-  });
-  if (r.error) throw new MealsError(r.error.code);
-}
-export async function inviteCreate(owner: string, household: string, revision: number) {
-  const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
-    b.toString(16).padStart(2, "0"),
-  ).join("");
-  const hash = await hashInvite(token);
-  const client = await scoped(owner);
-  const r = await client.rpc("kitchen_invite_create", {
-    _id: crypto.randomUUID(),
-    _household_id: household,
-    _revision: revision,
-    _hash: hash,
-  });
-  if (r.error) throw new MealsError(r.error.code);
-  return token;
-}
-export async function hashInvite(token: string) {
-  if (!/^[a-f0-9]{64}$/.test(token.trim())) throw new MealsError();
-  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token.trim()));
-  return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-export async function inviteRevoke(owner: string, id: string) {
-  const r = await (await scoped(owner)).rpc("kitchen_invite_revoke", { _id: id });
-  if (r.error) throw new MealsError(r.error.code);
-}
-export async function inviteAccept(owner: string, token: string, display: string, adult: boolean) {
-  const r = await (
-    await scoped(owner)
-  ).rpc("kitchen_invite_accept", {
-    _hash: await hashInvite(token),
-    _display_name: display,
-    _adult_confirmed: adult,
-  });
-  if (r.error || r.data?.status !== "joined") throw new MealsError(r.data?.status);
-}
 export async function cellarWines(owner: string, signal?: AbortSignal) {
   const result = await (
     await scoped(owner, signal)
@@ -214,19 +171,4 @@ export async function mealHistory(owner: string, signal?: AbortSignal) {
     wineNames,
     truncated: r.data?.length === 51,
   };
-}
-export async function mealSave(
-  owner: string,
-  id: string,
-  revision: number,
-  input: z.input<typeof mealInputSchema> | null,
-) {
-  const r = await (
-    await scoped(owner)
-  ).rpc("kitchen_meal_save", {
-    _id: id,
-    _revision: revision,
-    _input: input ? mealInputSchema.parse(input) : null,
-  });
-  if (r.error) throw new MealsError(r.error.code);
 }

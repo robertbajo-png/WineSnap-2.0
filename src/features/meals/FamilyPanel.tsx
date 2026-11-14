@@ -1,14 +1,21 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Check, Copy, LogOut, Plus, RefreshCw, Trash2, UserRound, Users, X } from "lucide-react";
-import { familyChange, familyData, inviteAccept, inviteCreate, inviteRevoke } from "./api";
+import { familyData } from "./api";
+import { familyChange, inviteAccept, inviteCreate, inviteRevoke } from "./mutations";
 import { dinerDocumentSchema, type Diner, type DinerDocument } from "./domain";
 import { useFreshData } from "./useFreshData";
+import { useMealMutation } from "./useMealMutation";
+import { MealMutationNotice } from "./MealMutationNotice";
 import "./meals.css";
 
 export function FamilyPanel({ owner }: { owner: string }) {
+  return <FamilyForOwner key={owner} owner={owner} />;
+}
+function FamilyForOwner({ owner }: { owner: string }) {
   const { data, error, refresh } = useFreshData((signal) => familyData(owner, signal));
-  const [busy, setBusy] = useState(false),
-    [notice, setNotice] = useState("");
+  const mutation = useMealMutation(owner, refresh);
+  const busy = mutation.locked;
+  const [notice, setNotice] = useState("");
   const [group, setGroup] = useState(""),
     [name, setName] = useState(""),
     [display, setDisplay] = useState(""),
@@ -17,6 +24,8 @@ export function FamilyPanel({ owner }: { owner: string }) {
   const [code, setCode] = useState(""),
     [copied, setCopied] = useState(false),
     [confirm, setConfirm] = useState("");
+  const currentCode = useRef(code);
+  currentCode.current = code;
   const [editing, setEditing] = useState<{
     id: string;
     revision: number;
@@ -26,21 +35,7 @@ export function FamilyPanel({ owner }: { owner: string }) {
   } | null>(null);
   const selected = data?.groups.find((g) => g.id === group) ?? data?.groups[0];
   const mine = selected?.user_id === owner;
-  async function run(work: () => Promise<void>) {
-    setBusy(true);
-    setNotice("");
-    try {
-      await work();
-      await refresh();
-      setNotice("Sparat.");
-      setConfirm("");
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Kunde inte spara.");
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
+  const run = mutation.run;
   const edit = (d?: Diner) =>
     setEditing(
       d
@@ -69,14 +64,19 @@ export function FamilyPanel({ owner }: { owner: string }) {
       );
       return;
     }
-    void run(async () => {
-      await familyChange(owner, "save_diner", editing.id, editing.revision, {
-        document: document.data,
-        householdId: editing.householdId,
-        shared: editing.shared,
-      });
-      setEditing(null);
-    });
+    run(
+      () =>
+        familyChange(owner, "save_diner", editing.id, editing.revision, {
+          document: document.data,
+          householdId: editing.householdId,
+          shared: editing.shared,
+        }),
+      () => {
+        setEditing(null);
+        setConfirm("");
+        setNotice("");
+      },
+    );
   }
   return (
     <section className="meal-panel">
@@ -102,6 +102,7 @@ export function FamilyPanel({ owner }: { owner: string }) {
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
+      <MealMutationNotice mutation={mutation} />
       {!data && !error && <p aria-busy="true">Hämtar…</p>}
       {data && (
         <>
@@ -361,10 +362,13 @@ export function FamilyPanel({ owner }: { owner: string }) {
                       type="button"
                       className="k-secondary"
                       onClick={() =>
-                        void run(async () => {
-                          await familyChange(owner, "delete_diner", editing.id, editing.revision);
-                          setEditing(null);
-                        })
+                        run(
+                          () => familyChange(owner, "delete_diner", editing.id, editing.revision),
+                          () => {
+                            setEditing(null);
+                            setConfirm("");
+                          },
+                        )
                       }
                     >
                       Ja, radera profilen
@@ -380,6 +384,7 @@ export function FamilyPanel({ owner }: { owner: string }) {
               <label>
                 Välj hushåll
                 <select
+                  disabled={busy}
                   value={selected?.id ?? ""}
                   onChange={(e) => {
                     setGroup(e.target.value);
@@ -475,10 +480,13 @@ export function FamilyPanel({ owner }: { owner: string }) {
                       className="k-secondary"
                       disabled={busy}
                       onClick={() =>
-                        void run(async () => {
-                          setCode(await inviteCreate(owner, selected.id, selected.revision));
-                          setCopied(false);
-                        })
+                        run(
+                          () => inviteCreate(owner, selected.id, selected.revision),
+                          (value) => {
+                            setCode(value);
+                            setCopied(false);
+                          },
+                        )
                       }
                     >
                       <Plus size={18} />
@@ -493,11 +501,18 @@ export function FamilyPanel({ owner }: { owner: string }) {
                         <output>{code}</output>
                         <button
                           className="k-secondary"
+                          disabled={busy}
                           onClick={() =>
                             void navigator.clipboard
                               .writeText(code)
-                              .then(() => setCopied(true))
-                              .catch(() => setNotice("Kopiera koden manuellt."))
+                              .then(() => {
+                                if (mutation.current() && currentCode.current === code)
+                                  setCopied(true);
+                              })
+                              .catch(() => {
+                                if (mutation.current() && currentCode.current === code)
+                                  setNotice("Kopiera koden manuellt.");
+                              })
                           }
                         >
                           <Copy size={18} />
@@ -515,10 +530,12 @@ export function FamilyPanel({ owner }: { owner: string }) {
                               className="k-text"
                               disabled={busy}
                               onClick={() =>
-                                void run(async () => {
-                                  await inviteRevoke(owner, i.id);
-                                  setCode("");
-                                })
+                                run(
+                                  () => inviteRevoke(owner, i.id),
+                                  () => {
+                                    setCode("");
+                                  },
+                                )
                               }
                             >
                               Återkalla
@@ -543,15 +560,19 @@ export function FamilyPanel({ owner }: { owner: string }) {
                       className="k-secondary"
                       disabled={busy}
                       onClick={() =>
-                        void run(async () => {
-                          await familyChange(
-                            owner,
-                            mine ? "delete_household" : "leave_household",
-                            selected.id,
-                            selected.revision,
-                          );
-                          setCode("");
-                        })
+                        run(
+                          () =>
+                            familyChange(
+                              owner,
+                              mine ? "delete_household" : "leave_household",
+                              selected.id,
+                              selected.revision,
+                            ),
+                          () => {
+                            setCode("");
+                            setConfirm("");
+                          },
+                        )
                       }
                     >
                       Bekräfta
@@ -566,19 +587,21 @@ export function FamilyPanel({ owner }: { owner: string }) {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void run(async () => {
-                  if (join.trim()) {
-                    await inviteAccept(owner, join, display, adult);
-                    setJoin("");
-                  } else {
-                    await familyChange(owner, "create_household", crypto.randomUUID(), 0, {
-                      name,
-                      displayName: display,
-                      adultConfirmed: adult,
-                    });
-                    setName("");
-                  }
-                });
+                const joining = !!join.trim();
+                run(
+                  () =>
+                    joining
+                      ? inviteAccept(owner, join, display, adult)
+                      : familyChange(owner, "create_household", crypto.randomUUID(), 0, {
+                          name,
+                          displayName: display,
+                          adultConfirmed: adult,
+                        }),
+                  () => {
+                    if (joining) setJoin("");
+                    else setName("");
+                  },
+                );
               }}
             >
               <fieldset disabled={busy}>

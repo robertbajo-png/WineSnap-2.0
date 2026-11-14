@@ -3,12 +3,28 @@ import { Check, Plus, Trash2 } from "lucide-react";
 import { OperationNotice } from "@/components/OperationNotice";
 import { useT } from "@/i18n";
 import type { LocalSession } from "../kitchen/domain";
-import { cellarWines, mealHistory, mealSave } from "./api";
+import { cellarWines, mealHistory } from "./api";
+import { mealSave } from "./mutations";
 import { mealInputSchema, type Meal } from "./domain";
 import { useFreshData } from "./useFreshData";
+import { useMealMutation } from "./useMealMutation";
+import { MealMutationNotice } from "./MealMutationNotice";
 import "./meals.css";
 
 export function MealHistoryPanel({
+  owner,
+  sessions,
+  initialSession,
+}: {
+  owner: string;
+  sessions: LocalSession[];
+  initialSession?: string;
+}) {
+  return (
+    <MealsForOwner key={owner} owner={owner} sessions={sessions} initialSession={initialSession} />
+  );
+}
+function MealsForOwner({
   owner,
   sessions,
   initialSession,
@@ -22,6 +38,8 @@ export function MealHistoryPanel({
     cellar: await cellarWines(owner, signal),
     history: await mealHistory(owner, signal),
   }));
+  const mutation = useMealMutation(owner, refresh);
+  const busy = mutation.locked;
   const [editing, setEditing] = useState<{
       id: string;
       revision: number;
@@ -31,10 +49,10 @@ export function MealHistoryPanel({
       pairingRating: number | null;
       note: string;
     } | null>(null),
-    [busy, setBusy] = useState(false),
-    [notice, setNotice] = useState(""),
     [confirm, setConfirm] = useState("");
-  const completed = sessions.filter((s) => s.state.status === "completed" && !s.dirty);
+  const completed = sessions.filter(
+    (s) => s.version.user_id === owner && s.state.status === "completed" && !s.dirty,
+  );
   const unregistered = completed.filter(
     (s) => !data?.history.meals.some((m) => m.session_id === s.id),
   );
@@ -61,29 +79,19 @@ export function MealHistoryPanel({
             note: "",
           },
     );
-  async function save(remove = false) {
+  function save(remove = false) {
     if (!editing) return;
-    setBusy(true);
-    setNotice("");
-    try {
-      const { id, revision, ...input } = editing;
-      await mealSave(owner, id, revision, remove ? null : mealInputSchema.parse(input));
-      setEditing(null);
-      setConfirm("");
-      await refresh();
-      setNotice(
-        remove
-          ? "Måltidskopplingen raderades."
-          : "Måltiden sparades. Inget smakminne eller flaskantal har ändrats.",
-      );
-    } catch {
-      setNotice(
-        "Kunde inte spara. Kontrollera valen och hämta aktuella uppgifter. Skriv inte hälsouppgifter i anteckningen.",
-      );
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
+    const { id, revision, ...input } = editing;
+    mutation.run(
+      () => mealSave(owner, id, revision, remove ? null : mealInputSchema.parse(input)),
+      () => {
+        setEditing(null);
+        setConfirm("");
+      },
+      remove
+        ? "Måltidskopplingen raderades."
+        : "Måltiden sparades. Inget smakminne eller flaskantal har ändrats.",
+    );
   }
   return (
     <section className="meal-panel">
@@ -118,7 +126,7 @@ export function MealHistoryPanel({
         </OperationNotice>
       )}
       {!data && !error && <OperationNotice kind="loading">{t("common.loading")}</OperationNotice>}
-      {notice && <p role="status">{notice}</p>}
+      <MealMutationNotice mutation={mutation} />
       {data && (
         <>
           {!completed.length && <p>Slutför en matlagning för att registrera en kombination.</p>}

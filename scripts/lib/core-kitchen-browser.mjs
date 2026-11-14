@@ -117,6 +117,23 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
     updated_at: stamp,
   }));
   const failedTables = new Set();
+  const completed = {
+    ...active,
+    id: id(60),
+    state: { ...active.state, status: "completed", timers: [] },
+  };
+  let exerciseMeals = false,
+    scenario = "",
+    failInspection = false,
+    failList = false;
+  let heldResponse,
+    arrived = () => {};
+  let householdRows = [],
+    memberRows = [],
+    mealRows = [];
+  let writeCount = 0,
+    commits = 0,
+    inspectionCount = 0;
   const delays = new Map();
   const json = (route, data, status = 200) =>
     route.fulfill({
@@ -152,6 +169,44 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
     childName,
     wineName,
     failedTables,
+    beginMealChecks() {
+      exerciseMeals = true;
+    },
+    armMealScenario(value) {
+      assert.ok(
+        [
+          "household-lost",
+          "profile-read-error",
+          "meal-lost",
+          "meal-conflict",
+          "profile-late",
+        ].includes(value),
+      );
+      assert.equal(scenario, "");
+      scenario = value;
+    },
+    failInspection(value) {
+      failInspection = value;
+    },
+    failList(value) {
+      failList = value;
+    },
+    nextLateWrite() {
+      return new Promise((resolve) => {
+        arrived = resolve;
+      });
+    },
+    releaseWrite() {
+      heldResponse?.();
+      heldResponse = undefined;
+    },
+    conflictMeal() {
+      assert.equal(mealRows.length, 1);
+      mealRows[0] = { ...mealRows[0], revision: 2, note: "Synthetic server edit" };
+    },
+    counts() {
+      return { writeCount, commits, inspectionCount };
+    },
     delay(table) {
       assert.ok(tables.has(table));
       let release;
@@ -200,6 +255,155 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
       )
         return json(route, true);
       const table = url.pathname.slice("/rest/v1/".length);
+      if (
+        exerciseMeals &&
+        request.method() === "POST" &&
+        ["rpc/kitchen_family_change", "rpc/kitchen_meal_save"].includes(table)
+      ) {
+        assert.equal(user.id, owner);
+        const body = request.postDataJSON(),
+          mode = scenario;
+        assert.notEqual(mode, "");
+        assert.match(body._id, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+        scenario = "";
+        report.simulatedWrites++;
+        writeCount++;
+        if (mode === "household-lost") {
+          assert.equal(table, "rpc/kitchen_family_change");
+          assert.deepEqual(body, {
+            _action: "create_household",
+            _id: body._id,
+            _revision: 0,
+            _data: {
+              name: "Synthetic household",
+              displayName: "Synthetic owner",
+              adultConfirmed: true,
+            },
+          });
+          householdRows = [{ id: body._id, user_id: owner, name: body._data.name, revision: 1 }];
+          memberRows = [
+            { id: id(70), user_id: owner, household_id: body._id, display_name: "Synthetic owner" },
+          ];
+          commits++;
+          return route.abort();
+        }
+        if (mode === "profile-read-error" || mode === "profile-late") {
+          assert.equal(table, "rpc/kitchen_family_change");
+          const name =
+            mode === "profile-read-error" ? "Synthetic saved profile" : "Synthetic late profile";
+          assert.deepEqual(body, {
+            _action: "save_diner",
+            _id: body._id,
+            _revision: 0,
+            _data: {
+              document: { name, kind: "adult", preferences: [] },
+              householdId: null,
+              shared: false,
+            },
+          });
+          diners.push({
+            id: body._id,
+            user_id: owner,
+            household_id: null,
+            shared: false,
+            document: body._data.document,
+            revision: 1,
+            created_at: stamp,
+            updated_at: stamp,
+          });
+          commits++;
+          if (mode === "profile-read-error") failList = true;
+          else {
+            const wait = new Promise((resolve) => {
+              heldResponse = resolve;
+            });
+            arrived();
+            await wait;
+            return json(route, null).catch(() => {});
+          }
+          return json(route, null);
+        }
+        assert.equal(table, "rpc/kitchen_meal_save");
+        assert.equal(body._input.sessionId, completed.id);
+        assert.equal(body._input.wineId, wine.id);
+        if (mode === "meal-conflict") {
+          assert.equal(body._revision, 1);
+          return json(route, { code: "PT409" }, 409);
+        }
+        assert.equal(mode, "meal-lost");
+        assert.deepEqual(body, {
+          _id: body._id,
+          _revision: 0,
+          _input: {
+            sessionId: completed.id,
+            wineId: wine.id,
+            wineRating: null,
+            pairingRating: null,
+            note: "Synthetic meal",
+          },
+        });
+        mealRows = [
+          {
+            id: body._id,
+            user_id: owner,
+            session_id: completed.id,
+            wine_id: wine.id,
+            food_rating: null,
+            wine_rating: null,
+            pairing_rating: null,
+            note: "Synthetic meal",
+            revision: 1,
+            created_at: stamp,
+            updated_at: stamp,
+          },
+        ];
+        commits++;
+        return route.abort();
+      }
+      if (
+        exerciseMeals &&
+        request.method() === "GET" &&
+        [
+          "kitchen_households",
+          "kitchen_household_members",
+          "kitchen_diners",
+          "meal_wine_links",
+        ].includes(table)
+      ) {
+        const isInspection = !!url.searchParams.get("id");
+        if (isInspection) {
+          inspectionCount++;
+          assert.equal(url.searchParams.get("user_id"), "eq." + owner);
+          if (failInspection) return json(route, { code: "synthetic_read_error" }, 400);
+        }
+        if (table === "kitchen_diners" && !isInspection && failList)
+          return json(route, { code: "synthetic_read_error" }, 400);
+        let rows =
+          user.id !== owner
+            ? []
+            : {
+                kitchen_households: householdRows,
+                kitchen_household_members: memberRows,
+                kitchen_diners: diners,
+                meal_wine_links: mealRows,
+              }[table];
+        const exactId = url.searchParams.get("id");
+        if (exactId?.startsWith("eq.")) rows = rows.filter((r) => r.id === exactId.slice(3));
+        return json(
+          route,
+          request.headers().accept?.includes("vnd.pgrst.object") ? (rows[0] ?? null) : rows,
+        );
+      }
+      if (
+        exerciseMeals &&
+        user.id === owner &&
+        request.method() === "GET" &&
+        table === "cooking_sessions" &&
+        (url.searchParams.get("state->>status") === "eq.completed" ||
+          url.searchParams.get("id")?.includes(completed.id))
+      ) {
+        return json(route, [completed]);
+      }
       if (
         request.method() !== "GET" ||
         !url.pathname.startsWith("/rest/v1/") ||
@@ -353,6 +557,27 @@ export async function acceptCoreKitchen({
   assert.equal(await wineOptIn.isChecked(), false);
   await layout(page, artifacts, report, "pairings");
   report.passed.push("child-only-diners-disable-wine-suggestions");
+  assert.equal(report.simulatedWrites, 0);
+  assert.equal(report.simulatedAiRequests, 0);
+  report.passed.push("no-automatic-ai-or-writes-in-core-view-navigation");
+  await acceptMealWrites({
+    page,
+    base,
+    artifacts,
+    report,
+    fixture,
+    switchAccount: () =>
+      page.evaluate(
+        ({ key, session }) => {
+          localStorage.setItem(key, JSON.stringify(session));
+          const channel = new BroadcastChannel(key);
+          channel.postMessage({ event: "SIGNED_IN", session });
+          channel.close();
+        },
+        { key: authKey, session: peerSession },
+      ),
+  });
+  await views.selectOption("pairings");
   report.phase = "kitchen-account-isolation";
   await page.evaluate(
     ({ key, session }) => {
@@ -373,8 +598,113 @@ export async function acceptCoreKitchen({
   ])
     assert.equal(await page.getByText(text, { exact: true }).count(), 0);
   report.passed.push("kitchen-account-change-clears-owner-view");
-  assert.equal(report.simulatedWrites, 0);
+  assert.equal(report.simulatedWrites, fixture.counts().writeCount);
   assert.equal(report.simulatedAiRequests, 0);
-  report.passed.push("no-automatic-ai-or-writes-in-core-view-navigation");
   await context.clearCookies();
+}
+
+async function acceptMealWrites({ page, base, artifacts, report, fixture, switchAccount }) {
+  fixture.beginMealChecks();
+  await page.goto(base + "/kitchen#family", { waitUntil: "domcontentloaded" });
+  const create = page.getByRole("button", { name: "Skapa hushåll", exact: true });
+  await create.waitFor();
+  await page.getByLabel("Ditt smeknamn", { exact: true }).fill("Synthetic owner");
+  await page.getByLabel("Hushållets namn", { exact: true }).fill("Synthetic household");
+  await page
+    .getByRole("checkbox", { name: "Jag är vuxen och vill delta i detta hushåll", exact: true })
+    .check();
+  fixture.armMealScenario("household-lost");
+  fixture.failInspection(true);
+  report.phase = "family-lost-reply-read-recovery";
+  await create.evaluate((button) => {
+    button.form.requestSubmit();
+    button.form.requestSubmit();
+  });
+  await page.getByText("Svaret saknas.", { exact: false }).waitFor();
+  assert.equal(fixture.counts().writeCount, 1);
+  await layout(page, artifacts, report, "family-save-pending");
+  fixture.failInspection(false);
+  await page.getByRole("button", { name: "Kontrollera sparandet", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByText("Du äger hushållet.", { exact: true }).waitFor();
+  await page
+    .getByRole("button", { name: "Kontrollera sparandet", exact: true })
+    .waitFor({ state: "hidden" });
+  assert.equal(fixture.counts().writeCount, 1);
+  report.passed.push("household-lost-reply-keeps-one-id-and-keyboard-read-recovery");
+
+  await page.getByRole("button", { name: "Ny profil", exact: true }).click();
+  await page.getByLabel("Namn eller smeknamn", { exact: true }).fill("Synthetic saved profile");
+  fixture.armMealScenario("profile-read-error");
+  await page.getByRole("button", { name: "Spara profil", exact: true }).click();
+  await page.getByText("Sparat. Listan kunde inte läsas om.", { exact: false }).waitFor();
+  await layout(page, artifacts, report, "family-save-reload-error");
+  fixture.failList(false);
+  await page.getByRole("button", { name: "Hämta familjeuppgifter", exact: true }).click();
+  await page.getByText("Synthetic saved profile", { exact: true }).waitFor();
+  assert.equal(fixture.counts().writeCount, 2);
+  report.passed.push("family-committed-save-is-not-a-failed-write-after-reload-error");
+
+  const views = page.getByRole("combobox", { name: "Fler vyer i köket", exact: true });
+  await views.selectOption("meals");
+  await page.getByRole("button", { name: "Registrera", exact: true }).click();
+  await page.getByLabel("Anteckning", { exact: true }).fill("Synthetic meal");
+  fixture.armMealScenario("meal-lost");
+  await page.getByRole("button", { name: "Spara måltid", exact: true }).click();
+  await page.getByText("Måltiden sparades.", { exact: false }).waitFor();
+  await page.getByRole("button", { name: "Redigera måltid", exact: true }).click();
+  await page.getByLabel("Anteckning", { exact: true }).fill("Synthetic draft edit");
+  fixture.conflictMeal();
+  fixture.armMealScenario("meal-conflict");
+  await page.getByRole("button", { name: "Spara måltid", exact: true }).click();
+  await page.getByText("Uppgifterna har ändrats.", { exact: false }).waitFor();
+  assert.equal(
+    await page.getByLabel("Anteckning", { exact: true }).inputValue(),
+    "Synthetic draft edit",
+  );
+  await layout(page, artifacts, report, "meal-save-conflict");
+  assert.equal(fixture.counts().writeCount, 4);
+  assert.equal(fixture.counts().commits, 3);
+  report.passed.push("meal-lost-insert-reconciles-once-and-newer-revision-keeps-draft");
+
+  for (const accountChange of [false, true]) {
+    await views.selectOption("family");
+    await page.getByRole("button", { name: "Ny profil", exact: true }).click();
+    await page.getByLabel("Namn eller smeknamn", { exact: true }).fill("Synthetic late profile");
+    fixture.armMealScenario("profile-late");
+    const arrival = fixture.nextLateWrite();
+    await page.getByRole("button", { name: "Spara profil", exact: true }).click();
+    let arrivalTimer;
+    try {
+      await Promise.race([
+        arrival,
+        new Promise((_, reject) => {
+          arrivalTimer = setTimeout(() => reject(Error("Synthetic write did not arrive")), 30000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(arrivalTimer);
+    }
+    const before = fixture.counts().inspectionCount;
+    if (accountChange) {
+      await switchAccount();
+      await page.getByText("Synthetic saved profile", { exact: true }).waitFor({ state: "hidden" });
+    } else {
+      await views.selectOption("meals");
+      await page.getByRole("heading", { name: "Måltider & vin", exact: true }).waitFor();
+    }
+    fixture.releaseWrite();
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    assert.equal(await page.getByText("Sparat.", { exact: true }).count(), 0);
+    assert.equal(fixture.counts().inspectionCount, before);
+    report.passed.push(
+      accountChange
+        ? "late-family-write-cannot-appear-in-another-account"
+        : "late-family-write-cannot-change-another-view",
+    );
+  }
+  assert.equal(fixture.counts().writeCount, 6);
+  assert.equal(fixture.counts().commits, 5);
 }

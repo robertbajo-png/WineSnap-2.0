@@ -91,6 +91,14 @@ and one existing skip; the first CI test-formatting failure was corrected.
 The supervisor has verified the new batch and reported fully healthy after Open;
 its earlier busy report was not a proved proxy outage. The helper needs no
 frontend rebuild. See the canonical handoff rather than older pending status.
+DEV-03 family/meal mutation follow-up is now source-implemented, not installed:
+owner-keyed state, bounded cancellable writes, stable in-memory attempt IDs and
+invitation tokens, read reconciliation before explicit retry, and truthful
+post-write read-failure notices. Five focused files / 41 tests passed; newer
+retry guards, full CI and the extended isolated kitchen browser check remain.
+No schema/RPC/RLS change is needed. Keep the real owner viewer open and finish
+source verification before the separate safe installation gates. Local typecheck
+was interrupted under load and must not be called passing evidence.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical
