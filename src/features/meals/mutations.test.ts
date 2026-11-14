@@ -92,6 +92,61 @@ const meal = () => ({
   updated_at: "2026-11-14",
 });
 describe("captured meal mutation attempts", () => {
+  it.each([2, 3])(
+    "reconciles a renamed household only at the expected revision: %i",
+    async (revision) => {
+      const attempt = familyChange(owner, "rename_household", id, 1, { name: "New name" });
+      rows.kitchen_households = group("New name", revision);
+      write.mockResolvedValueOnce({ data: null, error: { code: "" } });
+      if (revision === 2) expect(await attempt.execute(scope)).toBe(true);
+      else await expect(attempt.execute(scope)).rejects.toMatchObject({ kind: "conflict" });
+      expect(write).toHaveBeenCalledOnce();
+    },
+  );
+  it("confirms member removal only in the owned household's expected next revision", async () => {
+    const attempt = familyChange(owner, "remove_member", id, 1, { userId: other });
+    rows.kitchen_households = group("Bordet", 2);
+    write.mockResolvedValueOnce({ data: null, error: { code: "" } });
+    expect(await attempt.execute(scope)).toBe(true);
+    expect(reads.find((r) => r.table === "kitchen_household_members")?.filters).toEqual({
+      household_id: id,
+      user_id: other,
+    });
+  });
+  it("reads the owner's membership rather than claiming ownership when leaving a shared household", async () => {
+    const attempt = familyChange(owner, "leave_household", id, 1);
+    rows.kitchen_household_members = member();
+    rows.kitchen_households = { ...group(), user_id: other };
+    write.mockResolvedValueOnce({ data: null, error: { code: "" } });
+    await expect(attempt.execute(scope)).rejects.toMatchObject({ kind: "uncertain" });
+    expect(reads[0].filters).toEqual({ household_id: id, user_id: owner });
+    expect(reads[1].filters).toEqual({ id });
+    rows.kitchen_household_members = null;
+    expect(await attempt.execute(scope, true)).toBe(true);
+    expect(write).toHaveBeenCalledOnce();
+  });
+  it("does not accept a foreign owner's row during household reconciliation", async () => {
+    rows.kitchen_households = { ...group("New", 2), user_id: other };
+    write.mockResolvedValueOnce({ data: null, error: { code: "" } });
+    await expect(
+      familyChange(owner, "rename_household", id, 1, { name: "New" }).execute(scope),
+    ).rejects.toMatchObject({ kind: "conflict" });
+  });
+  it("confirms revocation and meal deletion from exact-owner read-back without repeating them", async () => {
+    rows.kitchen_household_invites = {
+      id,
+      user_id: owner,
+      household_id: other,
+      expires_at: "2099-01-01T00:00:00Z",
+      revoked_at: "2026-11-14",
+      used_at: null,
+    };
+    write.mockResolvedValue({ data: null, error: { code: "" } });
+    expect(await inviteRevoke(owner, id).execute(scope)).toBe(true);
+    expect(await mealSave(owner, id, 1, null).execute(scope)).toBe(true);
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(reads.every((r) => r.filters.user_id === owner && r.filters.id === id)).toBe(true);
+  });
   it("reconciles a lost household insert response with its original ID and immutable input", async () => {
     const data = { name: "Bordet", displayName: "Test", adultConfirmed: true };
     const attempt = familyChange(owner, "create_household", id, 0, data);

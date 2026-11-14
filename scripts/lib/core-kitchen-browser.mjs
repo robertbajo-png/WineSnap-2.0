@@ -399,7 +399,9 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
         user.id === owner &&
         request.method() === "GET" &&
         table === "cooking_sessions" &&
-        (url.searchParams.get("state->>status") === "eq.completed" ||
+        (["eq.completed", "in.(completed,abandoned)"].includes(
+          url.searchParams.get("state->>status"),
+        ) ||
           url.searchParams.get("id")?.includes(completed.id))
       ) {
         return json(route, [completed]);
@@ -646,12 +648,14 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
   report.passed.push("family-committed-save-is-not-a-failed-write-after-reload-error");
 
   const views = page.getByRole("combobox", { name: "Fler vyer i köket", exact: true });
+  report.phase = "meal-register-lost-response";
   await views.selectOption("meals");
   await page.getByRole("button", { name: "Registrera", exact: true }).click();
   await page.getByLabel("Anteckning", { exact: true }).fill("Synthetic meal");
   fixture.armMealScenario("meal-lost");
   await page.getByRole("button", { name: "Spara måltid", exact: true }).click();
   await page.getByText("Måltiden sparades.", { exact: false }).waitFor();
+  report.phase = "meal-newer-revision-conflict";
   await page.getByRole("button", { name: "Redigera måltid", exact: true }).click();
   await page.getByLabel("Anteckning", { exact: true }).fill("Synthetic draft edit");
   fixture.conflictMeal();
@@ -668,6 +672,7 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
   report.passed.push("meal-lost-insert-reconciles-once-and-newer-revision-keeps-draft");
 
   for (const accountChange of [false, true]) {
+    report.phase = accountChange ? "late-family-account-change" : "late-family-view-change";
     await views.selectOption("family");
     await page.getByRole("button", { name: "Ny profil", exact: true }).click();
     await page.getByLabel("Namn eller smeknamn", { exact: true }).fill("Synthetic late profile");

@@ -38,6 +38,16 @@ beforeEach(() => {
   });
 });
 describe("isolated kitchen fixture boundary", () => {
+  it("provides a completed recipe session for the actual history query", async () => {
+    fixture.beginMealChecks();
+    const request = route("/rest/v1/cooking_sessions?state-%3E%3Estatus=in.(completed,abandoned)");
+    await fixture.route(request);
+    const rows = JSON.parse(request.fulfill.mock.calls[0][0].body);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].state.status).toBe("completed");
+    expect(rows[0].user_id).toBe(owner);
+    expect(request.continue).not.toHaveBeenCalled();
+  });
   it("keeps unknown writes blocked even after the meal scenarios are enabled", async () => {
     fixture.beginMealChecks();
     const request = route("/rest/v1/rpc/kitchen_save_session", { method: "POST" });
