@@ -15,6 +15,13 @@ vi.mock("@/i18n", () => ({ useT: () => (key: string) => key }));
 import { BottomNav } from "./BottomNav";
 
 describe("accessible bottom navigation", () => {
+  it("keeps the scan control circular when larger text narrows its grid column", () => {
+    const html = renderToStaticMarkup(<BottomNav />);
+    const scan = html.match(/<a[^>]*aria-label="nav.scan"[^>]*>/)?.[0];
+    expect(scan).toContain("aspect-square");
+    expect(scan).toContain("max-w-full");
+    expect(scan).toContain("h-auto");
+  });
   it.each(["/cellar", "/scan"])("marks only the active page: %s", (pathname) => {
     location.pathname = pathname;
     const html = renderToStaticMarkup(<BottomNav />);

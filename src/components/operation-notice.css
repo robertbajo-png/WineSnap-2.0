@@ -1,0 +1,49 @@
+.operation-notice button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.operation-notice button:focus-visible {
+  outline: 2px solid var(--ring, currentColor);
+  outline-offset: 2px;
+}
+.operation-notice {
+  margin-block: 12px;
+  padding: 12px 0;
+  border-block: 1px solid var(--border, #53645a);
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.operation-notice > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.operation-notice p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.operation-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.operation-notice button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--primary, #a5d0b6);
+}
+.operation-notice[data-kind="error"] > div > svg {
+  color: var(--destructive, #d98d87);
+}
+.kitchen .operation-notice {
+  border-color: var(--k-line);
+}
+.kitchen .operation-notice button {
+  color: var(--k-green);
+}

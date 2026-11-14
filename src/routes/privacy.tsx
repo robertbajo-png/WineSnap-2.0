@@ -3,6 +3,10 @@ import { AppShell } from "@/components/AppShell";
 import { useI18n } from "@/i18n";
 import { privacyInformationComplete, siteInformation } from "@/lib/siteInformation";
 import { privacyControlsEnabled } from "@/lib/privacyControls";
+import { kitchenEnabled } from "@/features/kitchen/feature";
+import { chefEnabled } from "@/features/chef/feature";
+import { mealsEnabled } from "@/features/meals/feature";
+import { nutritionEnabled } from "@/features/nutrition/feature";
 export const Route = createFileRoute("/privacy")({
   head: () => ({ meta: [{ title: "Privacy | WineSnap" }] }),
   component: PrivacyPage,
@@ -18,8 +22,8 @@ function PrivacyPage() {
       {!privacyInformationComplete && (
         <p role="alert" className="mt-4 border-l-2 border-gold pl-3 text-base">
           {sv
-            ? "Dataskyddsupplägget nedan är beslutat. Drift, leverantörsvillkor och återstående uppgifter är ännu inte fullständigt verifierade inför offentlig release."
-            : "The privacy policy below is approved. Deployment, provider terms and remaining details are not yet fully verified for public release."}
+            ? "Beskrivningen nedan visar appens dataskyddsupplägg. Drift, leverantörskonton, avtal och återstående uppgifter är ännu inte fullständigt verifierade inför offentlig release."
+            : "The information below describes the app's privacy arrangements. Deployment, supplier accounts, agreements and remaining details are not yet fully verified for public release."}
         </p>
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
@@ -61,6 +65,41 @@ function PrivacyPage() {
       )}
       <section className="mt-6 space-y-3 text-base leading-relaxed">
         <h2 className="font-display text-xl">{sv ? "Uppgifter och användning" : "Data and use"}</h2>
+        {nutritionEnabled && (
+          <p>
+            {sv
+              ? "Receptkalkylatorns frivilliga kostläge, gramvikter, etikettvärden och receptgräns används tillfälligt i den öppna vyn. Appen sparar dem inte i konto, webbläsarlagring, matminne eller familjeprofiler. Referenslistan är offentlig livsmedelsdata. Ett ingrediensbyte kan öppnas som en redigerbar fråga till AI-kocken; först när du skickar frågan överförs ingrediensnamn och mängd tillsammans med valt recept enligt AI-kockens regler ovan. Kostläge och receptgräns förs inte över. Kalkylatorn stöder inte hälsomätningar, behandling eller barns kostplanering."
+              : "The optional recipe calculator uses mode, gram weights, label values and recipe comparison limits temporarily in the open view. The app does not save them in the account, browser storage, Food Memory or household profiles. Its reference list is public food data. An ingredient substitution can open an editable Chef request; only submission sends ingredient names and amount with the selected recipe under the Chef rules above. Mode and comparison limit are not transferred. Health measurements, treatment and child dietary planning are not supported."}
+          </p>
+        )}
+        {mealsEnabled && (
+          <p>
+            {sv
+              ? "I testköket kan du skapa privata matprofiler för vuxna och barn med namn eller smeknamn och vanliga matönskemål, utan födelsedatum eller hälsouppgifter. Endast uttryckligen delade profiler visas för hushållets inbjudna vuxna; andra privata uppgifter och vinkällare delas inte. Du ska ha rätt att lämna och dela en annan persons uppgifter. Barnprofiler får inte vuxnas kostval automatiskt och används inte för vinförslag. Profiler och registrerade måltidsbetyg sparas tills du raderar dem eller kontot. Måltidsbetyg skapar inte smakminne automatiskt. Radering av ett hushåll gör övriga medlemmars profiler privata, inte raderade. Inbjudningar är engångskoder i 48 timmar och gallras senast genom aktiv körning efter ytterligare sju dagar. Matprofiler skickas inte till AI. Export omfattar egna profiler, medlemskap, hushåll och registreringar. Global nollställning av minnet tömmer även önskemålen i egna matprofiler; namn och historik behålls. Delning kan återkallas; redan lästa uppgifter kan inte tas tillbaka från mottagaren."
+              : "The test kitchen supports private adult and child diner profiles using a name or nickname and ordinary food preferences, without dates of birth or health details. Only explicitly shared profiles are visible to invited adults in a household; private memory and cellars are not shared. You must have authority to provide and share another person's data. Adult diets are not automatically applied to children, and child profiles do not receive wine suggestions. Profiles and recorded meal ratings remain until deleted or the account is erased; ratings do not automatically create taste memory. Removing a household makes peers' profiles private, rather than deleting them. Invitations are single-use 48-hour codes cleaned by active maintenance after another seven days. Profiles are not sent to AI. Export includes owned profiles, memberships, households and meal records. Global memory reset also clears preferences in owned profiles while retaining names and history. Sharing can be revoked, but information already read cannot be recalled from recipients."}
+          </p>
+        )}
+        {chefEnabled && (
+          <p>
+            {sv
+              ? "I det lokala testköket sparas även privata recept, receptversioner, matlagningar, feedback och matpreferenser med källunderlag. AI-kocken skickar din fråga, valt recept eller steg och ett begränsat bekräftat matminne till Google Gemini. Feedback skickas för minnesanalys först när du väljer det; tolkningar väntar på ditt godkännande. Allergier och medicinska kostbehov är inte en del av matminnet. I Matminne kan du granska, korrigera, glömma eller nollställa uppgifter. Det rensar även tidigare Chef-samtal och osparade förslag vid korrigering, glömning eller nollställning; recept och matlagningshistorik behålls. En begränsad hashspärr hindrar automatisk återinlärning av en glömd preferens. Chef-anrop och osparade förslag gallras efter 24 timmar, samtal efter 90 dagar med aktiv gallring. Recept och bekräftade matpreferenser behålls tills du tar bort dem eller kontot. Integritetsexport och kontoradering omfattar även dessa uppgifter."
+              : "The local test kitchen also stores private recipes, versions, cooking sessions, feedback and food preferences with evidence. Chef sends your question, selected recipe or step and bounded confirmed food memory to Google Gemini. Feedback is analyzed only when you select it; inferred preferences await confirmation. Food Memory does not support allergies or medical diets. You can inspect, correct, forget or reset memory. Correction, forgetting or reset also clears Chef conversations and unsaved drafts, while recipes and cooking history remain. A limited hash barrier prevents automatic relearning of forgotten preferences. Requests and unsaved drafts are cleaned after 24 hours and conversations after 90 days with active maintenance. Recipes and confirmed preferences remain until removed or the account is erased. Privacy export and erasure include these data."}
+          </p>
+        )}
+        {chefEnabled && (
+          <p>
+            {sv
+              ? "För att följa ett Chef-samtal kan även upp till tolv tidigare meddelanden skickas med. Kontroller för vanliga nyckelformat och vissa medicinska uttryck minskar oavsiktlig delning, men upptäcker inte alla känsliga uppgifter. Ange inte lösenord, nycklar eller hälsouppgifter i frågor, recept eller feedback."
+              : "Up to twelve previous messages may also be sent to continue a Chef conversation. Checks for common credential formats and some medical terms reduce accidental disclosure but cannot detect all sensitive information. Do not put passwords, keys or health information in questions, recipes or feedback."}
+          </p>
+        )}
+        {kitchenEnabled && (
+          <p>
+            {sv
+              ? "För Cook Mode kan egna recept och matlagningar finnas i webbläsarens IndexedDB som en kontobunden offlinekopia, med högst 24 timmar sedan senaste åtkomstkontroll. Den rensas vid utloggning och kontobyte. Den är inte separat krypterad av appen; använd inte en gemensam webbläsarprofil för privata uppgifter. Kostkalkylatorns tillfälliga val ingår inte i offlinekopian och nollställs även vid återställning av sidan från webbläsarens bakåt-historik."
+              : "Cook Mode can keep owned recipes and cooking sessions in browser IndexedDB as an account-scoped offline copy, for up to 24 hours since the last access check. It is cleared on logout and account change. The app does not separately encrypt it; do not use a shared browser profile for private data. Temporary recipe-calculator choices are not part of that copy and also reset when a page is restored from browser back history."}
+          </p>
+        )}
         <p>
           {sv
             ? "WineSnap sparar kontouppgifter, vinbilder, källare, köp, önskelista, betyg, smakpreferenser och AI-historik för appens funktioner. Frivillig användningsstatistik är avstängd i denna version. Smakminnet drar slutsatser från dina preferenser och aktiviteter för personliga vinförslag, inte för beslut med rättsliga eller liknande betydande konsekvenser. Du kan nollställa det utan att radera dina viner eller betyg."
@@ -68,14 +107,19 @@ function PrivacyPage() {
         </p>
         <p>
           {sv
-            ? "Bilder och text du skickar för AI-analys behandlas via Lovables AI-gateway och vald AI-leverantör. Konto och appdata hanteras med Supabase och Lovable. Undvik känsliga uppgifter i bilder och frågor. Publika profiler, publika viner och delningslänkar gör avsiktligt valda uppgifter tillgängliga för andra."
-            : "Images and text you submit for AI analysis are processed through Lovable's AI gateway and the selected AI provider. Account and application data are handled using Supabase and Lovable. Avoid sensitive information in images and questions. Public profiles, public wines and share links make intentionally selected data available to others."}
+            ? "I denna fristående version skickas bilder och text för AI-analys direkt från servern till OpenAI (etikettanalys) eller Google Gemini (frågor och rekommendationer), utan Lovables AI-gateway. Konto, databas och sparade bilder hanteras med Supabase; webbappen körs hos den driftleverantör ansvarig anlitar. Faktisk drift och leverantörsvillkor måste verifieras före publicering. Undvik känsliga uppgifter i bilder och frågor. Publika profiler, publika viner och delningslänkar gör avsiktligt valda uppgifter tillgängliga för andra."
+            : "In this standalone version, images and text for AI analysis are sent directly from the server to OpenAI (label analysis) or Google Gemini (questions and recommendations), without Lovable's AI gateway. Account, database and saved images use Supabase; the web app runs with the hosting provider appointed by the operator. Actual deployment and provider terms must be verified before publication. Avoid sensitive information in images and questions. Public profiles, public wines and share links make intentionally selected data available to others."}
         </p>
         <p>
           {siteInformation.legalBasis ??
             (sv
               ? "Rättslig grund: avtal för behandling som är nödvändig för tjänstens begärda funktioner. Begränsad säkerhets- och missbruksbekämpning avses stödjas på berättigat intresse efter dokumenterad intresseavvägning. Det innebär inte tillstånd att använda uppgifterna för andra ändamål."
               : "Legal basis: contract for processing necessary for requested service features. Limited security and abuse prevention is intended to rely on legitimate interests after a documented balancing assessment. This does not permit use for unrelated purposes.")}
+        </p>
+        <p>
+          {sv
+            ? "Gränssnittets typsnitt levereras från appens egen adress, utan anrop till Google Fonts eller en extern typsnitts-CDN. Lokal drift innebär däremot inte att konto-, AI- och internetfunktionerna slutar använda sina leverantörer."
+            : "Interface fonts are served from the app's own origin, without requests to Google Fonts or an external font CDN. Local hosting does not eliminate the suppliers used for account, AI and internet features."}
         </p>
         <p>
           {siteInformation.retention ??
@@ -93,6 +137,38 @@ function PrivacyPage() {
             ? "En begränsad raderingsjournal med konto-ID och tidpunkter sparas under handläggningen och 30 dagar efter slutförd radering för att förhindra återkomst från säkerhetskopior. Journalen är inte åtkomlig för andra användare."
             : "A limited erasure ledger containing account ID and timestamps is kept during processing and for 30 days after completed erasure to prevent recovery from backups. Other users cannot access the ledger."}
         </p>
+        <h2 className="font-display text-xl">
+          {sv ? "Leverantörer och överföringar" : "Suppliers and transfers"}
+        </h2>
+        <p>
+          {sv
+            ? "Appens egen gallring raderar inte automatiskt leverantörernas säkerhetsloggar. OpenAI beskriver normalt upp till 30 dagars missbruksloggning, med undantag bland annat för säkerhet och lagkrav. Google beskriver 55 dagars missbrukskontroll för Gemini; separat projektloggning och sparade dataset kan ha andra tider. Faktiska kontoinställningar och tillämpliga avtal måste bekräftas. Nollagring eller enbart EU-behandling utlovas inte."
+            : "App cleanup does not automatically erase suppliers' security logs. OpenAI describes default abuse monitoring of up to 30 days, with exceptions including safety and legal requirements. Google describes 55-day Gemini abuse monitoring; optional project logs and saved datasets can follow different periods. Actual account settings and applicable agreements must be confirmed. Zero retention or EU-only processing is not promised."}
+        </p>
+        <p>
+          {sv
+            ? "När den valfria skyddade testtunneln används hanterar Cloudflare anslutning, trafik och e-postkontrollen före appen. Vid direkt lokal användning går apptrafiken inte genom den tunneln. Supabase och AI-leverantörerna kan använda underleverantörer och behandla data utanför EU/EES. Ansvarig ska före offentlig release verifiera mottagare, avtal, lagring och stöd för överföring. Kontakta ansvarig för information om tillämpliga skyddsåtgärder och hur du får en kopia."
+            : "When the optional protected test tunnel is used, Cloudflare handles connections, traffic and email authentication before the app. Direct loopback use does not send app traffic through that tunnel. Supabase and the AI providers may use subprocessors and process data outside the EEA. Before public release, the operator must verify recipients, agreements, retention and transfer safeguards. Contact the operator for information about applicable safeguards and how to obtain a copy."}
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          {[
+            ["Supabase", "https://supabase.com/legal/customer-resources/data-processing-addendum"],
+            ["OpenAI", "https://developers.openai.com/api/docs/guides/your-data"],
+            ["Google Gemini", "https://ai.google.dev/gemini-api/docs/usage-policies"],
+            ["Cloudflare", "https://www.cloudflare.com/cloudflare-customer-dpa/"],
+          ].map(([name, href]) => (
+            <li key={name}>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center text-gold"
+              >
+                {name} {sv ? "dataskyddsinformation" : "data protection information"}
+              </a>
+            </li>
+          ))}
+        </ul>
         <a
           href="https://www.imy.se/privatperson/dataskydd/dina-rattigheter/"
           target="_blank"

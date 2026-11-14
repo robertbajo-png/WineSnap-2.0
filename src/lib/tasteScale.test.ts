@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { structureScore, validateTaste } from "./labelValidation";
 import { computeDrinkingWindow } from "./drinkingWindow";
+import { readFileSync } from "node:fs";
 describe("taste and drinking estimates", () => {
+  it("uses the shared zero-to-ten meter for public shares too", () => {
+    const source = readFileSync(new URL("../routes/w.$shareId.tsx", import.meta.url), "utf8");
+    expect(source).toContain("<BarMeter key={label} label={label} value={val} max={10} />");
+    expect(source).not.toContain("(val ?? 0) / 5");
+  });
   it.each([null, undefined, "", true, Infinity, -1, 11, 2.5])(
     "rejects unsupported structure score %s without guessing a scale",
     (value) => {

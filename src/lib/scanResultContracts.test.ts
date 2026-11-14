@@ -5,6 +5,10 @@ describe("scan result integration", () => {
   const route = readFileSync(new URL("../routes/scan.tsx", import.meta.url), "utf8");
   const detail = readFileSync(new URL("../routes/wine.$id.tsx", import.meta.url), "utf8");
 
+  it("lets the scan text body scroll independently below the fixed camera header", () => {
+    expect(route).toContain("flex min-h-0 flex-1 flex-col overflow-y-auto px-5");
+  });
+
   it("keeps the review screen after save and guards duplicate inserts", () => {
     expect(route).toContain("saveGuardRef.current.tryStart()");
     expect(route).toContain("savedIdRef.current = inserted.id");

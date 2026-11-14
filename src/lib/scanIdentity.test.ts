@@ -263,12 +263,23 @@ describe("attempt guard", () => {
 });
 
 describe("image input checks", () => {
+  it.each(["image/heic", "image/heif"])(
+    "rejects an unsupported original before analysis: %s",
+    (type) => {
+      expect(checkImageInput({ type, size: 1000 })).toEqual({ ok: false, reason: "type" });
+    },
+  );
   it("accepts common photo types and maps extensions", () => {
     expect(checkImageInput({ type: "image/png", size: 1000 })).toEqual({
       ok: true,
       mimeType: "image/png",
     });
     expect(checkImageInput({ type: "", size: 1000 })).toEqual({ ok: true, mimeType: "image/jpeg" });
+    expect(MAX_IMAGE_BYTES).toBe(10 * 1024 * 1024);
+    expect(checkImageInput({ type: "image/png", size: MAX_IMAGE_BYTES })).toEqual({
+      ok: true,
+      mimeType: "image/png",
+    });
     expect(extensionForMime("image/png")).toBe("png");
     expect(extensionForMime("image/jpeg")).toBe("jpg");
   });

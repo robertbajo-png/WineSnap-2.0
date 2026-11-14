@@ -1,0 +1,870 @@
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  IndependentRuntimeRequestError,
+  waitForIndependentRuntime,
+} from "./lib/independent-readiness.mjs";
+import { createCoreKitchenFixture, acceptCoreKitchen } from "./lib/core-kitchen-browser.mjs";
+import { createCoreChatFixture, acceptCoreChat } from "./lib/core-chat-browser.mjs";
+import { createCoreCollectorFixture, acceptCoreCollector } from "./lib/core-collector-browser.mjs";
+import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-browser.mjs";
+
+// Synthetic source UI only. No installed backend, real account or provider credentials.
+const kitchenOnly = process.argv.length === 3 && process.argv[2] === "--kitchen";
+const chatOnly = process.argv.length === 3 && process.argv[2] === "--chat";
+const collectorOnly = process.argv.length === 3 && process.argv[2] === "--collector";
+const pricesOnly = process.argv.length === 3 && process.argv[2] === "--prices";
+assert.ok(process.argv.length === 2 || kitchenOnly || chatOnly || collectorOnly || pricesOnly);
+const ownedFixture = kitchenOnly || chatOnly || collectorOnly || pricesOnly;
+const root = fileURLToPath(new URL("../", import.meta.url));
+const output = join(
+  root,
+  pricesOnly
+    ? "dist/core-prices-runtime"
+    : kitchenOnly
+      ? "dist/core-kitchen-runtime"
+      : chatOnly
+        ? "dist/core-chat-runtime"
+        : collectorOnly
+          ? "dist/core-collector-runtime"
+          : "dist/independent-runtime",
+);
+const artifacts = join(
+  root,
+  pricesOnly
+    ? "dist/core-prices"
+    : kitchenOnly
+      ? "dist/core-kitchen"
+      : chatOnly
+        ? "dist/core-chat"
+        : collectorOnly
+          ? "dist/core-collector"
+          : "dist/core-experience",
+);
+const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
+const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
+const wineId = "11111111-2222-4333-8444-555555555555";
+const longName = "SyntheticBottleWithAVeryLongUnbrokenWineNameForLayoutVerification";
+const aroma = "SyntheticLongUnbrokenAromaDescriptorForSmallScreenVerification";
+const image =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="400"><rect x="25" y="2" width="30" height="80" fill="#d4ba7d"/><rect x="8" y="80" width="64" height="318" rx="8" fill="#355d45"/><rect x="10" y="160" width="60" height="120" fill="#f2f5f2"/><rect x="10" y="375" width="60" height="20" fill="#ce8f9f"/></svg>',
+  );
+const wine = {
+  id: wineId,
+  user_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+  wine_name: longName,
+  producer: "Synthetic fixture",
+  vintage: 2023,
+  image_url: image,
+  country: "SyntheticCountryWithAnUnbrokenLongName",
+  region: "SyntheticRegionWithAnUnbrokenLongName",
+  grape_varieties: ["SyntheticGrapeVarietyWithAnUnbrokenLongName"],
+  wine_type: "white",
+  primary_notes: [aroma],
+  secondary_notes: [],
+  tertiary_notes: [],
+  tasting_notes: [],
+  body: 3,
+  acidity: 3,
+  fruit: 3,
+  tannin: 1,
+  description: "Synthetic UI fixture. No real account or wine data.",
+};
+const authKey = ownedFixture ? "sb-127-auth-token" : "sb-example-auth-token";
+const fixtureOwner = wine.user_id;
+const fixturePeer = "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa";
+function simulatedSession(id) {
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const token = [
+    Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+    Buffer.from(
+      JSON.stringify({ sub: id, role: "authenticated", aud: "authenticated", exp }),
+    ).toString("base64url"),
+    "synthetic-not-a-valid-signature",
+  ].join(".");
+  return {
+    access_token: token,
+    refresh_token: `synthetic-only-${id}`,
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: exp,
+    user: {
+      id,
+      role: "authenticated",
+      aud: "authenticated",
+      email: `${id}@example.invalid`,
+      app_metadata: { provider: "email", providers: ["email"] },
+      user_metadata: {},
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  };
+}
+const ownerSession = simulatedSession(fixtureOwner),
+  peerSession = simulatedSession(fixturePeer);
+const syntheticUsers = new Map([
+  ["Bearer " + ownerSession.access_token, ownerSession.user],
+  ["Bearer " + peerSession.access_token, peerSession.user],
+]);
+const report = {
+  synthetic: true,
+  fixtureDataMocked: true,
+  sourceViewScope: pricesOnly
+    ? "core-prices"
+    : kitchenOnly
+      ? "core-kitchen"
+      : chatOnly
+        ? "core-chat"
+        : collectorOnly
+          ? "core-collector"
+          : "wine-detail-scan",
+  realAccountUsed: false,
+  installedAppTouched: false,
+  productionTouched: false,
+  completed: false,
+  cleanupCompleted: false,
+  externalRequests: 0,
+  mutations: 0,
+  authenticationSimulated: false,
+  simulatedAiRequests: 0,
+  simulatedWrites: 0,
+  pageErrors: 0,
+  fixtureErrors: 0,
+  passed: [],
+  phase: "artifact_guard",
+};
+let child,
+  closed,
+  browser,
+  page,
+  logs = "";
+async function fixtureArrival(promise) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Synthetic fixture did not arrive")), 30000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+try {
+  const assets = join(output, "public/assets");
+  let fixtureSeen = false;
+  for (const name of await readdir(assets)) {
+    if (!name.endsWith(".js")) continue;
+    const content = await readFile(join(assets, name), "utf8");
+    for (const [url] of content.matchAll(/https:\/\/[a-z0-9]+\.supabase\.co/gi)) {
+      // The shared feature-gate module retains this historical comparison constant.
+      assert.ok(ownedFixture && url === "https://pzniyupmgwvlldvztzqh.supabase.co");
+    }
+    assert.ok(!/sb_secret_[A-Za-z0-9_-]{16,}/.test(content));
+    fixtureSeen ||= content.includes(fixtureOrigin) && content.includes(fixtureKey);
+  }
+  assert.equal(fixtureSeen, true, "Build the isolated runtime-check artifact first.");
+  const reservation = createServer();
+  reservation.listen(0, "127.0.0.1");
+  await once(reservation, "listening");
+  const port = reservation.address().port;
+  await new Promise((resolve, reject) =>
+    reservation.close((error) => (error ? reject(error) : resolve())),
+  );
+  assert.ok(![5212, 54323, 8026].includes(port));
+  const base = `http://127.0.0.1:${port}`;
+  const env = {};
+  for (const key of ["PATH", "Path", "SystemRoot", "WINDIR", "USERPROFILE", "HOME", "TEMP", "TMP"])
+    if (process.env[key]) env[key] = process.env[key];
+  Object.assign(env, {
+    NODE_ENV: "production",
+    HOST: "127.0.0.1",
+    PORT: String(port),
+    NITRO_HOST: "127.0.0.1",
+    NITRO_PORT: String(port),
+    SUPABASE_URL: "https://example.invalid",
+    SUPABASE_PUBLISHABLE_KEY: fixtureKey,
+  });
+  child = spawn(
+    process.execPath,
+    [
+      "--import",
+      pathToFileURL(join(root, "scripts/independent-fetch-guard.mjs")).href,
+      join(output, "server/index.mjs"),
+    ],
+    { cwd: output, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
+  );
+  closed = new Promise((resolve) => child.once("close", resolve));
+  child.stdout.on("data", (value) => {
+    logs = (logs + value).slice(-16000);
+  });
+  child.stderr.on("data", (value) => {
+    logs = (logs + value).slice(-16000);
+  });
+  report.phase = "readiness";
+  await waitForIndependentRuntime({
+    checkProcess: () => assert.equal(child.exitCode, null),
+    request: async (path, options, remaining) => {
+      try {
+        return {
+          response: await fetch(base + path, {
+            ...options,
+            redirect: "error",
+            signal: AbortSignal.timeout(Math.min(15000, remaining)),
+          }),
+        };
+      } catch {
+        throw new IndependentRuntimeRequestError("Synthetic runtime pending.");
+      }
+    },
+  });
+  const { chromium } = await import(
+    pathToFileURL(
+      join(
+        process.env.USERPROFILE,
+        ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs",
+      ),
+    ).href
+  );
+  browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({
+    serviceWorkers: "block",
+    viewport: { width: 390, height: 844 },
+  });
+  await context.addInitScript(
+    (lang) => localStorage.setItem("lang", lang),
+    kitchenOnly ? "sv" : "en",
+  );
+  if (ownedFixture) {
+    report.authenticationSimulated = true;
+    await context.addInitScript(
+      ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+      { key: authKey, session: ownerSession },
+    );
+  }
+  const kitchenFixture = kitchenOnly
+    ? createCoreKitchenFixture({
+        origin: fixtureOrigin,
+        key: fixtureKey,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        report,
+        base,
+      })
+    : null;
+  const chatFixture = chatOnly
+    ? createCoreChatFixture({
+        origin: fixtureOrigin,
+        key: fixtureKey,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        report,
+        base,
+      })
+    : null;
+  const collectorFixture = collectorOnly
+    ? createCoreCollectorFixture({
+        origin: fixtureOrigin,
+        key: fixtureKey,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        report,
+        base,
+      })
+    : null;
+  const pricesFixture = pricesOnly
+    ? createCorePricesFixture({
+        origin: fixtureOrigin,
+        key: fixtureKey,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        report,
+        base,
+      })
+    : null;
+  let galleryFailed = false,
+    delayNextGallery = false,
+    releaseGallery;
+  let galleryArrived = () => {};
+  let currentGallery = [];
+  let delayOwnerAi = false,
+    releaseOwnerAi,
+    ownerAiArrived = () => {};
+  const aiRequests = { owner: 0, peer: 0 };
+  let scanFixtureActive = false;
+  let scanPng;
+  const scanWrites = { uploads: [], wines: [], photos: [] };
+  const json = (route, data, status = 200) =>
+    route.fulfill({
+      status,
+      contentType: "application/json",
+      headers: { "access-control-allow-origin": base },
+      body: JSON.stringify(data),
+    });
+  const routeFixture = async (route) => {
+    if (pricesFixture) return pricesFixture.route(route);
+    if (kitchenFixture) return kitchenFixture.route(route);
+    if (chatFixture) return chatFixture.route(route);
+    if (collectorFixture) return collectorFixture.route(route);
+    const request = route.request(),
+      url = new URL(request.url());
+    if (url.origin === base && ["GET", "HEAD"].includes(request.method())) return route.continue();
+    if (url.origin === base) {
+      report.mutations++;
+      return route.abort();
+    }
+    if (scanFixtureActive && url.origin === fixtureOrigin && request.method() === "POST") {
+      assert.equal(syntheticUsers.get(request.headers().authorization)?.id, fixtureOwner);
+      if (url.pathname === "/functions/v1/analyze-wine") {
+        const body = request.postDataJSON();
+        assert.equal(body.mimeType, "image/png");
+        assert.deepEqual(Buffer.from(body.imageBase64, "base64"), scanPng);
+        report.simulatedAiRequests++;
+        const field = (value) => ({ value, source: "label", confidence: 90, evidence: value });
+        return json(route, {
+          wine: {
+            label_text: "Synthetic Scan 2023",
+            identity: { wine_name: field("Synthetic Scan"), vintage: field("2023") },
+            taste: {},
+          },
+        });
+      }
+      const storagePrefix = `/storage/v1/object/wine-labels/${fixtureOwner}/`;
+      if (url.pathname.startsWith(storagePrefix)) {
+        const path = url.pathname.slice("/storage/v1/object/wine-labels/".length);
+        const [owner, file, extra] = path.split("/");
+        const id = file.replace(/\.png$/, "");
+        assert.equal(owner, fixtureOwner);
+        assert.equal(extra, undefined);
+        assert.match(id, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i);
+        assert.equal(file, `${id}.png`);
+        assert.equal(request.headers()["x-upsert"], "true");
+        const form = await new Response(request.postDataBuffer(), {
+          headers: { "content-type": request.headers()["content-type"] },
+        }).formData();
+        const uploaded = form.get("");
+        assert.ok(uploaded instanceof Blob);
+        assert.equal(uploaded.type, "image/png");
+        assert.equal(form.get("cacheControl"), "0");
+        assert.deepEqual(Buffer.from(await uploaded.arrayBuffer()), scanPng);
+        scanWrites.uploads.push(path);
+        report.simulatedWrites++;
+        if (scanWrites.uploads.length === 1) return route.abort("failed");
+        assert.equal(scanWrites.uploads.length, 2);
+        return json(route, { Key: "wine-labels/" + path });
+      }
+      if (url.pathname === "/rest/v1/wines") {
+        const row = request.postDataJSON();
+        assert.equal(row.user_id, fixtureOwner);
+        assert.equal(row.image_url, scanWrites.uploads[0]);
+        assert.equal(row.id, row.image_url.split("/")[1].replace(/\.png$/, ""));
+        scanWrites.wines.push(row);
+        report.simulatedWrites++;
+        return json(route, row, 201);
+      }
+      if (url.pathname === "/rest/v1/wine_photos") {
+        const row = request.postDataJSON();
+        assert.equal(row.user_id, fixtureOwner);
+        assert.equal(row.wine_id, scanWrites.wines[0].id);
+        assert.equal(row.storage_path, scanWrites.uploads[0]);
+        scanWrites.photos.push(row);
+        report.simulatedWrites++;
+        return json(route, null, 201);
+      }
+    }
+    if (url.origin === fixtureOrigin && request.method() === "GET") {
+      if (url.pathname === "/auth/v1/user") {
+        const user = syntheticUsers.get(request.headers().authorization);
+        return json(route, user ?? { error: "synthetic_unauthorized" }, user ? 200 : 401);
+      }
+      if (url.pathname === "/rest/v1/wine_photos") {
+        if (galleryFailed) return json(route, { message: "synthetic_read_failure" }, 503);
+        if (delayNextGallery) {
+          delayNextGallery = false;
+          galleryArrived();
+          await new Promise((resolve) => {
+            releaseGallery = resolve;
+          });
+          return json(route, [
+            {
+              id: "eeeeeeee-aaaa-4bbb-8ccc-dddddddddddd",
+              wine_id: wineId,
+              user_id: fixtureOwner,
+              url: image + "#stale-gallery",
+              storage_path: null,
+              kind: "bottle",
+              sort_order: 1,
+            },
+          ]);
+        }
+        return json(route, currentGallery);
+      }
+      return json(route, url.pathname === "/rest/v1/wines" ? [wine] : []);
+    }
+    if (
+      url.origin === fixtureOrigin &&
+      url.pathname === "/functions/v1/wine-suggestions" &&
+      request.method() === "POST"
+    ) {
+      const body = request.postDataJSON(),
+        user = syntheticUsers.get(request.headers().authorization);
+      assert.ok(user && body.wineId === wineId && body.language === "en");
+      report.simulatedAiRequests++;
+      const isOwner = user.id === fixtureOwner;
+      aiRequests[isOwner ? "owner" : "peer"]++;
+      if (isOwner && delayOwnerAi) {
+        ownerAiArrived();
+        await new Promise((resolve) => {
+          releaseOwnerAi = resolve;
+        });
+      }
+      const suggestion = {
+        producer: "Synthetic",
+        wine_name: isOwner ? "Delayed owner-only suggestion" : "Current peer-only suggestion",
+        vintage: 2023,
+        country: "QA",
+        region: "QA",
+        wine_type: "white",
+        identity_verified: true,
+        source_url: "https://example.invalid/catalog/fixture",
+        match_score: 70,
+        match_confidence: "low",
+        match_evidence: [],
+        reason: "Synthetic fixture only",
+      };
+      // The old request may already be cancelled by the real source AbortController.
+      try {
+        await json(route, { suggestions: [suggestion] });
+      } catch {
+        if (!isOwner) throw new Error("Current synthetic response failed");
+      }
+      return;
+    }
+    if (url.origin === fixtureOrigin && request.method() === "OPTIONS")
+      return route.fulfill({
+        status: 204,
+        headers: {
+          "access-control-allow-origin": base,
+          "access-control-allow-headers": "*",
+          "access-control-allow-methods": "GET,POST,OPTIONS",
+        },
+      });
+    if (url.origin === fixtureOrigin) report.mutations++;
+    else report.externalRequests++;
+    return route.abort();
+  };
+  await context.route("**/*", async (route) => {
+    try {
+      await routeFixture(route);
+    } catch {
+      report.fixtureErrors++;
+      await route.abort().catch(() => undefined);
+    }
+  });
+  page = await context.newPage();
+  page.on("response", (response) => {
+    if (response.request().isNavigationRequest() && new URL(response.url()).origin === base)
+      report.lastDocumentStatus = response.status();
+  });
+  const styleFixture = () =>
+    page.evaluate(() => {
+      document.documentElement.classList.add("pilot-ui");
+      document.documentElement.style.fontSize = "125%";
+    });
+  page.setDefaultTimeout(30000);
+  page.on("pageerror", () => report.pageErrors++);
+  await mkdir(artifacts, { recursive: true });
+  if (pricesFixture) {
+    await acceptCorePrices({
+      page,
+      base,
+      artifacts,
+      report,
+      fixture: pricesFixture,
+      authKey,
+      ownerSession,
+      peerSession,
+    });
+  } else if (collectorFixture) {
+    await acceptCoreCollector({
+      page,
+      base,
+      artifacts,
+      report,
+      fixture: collectorFixture,
+      authKey,
+      peerSession,
+    });
+  } else if (chatFixture) {
+    await acceptCoreChat({
+      page,
+      base,
+      artifacts,
+      report,
+      fixture: chatFixture,
+      authKey,
+      ownerSession,
+      peerSession,
+    });
+  } else if (kitchenFixture) {
+    await acceptCoreKitchen({
+      page,
+      context,
+      base,
+      artifacts,
+      report,
+      fixture: kitchenFixture,
+      authKey,
+      ownerSession,
+      peerSession,
+    });
+  } else {
+    report.phase = "wine_detail";
+    await page.goto(base + "/wine/" + wineId, { waitUntil: "domcontentloaded" });
+    const title = page.getByRole("heading", { level: 1, name: longName + " 2023", exact: true });
+    await title.waitFor();
+    // The same shipped stylesheet, with the selected dark palette, without enabling backend features.
+    await styleFixture();
+    await page.getByRole("tab", { name: "AI Suggestions", exact: true }).click();
+    await page.getByText(aroma, { exact: true }).waitFor();
+    for (const width of [320, 390, 1440]) {
+      report.phase = `layout-${width}`;
+      await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = "125%";
+      });
+      await page.evaluate(() => document.fonts.ready);
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        true,
+      );
+      for (const target of [title, page.getByText(aroma, { exact: true })])
+        assert.equal(await target.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
+      const bottle = title.locator("../..").locator("img");
+      await bottle.waitFor();
+      await bottle.evaluate((el) => el.decode());
+      assert.equal(
+        await bottle.evaluate(
+          (el) =>
+            el.complete &&
+            el.naturalHeight > el.naturalWidth &&
+            getComputedStyle(el).objectFit === "contain",
+        ),
+        true,
+      );
+      await page.screenshot({
+        path: join(artifacts, `wine-detail-${width}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      report.passed.push(`contained-image-and-long-labels-${width}`);
+    }
+    report.phase = "private_sharing";
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    assert.equal(
+      await page.getByRole("menuitem", { name: "Share", exact: true }).isDisabled(),
+      true,
+    );
+    await page
+      .getByText(
+        "Public sharing is unavailable in this private installation. Your wine remains unchanged.",
+        { exact: true },
+      )
+      .waitFor();
+    await page.keyboard.press("Escape");
+    assert.equal(
+      await page
+        .getByRole("button", { name: "More", exact: true })
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    report.passed.push("private-share-disabled-and-keyboard-return");
+    report.phase = "read_only_gallery";
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    for (const width of [320, 390, 1440]) {
+      report.phase = `overview-layout-${width}`;
+      await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });
+      const facts = page.locator("dl");
+      assert.equal(await facts.count(), 6);
+      for (const row of await facts.all()) {
+        assert.equal(
+          await row.evaluate((element) => {
+            const [label, value] = element.children;
+            const bounds = value.getBoundingClientRect();
+            return (
+              value.scrollWidth <= value.clientWidth + 1 &&
+              label.scrollWidth <= label.clientWidth + 1 &&
+              label.getBoundingClientRect().right <= bounds.left + 1 &&
+              bounds.right <= innerWidth + 1
+            );
+          }),
+          true,
+        );
+      }
+      await page.screenshot({
+        path: join(artifacts, `wine-overview-${width}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      report.passed.push(`overview-facts-fit-${width}`);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    report.phase = "read_only_gallery";
+    const viewPhoto = page.getByRole("button", { name: "View wine photo", exact: true });
+    await viewPhoto.waitFor();
+    assert.equal(await page.getByText("Add photo", { exact: true }).count(), 0);
+    assert.equal(await page.locator('input[type="file"]').count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Delete wine", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("link", { name: "Add note", exact: true }).count(), 0);
+    report.passed.push("read-only-gallery-no-upload");
+    report.phase = "read_only_lightbox";
+    await viewPhoto.click();
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor();
+    await dialog.locator("img").evaluate((el) => el.decode());
+    assert.equal(
+      await dialog
+        .locator("img")
+        .evaluate(
+          (el) =>
+            el.complete && el.naturalHeight > 0 && getComputedStyle(el).objectFit === "contain",
+        ),
+      true,
+    );
+    await page.screenshot({ path: join(artifacts, "wine-photo-390.png"), animations: "disabled" });
+    await page.keyboard.press("Escape");
+    assert.equal(await viewPhoto.evaluate((el) => el === document.activeElement), true);
+    report.passed.push("read-only-photo-keyboard-return");
+    report.phase = "gallery_read_failure";
+    galleryFailed = true;
+    await page.reload();
+    await title.waitFor();
+    await styleFixture();
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await page
+      .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(await page.getByText("No extra photos yet.", { exact: true }).count(), 0);
+    await page.screenshot({
+      path: join(artifacts, "gallery-error-390.png"),
+      fullPage: true,
+      animations: "disabled",
+    });
+    galleryFailed = false;
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await page
+      .getByText("Photos could not be loaded. This does not mean the gallery is empty.", {
+        exact: true,
+      })
+      .waitFor({ state: "hidden" });
+    report.passed.push("gallery-read-error-is-not-empty-and-retry");
+    report.phase = "gallery_read_generation";
+    delayNextGallery = true;
+    const firstRead = new Promise((resolve) => {
+      galleryArrived = resolve;
+    });
+    await page.reload();
+    await title.waitFor();
+    await styleFixture();
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await fixtureArrival(firstRead);
+    currentGallery = [
+      {
+        id: "ffffffff-aaaa-4bbb-8ccc-dddddddddddd",
+        wine_id: wineId,
+        user_id: fixtureOwner,
+        url: image + "#current-gallery",
+        storage_path: null,
+        kind: "bottle",
+        sort_order: 2,
+      },
+    ];
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await page.locator('img[src$="#current-gallery"]').waitFor();
+    const oldRead = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/rest/v1/wine_photos",
+    );
+    releaseGallery();
+    await (await oldRead).finished();
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    assert.equal(await page.locator('img[src$="#stale-gallery"]').count(), 0);
+    assert.equal(await page.locator('img[src$="#current-gallery"]').count(), 1);
+    report.passed.push("late-gallery-read-does-not-replace-a-newer-read");
+    currentGallery = [];
+    report.authenticationSimulated = true;
+    await context.addInitScript(
+      ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
+      { key: authKey, session: ownerSession },
+    );
+    const switchAccount = (session) =>
+      page.evaluate(
+        ({ key, session }) => {
+          localStorage.setItem(key, JSON.stringify(session));
+          const channel = new BroadcastChannel(key);
+          channel.postMessage({ event: "SIGNED_IN", session });
+          channel.close();
+        },
+        { key: authKey, session },
+      );
+    report.phase = "pending_photo_account_change";
+    await page.reload();
+    await title.waitFor();
+    await styleFixture();
+    const ownerControl = page.getByRole("button", { name: "Delete wine", exact: true });
+    await ownerControl.waitFor({ state: "attached" });
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await page.locator('input[type="file"]').waitFor({ state: "attached" });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll("button")].some(
+        (button) => button.textContent === "Add photo" && !button.disabled,
+      ),
+    );
+    const png = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 60;
+      canvas.height = 180;
+      const draw = canvas.getContext("2d");
+      draw.fillStyle = "#355d45";
+      draw.fillRect(10, 0, 40, 180);
+      draw.fillStyle = "#f2f5f2";
+      draw.fillRect(10, 70, 40, 60);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "synthetic-only.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(png, "base64"),
+    });
+    await page.getByText("Adjust label", { exact: true }).waitFor();
+    await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
+    await switchAccount(peerSession);
+    await page.getByText("Adjust label", { exact: true }).waitFor({ state: "hidden" });
+    await page.waitForFunction(() => !document.querySelector('input[type="file"]'));
+    await ownerControl.waitFor({ state: "hidden" });
+    report.passed.push("pending-photo-clears-on-account-change");
+    report.phase = "late_ai_account_change";
+    await switchAccount(ownerSession);
+    await ownerControl.waitFor({ state: "attached" });
+    delayOwnerAi = true;
+    const firstAi = new Promise((resolve) => {
+      ownerAiArrived = resolve;
+    });
+    await page.getByRole("button", { name: "AI Picks", exact: true }).click();
+    await fixtureArrival(firstAi);
+    await switchAccount(peerSession);
+    await ownerControl.waitFor({ state: "hidden" });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('button[aria-pressed="true"]')].some(
+        (button) => button.textContent === "Aromas",
+      ),
+    );
+    assert.equal(aiRequests.peer, 0);
+    await page.getByRole("button", { name: "AI Picks", exact: true }).click();
+    await page.getByText("Current peer-only suggestion", { exact: true }).waitFor();
+    releaseOwnerAi();
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    assert.equal(await page.getByText("Delayed owner-only suggestion", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Current peer-only suggestion", { exact: true }).count(), 1);
+    assert.deepEqual(aiRequests, { owner: 1, peer: 1 });
+    report.passed.push("late-ai-answer-isolated-and-no-automatic-new-account-request");
+    report.phase = "scan_upload_lost_reply";
+    await switchAccount(ownerSession);
+    await ownerControl.waitFor({ state: "attached" });
+    scanFixtureActive = true;
+    scanPng = Buffer.from(png, "base64");
+    await page.goto(base + "/scan", { waitUntil: "domcontentloaded" });
+    await styleFixture();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "synthetic-only.png",
+      mimeType: "image/png",
+      buffer: scanPng,
+    });
+    await page.getByText("Adjust label", { exact: true }).waitFor();
+    await page.locator('img[src^="blob:"]').evaluate((element) => element.decode());
+    await page.getByRole("button", { name: "Use the whole photo", exact: true }).click();
+    await page.getByRole("heading", { name: "Synthetic Scan", exact: true }).waitFor();
+    const saveWine = page.getByRole("button", { name: "Save to cellar", exact: true });
+    await saveWine.click();
+    await page.locator('.operation-notice[data-kind="error"]').waitFor();
+    assert.equal(scanWrites.uploads.length, 1);
+    assert.equal(scanWrites.wines.length, 0);
+    await saveWine.click();
+    await page.getByText("Saved to your cellar", { exact: true }).waitFor();
+    assert.deepEqual(scanWrites.uploads, [scanWrites.uploads[0], scanWrites.uploads[0]]);
+    assert.equal(scanWrites.wines.length, 1);
+    assert.equal(scanWrites.photos.length, 1);
+    await page.screenshot({ path: join(artifacts, "scan-save-390.png"), animations: "disabled" });
+    report.passed.push("scan-lost-upload-retry-reuses-path-bytes-and-one-wine");
+    for (const type of ["heic", "heif"]) {
+      report.phase = `unsupported-original-${type}`;
+      await page.goto(base + "/scan", { waitUntil: "domcontentloaded" });
+      // PNG fixture bytes exercise only MIME rejection, not native HEIC decoding.
+      await page.locator('input[type="file"]').setInputFiles({
+        name: `synthetic-only.${type}`,
+        mimeType: `image/${type}`,
+        buffer: scanPng,
+      });
+      await page.getByText("Adjust label", { exact: true }).waitFor();
+      await page.getByRole("button", { name: "Use the whole photo", exact: true }).click();
+      await page
+        .getByText(
+          "This photo format cannot be saved and displayed here. Choose JPEG, PNG or WebP.",
+          { exact: true },
+        )
+        .waitFor();
+      assert.equal(report.simulatedAiRequests, 3);
+      assert.equal(report.simulatedWrites, 4);
+      report.passed.push(`unsupported-original-${type}-rejected-before-ai-and-storage`);
+    }
+  }
+  assert.equal(report.externalRequests, 0);
+  assert.equal(report.mutations, 0);
+  assert.equal(report.pageErrors, 0);
+  assert.equal(report.fixtureErrors, 0);
+  assert.deepEqual(report.layoutFailures ?? [], []);
+  assert.equal(logs.includes("INDEPENDENT_CHECK_OUTBOUND_FETCH_BLOCKED"), false);
+  report.completed = true;
+} catch (error) {
+  report.failure = "synthetic_core_experience_not_accepted";
+  report.errorType = ["AssertionError", "TimeoutError"].includes(error.name) ? error.name : "Error";
+  report.runtimeExitCode = child?.exitCode ?? null;
+  report.runtimeOutputSeen = logs.length > 0;
+  report.runtimeDiagnostics = [
+    "ERR_MODULE_NOT_FOUND",
+    "ENOENT",
+    "EADDRINUSE",
+    "SyntaxError",
+    "TypeError",
+  ].filter((code) => logs.includes(code));
+  report.readinessTimedOut =
+    error.message === "Synthetic runtime did not become healthy within 120000ms";
+  if (page) {
+    await mkdir(artifacts, { recursive: true });
+    await page
+      .screenshot({ path: join(artifacts, "failure.png"), animations: "disabled", timeout: 10000 })
+      .catch(() => undefined);
+  }
+} finally {
+  await browser?.close().catch(() => undefined);
+  if (child && child.exitCode === null) child.kill();
+  if (closed) await closed;
+  report.cleanupCompleted = !child || child.exitCode !== null || child.signalCode !== null;
+}
+await mkdir(artifacts, { recursive: true });
+await writeFile(join(artifacts, "status.json"), JSON.stringify(report));
+console.log(JSON.stringify(report));
+if (!report.completed || !report.cleanupCompleted) process.exitCode = 1;

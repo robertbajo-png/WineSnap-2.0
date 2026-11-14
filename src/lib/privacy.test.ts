@@ -157,7 +157,9 @@ describe("privacy source contracts", () => {
       "restaurant-match",
       "extract-preference-signals",
     ]) {
-      const code = read(`supabase/functions/${name}/index.ts`);
+      const code = read(
+        `supabase/functions/${name}/${["analyze-wine", "ask-winesnap", "taste-suggestions", "wine-suggestions"].includes(name) ? "handler" : "index"}.ts`,
+      );
       expect(code).not.toMatch(
         /console\.error\([^;]*(?:\.message|\.slice\(|response\.text\(|, error\)|, e\))/,
       );
@@ -175,10 +177,10 @@ describe("privacy source contracts", () => {
     expect(code.slice(code.indexOf("const savePending"))).toContain(".upload(");
   });
   it("takes the erasure identity only from the verified session", () => {
-    const code = read("supabase/functions/privacy-controls/index.ts");
+    const code = read("supabase/functions/privacy-controls/handler.ts");
     expect(code).toContain("admin.auth.getUser(token)");
     expect(code).toContain("_user_id: auth.user.id");
     expect(code).not.toContain("body.userId");
-    expect(code).toContain('Deno.env.get("PRIVACY_DELETION_ENABLED") !== "true"');
+    expect(code).toContain('env("PRIVACY_DELETION_ENABLED") !== "true"');
   });
 });

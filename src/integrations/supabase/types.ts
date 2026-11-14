@@ -1075,6 +1075,10 @@ export type Database = {
         Args: { _storage_path: string }
         Returns: boolean
       }
+      privacy_account_active: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       recompute_derived_preferences: {
         Args: { _user_id: string }
         Returns: undefined

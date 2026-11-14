@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { invokePrivacy } from "./privacyTransport";
 
 export type PrivacyAction = "reset_memory" | "delete_account";
 export const privacyControlsEnabled = import.meta.env.VITE_PRIVACY_CONTROLS_ENABLED === "true";
@@ -9,11 +10,12 @@ export async function invokePrivacyAction(action: PrivacyAction, owner: string) 
   if (sessionError || !token) throw new Error("Account changed");
   const { data: auth, error: authError } = await supabase.auth.getUser(token);
   if (authError || auth.user?.id !== owner) throw new Error("Account changed");
-  const { data, error } = await supabase.functions.invoke("privacy-controls", {
-    // Bind confirmation to this account even if another tab switches sessions.
-    headers: { Authorization: `Bearer ${token}` },
-    body: { action, confirm: action },
-  });
+  // Bind confirmation to this account even if another tab switches sessions.
+  const { data, error } = await invokePrivacy(
+    "privacy-controls",
+    { action, confirm: action },
+    token,
+  );
   if (error) {
     if (error.context instanceof Response) {
       const detail = await error.context

@@ -14,6 +14,8 @@ export const retailCandidateSchema = z.object({
   country: z.string().max(100).nullable(),
   price: z.number().finite().positive().max(999999999),
   currency: z.literal("SEK"),
+  source: z.enum(["bolaget.io", "susbolaget.emrik.org"]).optional(),
+  sourceAsOf: z.string().datetime().optional(),
 });
 export type RetailCandidate = z.infer<typeof retailCandidateSchema>;
 const identitySchema = z.object({
@@ -179,10 +181,17 @@ export function priceFreshness(
     (quote.data.verification === "automatic" && !exactRetailMatch(wine, quote.data)) ||
     quote.data.price !== wine.market_price ||
     wine.market_price_currency !== "SEK" ||
-    wine.market_price_source !== "bolaget.io"
+    wine.market_price_source !== (quote.data.source ?? "bolaget.io") ||
+    (quote.data.source === "susbolaget.emrik.org" &&
+      (!quote.data.sourceAsOf || Date.parse(quote.data.sourceAsOf) > now + 300000))
   )
     return "unverified";
   const age = now - Date.parse(wine.market_price_checked_at ?? "");
+  const sourceAge =
+    quote.data.source === "susbolaget.emrik.org"
+      ? now - Date.parse(quote.data.sourceAsOf ?? "")
+      : 0;
+  if (!Number.isFinite(sourceAge) || sourceAge > 48 * 3600000) return "old";
   return wine.retail_price_status === "matched" && age >= 0 && age <= PRICE_FRESH_DAYS * 86400000
     ? "fresh"
     : "old";

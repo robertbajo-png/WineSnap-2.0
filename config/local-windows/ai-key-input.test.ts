@@ -1,0 +1,40 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const input = readFileSync("scripts/store-local-openai-key.ps1", "utf8");
+
+describe("existing provider key local input", () => {
+  it("requires hidden interactive input and never accepts a secret argument", () => {
+    expect(input).toContain("[ValidateSet('OpenAI', 'Gemini')][string]$Provider = 'OpenAI'");
+    expect(input).toContain("[Console]::IsInputRedirected");
+    expect(input).toContain("[Console]::IsOutputRedirected");
+    expect(input).toContain('Read-Host "$keyName (hidden)" -AsSecureString');
+    expect(input).toContain("$field.UseSystemPasswordChar = $true");
+    expect(input).toContain("$field.Clear()");
+    expect(input).toContain("$form.ShowDialog()");
+    expect(input).not.toMatch(
+      /Invoke-WebRequest|Invoke-RestMethod|HttpClient|SetEnvironmentVariable/,
+    );
+  });
+
+  it("uses private Windows-encrypted storage outside the source tree", () => {
+    expect(input).toContain("Join-Path $env:LOCALAPPDATA 'WineSnapHosting'");
+    expect(input).toContain("'ai-keys.clixml'");
+    expect(input).toContain("Export-Clixml -LiteralPath $temporary");
+    expect(input).toContain("$acl.SetAccessRuleProtection($true, $false)");
+    expect(input).toContain("ReparsePoint");
+    expect(input).toContain("[pscredential]::new($keyName, $inputKey)");
+    expect(input).toContain("Add-Member -NotePropertyName $Provider");
+    expect(input).toContain("'GEMINI_API_KEY'");
+    expect(input).not.toMatch(/Set-Content|WriteAllText|ConvertFrom-SecureString/);
+  });
+
+  it("pins metadata to test and confines the synthetic encryption check", () => {
+    expect(input).toContain("Purpose='WineSnap-local-test'");
+    expect(input).toContain("Project='pzniyupmgwvlldvztzqh'");
+    expect(input).toContain("'key-input-selftest-*.local'");
+    expect(input).toContain("(Split-Path -Parent $path) -eq $folder");
+    expect(input).toContain("apiValidityChecked=$false");
+    expect(input).not.toContain("mervdrbnwgreaifobasw");
+  });
+});

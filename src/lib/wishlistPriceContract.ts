@@ -41,7 +41,9 @@ export function verifiedWishlistQuote(
     retail_price_match?: unknown;
     last_checked_price: number | null;
     last_checked_currency: string | null;
+    price_source?: string | null;
   },
+  now = Date.now(),
 ) {
   const quote = retailQuoteSchema.safeParse(row.retail_price_match);
   const wine = wishlistRetailWine(row);
@@ -50,6 +52,11 @@ export function verifiedWishlistQuote(
     samePriceIdentity(wine, quote.data.identity) &&
     exactRetailMatch(wine, quote.data) &&
     quote.data.price === row.last_checked_price &&
-    row.last_checked_currency === "SEK"
+    row.last_checked_currency === "SEK" &&
+    (!row.price_source || row.price_source === (quote.data.source ?? "bolaget.io")) &&
+    (quote.data.source !== "susbolaget.emrik.org" ||
+      (quote.data.sourceAsOf !== undefined &&
+        Date.parse(quote.data.sourceAsOf) <= now + 300000 &&
+        Date.parse(quote.data.sourceAsOf) >= now - 48 * 3600000))
   );
 }

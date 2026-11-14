@@ -1,0 +1,95 @@
+$ErrorActionPreference='Stop'
+if(-not $IsWindows -or $args.Count){throw 'Use PowerShell 7 on Windows without arguments.'}
+$report=[ordered]@{synthetic=$true;productionTouched=$false;completed=$false;cleanupCompleted=$false;checks=0}
+$directory=$null;$lockHandle=$null;$files=@()
+try {
+  $tokens=$null;$errors=$null
+  $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'open-owned-local.ps1'),[ref]$tokens,[ref]$errors)
+  if($errors.Count){throw 'Local wrapper syntax failed.'}
+  $names=@('Assert-LocalPrivateFile','Protect-LocalReport','Read-LocalReport','Test-LocalViewerActive','Get-LocalStatus','Focus-LocalViewer','Resume-LocalBackend','Test-CompletedLocalCheck')
+  $definitions=@($ast.FindAll({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -in $names},$false))
+  if($definitions.Count -ne $names.Count){throw 'Unexpected local control functions.'}
+  foreach($definition in $definitions){. ([scriptblock]::Create($definition.Extent.Text))}
+  $directory=[IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) ('winesnap-local-control-'+[guid]::NewGuid().ToString('N'))))
+  $created=[IO.Directory]::CreateDirectory($directory)
+  if($created.FullName -cne $directory -or ($created.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Unsafe fixture directory.'}
+  $statusFile=Join-Path $directory 'local-view-status.json';$controlFile=Join-Path $directory 'local-view-control.json';$lockPath=Join-Path $directory 'local-view.lock';$files=@($statusFile,$controlFile,$lockPath)
+  Protect-LocalReport;Protect-LocalReport $controlFile
+  $clock=[DateTimeOffset]::UtcNow
+  $value=@{project='winesnap-owned-local';version=2;runId=[guid]::NewGuid().ToString('D');completed=$false;ready=$true;authenticated=$true;viewerRunning=$true;supportsFocus=$true;productionTouched=$false;loopbackOnly=$true;phase='ready';checkedAt=$clock.ToString('o')}
+  [IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+  $inactive=Get-LocalStatus -Now $clock
+  if($inactive.operatorActive -or $inactive.ready -or $inactive.phase -ne 'interrupted'){throw 'Stale readiness was accepted.'};$report.checks++
+  $lockHandle=[IO.File]::Open($lockPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+  $before=Get-FileHash -LiteralPath $statusFile
+  $active=Get-LocalStatus -Now $clock
+  if(-not $active.operatorActive -or -not $active.ready -or -not $active.authenticated -or -not $active.heartbeatFresh){throw 'Active readiness not recognized.'}
+  if((Get-FileHash -LiteralPath $statusFile).Hash -ne $before.Hash){throw 'Status modified its input.'};$report.checks++
+  $value.checkedAt=$clock.AddMinutes(-1).ToString('o');[IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+  $stale=Get-LocalStatus -Now $clock
+  if($stale.ready -or $stale.authenticated -or $stale.phase -ne 'unresponsive'){throw 'Expired heartbeat accepted.'};$report.checks++
+  foreach($phase in @('signed_out','backend_unavailable')){
+    $value.ready=$false;$value.authenticated=$false;$value.phase=$phase
+    [IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+    $stale=Get-LocalStatus -Now $clock
+    if($stale.phase -ne 'unresponsive'){throw 'Stale session state accepted.'}
+  };$report.checks++
+  $value.phase='starting_backend';$value.checkedAt=$clock.AddSeconds(-60).ToString('o');$value.startupDeadlineAt=$clock.AddSeconds(60).ToString('o')
+  [IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+  $starting=Get-LocalStatus -Now $clock
+  if($starting.ready -or $starting.authenticated -or $starting.heartbeatFresh -or -not $starting.startingWithinDeadline -or $starting.phase -ne 'starting_backend'){throw 'Expected bounded startup was misclassified.'};$report.checks++
+  foreach($deadline in @($clock.AddSeconds(-1),$clock.AddSeconds(900))){
+    $value.startupDeadlineAt=$deadline.ToString('o');[IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+    $expired=Get-LocalStatus -Now $clock
+    if($expired.phase -ne 'unresponsive' -or $expired.startingWithinDeadline){throw 'Expired or excessive startup deadline accepted.'}
+  };$report.checks++
+  $value.version=1;$value.checkedAt=$clock.ToString('o');[IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+  $legacy=Get-LocalStatus -Now $clock
+  if($legacy.ready -or $legacy.phase -ne 'legacy_viewer'){throw 'Legacy result attested as current.'};$report.checks++
+  $script:messages=@();function Show-LocalOpenMessage([string]$Kind){$script:messages+=,$Kind}
+  $reply=Focus-LocalViewer
+  if($reply.focused -or $script:messages[-1] -ne 'legacy'){throw 'Legacy viewer was replaced.'};$report.checks++
+  $value.version=2;$value.phase='starting_backend';$value.supportsFocus=$false
+  [IO.File]::WriteAllText($statusFile,($value|ConvertTo-Json))
+  $reply=Focus-LocalViewer
+  if($reply.focused -or $reply.phase -ne 'starting' -or $script:messages[-1] -ne 'starting'){throw 'New startup was treated as legacy.'};$report.checks++
+  $script:resumeCalls=@();$script:resumeBusy=6;$script:waits=@()
+  function Start-Sleep([int]$Milliseconds){$script:waits+=,$Milliseconds}
+  function Invoke-OwnedRuntimeAction([string]$Action){$script:resumeCalls+=,$Action;if($script:resumeBusy -gt 0){$script:resumeBusy--;return @{project='winesnap-owned-local';productionTouched=$false;hostedTestTouched=$false;completed=$false;skipped='operation_already_running'}};return @{project='winesnap-owned-local';productionTouched=$false;hostedTestTouched=$false;completed=$true}}
+  Resume-LocalBackend
+  if($script:resumeCalls.Count -ne 7 -or @($script:resumeCalls|Where-Object {$_ -ne 'Resume'}).Count -or $script:waits.Count -ne 6){throw 'Startup contention did not wait safely.'};$report.checks++
+  $script:resumeBusy=1;$script:resumeCalls=@();$denied=$false
+  try{Resume-LocalBackend -WaitMs 0}catch{$denied=$true}
+  if(-not $denied -or $script:resumeCalls.Count -ne 1){throw 'Startup contention was not bounded.'};$report.checks++
+  function Invoke-OwnedRuntimeAction([string]$Action){return @{project='unexpected';productionTouched=$false;hostedTestTouched=$false;completed=$true}}
+  $denied=$false;try{Resume-LocalBackend}catch{$denied=$true};if(-not $denied){throw 'Foreign startup scope accepted.'};$report.checks++
+  $script:readAttempts=0;$script:completeJson=$value|ConvertTo-Json
+  function Get-Content([string]$LiteralPath,[switch]$Raw){$script:readAttempts++;if($script:readAttempts -eq 1){return '{"project":'};return $script:completeJson}
+  $recovered=Read-LocalReport
+  if($script:readAttempts -ne 2 -or $recovered.runId -ne $value.runId){throw 'Incomplete concurrent status was not retried.'};$report.checks++
+  function Get-Content([string]$LiteralPath,[switch]$Raw){$script:readAttempts++;return ''}
+  $script:readAttempts=0;$denied=$false;try{Read-LocalReport|Out-Null}catch{$denied=$true}
+  if(-not $denied -or $script:readAttempts -ne 10){throw 'Incomplete status read was not bounded.'};$report.checks++
+  $checkRun=[guid]::NewGuid().ToString('D')
+  $check=@{project='winesnap-owned-local';version=2;runId=$checkRun;completed=$true;acceptance=$true;ownerSessionVerified=$true;probeSessionLoggedOut=$true;loopbackOnly=$true;internetPaused=$true;productionTouched=$false;phase='verified';blockedExternalRequests=0;blockedAiRequests=0}
+  if(-not (Test-CompletedLocalCheck $check $checkRun)){throw 'Completed synthetic check was rejected.'};$report.checks++
+  foreach($field in @('completed','acceptance','ownerSessionVerified','probeSessionLoggedOut','loopbackOnly','internetPaused')){
+    $bad=@{}+$check;$bad[$field]=$false
+    if(Test-CompletedLocalCheck $bad $checkRun){throw 'Incomplete synthetic check permitted forced cleanup.'};$report.checks++
+  }
+  foreach($patch in @(@{runId=[guid]::NewGuid().ToString('D')},@{project='foreign'},@{phase='needs_attention'},@{failure='synthetic'},@{blockedExternalRequests=1},@{blockedAiRequests=1},@{productionTouched=$true},@{acceptance='true'},@{version=1})){
+    $bad=@{}+$check;foreach($key in $patch.Keys){$bad[$key]=$patch[$key]}
+    if(Test-CompletedLocalCheck $bad $checkRun){throw 'Foreign or unsafe check permitted forced cleanup.'};$report.checks++
+  }
+  $report.completed=$true
+}catch{$report.failure='synthetic_local_control_not_accepted';$report.errorType=$_.Exception.GetType().Name}
+finally{
+  if($lockHandle){$lockHandle.Dispose()}
+  try{
+    foreach($file in $files){if([IO.Path]::GetFullPath($file) -cne (Join-Path $directory ([IO.Path]::GetFileName($file)))){throw 'Unsafe cleanup path.'};if(Test-Path -LiteralPath $file){$item=Get-Item -LiteralPath $file -Force;if($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Unexpected fixture item.'};Remove-Item -LiteralPath $file -Force}}
+    if($directory){[IO.Directory]::Delete($directory,$false)}
+    $report.cleanupCompleted=$true
+  }catch{$report.completed=$false}
+}
+$report|ConvertTo-Json
+if(-not $report.completed){exit 1}

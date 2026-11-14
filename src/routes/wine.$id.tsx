@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   Wine,
@@ -30,6 +31,7 @@ import {
 import { WineDetailSkeleton } from "@/components/Skeleton";
 import { AromaProfileTabs } from "@/components/AromaProfileTabs";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/aiTransport";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useT, useI18n } from "@/i18n";
@@ -44,6 +46,9 @@ import { recommendationKey, recordRecommendationEvent } from "@/lib/recommendati
 import { addToWishlist } from "@/lib/wishlist";
 import { wineRating, type RatedWine } from "@/lib/wineRatings";
 import { useAuth } from "@/hooks/useAuth";
+import { WineKitchenJourney } from "@/features/meals/WineKitchenJourney";
+import { publicWineSharingAllowed } from "@/lib/publicWineSharing";
+import { accountWriteClient } from "@/lib/accountWriteScope";
 
 export const Route = createFileRoute("/wine/$id")({
   head: () => ({ meta: [{ title: "Wine — WineSnap" }] }),
@@ -53,6 +58,7 @@ export const Route = createFileRoute("/wine/$id")({
 type Pair = { dish: string; reason: string };
 type WineRow = RatedWine & {
   id: string;
+  user_id: string;
   image_url: string | null;
   producer: string | null;
   wine_name: string | null;
@@ -112,11 +118,30 @@ function WineRoute() {
   const isDetail = useRouterState({
     select: (state) => state.matches[state.matches.length - 1]?.routeId === "/wine/$id",
   });
-  return isDetail ? <WineDetailPage /> : <Outlet />;
+  const { id } = Route.useParams();
+  const { user, loading } = useAuth();
+  const { lang } = useI18n();
+  return isDetail ? (
+    <WineDetailPage
+      key={`${id}:${user?.id ?? "guest"}:${lang}`}
+      id={id}
+      user={user}
+      authLoading={loading}
+    />
+  ) : (
+    <Outlet />
+  );
 }
 
-function WineDetailPage() {
-  const { id } = Route.useParams();
+function WineDetailPage({
+  id,
+  user,
+  authLoading,
+}: {
+  id: string;
+  user: User | null;
+  authLoading: boolean;
+}) {
   const navigate = useNavigate();
   const t = useT();
   const { lang } = useI18n();
@@ -128,18 +153,43 @@ function WineDetailPage() {
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestFeedback, setSuggestFeedback] = useState<Record<string, "like" | "dislike">>({});
   const [notes, setNotes] = useState<TastingNote[]>([]);
-  const { user, loading: authLoading } = useAuth();
+  const alive = useRef(true),
+    suggestionRequest = useRef<AbortController | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [sharingOrigin, setSharingOrigin] = useState<string | null>(null);
+  const ownedBackend = import.meta.env.VITE_OWNED_BACKEND_ENABLED === "true";
+  const sharingAvailable = publicWineSharingAllowed(sharingOrigin, ownedBackend);
+
+  useEffect(() => setSharingOrigin(window.location.origin), []);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      suggestionRequest.current?.abort();
+    };
+  }, []);
+
+  const writeScope = () => (user ? { owner: user.id, current: () => alive.current } : null);
 
   const loadSuggestions = async () => {
-    if (!w || suggestLoading) return;
+    if (!w || suggestLoading || suggestionRequest.current) return;
+    const scope = writeScope();
+    if (!scope) {
+      setSuggestError(t("state.chefAuth"));
+      return;
+    }
+    const controller = new AbortController();
+    suggestionRequest.current = controller;
     setSuggestLoading(true);
     setSuggestError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("wine-suggestions", {
-        body: { wineId: w.id, language: lang },
-      });
+      const { data, error } = await invokeAi(
+        "wine-suggestions",
+        { wineId: w.id, language: lang },
+        { scope, signal: controller.signal },
+      );
+      if (controller.signal.aborted || !scope.current()) return;
       if (error) throw error;
       const payload = data as { error?: string; suggestions?: Suggestion[] } | null;
       if (payload?.error) throw new Error(payload.error);
@@ -149,18 +199,29 @@ function WineDetailPage() {
         ),
       );
     } catch (e) {
-      setSuggestError(e instanceof Error ? e.message : "Failed to load suggestions");
+      if (!controller.signal.aborted && scope.current())
+        setSuggestError(e instanceof Error ? e.message : "Failed to load suggestions");
     } finally {
-      setSuggestLoading(false);
+      if (suggestionRequest.current === controller) suggestionRequest.current = null;
+      if (!controller.signal.aborted && scope.current()) setSuggestLoading(false);
     }
   };
 
   const sendSuggestionFeedback = async (suggestion: Suggestion, event: "like" | "dislike") => {
+    const scope = writeScope();
+    if (!scope || !scope.current()) return;
     if (suggestFeedback[recommendationKey(suggestion)] === event) return;
-    const saved = await recordRecommendationEvent(event, "similar", suggestion, {
-      reference_wine_id: w?.id,
-      match_score: suggestion.match_score,
-    });
+    const saved = await recordRecommendationEvent(
+      event,
+      "similar",
+      suggestion,
+      {
+        reference_wine_id: w?.id,
+        match_score: suggestion.match_score,
+      },
+      scope,
+    );
+    if (!scope.current()) return;
     if (!saved) {
       toast.error(t("recommendation.feedbackError"));
       return;
@@ -173,22 +234,33 @@ function WineDetailPage() {
   };
 
   const saveSuggestion = async (suggestion: Suggestion) => {
-    const saved = await addToWishlist({
-      producer: suggestion.producer,
-      wine_name: suggestion.wine_name,
-      vintage: suggestion.vintage,
-      region: suggestion.region,
-      country: suggestion.country,
-      wine_type: suggestion.wine_type,
-      grape_varieties: suggestion.grape_varieties,
-      source: "ai",
-      ai_data: suggestion as never,
-    });
-    if (saved) {
-      await recordRecommendationEvent("save", "similar", suggestion, {
-        reference_wine_id: w?.id,
-        match_score: suggestion.match_score,
-      });
+    const scope = writeScope();
+    if (!scope || !scope.current()) return;
+    const saved = await addToWishlist(
+      {
+        producer: suggestion.producer,
+        wine_name: suggestion.wine_name,
+        vintage: suggestion.vintage,
+        region: suggestion.region,
+        country: suggestion.country,
+        wine_type: suggestion.wine_type,
+        grape_varieties: suggestion.grape_varieties,
+        source: "ai",
+        ai_data: suggestion as never,
+      },
+      scope,
+    );
+    if (saved && scope.current()) {
+      await recordRecommendationEvent(
+        "save",
+        "similar",
+        suggestion,
+        {
+          reference_wine_id: w?.id,
+          match_score: suggestion.match_score,
+        },
+        scope,
+      );
     }
   };
 
@@ -234,11 +306,21 @@ function WineDetailPage() {
   }, [id, user?.id, authLoading, revision, t]);
 
   const remove = async () => {
+    if (!w || w.user_id !== user?.id) return;
     if (!confirm(t("wine.deleteConfirm"))) return;
-    const { error } = await supabase.from("wines").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(t("wine.removed"));
-    navigate({ to: "/cellar" });
+    const scope = writeScope();
+    if (!scope) return;
+    try {
+      const client = await accountWriteClient(scope);
+      if (!scope.current()) return;
+      const { error } = await client.from("wines").delete().eq("id", id).eq("user_id", scope.owner);
+      if (!scope.current()) return;
+      if (error) return toast.error(t("common.error"));
+      toast.success(t("wine.removed"));
+      navigate({ to: "/cellar" });
+    } catch {
+      if (scope.current()) toast.error(t("common.error"));
+    }
   };
 
   if (loading || authLoading)
@@ -277,12 +359,14 @@ function WineDetailPage() {
 
   return (
     <AppShell>
+      <WineKitchenJourney wineId={w.id} wineOwner={w.user_id} viewer={user?.id} />
       <div className="-mx-5 -mt-6 px-5 pt-3">
         {/* Top bar */}
         <header className="flex items-center justify-between">
           <button
             onClick={() => window.history.back()}
-            aria-label="Back"
+            aria-label={t("common.back")}
+            title={t("common.back")}
             className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/5 min-h-11 min-w-11"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -321,9 +405,16 @@ function WineDetailPage() {
                     {t("compare.title")}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild disabled={!sharingAvailable}>
                   <button
+                    disabled={!sharingAvailable}
+                    aria-describedby={
+                      !sharingAvailable && (ownedBackend || sharingOrigin)
+                        ? "wine-sharing-unavailable"
+                        : undefined
+                    }
                     onClick={async () => {
+                      if (!publicWineSharingAllowed(window.location.origin, ownedBackend)) return;
                       // Ensure the wine is public and has a share_id, then share the public /w/:shareId link
                       const { data: row } = await supabase
                         .from("wines")
@@ -379,17 +470,27 @@ function WineDetailPage() {
                     {t("wine.share")}
                   </button>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/wine/$id/edit"
-                    params={{ id: w.id }}
-                    aria-label={t("wine.edit")}
-                    className="flex min-h-11 w-full items-center gap-3 text-base"
+                {!sharingAvailable && (ownedBackend || sharingOrigin) && (
+                  <p
+                    id="wine-sharing-unavailable"
+                    className="max-w-64 px-3 py-2 text-sm leading-relaxed text-muted-foreground"
                   >
-                    <Pencil className="h-5 w-5" />
-                    {t("wine.edit")}
-                  </Link>
-                </DropdownMenuItem>
+                    {t("wine.shareUnavailable")}
+                  </p>
+                )}
+                {w.user_id === user?.id && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/wine/$id/edit"
+                      params={{ id: w.id }}
+                      aria-label={t("wine.edit")}
+                      className="flex min-h-11 w-full items-center gap-3 text-base"
+                    >
+                      <Pencil className="h-5 w-5" />
+                      {t("wine.edit")}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -399,20 +500,22 @@ function WineDetailPage() {
         <section className="mt-4 flex gap-4">
           <div className="flex h-36 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-burgundy/40 to-background/60 shadow-elegant">
             {w.image_url ? (
-              <WineImage src={w.image_url} alt="" className="h-full w-full object-cover" />
+              <WineImage src={w.image_url} alt="" className="h-full w-full object-contain" />
             ) : (
               <Wine className="h-9 w-9 text-gold/60" />
             )}
           </div>
           <div className="min-w-0 flex-1 pt-1">
-            <h1 className="font-display text-[26px] leading-tight text-cream">
+            <h1 className="break-words font-display text-[26px] leading-tight text-cream">
               {w.wine_name ?? w.producer ?? t("type.unknown")}
               {w.vintage ? ` ${w.vintage}` : ""}
             </h1>
-            <p className="mt-1 text-base text-gold">
+            <p className="mt-1 break-words text-base text-gold">
               {[w.region, w.country].filter(Boolean).join(", ") || w.producer}
             </p>
-            <p className="text-sm text-muted-foreground">{w.grape_varieties?.join(", ") || "—"}</p>
+            <p className="break-words text-sm text-muted-foreground">
+              {w.grape_varieties?.join(", ") || "—"}
+            </p>
             {rating != null && (
               <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <span className="flex items-center gap-1 text-sm">
@@ -495,11 +598,17 @@ function WineDetailPage() {
         {tab === "overview" && (
           <div className="mt-5 space-y-4">
             <Section title={t("photos.title")}>
-              <PhotoGallery wineId={w.id} fallbackUrl={w.image_url} />
+              <PhotoGallery
+                wineId={w.id}
+                fallbackUrl={w.image_url}
+                editable={w.user_id === user?.id}
+              />
             </Section>
             {w.description && (
               <Card className="bg-card/50 p-4">
-                <p className="font-display text-base leading-relaxed text-cream">{w.description}</p>
+                <p className="font-display text-base leading-relaxed text-cream [overflow-wrap:anywhere]">
+                  {w.description}
+                </p>
               </Card>
             )}
             {(() => {
@@ -524,15 +633,15 @@ function WineDetailPage() {
               );
               return (
                 <Card className="bg-card/50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gold" />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Clock className="h-4 w-4 shrink-0 text-gold" />
                       <span className="text-sm uppercase tracking-wider text-muted-foreground">
                         {t("wine.window")}
                       </span>
                     </div>
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-cream">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
+                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-cream">
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
                       {t(statusKey as TKey)}
                     </span>
                   </div>
@@ -570,13 +679,15 @@ function WineDetailPage() {
               {notes.length === 0 ? (
                 <Card className="bg-card/50 p-4 text-center">
                   <p className="text-base text-muted-foreground">{t("wine.notesEmpty")}</p>
-                  <Link
-                    to="/wine/$id/notes"
-                    params={{ id: w.id }}
-                    className="mt-3 inline-flex items-center gap-1 text-sm text-burgundy hover:underline"
-                  >
-                    <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
-                  </Link>
+                  {w.user_id === user?.id && (
+                    <Link
+                      to="/wine/$id/notes"
+                      params={{ id: w.id }}
+                      className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm text-burgundy hover:underline"
+                    >
+                      <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
+                    </Link>
+                  )}
                 </Card>
               ) : (
                 <div className="space-y-2.5">
@@ -611,13 +722,15 @@ function WineDetailPage() {
                       )}
                     </Card>
                   ))}
-                  <Link
-                    to="/wine/$id/notes"
-                    params={{ id: w.id }}
-                    className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-gold/40 py-2 text-sm text-gold hover:bg-gold/5"
-                  >
-                    <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
-                  </Link>
+                  {w.user_id === user?.id && (
+                    <Link
+                      to="/wine/$id/notes"
+                      params={{ id: w.id }}
+                      className="flex min-h-11 items-center justify-center gap-1 rounded-lg border border-dashed border-gold/40 py-2 text-sm text-gold hover:bg-gold/5"
+                    >
+                      <Plus className="h-5 w-5" /> {t("wine.notesAdd")}
+                    </Link>
+                  )}
                 </div>
               )}
             </Section>
@@ -798,13 +911,15 @@ function WineDetailPage() {
           </div>
         )}
 
-        <Button
-          variant="ghost"
-          onClick={remove}
-          className="mt-8 mb-4 w-full text-destructive hover:bg-destructive/10 hover:text-destructive min-h-11"
-        >
-          <Trash2 className="h-5 w-5" /> {t("wine.delete")}
-        </Button>
+        {w.user_id === user?.id && (
+          <Button
+            variant="ghost"
+            onClick={remove}
+            className="mt-8 mb-4 w-full text-red-300 hover:bg-destructive/10 hover:text-red-200 min-h-11"
+          >
+            <Trash2 className="h-5 w-5" /> {t("wine.delete")}
+          </Button>
+        )}
       </div>
     </AppShell>
   );
@@ -821,10 +936,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function KV({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between border-b border-white/8 pb-2.5">
-      <span className="text-sm uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-right font-display text-base text-cream">{value}</span>
-    </div>
+    <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-baseline gap-x-3 border-b border-white/8 pb-2.5">
+      <dt className="min-w-0 text-sm uppercase tracking-wider text-muted-foreground [overflow-wrap:anywhere]">
+        {label}
+      </dt>
+      <dd className="min-w-0 text-right font-display text-base text-cream [overflow-wrap:anywhere]">
+        {value}
+      </dd>
+    </dl>
   );
 }
 

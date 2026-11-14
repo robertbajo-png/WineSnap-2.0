@@ -1,0 +1,311 @@
+# Local Development Access
+
+The owner reported another mobile password failure after the backend password
+probe passed and explicitly switched development back to this Windows PC. Do not
+restart password recovery, passkey registration, mobile onboarding or the tunnel
+on a generic request to continue. Old production and abandoned hosted test remain
+out of scope.
+
+## Opening The Real App
+
+Use the current user's `WineSnap lokalt` desktop shortcut, or PowerShell 7:
+
+```powershell
+./scripts/open-owned-local.ps1 -Action Open -OwnerEmail '<existing local owner email>'
+./scripts/open-owned-local.ps1 -Action Status
+```
+
+The operator opens the real app at `http://127.0.0.1:5212` in a separate visible
+browser. Use that window; opening the plain URL in another browser does not copy
+its authenticated session. Closing the viewer releases its operator lock. The
+shortcut can open another normal owner session without asking for a password.
+No password, grant URL, browser state or JWT is saved in the shortcut or reports.
+
+This is not the example-account PilotDemo. It does not create/delete accounts,
+change passwords/roles, seed a cellar, replace AI responses or publish a login
+bypass. The actual app and its already configured server AI remain available.
+Client requests outside the two exact loopback app/API origins are blocked in
+this viewer; external links/media are not part of its local development scope.
+
+## Security Boundary
+
+Only the already authorized Windows user can decrypt the existing private
+`backend.dpapi`. The wrapper validates protected file permissions, the installed
+owner binding and disabled tunnel recovery before passing private input through
+stdin. The worker verifies the exact labelled app/Auth/gateway and the stopped,
+installation-matching connector. No hosted backend or missing-root provisioning
+is accepted.
+
+Normal GoTrue admin operations verify the single existing confirmed bound owner
+and active privacy status, then issue an existing-account recovery grant. Unlike
+magic-link generation, recovery cannot silently create an account if it disappears.
+The provider's confirmation is mapped to the existing loopback verify endpoint;
+only a single recovery token and exact loopback redirect are accepted. The normal
+browser SDK consumes it and clears the callback. A real `/auth/v1/user` check and
+visible home screen are required before reporting readiness. Auth, real user JWTs,
+RLS and normal session lifetimes are unchanged.
+
+No public/local anonymous-owner HTTP endpoint, shared owner token, fake
+authenticator or client admin credential is introduced. Private operator keys
+never enter the browser. No owner screenshots, HARs, traces or storage-state
+exports are produced. An unlocked Windows session remains a trusted device;
+this tool does not protect against another person using that same unlocked login.
+Closing the viewer destroys its browser context, not every server session or
+another browser's login. Those retain normal provider expiry and explicit logout.
+
+## Local-Only Operation
+
+`run-owned-tunnel.ps1 -Action Stop` completed on November 12. It stopped only the
+owned connector and disabled its supervisor recovery. No DNS record, apex domain,
+old published site, gate password or OS security setting was changed. The private
+gate remains intact but is not needed for loopback development.
+
+The installed app already selects the loopback backend when opened on loopback,
+even with its retained public-origin build label. No app rebuild, origin reset,
+migration replay or volume replacement was needed. The existing Windows runtime,
+dark pilot UI, account, wines, recipes and images are retained. Do not describe
+this as a public release or verified mobile access.
+
+## Verification
+
+```powershell
+./scripts/open-owned-local.ps1 -Action Check -OwnerEmail '<existing local owner email>'
+```
+
+Check uses a separate headless browser, blocks AI/provider requests and verifies
+the actual owner login plus visible app. It logs out only its own probe session.
+Run it while the interactive viewer is closed; duplicate launches are refused
+without replacing the active viewer's report.
+
+The actual November 12 check passed: owner identity and normal app session were
+verified, the home rendered, no external/AI requests were needed, and scoped probe
+logout passed. The visible real-account viewer subsequently reported readiness
+at 21:33:59 UTC, with exact owner identity verified, the home visible and zero
+blocked external/AI requests. The desktop shortcut was installed without any
+credential or grant URL in it.
+
+For a running Open viewer, `ownerSessionVerified=true` records successful initial
+authentication, not indefinite access. `completed=false` is expected until the
+user closes its browser; it is not a failed login. Check exits unsuccessfully if
+a viewer is already open, rather than claiming another login test passed. The
+interactive viewer and old sessions are not forcibly closed by a duplicate launch.
+
+## DEV-02: Current Status And Private Focus
+
+The version-2 opener adds a private `local-view-control.json` command beside its
+protected status file. Both allow only the current Windows user and SYSTEM. A
+command can only focus the existing owned loopback page. It must match the
+current invocation's UUID, contain a fresh request UUID/timestamp and no extra
+fields, and receives a matching acknowledgement. There is no network listener,
+login command, arbitrary URL, credential or account-switch payload. Duplicate
+Open restores a minimized viewer and brings it forward without a new grant or
+second window. Explicit logout stays logged out while that viewer remains open.
+
+The visible worker checks its existing normal owner session against the local
+Auth server approximately every five seconds. Only booleans leave that page
+evaluation. It never renews a grant or reads administrator credentials during
+the heartbeat. Status is read-only, checks the viewer lock and rejects readiness
+when the heartbeat is over thirty seconds old. `lastVerifiedAt` is historical;
+`ready`/`authenticated` plus a fresh heartbeat describe the latest verified state.
+
+| Phase | Meaning |
+| --- | --- |
+| `starting_backend`, `opening_local_owner` and other startup phases | Existing local runtime/browser checks are in progress |
+| `ready` | Live viewer, fresh heartbeat and server-verified bound owner |
+| `checking_session` | Window action acknowledged; no authentication claim while the session probe is pending |
+| `signed_out` | Viewer exists but no valid bound-owner session; Open does not sign it back in |
+| `backend_unavailable` | Viewer exists but the local server/session could not currently be verified |
+| `closed`, `complete` | Open viewer closed, or isolated Check finished; no running-login claim |
+| `interrupted`, `unresponsive` | Operator disappeared or its report expired; not ready |
+| `legacy_viewer` | Earlier opener is still running; its one-time startup report is not current proof |
+| `needs_attention` | Safe startup/operator failure; inspect Status and normal Docker Desktop availability |
+
+Open first uses the established bounded Resume action for only the exact existing
+owned core containers. It does not provision missing roots, start/restart Docker,
+resume a tunnel or touch hosted services. The shared operation lock is not held
+while invoking Resume, and the enabled owner binding is checked again afterward.
+Normal operation-lock contention waits for up to 120 seconds using elapsed time;
+it does not turn a busy backup into a destructive retry or an early six-second
+failure. A second Open during v2 startup reports starting, not a legacy viewer.
+Errors show a fixed, non-secret Windows message, never raw provider exceptions
+or a password input. A duplicate legacy Open asks the owner to save and close
+the old window; it never closes unsaved work automatically.
+
+Each browser focus/probe has an eight-second host deadline as well as the probe's
+in-page fetch timeout. A stalled renderer cannot block later heartbeats or queue
+unlimited evaluations: only one pending action of each kind is retained. Transient
+empty/partial status JSON is retried consistently, at most ten times, with file
+permissions and scope still validated. Invalid scope is never treated as ready.
+Window acknowledgement is published before the session probe, and the caller's
+25-second wait covers an already pending probe plus focus/polling. Startup has
+an explicit bounded deadline: at most eleven minutes across wrapper Resume/lock/
+browser limits, and two minutes in the worker. Only known, unauthenticated startup
+phases can use it; an expired/excessive deadline is not a fresh heartbeat or a
+ready login. A held lock alone never grants authenticated status.
+
+Manual synthetic checks (no real account, backend requests or provider calls):
+
+```powershell
+./scripts/check-owned-local-control.ps1
+node ./scripts/check-owned-local-lifecycle.mjs --headed
+```
+
+Source verification: 28 focused unit tests passed; fourteen Windows checks passed,
+including stale status, legacy/startup compatibility, bounded contention, exact
+Resume scope, concurrent-read retry limits, stalled browser actions, early focus
+acknowledgement, bounded startup classification and cleanup.
+The isolated headed-browser acceptance passed seven lifecycle checks, including
+real minimize/restore and a single focused page. Authentication/outage states in
+that browser acceptance are explicitly simulated, not real-owner login evidence.
+Full GitHub Quality and Database Safety passed for `da9ecb0` (both push and PR).
+The subsequent source-review fixes passed focused local verification and full
+GitHub Quality/Database Safety for final functional source `f877995` (both push
+and PR). The existing owned supervisor was healthy and the loopback app returned
+HTTP 200; these read-only probes are not current-owner login acceptance.
+
+Earlier activation checkpoint (superseded below): the older owner viewer was still running. Its
+read-only Status correctly reports `legacy_viewer` and does not attest current
+authentication. Save/close that viewer before running the fresh actual-owner
+Check and Open, followed by duplicate-Open/fresh-heartbeat verification. These
+installation checks remain pending; no owner window has been forcibly closed.
+
+Focused source tests passed. A broader local run hit existing five-second
+subprocess timeouts under PC load and was stopped to avoid slowing the real
+viewer; limits were not relaxed. Full CI verification remains separate evidence.
+
+## V2 Installed Acceptance: November 13
+
+The owner approved the local installation and reported closing the old window.
+Two read-only inspections found no open/minimized window in the exact legacy
+worker's same-session tree. Only that verified windowless worker was ended; its
+original wrapper/job exited and released its lock. No lock file was deleted,
+password reset, real window force-closed or unrelated browser stopped.
+
+Fresh v2 headless Check passed against the actual existing bound owner. The
+current encrypted backup and isolated restore passed before Update. The owned
+frontend was rebuilt from clean `1f5bd5f`, preserving dark-v1/public-origin labels
+and applying zero new migrations. No internet connector or recovery was started.
+Installed fixture acceptance passed 61 checks and cleaned both exact test accounts;
+its AI fault/chat replies were mocked, not live-provider or owner usage evidence.
+
+Post-update Check again verified the actual owner and logged out only its probe.
+Visible Open then showed the real account/home. Duplicate Open returned
+`alreadyOpen=true`, `focused=true`, `phase=ready` without a second window/grant.
+Subsequent Status returned v2 ready/authenticated/viewerRunning/operatorActive,
+fresh heartbeat, `focusResult=focused` and advancing server-verification timestamps
+from 19:41:31 to 19:42:03 UTC. External/AI blocked counters were zero and internet
+remained paused. This is actual normal owner Auth evidence, not synthetic login.
+
+The shortcut was checked: it uses the current wrapper/PowerShell and Open action,
+with no credential arguments. The supervisor is healthy. `completed=false` is
+normal while the visible Open viewer stays open; do not close it merely to make
+that field true. V2 activation (DEV-02) is complete. Actual owner usage, physical
+mobile access, paid AI quality and public release remain separate gates.
+
+## Last-Page Closure Follow-Up
+
+The real viewer later reported `closed` with no running page, but Chromium stayed
+connected and the old worker retained the viewer lock. Check correctly refused
+to open another owner grant. Only after exact same-session process inspection
+confirmed no visible/minimized windows was that windowless worker stopped; the
+original wrapper/job exited normally. No lock file was deleted and no real
+window or unrelated browser was forcibly closed.
+
+The new `waitForOwnedViewerClose` helper finishes when Chromium disconnects or
+all pages across all its contexts are closed. It preserves any remaining open
+page and cleans its interval/listener. Three focused files / 31 tests passed;
+eight isolated headed lifecycle checks now include closing the last synthetic
+page while Chromium remains connected. Authentication in that lifecycle probe
+is simulated. This is not a new real-owner close/reopen acceptance after the fix.
+
+Fresh real-owner Check, current backup/isolated restore, Update from clean
+`e4740ff` and all 65 installed fixture checks passed before reopening the owner.
+Full Quality/Database Safety passed (push/PR), 147 files / 1,492 passing tests and
+one existing skip. Post-update Check verified the real owner and logged out only
+its probe. Visible Open and duplicate Open then passed (`alreadyOpen=true`,
+`focused=true`, `phase=ready`) without another grant/window. Later Status verified
+ready/authenticated/viewerRunning/operatorActive and a fresh heartbeat; server
+verification advanced from 21:00:16 to 21:00:42 UTC. The supervisor was healthy,
+internet remained paused and blocked external/AI counts were zero.
+
+DEV-02 is complete again. The real owner viewer stays open; reuse/focus it and
+never close it automatically for another update. No old production, hosted test,
+password, passkey, DNS, tunnel or security setting was changed. Actual human use
+and the other release gates remain separate from these technical checks.
+
+## Earlier November 14 Installed Follow-Up
+
+The owner saved/closed the previous viewer. Actual v2 Status then confirmed
+closed/completed, operatorActive=false and normal lock release. This is real
+post-fix closure evidence; no process or real window was forcibly ended.
+
+The next headless Check reached normal owner verification and scoped logout but
+stalled in browser.close after the existing 30-second grace. The wrapper rejected
+that attempt. The new fallback requires the protected current-run completed
+Check, strict boolean acceptance/owner verification/logout, exact scope, paused
+internet and zero blocked requests. Only then may it dispose its own private
+kill-on-close job, require process/output completion and retain a non-live report.
+It never applies to visible Open, foreign/incomplete reports or other processes.
+Thirty synthetic Windows controls passed. Fresh actual-owner pre-update Check
+then passed at 2026-11-13 23:14:16 UTC, including this bounded cleanup.
+
+Encrypted backup `owned-20261113-231907992.dpapi`, isolated same-PC restore and
+Update from clean `05172af` passed. The installed frontend retains dark-v1 and
+the public-origin label with zero new migrations. The connector/recovery remain
+disabled. All 69 installed fixture checks and exact cleanup passed; eight AI
+replies and one price POST were mocked, not provider/catalog traffic. Test-only
+`58a76ef` fixes price/scan fixture ordering without requiring an app rebuild.
+Full Quality/Database Safety passed, 155 files / 1,545 tests and one existing skip.
+
+Post-update activation is NOT accepted: Checks failed at 00:03:33 and 00:13:07 UTC
+on November 14 (the latter timed out in the startup chain). Free RAM dropped to
+about 0.5 GB. The supervisor reported incomplete verification/private-ingress
+health, then a busy verification state without an ingress result; this does not
+prove a broken proxy. App/Auth health endpoints answered HTTP 200. Direct Resume
+was skipped at 00:14:49 UTC because the operation lock was held. No lock was
+deleted and no holder or unrelated program was stopped.
+
+Do not claim fresh owner readiness from fixture tests or earlier activation.
+No visible owner Open was attempted after the failed post-update gate. Diagnose
+the start/verification bottleneck before retrying, then run Check, visible Open,
+same-window focus and a later authenticated heartbeat, with supervisor health
+checked separately. Never skip account/label checks, raise deadlines to hide a
+failure, enable the tunnel, change passwords or restart Windows/global Docker.
+The old production and abandoned hosted test remain untouched.
+
+## November 14 Morning Activation Accepted
+
+The start/verification path now inspects only the exact seven installed services
+in one Docker request per pass. Every original container check remains; missing,
+duplicate, foreign, redirected or insecure service records fail before any start.
+Resume starts only checked immutable IDs in the unchanged dependency order.
+No provisioning, changed deadline, weakened login or global setting is added.
+Fourteen equivalent read-only serial calls measured 21,271 ms versus a 2,550 ms
+batch; the real new helper validated all seven services separately in 4,527 ms.
+This is point-in-time diagnostic evidence, not a guarantee under all host loads.
+
+Three focused files / 49 tests passed. The first run's existing migration read
+hit its five-second limit; the limit was not raised. The first CI run rejected
+test formatting, corrected with the repository formatter. Full Quality/Database
+Safety passed for `eb6fc7a` (push/PR), 156 files / 1,574 tests and one existing skip.
+The local lint attempt was interrupted under load, not counted as a pass.
+
+Fresh real-owner Check completed at 07:52:39 UTC, including scoped probe logout,
+internet paused and zero blocked requests. Resume's three validated inspection
+batches took 4,144 ms in total. Visible Open then reached the actual owner's home
+at 07:57:12 UTC. Duplicate Open returned alreadyOpen=true/focused=true without a
+new run/window. Its transient checking_session returned to ready. Later actual
+Status confirmed ready/authenticated/viewerRunning/operatorActive, fresh heartbeat
+and advancing server verification to 07:57:36 UTC, with no blocked external/AI
+requests. The same viewer remains open; completed=false is expected for Open.
+
+These accepted results supersede the earlier pending owner-activation checkpoint.
+The supervisor had also verified the new inspection and reported healthy; its
+report while owner Open held the operation lock was busy, not a proved proxy
+outage. A later owner verification advanced to 07:59:38 UTC, and the read-only
+supervisor check at 07:59:48 UTC confirmed fully healthy jobs/private ingress,
+fresh heartbeat, the verified limited task and the running supervisor.
+No frontend rebuild, real account edit, password reset, lock deletion, unrelated
+process stop, Windows/global Docker restart, tunnel or old production change was
+needed. Keep the real viewer open and reuse/focus it. Actual owner usage, cold
+boot, physical-mobile, public release and later development stages remain separate.

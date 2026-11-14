@@ -41,3 +41,103 @@ Physical iOS/Android keyboard behavior, camera permissions and capture still nee
 ## Publication
 
 GitHub synchronization and Lovable publication are separate. Publish in Lovable to put these changes on the live domain, then check the PWA update and core flows on a real phone.
+
+## Built-App Release Follow-Up: 2026-10-21
+
+This is the actual Node-built application against WineSnap-test
+`pzniyupmgwvlldvztzqh`, not the Chef prototype or a synthetic runtime-check build.
+Production, main, hosted permissions and Edge Functions were not changed.
+
+Two narrowly scoped fixes:
+
+- The bottom camera button now has a constrained square aspect ratio instead of
+  a fixed height that stretches into an oval in a narrow column with larger text.
+  An actual guest-home diagnostic measured the previous control at approximately
+  58 by 70 CSS pixels at 320px width with 125% root text. The new browser assertion
+  requires its width and height to agree within one pixel, without changing the
+  normal camera screen or adding another scan CTA.
+- The scan text-mode body now has `min-height: 0` and its own vertical scrolling.
+  The header/mode controls remain outside that scroll area; the input and Identify
+  action stay reachable in the short viewport instead of extending below it.
+
+The existing secure browser runner supports these checks without another key
+entry:
+
+```powershell
+./scripts/run-hosted-image-proxy-check.ps1 -Browser -Pwa
+# Second terminal; set WINESNAP_PLAYWRIGHT_MODULE if using a bundled local module.
+node scripts/check-hosted-image-browser.mjs
+```
+
+The driver runs the existing 17 image/PWA checks and eight mobile scenarios:
+
+1. Cellar navigation with 125% root text at 320 by 568 and 390 by 844; control
+   bounds, minimum touch sizes, no intersecting hit areas and horizontal overflow.
+   Real keyboard Tab/Enter activates the skip link and focuses the content area.
+2. Keyboard navigation opens Scan. A real denied browser permission disables the
+   shutter while text and gallery alternatives remain available.
+3. Granting the isolated test permission and pressing Retry starts an inline,
+   muted video. Pixel samples confirm nonblank, changing frames; no microphone
+   track is present.
+4. Taking a photo opens the real local cropper, stops its camera track and keeps
+   the captured aspect ratio consistent with the object-cover preview.
+5. Retake starts the camera again; switching to text ends the new track.
+6. With 125% root text at 390 by 360, the description accepts a synthetic draft,
+   the empty/valid Identify states work, and keyboard focus/scroll brings the
+   action fully into view. The action is never submitted.
+7. With camera permission denied, gallery selection uses the normal file input
+   without a native capture hint. A repository JPEG opens locally in the cropper
+   and can be cancelled without an AI call or saved wine.
+8. Closing the live camera ends its track and removes the local preview. A final
+   cache/network audit still finds no unexpected private data or AI calls.
+
+Chromium is launched with `--use-fake-device-for-media-stream`, which replaces
+physical capture devices; see the
+[Chromium switch definition](https://github.com/chromium/chromium/blob/main/media/base/media_switches.cc).
+The test verifies the video track identifies itself as synthetic before capture.
+Permission denial/grant is scoped to that disposable browser context and loopback
+origin. No physical camera, personal image, microphone, real user session, AI
+provider or user-data write is used by the new camera scenarios. The existing
+image suite still creates and cleans its own previously approved synthetic wine.
+
+### Results And Evidence
+
+**25 passed, zero failed, cleanup confirmed** at 2026-10-21T20:20:09.448Z.
+Safe report: `dist/hosted-image-mobile-report.json`, SHA-256
+`05bc63c1d943839fdb1f64503ff77c65ee676c36a0651486a261b41bfd1596e6`.
+
+The virtual stream was 1920 by 1080 with zero audio tracks. The captured JPEG was
+699 by 1080; its ratio agrees with the measured preview ratio 0.646825 within
+the absolute ratio tolerance of 0.01. All four control-layout audits passed; small browser
+subpixel rounding is measured to the nearest CSS pixel, not treated as a genuine
+undersized target. Six PWA cache audits found no unexpected paths or private
+markers; the final peer cache contained 54 public asset/offline entries.
+There were zero direct Storage image reads, AI requests, page/script errors,
+unexpected HTTP responses or blocked unexpected requests.
+
+Visually reviewed local screenshots:
+
+- `dist/image-browser-mobile-camera-live.png`, SHA-256
+  `0be5ae272dacab84db04fbf8a1015762739e77a88fd59c26b6da3d1e14995cdd`.
+- `dist/image-browser-mobile-camera-crop.png`, SHA-256
+  `aeb821a97a913270b5d5d2c478e7b58aaf44d65bae34a9f4e7966795d105cb61`.
+- `dist/image-browser-mobile-scan-text-short.png`, SHA-256
+  `6ff283ee2e7cd167011f99238a681c7831076aba651226fb143734fce2851991`.
+  This last image shows the short scroll area after keyboard focus reaches Identify;
+  it is not a claim that every form element fits simultaneously above a keyboard.
+
+All 453 unit tests in 68 files, TypeScript, ESLint and the configured Node build
+pass. Unit additions cover control-geometry boundaries and the two layout guards.
+Local lint excludes generated dependency-backup/tool-cache directories. Both test
+listeners closed, and independent API counts at 2026-10-21T20:22:08.761Z confirmed
+zero Auth users, wines, photos, erasure receipts/jobs, quota rows and Storage root
+entries. No tokens, passwords, cached bodies, browser auth state or HAR are saved.
+
+### Still Device-Level
+
+These are Chromium browser tests using viewport/root-text changes and a virtual
+camera. They do not simulate the operating system's keyboard, certify full WCAG
+conformance, validate iOS Safari/PWA installation, or verify physical lens choice,
+rotation, app backgrounding, HEIC capture, camera revocation or native file pickers
+on a real phone. Real-device checks and production cutover remain separate gates.
+No successful AI wine identification is inferred from the synthetic camera feed.

@@ -1,17 +1,28 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { Sparkles, UtensilsCrossed } from "lucide-react";
+import { lazy, Suspense, useEffect } from "react";
+import { Sparkles, UtensilsCrossed, ChefHat } from "lucide-react";
+import { kitchenEnabled } from "@/features/kitchen/feature";
 import { AppShell } from "@/components/AppShell";
 import { useT } from "@/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import heroBottle from "@/assets/hero-bottle.jpg";
+import { pilotUiEnabled } from "@/features/pilot/feature";
+
+const PilotHome = lazy(() =>
+  import("@/features/pilot/PilotHome").then((m) => ({ default: m.PilotHome })),
+);
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "WineSnap — Build your cellar" },
-      { name: "description", content: "Scan labels, discover wines, and collect what you love." },
+      { title: pilotUiEnabled ? "WineSnap | Food & wine" : "WineSnap — Build your cellar" },
+      {
+        name: "description",
+        content: pilotUiEnabled
+          ? "Your kitchen and wine cellar, together."
+          : "Scan labels, discover wines, and collect what you love.",
+      },
     ],
   }),
   component: HomePage,
@@ -33,6 +44,19 @@ function HomePage() {
         if (data && !data.onboarded_at) navigate({ to: "/onboarding" });
       });
   }, [user, navigate]);
+
+  if (pilotUiEnabled)
+    return (
+      <Suspense
+        fallback={
+          <AppShell>
+            <div role="status">{t("pilot.loading")}</div>
+          </AppShell>
+        }
+      >
+        <PilotHome owner={user?.id} />
+      </Suspense>
+    );
 
   return (
     <AppShell>
@@ -61,6 +85,15 @@ function HomePage() {
         </div>
 
         <div className="px-5 pt-4">
+          {kitchenEnabled && (
+            <Link
+              to="/kitchen"
+              className="mb-3 flex min-h-12 items-center justify-center gap-2 border-y border-white/10 text-base text-gold"
+            >
+              <ChefHat size={20} />
+              Köket
+            </Link>
+          )}
           <ul className="grid grid-cols-2 divide-x divide-white/10 border-y border-white/10">
             <li className="min-w-0">
               <Link

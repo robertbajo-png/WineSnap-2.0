@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useT } from "@/i18n";
+import { Mail } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — WineSnap" }] }),
@@ -97,7 +98,9 @@ function LoginPage() {
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               type="password"
               required
-              minLength={6}
+              minLength={
+                mode === "signup" && import.meta.env.VITE_OWNED_BACKEND_ENABLED === "true" ? 12 : 6
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -116,6 +119,16 @@ function LoginPage() {
         >
           {t("privacy.link")}
         </Link>
+        {import.meta.env.VITE_OWNED_BACKEND_ENABLED === "true" && (
+          <a
+            href="http://127.0.0.1:8026"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-11 items-center justify-center gap-2 text-base text-gold"
+          >
+            <Mail size={18} aria-hidden="true" /> {t("login.localInbox")}
+          </a>
+        )}
         {mode === "signin" && (
           <div className="mt-3 text-center">
             <Link

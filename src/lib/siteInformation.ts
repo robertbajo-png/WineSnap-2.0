@@ -32,6 +32,18 @@ export function isPrivacyInformationComplete(info: ReturnType<typeof resolveSite
   );
 }
 
+export function isPrivacyInformationVerified(
+  info: ReturnType<typeof resolveSiteInformation>,
+  operationsVerified: string | undefined,
+  suppliersVerified: string | undefined,
+) {
+  return (
+    isPrivacyInformationComplete(info) &&
+    operationsVerified === "true" &&
+    suppliersVerified === "true"
+  );
+}
+
 export const siteInformation = resolveSiteInformation({
   VITE_SITE_OPERATOR: import.meta.env.VITE_SITE_OPERATOR,
   VITE_SITE_ADDRESS: import.meta.env.VITE_SITE_ADDRESS,
@@ -40,6 +52,8 @@ export const siteInformation = resolveSiteInformation({
   VITE_PRIVACY_LEGAL_BASIS: import.meta.env.VITE_PRIVACY_LEGAL_BASIS,
 });
 // Text fields alone are not proof that deletion, scheduling or vendor settings work.
-export const privacyInformationComplete =
-  isPrivacyInformationComplete(siteInformation) &&
-  import.meta.env.VITE_PRIVACY_OPERATIONS_VERIFIED === "true";
+export const privacyInformationComplete = isPrivacyInformationVerified(
+  siteInformation,
+  import.meta.env.VITE_PRIVACY_OPERATIONS_VERIFIED,
+  import.meta.env.VITE_PRIVACY_SUPPLIERS_VERIFIED,
+);
