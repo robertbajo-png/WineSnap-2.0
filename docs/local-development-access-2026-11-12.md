@@ -232,3 +232,43 @@ DEV-02 is complete again. The real owner viewer stays open; reuse/focus it and
 never close it automatically for another update. No old production, hosted test,
 password, passkey, DNS, tunnel or security setting was changed. Actual human use
 and the other release gates remain separate from these technical checks.
+
+## November 14 Installed Follow-Up And Pending Activation
+
+The owner saved/closed the previous viewer. Actual v2 Status then confirmed
+closed/completed, operatorActive=false and normal lock release. This is real
+post-fix closure evidence; no process or real window was forcibly ended.
+
+The next headless Check reached normal owner verification and scoped logout but
+stalled in browser.close after the existing 30-second grace. The wrapper rejected
+that attempt. The new fallback requires the protected current-run completed
+Check, strict boolean acceptance/owner verification/logout, exact scope, paused
+internet and zero blocked requests. Only then may it dispose its own private
+kill-on-close job, require process/output completion and retain a non-live report.
+It never applies to visible Open, foreign/incomplete reports or other processes.
+Thirty synthetic Windows controls passed. Fresh actual-owner pre-update Check
+then passed at 2026-11-13 23:14:16 UTC, including this bounded cleanup.
+
+Encrypted backup `owned-20261113-231907992.dpapi`, isolated same-PC restore and
+Update from clean `05172af` passed. The installed frontend retains dark-v1 and
+the public-origin label with zero new migrations. The connector/recovery remain
+disabled. All 69 installed fixture checks and exact cleanup passed; eight AI
+replies and one price POST were mocked, not provider/catalog traffic. Test-only
+`58a76ef` fixes price/scan fixture ordering without requiring an app rebuild.
+Full Quality/Database Safety passed, 155 files / 1,545 tests and one existing skip.
+
+Post-update activation is NOT accepted: Checks failed at 00:03:33 and 00:13:07 UTC
+on November 14 (the latter timed out in the startup chain). Free RAM dropped to
+about 0.5 GB. The supervisor reported incomplete verification/private-ingress
+health, then a busy verification state without an ingress result; this does not
+prove a broken proxy. App/Auth health endpoints answered HTTP 200. Direct Resume
+was skipped at 00:14:49 UTC because the operation lock was held. No lock was
+deleted and no holder or unrelated program was stopped.
+
+Do not claim fresh owner readiness from fixture tests or earlier activation.
+No visible owner Open was attempted after the failed post-update gate. Diagnose
+the start/verification bottleneck before retrying, then run Check, visible Open,
+same-window focus and a later authenticated heartbeat, with supervisor health
+checked separately. Never skip account/label checks, raise deadlines to hide a
+failure, enable the tunnel, change passwords or restart Windows/global Docker.
+The old production and abandoned hosted test remain untouched.

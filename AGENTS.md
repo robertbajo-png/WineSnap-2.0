@@ -41,38 +41,42 @@ uses CurrentUser-protected operator access and normal loopback GoTrue Auth/RLS,
 not a public or anonymous login bypass. Never run its private worker directly or
 print grants/tokens/browser state. See `docs/local-development-access-2026-11-12.md`.
 
-Installed checkpoint, 2026-11-13: the owned frontend was updated from the clean
-`e4740ff` checkout, preserving dark/public-origin labels with zero new migrations.
-The tunnel remains disabled. Fresh encrypted backup/isolated restore and 65
-installed fixture checks passed, including mocked-AI chat cancellation and real
-fixture collector insert reconciliation/revision-guarded editing. Last-page
-closure cleanup passes unit and isolated headed-browser checks; this is not a
-new real-owner closure test. V2 actual-owner Check, visible Open, duplicate focus
-and a later authenticated heartbeat passed. The `WineSnap lokalt` shortcut targets
-the current wrapper. Reuse/focus this viewer; never force-close it for another
-update. The earlier DEV-02 activation passed; current reactivation is reopened
-below. Broader DEV-03 review and actual owner usage remain.
-Overview price-refresh account/deadline guards and explicit read recovery are
-now source-tested (15 isolated browser cases, 83 focused tests, full CI green
-for `b6738f9`), not installed
-over the still-open owner viewer. Next source review is remaining family/meal
-states; safe activation of this follow-up remains separate. See the canonical
-plan's current installation checkpoint; older source-only pending statements
-are historical.
+Installed checkpoint, 2026-11-14 local time: the owner safely closed the viewer;
+Status confirmed closure and normal lock release without a forced process stop.
+Fresh pre-update actual-owner Check passed, including scoped logout. Encrypted
+backup `owned-20261113-231907992.dpapi` and its isolated same-PC restore passed:
+75 tables, one image, Auth hashes/identities, permissions/functions, rows/share
+IDs and real-JWT isolation matched; the clone was cleaned. This is not off-device
+recovery. Update from clean `05172af` retained dark-v1/public-origin labels,
+matched 37 migrations and ran zero new ones. The tunnel/recovery remain disabled.
+All 69 installed PilotAccept checks passed and both exact fixtures were removed;
+eight AI replies and one price request were mocked, never sent to providers or
+the catalog. Two injected read failures recovered without another price request.
+The price probe now precedes scan-created fixture wines; its first order-dependent
+failure is not accepted as a pass. Full Quality/Database Safety passed for
+`58a76ef` (155 files, 1,545 tests, one existing skip). No app rebuild is needed
+for this test-helper-only follow-up.
 
-Current installation continuation: the owner safely closed the viewer and its
-lock released normally. Fresh Check has not passed: owned Resume contention and
-severe host resource pressure were observed. The frontend is still `e4740ff`;
-do not claim an update, fresh owner login or backup acceptance. The read-only
-`inspect-owned-operation-lock.ps1` can classify only the owned operation lock;
-never remove it or terminate a holder merely because it is busy. A close-after-
-flush stdin helper passes unit/host binary and a full 1 MB Docker digest probe;
-fresh backup/restore are not accepted yet. Family/meal read cancellation and
-coalescing pass 16 focused tests, all 29 isolated kitchen browser checks and full
-CI for `5e07b8d` (1,542 passing tests, one existing skip). An earlier readiness
-timeout remains failed evidence. The latest read-only supervisor status is
-healthy; fresh actual-owner Check and installation are still pending. Read the canonical current handoff
-before retrying. No Windows/Docker restart or unrelated-process stop is approved.
+Post-update owner activation remains pending: two fresh Checks failed in the
+start chain (the second timed out) under renewed severe host memory pressure.
+The app/Auth health endpoints still answer HTTP 200, which is not owner-login
+proof. The supervisor also reported an unhealthy verification/private-ingress
+state; a later report was busy with verification, not a proved proxy outage.
+A direct Resume was skipped because the operation lock was legitimately held.
+No visible owner Open was attempted after these failures. Do not claim fresh
+owner readiness or a healthy supervisor from the
+successful fixture run. Finish Check, then visible Open/focus/heartbeat last;
+never reopen the viewer before the outstanding activation gate. Read the canonical
+current handoff for the latest result. Diagnose the start/verification bottleneck
+before stacking more owner attempts. No Windows/Docker restart, unrelated-process
+stop, lock deletion, password reset or tunnel activation is approved.
+The next DEV-03 source slice is family/meal mutation cancellation, uncertain-save
+reconciliation and truthful post-write read-failure notices. The shared read
+lifecycle is installed and source-verified with 16 focused tests and 29 isolated
+kitchen cases; these are distinct from the narrower installed fixture coverage.
+The read-only `inspect-owned-operation-lock.ps1` classifies only the owned lock;
+never terminate a holder merely because it is busy. The close-after-flush stdin
+helper passed a full 1 MB synthetic Docker digest probe, backup and restore.
 The completed-headless-Check fallback may close only its own private kill-on-close
 job after current-run owner verification and scoped logout are proved. It retains
 the original 30-second grace and verifies process/output completion. Never apply

@@ -596,11 +596,36 @@ Database Safety passed for `5e07b8d` (push/PR), 154 files / 1,542 passing tests 
 one existing skip. Earlier typecheck and test-harness lint failures were fixed,
 not waived or counted as successful runs.
 
-This is not installed acceptance: the owned frontend is still `e4740ff` while
-fresh activation/backup/update gates are resolved. Family/meal mutation
+At this source checkpoint the frontend was still `e4740ff`; the later installed
+checkpoint below supersedes that status. Family/meal mutation
 cancellation, uncertain-save reconciliation and post-write read-failure notices
 remain the next review. No actual household/invitation, provider request, role,
 password, old production or hosted test was changed in these source checks.
+
+## Installed Price And Shared-Read Follow-Up
+
+On November 14 local time, Update from clean `05172af` passed while retaining
+dark-v1/public-origin labels and all 37 existing migrations (zero new ones).
+Pre-update owner Check, encrypted backup `owned-20261113-231907992.dpapi` and
+isolated 75-table/one-image restore passed; clone cleanup completed. Rollback
+image `winesnap-owned:rollback-20261114-prices` retains the prior actual web image.
+The tunnel/recovery remain disabled. This is not portable recovery or public release.
+
+All 69 installed fixture checks passed at 360/390/430/1024/1440px, including
+explicit initial price-read retry and keyboard recovery after two injected read
+errors and one mocked 503 price POST. No actual catalog request was forwarded
+or repeated. Eight AI replies were mocked. Collector insert reconciliation and
+revision editing used normal fixture Auth/RLS. Forbidden external/AI requests,
+page/fixture errors were zero; both exact fixture accounts/data were removed.
+The overview-prices-390 screenshot was inspected; it contains synthetic data only.
+
+The first run failed the exact one-wine price assertion after scan created a
+second fixture wine; cleanup passed but the run is not accepted. Test-only
+`58a76ef` moves the price probe before scan without weakening the strict ID/body
+assertion. Three focused tests and full Quality/Database Safety passed (push/PR),
+155 files / 1,545 passing tests and one existing skip. This changes no installed
+frontend code and needs no rebuild. Post-update actual-owner activation and
+supervisor health remain separate pending gates in the canonical plan.
 
 ## Remaining DEV-03 Work
 
@@ -622,14 +647,14 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Collector safety now passes 10 isolated browser checks and 64 focused tests;
   full CI and the narrower installed collector acceptance above passed.
 - Price-refresh scope/deadline/read recovery passes 83 focused tests and 15
-  isolated browser cases and full CI. Later safe owned activation remains;
-  do not rebuild under an open real viewer. Shared family/meal reads now pass
+  isolated browser cases, full CI and the narrower installed acceptance above.
+  Do not rebuild under an open real viewer. Shared family/meal reads now pass
   16 focused tests, 29 kitchen browser cases and full CI; mutation lifetimes and
   uncertain-save/read-back states remain. Preserve verified retail prices separately
   from user estimates and retain unknown values/currencies.
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
-- The accumulated source changes are installed and the narrower 65-case owned
+- The accumulated source changes are installed and the narrower 69-case owned
   regression passed. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.
 - For future updates, wait for safe owner closure, use headless Check, current
