@@ -316,6 +316,25 @@ and MealHistoryPanel; their current save notices ignore refresh's false result.
 Preserve the existing ordinary-JWT, meals_access/RLS, revision and child boundaries.
 DEV-03 broader review, real owner use and later DEV stages are not complete.
 
+November 14 morning continuation: fresh read-only inspection validated all seven
+exact owned containers and found them running. The original fourteen serial
+Docker calls took 21,271 ms; one equivalent inspection took 2,550 ms. The actual
+new helper independently passed all seven existing container checks in 4,527 ms.
+Resume and Verify now inspect the entire fixed service set once per pass and
+still validate exact names, installation/scope, users, mounts, networks, ports,
+read-only roots, dropped capabilities and log/security settings. Resume validates
+the whole set before starting only stopped services by their checked immutable
+IDs, in the unchanged dependency order. No discovery, provisioning, changed
+deadline, password or tunnel action is added. Reports contain only inspection
+batch counts and elapsed milliseconds, never Docker records/environment/input.
+
+Three focused files / 49 tests passed. The initial run had one existing migration
+file-read test exceed five seconds under host load; it is retained as a failure,
+not waived by raising its limit. A fresh supervisor Verify already passed using
+one batch in 1,157 ms, and the watch report was healthy. Full CI and a new actual-
+owner Check/Open/focus/heartbeat remain pending for this helper-only follow-up;
+no frontend rebuild or repeat of accepted backup/fixture tests is required.
+
 ### Earlier Installed Checkpoint (e4740ff)
 
 The following record is historical; current installation and handoff above take

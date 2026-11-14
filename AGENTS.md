@@ -81,6 +81,13 @@ The completed-headless-Check fallback may close only its own private kill-on-clo
 job after current-run owner verification and scoped logout are proved. It retains
 the original 30-second grace and verifies process/output completion. Never apply
 this fallback to the visible Open viewer or accept an incomplete/foreign report.
+The November 14 morning follow-up batches only the fixed seven-service Resume/
+Verify inspection, retaining all existing container checks before any starts.
+Starts use validated immutable IDs in dependency order. Three focused files /
+49 tests passed; the first run's existing migration-read timeout was not waived.
+The supervisor has verified the new batch and reported healthy. Full CI and fresh
+actual-owner Check/Open/focus/heartbeat remain pending; this helper change needs
+no frontend rebuild. See the canonical handoff rather than older pending status.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

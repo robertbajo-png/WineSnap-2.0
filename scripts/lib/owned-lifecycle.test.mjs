@@ -144,8 +144,8 @@ describe("owned Windows lifecycle", () => {
     const resume = manager
       .split('if (action === "Resume") {')[1]
       ?.split('if (action === "Start"')[0];
-    expect(resume).toContain("await existing(service)");
-    expect(resume).toContain('command(["start", name(service)])');
+    expect(resume).toContain("await installedServices()");
+    expect(resume).toContain('command(["start", value.Id])');
     expect(resume).not.toMatch(/volume\(|ensureNetwork|ALTER ROLE|CREATE|docker.*build/);
   });
   it("plans only missing migrations in source order", () => {

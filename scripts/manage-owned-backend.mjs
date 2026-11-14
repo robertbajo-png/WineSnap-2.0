@@ -20,6 +20,7 @@ import { ownedResumeOrder, planOwnedMigrations } from "./lib/owned-lifecycle.mjs
 import { selectOwnedPublicOrigin } from "./lib/owned-public-origin.mjs";
 import { selectOwnedPilotUi } from "./lib/owned-pilot-ui.mjs";
 import { finishOwnedInput } from "./lib/owned-process-input.mjs";
+import { inspectOwnedContainers } from "./lib/owned-installed-state.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -106,6 +107,16 @@ const command = (args, input, extraEnv = {}, timeout = 180000) =>
     finishOwnedInput(child.stdin, input);
   });
 const json = async (args) => JSON.parse((await command(args)).toString());
+async function installedServices() {
+  const started = performance.now();
+  report.serviceInspectionBatches = (report.serviceInspectionBatches ?? 0) + 1;
+  try {
+    return await inspectOwnedContainers(json, keys.installationId);
+  } finally {
+    report.serviceInspectionMs =
+      (report.serviceInspectionMs ?? 0) + Math.round(performance.now() - started);
+  }
+}
 const name = (service) => `winesnap-owned-${service}`;
 const labelArgs = () => [
   "--label",
@@ -359,8 +370,7 @@ async function installWebKeys() {
   );
 }
 async function verify() {
-  for (const service of [...Object.keys(ownedServices), "web"]) {
-    const value = await existing(service);
+  for (const value of (await installedServices()).values()) {
     assert.ok(value?.State.Running);
   }
   assert.equal(await sql("SELECT id FROM winesnap_local.installation"), keys.installationId);
@@ -427,14 +437,11 @@ try {
   if (action === "Resume") {
     phase = "resume_existing_installation";
     // Require every exact installed container before starting any of them.
-    const containers = [];
+    const containers = await installedServices();
     for (const service of ownedResumeOrder) {
-      const value = await existing(service);
-      assert.ok(value, "Installed container is missing; explicit setup is required");
-      containers.push([service, value]);
+      const value = containers.get(name(service));
+      if (!value.State.Running) await command(["start", value.Id]);
     }
-    for (const [service, value] of containers)
-      if (!value.State.Running) await command(["start", name(service)]);
     await wait(() => verify());
     report.resumedExistingInstallation = true;
   }
