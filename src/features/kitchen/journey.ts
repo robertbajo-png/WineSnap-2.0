@@ -83,7 +83,7 @@ export function pairingWineJourneyHash(version: RecipeVersion, origin?: KitchenD
   return wineJourneyHash({
     view: "recipes",
     recipe: version.id,
-    servings: context?.servings ?? version.document.servings,
+    servings: context ? context.servings : version.document.servings,
     ...(context?.fromCook && context.session ? { session: context.session, fromCook: true } : {}),
   });
 }

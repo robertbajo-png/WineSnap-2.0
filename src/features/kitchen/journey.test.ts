@@ -31,6 +31,26 @@ const session: LocalSession = {
 };
 
 describe("private food and wine journeys", () => {
+  it("does not invent a portion count when the exact cooking origin omitted it", () => {
+    expect(
+      readWineJourney(
+        pairingWineJourneyHash(version, {
+          view: "pairings",
+          recipe: version.id,
+          session: session.id,
+          fromCook: true,
+        }),
+      ),
+    ).toEqual({
+      kind: "ready",
+      destination: {
+        view: "cook",
+        recipe: version.id,
+        session: session.id,
+        fromCook: true,
+      },
+    });
+  });
   it("keeps the exact pairing recipe, cooking session and portions in the wine return", () => {
     const before = structuredClone(session);
     const origin = {
