@@ -841,6 +841,10 @@ try {
 } catch (error) {
   report.failure = "synthetic_core_experience_not_accepted";
   report.errorType = ["AssertionError", "TimeoutError"].includes(error.name) ? error.name : "Error";
+  report.waitAction =
+    ["click", "fill", "waitFor", "selectOption"].find((action) =>
+      error.message?.includes("locator." + action),
+    ) ?? null;
   report.runtimeExitCode = child?.exitCode ?? null;
   report.runtimeOutputSeen = logs.length > 0;
   report.runtimeDiagnostics = [

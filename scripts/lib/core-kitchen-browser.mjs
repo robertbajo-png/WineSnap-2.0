@@ -659,15 +659,16 @@ async function acceptMealWrites({ page, base, artifacts, report, fixture, switch
   await page.getByText("Måltiden sparades.", { exact: false }).waitFor();
   report.phase = "meal-newer-revision-conflict";
   await page.getByRole("button", { name: "Redigera måltid", exact: true }).click();
-  await page.getByLabel("Anteckning", { exact: true }).fill("Synthetic draft edit");
+  report.phase = "meal-conflict-draft-edit";
+  const note = page.locator(".meal-editor textarea");
+  await note.fill("Synthetic draft edit");
   fixture.conflictMeal();
   fixture.armMealScenario("meal-conflict");
+  report.phase = "meal-conflict-submit";
   await page.getByRole("button", { name: "Spara måltid", exact: true }).click();
+  report.phase = "meal-conflict-result";
   await page.getByText("Uppgifterna har ändrats.", { exact: false }).waitFor();
-  assert.equal(
-    await page.getByLabel("Anteckning", { exact: true }).inputValue(),
-    "Synthetic draft edit",
-  );
+  assert.equal(await note.inputValue(), "Synthetic draft edit");
   await layout(page, artifacts, report, "meal-save-conflict");
   assert.equal(fixture.counts().writeCount, 4);
   assert.equal(fixture.counts().commits, 3);
