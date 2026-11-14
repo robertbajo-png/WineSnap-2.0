@@ -146,7 +146,10 @@ Prepared cases include lost replies/double submit, pending rename, saved/read
 failure, child-wine opt-in, explicit bottle/pinned recipe links, actual-RPC
 revision conflict, late view replies and three peer-RLS reads. Unit mocks do not
 prove these installed behaviors. Local full Vitest passed: 162 files / 1,699
-tests; five focused files / 83 tests, typecheck and changed-file lint also pass.
+tests; five focused files / 83 tests, typecheck and full lint also pass.
+Full Quality/Database Safety passed for `b363b14` (push/PR), with 162 files /
+1,698 passing CI tests and one existing platform skip. Synthetic build/runtime
+and client budget passed; four existing Chef lint warnings remain.
 No fixture, browser, account, provider or runtime was started/changed.
 Keep the real owner viewer open. Next non-disruptive source preparation may
 extend the late-write probe across account change (distinct from late view

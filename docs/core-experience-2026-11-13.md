@@ -848,9 +848,12 @@ The unit conflict response is mocked, not a real backend conflict observation.
 Late write across account change is still distinct from view-change/peer checks.
 
 Local full Vitest passed: 162 files / 1,699 tests; five focused files / 83 tests,
-typecheck and changed-file lint also pass. Two earlier full lint attempts rejected
+typecheck and full lint also pass. Two earlier full lint attempts rejected
 test-chain formatting (four then five errors); those attempts are not passes.
 The four existing Chef lint warnings remain outside this slice.
+Full Quality/Database Safety passed for `b363b14` (push/PR): 162 files / 1,698
+passing tests and one existing platform skip. Typecheck, lint, synthetic build/
+runtime, client budget and security checks passed; public release stays blocked.
 No real fixture/key/provider/browser/runtime was used. The installed frontend
 remains `05172af`, real owner viewer preserved and internet state unchanged.
 Old production and abandoned hosted test were untouched. A future installed

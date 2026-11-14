@@ -542,9 +542,13 @@ mocks responses; only a future installed run can establish the actual 409.
 
 Local full Vitest passed: 162 files / 1,699 tests, including the new helper's
 guards, session preservation and cascade-verification tests. Five focused files /
-83 tests, typecheck and changed-file lint passed. Two earlier full lint attempts
+83 tests, typecheck and full lint passed. Two earlier full lint attempts
 rejected test-chain formatting (four then five errors); they are failed evidence,
 not passes. Four pre-existing Chef warnings remain outside this slice.
+Full Quality/Database Safety passed for `b363b14` (push/PR): 162 files / 1,698
+passing tests and one existing platform skip. Typecheck, lint, synthetic Node
+build/runtime, client budget and security checks passed; public release remains
+blocked by the unchanged operator-evidence gate.
 No browser/fixture/provider was started, real key decrypted, installed frontend
 rebuilt, account/data changed, or old production/hosted test contacted. This
 preparation does not advance DEV-03 to complete, replace the 72 isolated UI
@@ -878,7 +882,9 @@ entry points passed validation; `git diff --check` passed.
 
 - DEV-03 owned household/meal/pairing acceptance preparation: local full Vitest
   passed, 162 files / 1,699 tests; five focused files / 83 tests, typecheck and
-  changed-file lint also pass. New browser scenarios are
+  full lint also pass. Full Quality/Database Safety passed for `b363b14`
+  (push/PR), 162 files / 1,698 CI tests and one existing skip, with synthetic
+  build/runtime and client budget. New browser scenarios are
   source-only and not executed against the installed app; preserve prior 72
   isolated/69 installed checkpoints. No runtime, credentials or real data used.
 - DEV-03 explicit choices/returns: all 72 isolated kitchen checks passed on UI
