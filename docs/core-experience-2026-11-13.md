@@ -624,8 +624,12 @@ second fixture wine; cleanup passed but the run is not accepted. Test-only
 `58a76ef` moves the price probe before scan without weakening the strict ID/body
 assertion. Three focused tests and full Quality/Database Safety passed (push/PR),
 155 files / 1,545 passing tests and one existing skip. This changes no installed
-frontend code and needs no rebuild. Post-update actual-owner activation and
-supervisor health remain separate pending gates in the canonical plan.
+frontend code and needs no rebuild. Post-update actual-owner activation later
+passed with the helper-only batched inspection follow-up (`eb6fc7a`): fresh Check,
+visible Open, same-window focus and advancing authenticated heartbeat. Full CI
+passed, 156 files / 1,574 tests and one existing skip. See the canonical plan for
+current supervisor evidence. The accepted 69 fixture cases above were not rerun
+or relabelled as live-provider, human-use or physical-mobile acceptance.
 
 ## Remaining DEV-03 Work
 

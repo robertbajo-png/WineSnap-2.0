@@ -57,19 +57,20 @@ failure is not accepted as a pass. Full Quality/Database Safety passed for
 `58a76ef` (155 files, 1,545 tests, one existing skip). No app rebuild is needed
 for this test-helper-only follow-up.
 
-Post-update owner activation remains pending: two fresh Checks failed in the
-start chain (the second timed out) under renewed severe host memory pressure.
-The app/Auth health endpoints still answer HTTP 200, which is not owner-login
-proof. The supervisor also reported an unhealthy verification/private-ingress
-state; a later report was busy with verification, not a proved proxy outage.
-A direct Resume was skipped because the operation lock was legitimately held.
-No visible owner Open was attempted after these failures. Do not claim fresh
-owner readiness or a healthy supervisor from the
-successful fixture run. Finish Check, then visible Open/focus/heartbeat last;
-never reopen the viewer before the outstanding activation gate. Read the canonical
-current handoff for the latest result. Diagnose the start/verification bottleneck
-before stacking more owner attempts. No Windows/Docker restart, unrelated-process
-stop, lock deletion, password reset or tunnel activation is approved.
+Post-update owner activation passed on November 14 morning: fresh headless Check
+verified the real owner and scoped probe logout at 07:52:39 UTC. Visible Open
+then showed the real owner/home. Duplicate Open focused the same run/window;
+later Status verified ready/authenticated/viewerRunning/operatorActive and a
+fresh advancing server heartbeat (07:57:12 to 07:57:36 UTC), internet paused and
+zero blocked requests. Verification advanced again to 07:59:38 UTC; the read-only
+supervisor check was fully healthy at 07:59:48 UTC. Keep this viewer open;
+reuse/focus it, never force-close
+or rebuild it for another update. This is normal owner Auth/RLS, not a public
+login bypass or actual human usage acceptance. The earlier failed Checks and
+resource pressure remain historical failures, not proof that HTTP 200 is login.
+Read the canonical handoff for current supervisor evidence and the next task.
+No Windows/Docker restart, unrelated-process stop, lock deletion, password reset
+or tunnel activation is approved.
 The next DEV-03 source slice is family/meal mutation cancellation, uncertain-save
 reconciliation and truthful post-write read-failure notices. The shared read
 lifecycle is installed and source-verified with 16 focused tests and 29 isolated
@@ -85,9 +86,11 @@ The November 14 morning follow-up batches only the fixed seven-service Resume/
 Verify inspection, retaining all existing container checks before any starts.
 Starts use validated immutable IDs in dependency order. Three focused files /
 49 tests passed; the first run's existing migration-read timeout was not waived.
-The supervisor has verified the new batch and reported healthy. Full CI and fresh
-actual-owner Check/Open/focus/heartbeat remain pending; this helper change needs
-no frontend rebuild. See the canonical handoff rather than older pending status.
+Full Quality/Database Safety passed for `eb6fc7a` (push/PR), 156 files / 1,574 tests
+and one existing skip; the first CI test-formatting failure was corrected.
+The supervisor has verified the new batch and reported fully healthy after Open;
+its earlier busy report was not a proved proxy outage. The helper needs no
+frontend rebuild. See the canonical handoff rather than older pending status.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

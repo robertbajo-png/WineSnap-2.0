@@ -233,7 +233,7 @@ never close it automatically for another update. No old production, hosted test,
 password, passkey, DNS, tunnel or security setting was changed. Actual human use
 and the other release gates remain separate from these technical checks.
 
-## November 14 Installed Follow-Up And Pending Activation
+## Earlier November 14 Installed Follow-Up
 
 The owner saved/closed the previous viewer. Actual v2 Status then confirmed
 closed/completed, operatorActive=false and normal lock release. This is real
@@ -272,3 +272,40 @@ same-window focus and a later authenticated heartbeat, with supervisor health
 checked separately. Never skip account/label checks, raise deadlines to hide a
 failure, enable the tunnel, change passwords or restart Windows/global Docker.
 The old production and abandoned hosted test remain untouched.
+
+## November 14 Morning Activation Accepted
+
+The start/verification path now inspects only the exact seven installed services
+in one Docker request per pass. Every original container check remains; missing,
+duplicate, foreign, redirected or insecure service records fail before any start.
+Resume starts only checked immutable IDs in the unchanged dependency order.
+No provisioning, changed deadline, weakened login or global setting is added.
+Fourteen equivalent read-only serial calls measured 21,271 ms versus a 2,550 ms
+batch; the real new helper validated all seven services separately in 4,527 ms.
+This is point-in-time diagnostic evidence, not a guarantee under all host loads.
+
+Three focused files / 49 tests passed. The first run's existing migration read
+hit its five-second limit; the limit was not raised. The first CI run rejected
+test formatting, corrected with the repository formatter. Full Quality/Database
+Safety passed for `eb6fc7a` (push/PR), 156 files / 1,574 tests and one existing skip.
+The local lint attempt was interrupted under load, not counted as a pass.
+
+Fresh real-owner Check completed at 07:52:39 UTC, including scoped probe logout,
+internet paused and zero blocked requests. Resume's three validated inspection
+batches took 4,144 ms in total. Visible Open then reached the actual owner's home
+at 07:57:12 UTC. Duplicate Open returned alreadyOpen=true/focused=true without a
+new run/window. Its transient checking_session returned to ready. Later actual
+Status confirmed ready/authenticated/viewerRunning/operatorActive, fresh heartbeat
+and advancing server verification to 07:57:36 UTC, with no blocked external/AI
+requests. The same viewer remains open; completed=false is expected for Open.
+
+These accepted results supersede the earlier pending owner-activation checkpoint.
+The supervisor had also verified the new inspection and reported healthy; its
+report while owner Open held the operation lock was busy, not a proved proxy
+outage. A later owner verification advanced to 07:59:38 UTC, and the read-only
+supervisor check at 07:59:48 UTC confirmed fully healthy jobs/private ingress,
+fresh heartbeat, the verified limited task and the running supervisor.
+No frontend rebuild, real account edit, password reset, lock deletion, unrelated
+process stop, Windows/global Docker restart, tunnel or old production change was
+needed. Keep the real viewer open and reuse/focus it. Actual owner usage, cold
+boot, physical-mobile, public release and later development stages remain separate.
