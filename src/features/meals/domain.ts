@@ -245,6 +245,24 @@ export function rankPairingWines(
     );
 }
 export type RecipeChoice = { key: string; document: RecipeDocument; version?: RecipeVersion };
+export function pairingAudience(available: Diner[] | null, people: string[]) {
+  const selected = new Set(people);
+  const diners = (available ?? []).filter((d) => selected.has(d.id));
+  const missing = [...selected].some((id) => !diners.some((d) => d.id === id));
+  return {
+    diners,
+    missing,
+    onlyChildren: diners.length > 0 && diners.every((d) => d.document.kind === "child"),
+    consentKey:
+      available === null || missing
+        ? null
+        : JSON.stringify(
+            [...diners]
+              .sort((a, b) => a.id.localeCompare(b.id))
+              .map((d) => [d.id, d.revision, d.document.kind]),
+          ),
+  };
+}
 export function familyFit(recipe: RecipeDocument, diners: Diner[]) {
   const conflicts: string[] = [],
     likes: string[] = [],

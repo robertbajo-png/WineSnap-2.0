@@ -1,16 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useT } from "@/i18n";
 import { pilotUiEnabled } from "../pilot/feature";
 import { kitchenJourneyHash, wineJourneyHash, type KitchenDestination } from "../kitchen/journey";
 import { ArrowRight, RefreshCw, Utensils, Wine } from "lucide-react";
 import { WineImage } from "@/components/WineImage";
+import { OperationNotice } from "@/components/OperationNotice";
 import { cellarWines, familyData } from "./api";
 import {
   assessPairing,
   familyFit,
   inferDishTraits,
   rankPairingWines,
+  pairingAudience,
   traitLabels,
   traits,
   type DishTrait,
@@ -44,21 +46,31 @@ export function PairingNotes({ assessment }: { assessment: PairingAssessment }) 
     </div>
   );
 }
-export function PairingPanel({
-  owner,
-  versions,
-  initial,
-  initialWineId,
-  journey,
-  onOpen,
-}: {
+type PairingPanelProps = {
   owner: string;
   versions: RecipeVersion[];
   initial?: RecipeVersion;
   initialWineId?: string;
   journey?: KitchenDestination;
   onOpen: (document: RecipeDocument, version?: RecipeVersion, wine?: string) => void;
-}) {
+};
+export function PairingPanel(props: PairingPanelProps) {
+  return (
+    <PairingsForOwner
+      key={props.owner}
+      {...props}
+      initial={props.initial?.user_id === props.owner ? props.initial : undefined}
+    />
+  );
+}
+function PairingsForOwner({
+  owner,
+  versions,
+  initial,
+  initialWineId,
+  journey,
+  onOpen,
+}: PairingPanelProps) {
   const t = useT();
   const { data, error, refresh } = useFreshData(async (signal) => ({
     cellar: await cellarWines(owner, signal),
@@ -89,12 +101,18 @@ export function PairingPanel({
     );
   const [selectedTraits, setTraits] = useState<DishTrait[] | null>(null),
     [people, setPeople] = useState<string[]>([]),
-    [adults, setAdults] = useState(false);
+    [adultScope, setAdultScope] = useState<string | null>(null);
   const recipe = recipeId ? choices.find((c) => c.key === recipeId) : choices[0];
-  const available = data?.cellar.wines.filter((w) => w.quantity > 0 && !w.consumed_at) ?? [];
+  const available =
+    data?.cellar.wines.filter((w) => w.user_id === owner && w.quantity > 0 && !w.consumed_at) ?? [];
   const wine = wineId ? available.find((w) => w.id === wineId) : available[0];
-  const diners = data?.family.diners.filter((d) => people.includes(d.id)) ?? [];
-  const onlyChildren = diners.length > 0 && diners.every((d) => d.document.kind === "child");
+  const { diners, missing, onlyChildren, consentKey } = pairingAudience(
+    data?.family.diners ?? null,
+    people,
+  );
+  const adults = adultScope !== null && adultScope === consentKey && !onlyChildren && !missing;
+  // A prior opt-in must not return after a failed read or a changed diner revision.
+  useEffect(() => setAdultScope(null), [consentKey]);
   const dish = selectedTraits ?? (recipe ? inferDishTraits(recipe.document) : []);
   const ranked = recipe && data ? rankPairingWines(data.cellar.wines, owner, dish) : [];
   const dishes = wine
@@ -161,11 +179,12 @@ export function PairingPanel({
                   <input
                     type="checkbox"
                     checked={people.includes(d.id)}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setAdultScope(null);
                       setPeople(
                         e.target.checked ? [...people, d.id] : people.filter((id) => id !== d.id),
-                      )
-                    }
+                      );
+                    }}
                   />
                   {d.document.name}
                   {d.document.kind === "child" ? " (barn)" : ""}
@@ -173,12 +192,29 @@ export function PairingPanel({
               ))
             )}
           </fieldset>
+          {missing && (
+            <OperationNotice
+              kind="error"
+              action={{
+                label: "Rensa profilval",
+                onClick: () => {
+                  setPeople([]);
+                  setAdultScope(null);
+                },
+              }}
+            >
+              En eller flera valda matprofiler är inte längre tillgängliga. Välj sällskap på nytt
+              innan du visar vinförslag.
+            </OperationNotice>
+          )}
           <label className="meal-check">
             <input
               type="checkbox"
               checked={adults && !onlyChildren}
-              disabled={onlyChildren}
-              onChange={(e) => setAdults(e.target.checked)}
+              disabled={onlyChildren || missing}
+              onChange={(e) =>
+                setAdultScope(e.target.checked && !onlyChildren && !missing ? consentKey : null)
+              }
             />
             Visa vinförslag till vuxna från min vinkällare
           </label>

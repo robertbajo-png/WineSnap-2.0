@@ -38,6 +38,35 @@ beforeEach(() => {
   });
 });
 describe("isolated kitchen fixture boundary", () => {
+  it("only permits known synthetic pairing profile changes", () => {
+    expect(() => fixture.changePairingDiners("unapproved")).toThrow();
+    expect(() => fixture.nextRead("unknown_table")).toThrow();
+  });
+  it("keeps reclassified synthetic profiles private to the fixture owner", async () => {
+    fixture.changePairingDiners("adult-becomes-child");
+    const owned = route("/rest/v1/kitchen_diners");
+    await fixture.route(owned);
+    const rows = JSON.parse(owned.fulfill.mock.calls[0][0].body);
+    expect(rows[0].document.kind).toBe("child");
+    expect(rows[0].revision).toBe(2);
+    const other = route("/rest/v1/kitchen_diners", { user: "synthetic-peer" });
+    await fixture.route(other);
+    expect(JSON.parse(other.fulfill.mock.calls[0][0].body)).toEqual([]);
+    expect(owned.continue).not.toHaveBeenCalled();
+    expect(other.continue).not.toHaveBeenCalled();
+  });
+  it("observes a held read without forwarding it or releasing it early", async () => {
+    const release = fixture.delay("kitchen_diners");
+    const arrival = fixture.nextRead("kitchen_diners");
+    const request = route("/rest/v1/kitchen_diners");
+    const reading = fixture.route(request);
+    await arrival;
+    expect(request.fulfill).not.toHaveBeenCalled();
+    release();
+    await reading;
+    expect(request.fulfill).toHaveBeenCalledOnce();
+    expect(request.continue).not.toHaveBeenCalled();
+  });
   it("keeps injected meal read errors inside the enabled synthetic scenario", async () => {
     fixture.beginMealChecks();
     fixture.failedTables.add("meal_wine_links");

@@ -135,6 +135,8 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
     commits = 0,
     inspectionCount = 0;
   const delays = new Map();
+  const readArrivals = new Map();
+  let pairingDiners = null;
   const json = (route, data, status = 200) =>
     route.fulfill({
       status,
@@ -169,6 +171,24 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
     childName,
     wineName,
     failedTables,
+    changePairingDiners(mode) {
+      assert.ok(["original", "remove-adult", "adult-becomes-child"].includes(mode));
+      pairingDiners =
+        mode === "original"
+          ? null
+          : diners
+              .filter((d) => mode !== "remove-adult" || d.id !== id(11))
+              .map((d) =>
+                mode === "adult-becomes-child" && d.id === id(11)
+                  ? { ...d, revision: 2, document: { ...d.document, kind: "child" } }
+                  : d,
+              );
+    },
+    nextRead(table) {
+      assert.ok(tables.has(table));
+      assert.equal(readArrivals.has(table), false);
+      return new Promise((resolve) => readArrivals.set(table, resolve));
+    },
     beginMealChecks() {
       exerciseMeals = true;
     },
@@ -442,6 +462,8 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
         return route.abort();
       }
       const delay = delays.get(table);
+      readArrivals.get(table)?.();
+      readArrivals.delete(table);
       if (delay) await delay;
       if (failedTables.has(table)) return json(route, { message: "synthetic_read_failure" }, 503);
       let rows = [];
@@ -456,7 +478,7 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
         )
           rows = [active];
         if (table === "food_signals") rows = [signal];
-        if (table === "kitchen_diners") rows = diners;
+        if (table === "kitchen_diners") rows = pairingDiners ?? diners;
       }
       return json(
         route,
@@ -589,6 +611,22 @@ export async function acceptCoreKitchen({
   assert.equal(report.simulatedWrites, 0);
   assert.equal(report.simulatedAiRequests, 0);
   report.passed.push("no-automatic-ai-or-writes-in-core-view-navigation");
+  await acceptPairingReads({
+    page,
+    artifacts,
+    report,
+    fixture,
+    switchAccount: () =>
+      page.evaluate(
+        ({ key, session }) => {
+          localStorage.setItem(key, JSON.stringify(session));
+          const channel = new BroadcastChannel(key);
+          channel.postMessage({ event: "SIGNED_IN", session });
+          channel.close();
+        },
+        { key: authKey, session: peerSession },
+      ),
+  });
   await acceptMealWrites({
     page,
     base,
@@ -630,6 +668,100 @@ export async function acceptCoreKitchen({
   assert.equal(report.simulatedWrites, fixture.counts().writeCount);
   assert.equal(report.simulatedAiRequests, 0);
   await context.clearCookies();
+}
+
+async function acceptPairingReads({ page, artifacts, report, fixture, switchAccount }) {
+  const optIn = page.getByRole("checkbox", {
+    name: "Visa vinförslag till vuxna från min vinkällare",
+    exact: true,
+  });
+  const adult = page.getByRole("checkbox", { name: "SyntheticAdult", exact: true });
+  const child = page.getByRole("checkbox", { name: fixture.childName + " (barn)", exact: true });
+  const refresh = page.getByRole("button", { name: "Hämta mat- och vinuppgifter", exact: true });
+  report.phase = "pairing-child-selection-does-not-reenable-wine";
+  await child.uncheck();
+  await adult.check();
+  await optIn.check();
+  await child.check();
+  await adult.uncheck();
+  assert.equal(await optIn.isDisabled(), true);
+  assert.equal(await optIn.isChecked(), false);
+  await child.uncheck();
+  assert.equal(await optIn.isChecked(), false);
+  report.passed.push("pairing-audience-change-never-silently-reenables-wine");
+
+  report.phase = "pairing-removed-selected-profile";
+  await adult.check();
+  await optIn.check();
+  fixture.changePairingDiners("remove-adult");
+  await refresh.click();
+  await page
+    .getByText("En eller flera valda matprofiler är inte längre tillgängliga.", { exact: false })
+    .waitFor();
+  assert.equal(await optIn.isDisabled(), true);
+  assert.equal(await optIn.isChecked(), false);
+  assert.equal(await page.locator(".meal-mode").count(), 0);
+  await layout(page, artifacts, report, "pairing-unavailable-diner");
+  await page.getByRole("button", { name: "Rensa profilval", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await optIn.isDisabled(), false);
+  assert.equal(await optIn.isChecked(), false);
+  fixture.changePairingDiners("original");
+  await refresh.click();
+  await adult.waitFor();
+  report.passed.push("pairing-missing-diner-blocks-wine-until-explicit-selection-reset");
+
+  report.phase = "pairing-reclassified-child";
+  await adult.check();
+  await optIn.check();
+  fixture.changePairingDiners("adult-becomes-child");
+  await refresh.click();
+  await page.getByRole("checkbox", { name: "SyntheticAdult (barn)", exact: true }).waitFor();
+  assert.equal(await optIn.isDisabled(), true);
+  assert.equal(await optIn.isChecked(), false);
+  fixture.changePairingDiners("original");
+  await refresh.click();
+  await adult.waitFor();
+  assert.equal(await optIn.isChecked(), false);
+  report.passed.push("pairing-profile-kind-change-invalidates-old-adult-opt-in");
+
+  report.phase = "pairing-failed-read-recovery";
+  await optIn.check();
+  fixture.failedTables.add("kitchen_diners");
+  await refresh.click();
+  await page.getByRole("alert").filter({ hasText: "Uppgifterna kunde inte hämtas" }).waitFor();
+  assert.equal(await adult.count(), 0);
+  assert.equal(await page.locator(".meal-mode").count(), 0);
+  fixture.failedTables.delete("kitchen_diners");
+  await refresh.focus();
+  await page.keyboard.press("Enter");
+  await adult.waitFor();
+  assert.equal(await optIn.isChecked(), false);
+  report.passed.push("pairing-read-error-hides-data-and-recovery-does-not-restore-wine-consent");
+
+  report.phase = "pairing-late-owner-read";
+  await optIn.check();
+  const release = fixture.delay("kitchen_diners");
+  const arrived = fixture.nextRead("kitchen_diners");
+  await refresh.click();
+  await waitForSyntheticWrite(arrived);
+  try {
+    await switchAccount();
+    await adult.waitFor({ state: "hidden" });
+    assert.equal(await page.getByText(fixture.recipeTitle, { exact: true }).count(), 0);
+  } finally {
+    release();
+  }
+  await page.getByText("Inga matprofiler valda.", { exact: false }).waitFor();
+  assert.equal(await optIn.isChecked(), false);
+  assert.equal(await page.getByText(fixture.childName, { exact: false }).count(), 0);
+  // The fixture init script creates a fresh synthetic owner session on reload.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await adult.waitFor();
+  assert.equal(await optIn.isChecked(), false);
+  assert.equal(report.simulatedWrites, 0);
+  assert.equal(report.simulatedAiRequests, 0);
+  report.passed.push("pairing-late-read-and-consent-cannot-cross-accounts");
 }
 
 async function acceptMealWrites({ page, base, artifacts, report, fixture, switchAccount }) {

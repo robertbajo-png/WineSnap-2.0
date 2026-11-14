@@ -6,6 +6,7 @@ import {
   inferDishTraits,
   mealInputSchema,
   rankPairingWines,
+  pairingAudience,
   type Diner,
   type PairingWine,
 } from "./domain";
@@ -28,6 +29,66 @@ const wine: PairingWine = {
   region: null,
   country: null,
 };
+describe("pairing audience consent scope", () => {
+  const adult: Diner = {
+    id: "c0000000-0000-4000-8000-000000000001",
+    user_id: owner,
+    household_id: null,
+    shared: false,
+    revision: 1,
+    created_at: "synthetic",
+    updated_at: "synthetic",
+    document: { name: "Synthetic adult", kind: "adult", preferences: [] },
+  };
+  const child: Diner = {
+    ...adult,
+    id: "c0000000-0000-4000-8000-000000000002",
+    document: { name: "Synthetic child", kind: "child", preferences: [] },
+  };
+  it("distinguishes unavailable reads from a successfully loaded empty selection", () => {
+    expect(pairingAudience(null, []).consentKey).toBeNull();
+    expect(pairingAudience([], []).consentKey).not.toBeNull();
+  });
+  it("never silently drops an unavailable selected diner", () => {
+    const result = pairingAudience([child], [adult.id, child.id]);
+    expect(result.missing).toBe(true);
+    expect(result.consentKey).toBeNull();
+    expect(result.onlyChildren).toBe(true);
+  });
+  it("uses selected profiles only, without assuming every available adult is dining", () => {
+    const result = pairingAudience([adult, child], [child.id]);
+    expect(result.diners).toEqual([child]);
+    expect(result.onlyChildren).toBe(true);
+    expect(pairingAudience([adult, child], []).diners).toEqual([]);
+  });
+  it("keeps the same scope for reordered results and duplicate selected IDs", () => {
+    expect(pairingAudience([adult, child], [child.id, adult.id, adult.id]).consentKey).toBe(
+      pairingAudience([child, adult], [adult.id, child.id]).consentKey,
+    );
+  });
+  it("invalidates consent when a selected profile revision changes", () => {
+    expect(pairingAudience([{ ...adult, revision: 2 }], [adult.id]).consentKey).not.toBe(
+      pairingAudience([adult], [adult.id]).consentKey,
+    );
+  });
+  it("includes profile kind even when a malformed update reused an old revision", () => {
+    const result = pairingAudience(
+      [{ ...adult, document: { ...adult.document, kind: "child" } }],
+      [adult.id],
+    );
+    expect(result.onlyChildren).toBe(true);
+    expect(result.consentKey).not.toBe(pairingAudience([adult], [adult.id]).consentKey);
+  });
+  it("does not invalidate consent for an unselected profile change", () => {
+    expect(pairingAudience([adult, { ...child, revision: 2 }], [adult.id]).consentKey).toBe(
+      pairingAudience([adult, child], [adult.id]).consentKey,
+    );
+  });
+  it("retains shared profiles already authorized by the existing RLS read", () => {
+    const shared = { ...adult, user_id: "synthetic-other-member", shared: true };
+    expect(pairingAudience([shared], [shared.id]).diners).toEqual([shared]);
+  });
+});
 describe("meal pairing evidence", () => {
   it("explains known acid and body without a percentage", () => {
     const r = assessPairing(wine, ["rich", "acidic"]);
