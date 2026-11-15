@@ -60,12 +60,13 @@ export async function ownedBrowserFixture(
   action,
   fixture,
   remember = async () => {},
-  { demo = false, cleanupImages = false, cleanupMeals = false } = {},
+  { demo = false, cleanupImages = false, cleanupMeals = false, cleanupMemory = false } = {},
 ) {
   validateOwnedKeys(keys);
   assert.equal(typeof demo, "boolean");
   assert.equal(typeof cleanupImages, "boolean");
   assert.equal(typeof cleanupMeals, "boolean");
+  assert.equal(typeof cleanupMemory, "boolean");
   assert.ok(
     ["prepare", "inspect", "conflict", "memory", "meals", "cleanup", "absent"].includes(action),
   );
@@ -103,15 +104,28 @@ export async function ownedBrowserFixture(
       await app.auth.signInWithPassword({ email: fixture.email, password: password(fixture.run) }),
     ).session;
   }
-  async function assertMealsAbsent() {
-    if (!cleanupMeals) return;
+  async function assertDependentsAbsent() {
     for (const table of [
-      "kitchen_households",
-      "kitchen_household_members",
-      "kitchen_household_invites",
-      "kitchen_diners",
-      "meal_wine_links",
-      "cooking_sessions",
+      ...(cleanupMeals
+        ? [
+            "kitchen_households",
+            "kitchen_household_members",
+            "kitchen_household_invites",
+            "kitchen_diners",
+            "meal_wine_links",
+            "cooking_sessions",
+          ]
+        : []),
+      ...(cleanupMemory
+        ? [
+            "food_signals",
+            "food_memory_state",
+            "food_memory_tombstones",
+            "chef_conversations",
+            "chef_messages",
+            "chef_requests",
+          ]
+        : []),
     ]) {
       const rows = ok(await admin.from(table).select("id").eq("user_id", fixture.userId).limit(1));
       assert.ok(Array.isArray(rows));
@@ -260,7 +274,7 @@ export async function ownedBrowserFixture(
   if (action === "cleanup") {
     const found = await admin.auth.admin.getUserById(fixture.userId);
     if (!found.data?.user && found.error?.status === 404) {
-      await assertMealsAbsent();
+      await assertDependentsAbsent();
       return { completed: true, alreadyClean: true };
     }
     assertFixtureOwner(ok(found).user, fixture);
@@ -302,7 +316,7 @@ export async function ownedBrowserFixture(
     ok(await admin.auth.admin.deleteUser(fixture.userId));
     const after = await admin.auth.admin.getUserById(fixture.userId);
     assert.equal(after.error?.status, 404);
-    await assertMealsAbsent();
+    await assertDependentsAbsent();
     return { completed: true, cleanupCompleted: true, realAccountsChanged: false };
   }
   const session = await owner();

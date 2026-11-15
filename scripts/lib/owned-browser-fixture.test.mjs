@@ -281,6 +281,68 @@ describe("owned meal fixture cascade verification", () => {
     expect(admin.deleteUser).not.toHaveBeenCalled();
     expect(from).not.toHaveBeenCalled();
   });
+  const memoryTables = [
+    "food_signals",
+    "food_memory_state",
+    "food_memory_tombstones",
+    "chef_conversations",
+    "chef_messages",
+    "chef_requests",
+  ];
+  it("verifies every exact-owner memory cascade without enabling meal cleanup", async () => {
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMemory: true }),
+    ).resolves.toMatchObject({ cleanupCompleted: true });
+    expect(from.mock.calls.map(([table]) => table)).toEqual(memoryTables);
+    for (const q of queries.values()) {
+      expect(q.select).toHaveBeenCalledExactlyOnceWith("id");
+      expect(q.eq).toHaveBeenCalledExactlyOnceWith("user_id", value.userId);
+      expect(q.limit).toHaveBeenCalledExactlyOnceWith(1);
+    }
+  });
+  it("checks memory cascades on a previously deleted fixture without deleting another account", async () => {
+    admin.getUserById
+      .mockReset()
+      .mockResolvedValue({ data: { user: null }, error: { status: 404 } });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMemory: true }),
+    ).resolves.toMatchObject({ alreadyClean: true });
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+    expect(from.mock.calls.map(([table]) => table)).toEqual(memoryTables);
+  });
+  it.each(memoryTables)("rejects a surviving %s row after fixture deletion", async (table) => {
+    from.mockImplementation((name) => {
+      const q = {
+        select: () => q,
+        eq: () => q,
+        limit: async () => ({ data: name === table ? [{ id: randomUUID() }] : [], error: null }),
+      };
+      return q;
+    });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMemory: true }),
+    ).rejects.toThrow();
+    expect(admin.deleteUser).toHaveBeenCalledExactlyOnceWith(value.userId);
+  });
+  it("does not expand a foreign account's cleanup when memory checks are requested", async () => {
+    admin.getUserById
+      .mockReset()
+      .mockResolvedValue({
+        data: { user: { id: value.userId, email: value.email, app_metadata: {} } },
+        error: null,
+      });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMemory: true }),
+    ).rejects.toThrow();
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+    expect(from).not.toHaveBeenCalled();
+  });
+  it("refuses an invalid memory-cleanup option before client creation", async () => {
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMemory: "true" }),
+    ).rejects.toThrow();
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
 });
 
 const fixture = () => {
