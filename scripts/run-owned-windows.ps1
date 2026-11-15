@@ -55,7 +55,7 @@ try {
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
-  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $(if($Action -in @('Accept','Offline','PilotAccept','PilotJourneys','PilotDemo','PilotDemoAccept')){300000}elseif($Action -eq 'Update'){120000}else{0})
+  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $(if($Action -in @('Accept','Offline','PilotAccept','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -eq 'Update'){120000}else{0})
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
   $phase='local_engine'

@@ -313,7 +313,24 @@ new regression if needed. It retains normal private wrapper/fixture/Auth/RLS and
 cleanup, blocks live journeys, and labels its result `kitchen-recovery-only`,
 never full acceptance. Granular phase markers identify the exact stalled step.
 No timeout, write guard or full-mode check is weakened. This focused mode has not
-yet run. Keep current installed and CI evidence distinct.
+yet passed. The second full run reached its twenty-minute wrapper deadline in
+the new probe; it is not accepted. Exact BrowserCleanup completed at 20:15:02 UTC.
+The first focused run stalled before its first ready marker and was interrupted,
+not accepted. No raw failure content/session was exported. Its artifact and the
+full timeout artifact are retained separately. Two cleanup attempts skipped a
+busy operation lock, not successes. BrowserCleanup now uses the existing bounded
+five-minute wait instead of failing immediately against maintenance; no holder
+was killed and no lock was deleted. Exact cleanup passed at 20:29:13 UTC.
+
+The fixture document is now quiesced before installing one interception rule.
+Server Auth verifies the normal fixture JWT/tag once before interception; each
+subsequent read/write must carry that exact verified authorization/apikey and
+normal server RLS. Read counts and Auth verification counts are separate. The
+single allowed other-tab edit remains bounded to the fixture session/version;
+all other writes and AI are blocked. Eleven focused helper-boundary tests passed.
+A fresh focused run is in progress. Full Quality/Database Safety for `afdc622`
+passed on push/PR (1,937 passing tests, one existing platform skip), but predates
+these last helper-only changes. Keep installed and CI evidence distinct.
 Next after DEV-03 acceptance: bounded content-free provider observations and the
 eight-scenario guarded live cohort, with qualitative review and exact cleanup.
 

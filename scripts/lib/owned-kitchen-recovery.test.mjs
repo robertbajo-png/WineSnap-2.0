@@ -20,6 +20,7 @@ describe("installed kitchen read probe boundary", () => {
     const parent = read("../run-owned-windows.ps1");
     expect(parent).toContain("if($KitchenRecoveryOnly -and $Action -ne 'PilotAccept')");
     expect(parent).toContain("$start.Environment['WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY']='1'");
+    expect(parent).toContain("'PilotDemoAccept','BrowserCleanup'");
     const worker = read("../manage-owned-backend.mjs");
     expect(worker).toContain('action === "PilotAccept" &&');
     expect(worker).toContain('process.env.WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY === "1"');
@@ -28,6 +29,11 @@ describe("installed kitchen read probe boundary", () => {
     expect(browser).toContain("if (kitchenRecoveryOnly) assert.equal(liveJourneys, false)");
     expect(browser).toContain('ownedBrowserFixture(keys, "cleanup", fixture');
     expect(browser).toContain("for (const width of pilotViewports)");
+    const recovery = read("./owned-kitchen-recovery.mjs");
+    expect(recovery).toContain('await page.goto("about:blank")');
+    expect(recovery).toContain("assertFixtureOwner(await auth.json(), fixture)");
+    expect(recovery).toContain("assert.equal(headers.authorization, verified.authorization)");
+    expect(recovery).toContain("assert.equal(headers.apikey, verified.apikey)");
   });
   it("accepts only the exact synthetic owner read", () => {
     expect(() => assertKitchenRecoveryRead(url, "GET", fixture)).not.toThrow();
