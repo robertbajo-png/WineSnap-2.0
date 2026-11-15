@@ -85,6 +85,27 @@ fixture, password, internet or production action occurred. Keep the owner viewer
 open; next independent work reviews multi-tab cache conflicts with isolated
 source tests. Canonical handoff separates preparation from installed evidence.
 
+The concurrent-startup cache follow-up is now source-verified, not installed.
+Two isolated same-owner tabs reproduced the old false conflict before the fix.
+Verified startup refresh may reuse a complete validated newer same-owner cache
+inside its IDB transaction without a write/merge; actual edits retain strict CAS.
+Owner/generation, offline age and cache validation remain. A reused pending
+attempt skips only initial automatic sync; normal startup/manual sync remain.
+Five focused files/61 tests, full local Vitest (171 files/1,884 tests), typecheck
+and lint passed (two existing Chef warnings). The new artifact passed all 89
+isolated kitchen cases, retaining 85, with 517 simulated reads/eleven RPC writes
+and one synthetic IDB seed edit. Real backend/AI, forbidden calls/writes and page/
+fixture errors were zero; cleanup passed. Standard-text tab screenshots at
+320/390/1440 and the prior 125% layout cases are distinct evidence. The old failed
+report is retained. All 339 tar paths/types and local ancestors were checked,
+with previous artifacts/reports preserved. Full Quality/Database Safety passed
+for `b872891` on push/PR, including synthetic build/runtime, client budget and
+security checks.
+No owned wrapper, installed update, real user/key/account/provider, password or
+internet/production change occurred. Keep the viewer open; next source work is
+explicit read-only recovery for a genuine local edit conflict, not silent
+cross-tab merging or write replay. Installed acceptance remains separate.
+
 Earlier installed checkpoint, 2026-11-14 local time: the owner safely closed the viewer;
 Status confirmed closure and normal lock release without a forced process stop.
 Fresh pre-update actual-owner Check passed, including scoped logout. Encrypted

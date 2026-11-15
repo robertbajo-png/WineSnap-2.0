@@ -29,6 +29,36 @@ development-plan handoff; deeper memory fault paths retain separate source
 evidence, and fixture checks do not prove human-use acceptance. No old
 production, hosted test, password, provider or internet setting was changed.
 
+## Concurrent Startup Cache Follow-Up
+
+The previous source artifact reproduced a false local conflict when two same-owner
+Memory tabs both loaded the same revision. Startup refresh now atomically reuses a
+complete validated newer owner cache without overwriting it; normal user writes
+retain strict CAS. Owner/generation/age checks remain and a reused dirty attempt
+does not auto-sync merely because another view opens. Existing normal startup and
+manual sync are retained. This is not live merging between open editors, and the
+genuine edit-conflict recovery is still explicit/full-page.
+
+Five focused files/61 tests, full local Vitest (171 files/1,884 tests), typecheck
+and full lint passed with two existing Chef warnings. All 89 isolated browser
+cases passed, including the previous 85 and four new real-IDB/two-document probes.
+Those four cover simultaneous opening, a synthetic newer dirty cache, a stale UI
+mutation remaining blocked, and late old-account startup isolation. They use a
+synthetic IDB seed and offline-indicator override, not real offline-network or
+installed-backend evidence. Existing 125% layout checks remain; standard-text tab
+screenshots at 320/390/1440px were inspected. There were 517 mocked reads, eleven
+simulated RPC writes and one cache seed edit; zero real backend/AI or forbidden
+requests/writes, no page/fixture errors and confirmed cleanup. The old failing
+run is retained. The fresh artifact-only tar build passed with all 339 entry paths/
+types verified and prior artifacts preserved. Full Quality/Database Safety passed
+for `b872891` on push/PR, including synthetic build/runtime, client budget and
+security checks.
+
+The installed `724e1d6` runtime and real owner viewer were not touched. Next source
+work reviews in-place explicit read-only recovery from genuine local conflicts,
+while installed memory/cache acceptance awaits a safe fixture window. See the
+canonical handoff; DEV-03 remains in progress and no old production was touched.
+
 ## Prepared Memory Fault Follow-Up
 
 The November 15 follow-up adds guarded owned-memory acceptance preparation, not
