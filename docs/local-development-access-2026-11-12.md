@@ -8,12 +8,19 @@ out of scope.
 
 ## Opening The Real App
 
-Use the current user's `WineSnap lokalt` desktop shortcut, or PowerShell 7:
+Use the current user's `Start menu > Projektverktyg > WineSnap lokalt` shortcut,
+or PowerShell 7:
 
 ```powershell
 ./scripts/open-owned-local.ps1 -Action Open -OwnerEmail '<existing local owner email>'
 ./scripts/open-owned-local.ps1 -Action Status
 ```
+
+Shortcut location update, 2026-11-15: the shortcut now lives in the local
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Projektverktyg` folder.
+The Windows Desktop is redirected to OneDrive and is no longer used for project
+shortcuts. Earlier desktop-shortcut observations below remain historical evidence.
+The same local opener, existing owner account and access controls are retained.
 
 The operator opens the real app at `http://127.0.0.1:5212` in a separate visible
 browser. Use that window; opening the plain URL in another browser does not copy
