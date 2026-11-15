@@ -31,16 +31,25 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current source handoff, November 15: explicit same-owner local-conflict read
-recovery is implemented without document reload, storage overwrite or write/AI
-replay. Full local Vitest passed 172 files/1,903 tests, typecheck/lint passed (two
-existing Chef warnings), and 91 isolated kitchen browser checks passed with no
-real backend/AI or fixture/page errors. The new installed tagged-fixture read-only
-two-document probe is prepared, not executed. Status observed the owner viewer
-closed with no active operator at 19:25:26 UTC. Follow the current canonical
-DEV-03 handoff for clean commit/CI and safe installed acceptance, then DEV-04.
-Earlier open-viewer instructions below are historical; still never force-close
-an owner viewer that has reopened. Old production and hosted test stay untouched.
+Current handoff, November 15: DEV-03 technical acceptance is complete; DEV-04 is
+Pagar. The read recovery is installed from clean b7dc0b2, with verified same-PC
+backup/restore. All 91 isolated source browser cases and the focused installed
+normal-Auth/RLS recovery passed. The focused run at 20:43:07 UTC observed one Auth
+tag verification, five scoped reads, two argument-free read-only access checks
+and one other-tab fixture edit; recovery kept the document/search without another
+write. Exact fixture cleanup passed, with no AI/external/page/fixture errors.
+Earlier failed/interrupted full/focused runs are retained, not passes; no new
+full 95-case pass is claimed. Prior 94 installed checks remain separate evidence.
+Fresh actual-owner Check/scoped logout passed at 20:47:28 UTC. The validated
+existing local shortcut was launched once; run 5f469d75-212d-4305-a737-93f24c6fc54f
+was starting_backend at 20:48:44 UTC. Verify readiness and preserve that viewer;
+never force-close/reinstall over it. Final helper commit 1444528 is pushed and
+awaits full CI. Read the canonical latest handoff for later readiness/CI evidence.
+DEV-04 has 33 fixed synthetic quality cases and a content-free deterministic CLI,
+not live-provider/semantic or human-use proof. Next: bounded action observations
+and the guarded live cohort in docs/ai-quality.md. Old production, hosted test,
+provider credentials/models, passwords and paused tunnel remain unchanged.
+Earlier pending/source-only/open-viewer statements below are historical.
 
 Current access decision, 2026-11-12: the owner abandoned mobile/password setup
 for now and requested local-only development. The owned tunnel is deliberately
