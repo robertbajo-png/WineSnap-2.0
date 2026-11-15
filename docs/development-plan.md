@@ -670,6 +670,12 @@ The real local project/dependency paths were checked outside OneDrive. No
 installed app, private credential store, account/data, password, internet route,
 old production or abandoned hosted-test service was touched by this work.
 
+Full Quality/Database Safety passed for `6358f87` (push/PR): 163 files / 1,726
+passing CI tests and one existing platform skip. Typecheck, lint, synthetic Node
+build/runtime, client budget and security checks passed; four existing Chef
+warnings remain. CI still verifies that missing operator evidence blocks public
+release. This is source/helper verification, not installed acceptance.
+
 The actual two-tab Auth/BroadcastChannel/UI behavior and database mutations are
 still unverified by this preparation. Preserve the owner viewer and the earlier
 72 isolated/69 installed checkpoints; do not mark DEV-03 complete or begin DEV-04.
@@ -1004,6 +1010,8 @@ entry points passed validation; `git diff --check` passed.
 
 - DEV-03 late account-write helper preparation: five focused files / 107 tests,
   local full Vitest 163 files / 1,727 tests, typecheck and full lint passed.
+  Full Quality/Database Safety passed for `6358f87` (push/PR), 163 files / 1,726
+  passing CI tests and one existing skip, plus synthetic build/runtime and budget.
   The interrupted prior run is not accepted. No installed browser/real account
   or provider execution; the actual cross-tab/commit/RLS acceptance is pending.
 - DEV-02 local output/fixture paths: ten isolated Windows path checks passed,

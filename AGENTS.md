@@ -161,6 +161,9 @@ No session injection or saved browser state is added. Existing logout/peer check
 and tagged-account cleanup remain. Five focused files / 107 tests and local full
 Vitest (163 files / 1,727 tests), typecheck and full lint passed. Four existing
 Chef warnings remain. The interrupted older full run has no retained outcome.
+Full Quality/Database Safety passed for `6358f87` (push/PR), with 163 files /
+1,726 passing CI tests and one existing platform skip. Synthetic Node build/
+runtime, client budget and security checks passed; public release stays blocked.
 QA dependencies were restored from the unchanged lockfile, without install
 scripts, in ignored `.qa-account-regression.local`; the dangling root dependency
 junction now points there, not OneDrive or the missing external QA directory.

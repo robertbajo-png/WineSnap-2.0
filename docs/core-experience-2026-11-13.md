@@ -885,6 +885,10 @@ pass. QA dependencies were recovered from the unchanged lockfile without install
 scripts inside ignored `.qa-account-regression.local`; the old dangling root
 junction now points there. Actual resolved paths were checked outside OneDrive.
 No source dependency version/lock change or installed app/runtime change was made.
+Full Quality/Database Safety passed for `6358f87` (push/PR): 163 files / 1,726
+passing CI tests and one existing platform skip. Typecheck, lint, synthetic Node
+build/runtime, client budget and security checks passed; four existing Chef
+warnings and the public-release block remain.
 
 This is helper/unit verification, not an executed two-tab browser/RPC/RLS result.
 The intended new-stage budget is two client writes/two RPCs/two commits, excluding
