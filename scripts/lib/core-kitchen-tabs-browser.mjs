@@ -154,6 +154,48 @@ export async function acceptCoreKitchenTabs(args) {
     assert.equal(report.mutations, 0);
     await page.screenshot({ path: join(artifacts, "tabs-edit-conflict-390.png"), fullPage: true });
     report.passed.push("tabs-competing-user-edit-keeps-strict-cache-revision-and-pending-timer");
+
+    report.phase = "tabs-explicit-read-recovery";
+    const sameDocument = await page.locator("html").elementHandle();
+    roots.push(sameDocument);
+    await page.goto(base + "/kitchen#library");
+    const search = page.getByRole("searchbox", { name: "S\u00f6k recept" });
+    await search.fill("synthetic unsaved search");
+    await page.evaluate((owner) => {
+      const original = IDBObjectStore.prototype.get;
+      IDBObjectStore.prototype.get = function (key) {
+        if (this.name === "accounts" && key === owner) {
+          IDBObjectStore.prototype.get = original;
+          throw Error("synthetic_one_read_fault");
+        }
+        return original.call(this, key);
+      };
+    }, owner);
+    const retryRead = page.getByRole("button", { name: "H\u00e4mta igen", exact: true });
+    await retryRead.click();
+    await page
+      .getByText(
+        "Uppdateringen kunde inte h\u00e4mtas. Vyn och dina utkast beh\u00e5lls. F\u00f6rs\u00f6k h\u00e4mta igen.",
+        { exact: true },
+      )
+      .waitFor();
+    assert.equal(await search.inputValue(), "synthetic unsaved search");
+    assert.equal(await sameDocument.evaluate((node) => node.isConnected), true);
+    assert.deepEqual(await fixtureCache(page, owner, fixture), changed);
+    report.passed.push("tabs-failed-recovery-keeps-mounted-view-and-unsaved-search");
+    await retryRead.click();
+    await page.getByRole("alert").waitFor({ state: "hidden" });
+    assert.equal(await search.inputValue(), "synthetic unsaved search");
+    assert.equal(await sameDocument.evaluate((node) => node.isConnected), true);
+    await page.goto(base + "/kitchen#cook");
+    await page.getByText("Steg 2 av 2", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("timer").textContent(), "01:00");
+    await page.waitForTimeout(800);
+    assert.deepEqual(await fixtureCache(page, owner, fixture), changed);
+    assert.equal(report.mutations, 0);
+    assert.equal(report.simulatedAiRequests, 0);
+    await page.screenshot({ path: join(artifacts, "tabs-recovered-390.png"), fullPage: true });
+    report.passed.push("tabs-explicit-recovery-adopts-winning-snapshot-without-reload-or-write");
     await page.goto(base + "/");
     await reader.goto(base + "/");
     await fixtureCache(page, owner, fixture, "remove");

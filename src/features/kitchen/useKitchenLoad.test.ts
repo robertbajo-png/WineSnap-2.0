@@ -193,3 +193,89 @@ describe("kitchen verified startup reconciliation", () => {
     for (const set of harness.setters) expect(set).not.toHaveBeenCalled();
   });
 });
+
+describe("explicit kitchen read recovery", () => {
+  async function conflicted() {
+    const state = mount(true);
+    await vi.advanceTimersByTimeAsync(0);
+    harness.refs[5].current = true;
+    vi.clearAllMocks();
+    return state;
+  }
+  it("adopts a newer validated local snapshot offline without writes or changing its attempt/age", async () => {
+    const state = await conflicted();
+    vi.stubGlobal("navigator", { onLine: false });
+    const newer = { ...snapshot, cacheRevision: 5 };
+    mocks.read.mockResolvedValue(newer);
+    expect(await state.reload()).toBe(true);
+    expect(harness.setters[0]).toHaveBeenLastCalledWith(newer);
+    expect(harness.setters[7]).toHaveBeenLastCalledWith(false);
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(mocks.write).not.toHaveBeenCalled();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(mocks.saveSession).not.toHaveBeenCalled();
+    harness.effects[2]();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mocks.saveSession).not.toHaveBeenCalled();
+  });
+  for (const latest of [null, { cacheRevision: 4 }, { cacheRevision: 3 }])
+    it(`keeps the view blocked when a newer snapshot is absent (${latest?.cacheRevision ?? "missing"})`, async () => {
+      const state = await conflicted();
+      mocks.read.mockResolvedValue(latest);
+      expect(await state.reload()).toBe(false);
+      expect(harness.setters[0]).not.toHaveBeenCalled();
+      expect(harness.refs[5].current).toBe(true);
+      expect(mocks.saveSession).not.toHaveBeenCalled();
+    });
+  it("retains the old view after a read fault and succeeds on an explicit read retry", async () => {
+    const state = await conflicted();
+    mocks.read.mockRejectedValueOnce(new Error("synthetic read fault"));
+    expect(await state.reload()).toBe(false);
+    expect(harness.setters[0]).not.toHaveBeenCalled();
+    const newer = { ...snapshot, cacheRevision: 5 };
+    mocks.read.mockResolvedValue(newer);
+    expect(await state.reload()).toBe(true);
+    expect(harness.setters[0]).toHaveBeenLastCalledWith(newer);
+    expect(mocks.saveSession).not.toHaveBeenCalled();
+  });
+  for (const change of ["unmount", "account"])
+    it(`ignores a late read after ${change}`, async () => {
+      const state = await conflicted();
+      let finish!: (value: unknown) => void;
+      mocks.read.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const pending = state.reload();
+      expect(await state.reload()).toBe(false);
+      if (change === "unmount") {
+        cleanup?.();
+        cleanup = undefined;
+      } else harness.refs[1].current = peer;
+      harness.setters.forEach((set) => set.mockClear());
+      finish({ ...snapshot, cacheRevision: 5 });
+      expect(await pending).toBe(false);
+      for (const set of harness.setters) expect(set).not.toHaveBeenCalled();
+      expect(mocks.write).not.toHaveBeenCalled();
+      expect(mocks.saveSession).not.toHaveBeenCalled();
+    });
+  it("blocks a stale manual sync until the read is accepted", async () => {
+    const state = await conflicted();
+    expect(await state.sync()).toBe(false);
+    expect(mocks.saveSession).not.toHaveBeenCalled();
+    expect(mocks.write).not.toHaveBeenCalled();
+  });
+  it("rereads a server failure in place without replaying the pending write", async () => {
+    const state = mount(true);
+    await vi.advanceTimersByTimeAsync(0);
+    vi.clearAllMocks();
+    mocks.read.mockResolvedValue(snapshot);
+    expect(await state.reload()).toBe(true);
+    expect(mocks.load).toHaveBeenCalledExactlyOnceWith(owner);
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.saveSession).not.toHaveBeenCalled();
+    expect(mocks.write).not.toHaveBeenCalled();
+  });
+});

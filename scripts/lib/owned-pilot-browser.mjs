@@ -405,6 +405,17 @@ export async function acceptOwnedPilotUi(
         report: report.liveJourneys,
       });
     }
+    {
+      const { acceptOwnedKitchenRecovery } = await import("./owned-kitchen-recovery.mjs");
+      report.kitchenRecovery = await acceptOwnedKitchenRecovery({
+        page,
+        context,
+        fixture,
+        phase,
+        capture,
+        pass: (name) => report.passed.push(name),
+      });
+    }
     const { acceptOwnedCoreStates } = await import("./owned-core-states.mjs");
     report.coreStates = await acceptOwnedCoreStates({
       page,

@@ -34,11 +34,13 @@ export function useKitchen(owner: string | undefined) {
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState<LocalSession | null>(null);
   const [retryable, setRetryable] = useState(false);
+  const [localConflict, setLocalConflict] = useState(false);
   const ref = useRef<KitchenCache | null>(null);
   const ownerRef = useRef(owner);
   const running = useRef(false);
   const generation = useRef(0);
   const skipInitialSync = useRef(false);
+  const needsRead = useRef(false);
   ownerRef.current = owner;
   function update(value: KitchenCache) {
     ref.current = value;
@@ -64,6 +66,7 @@ export function useKitchen(owner: string | undefined) {
     return next;
   }, []);
   async function flush(value: KitchenCache) {
+    if (needsRead.current) throw new Error("kitchen_local_conflict");
     if (!value.session?.dirty || !navigator.onLine) return;
     try {
       const saved = await saveCookingSession(value.session);
@@ -92,7 +95,14 @@ export function useKitchen(owner: string | undefined) {
     }
   }
   async function run(action: (value: KitchenCache) => Promise<void>) {
-    if (!owner || running.current || !ref.current || ref.current.owner !== owner) return false;
+    if (
+      !owner ||
+      running.current ||
+      needsRead.current ||
+      !ref.current ||
+      ref.current.owner !== owner
+    )
+      return false;
     const current = generation.current;
     running.current = true;
     setBusy(true);
@@ -105,8 +115,13 @@ export function useKitchen(owner: string | undefined) {
       if (ownerRef.current === owner && generation.current === current) {
         setRetryable(cause instanceof KitchenError && cause.kind === "network");
         setError(message(cause));
+        if (cause instanceof Error && cause.message === "kitchen_local_conflict") {
+          needsRead.current = true;
+          setLocalConflict(true);
+        }
         if (cause instanceof KitchenError && cause.kind === "unavailable") {
           await clearKitchenCache();
+          if (ownerRef.current !== owner || generation.current !== current) return false;
           ref.current = null;
           setCache(null);
           setConflict(null);
@@ -130,6 +145,8 @@ export function useKitchen(owner: string | undefined) {
     running.current = false;
     setRetryable(false);
     setBusy(false);
+    needsRead.current = false;
+    setLocalConflict(false);
     skipInitialSync.current = false;
     const valid = () => current === generation.current && ownerRef.current === owner;
     async function load() {
@@ -251,6 +268,73 @@ export function useKitchen(owner: string | undefined) {
     // Owner/cache refs guard each attempt; busy renders must not reset the backoff.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryable, ready, offline, cache?.session?.dirty, conflict, owner]);
+  async function reload() {
+    if (!owner || ownerRef.current !== owner || running.current) return false;
+    const current = generation.current;
+    const valid = () => ownerRef.current === owner && generation.current === current;
+    running.current = true;
+    setBusy(true);
+    setRetryable(false);
+    try {
+      const latest = await readKitchenCache(owner);
+      if (!valid()) return false;
+      let next: KitchenCache;
+      if (needsRead.current) {
+        // Read the complete winning snapshot unchanged: no CAS write, rebase or RPC replay.
+        if (!latest || latest.cacheRevision <= (ref.current?.cacheRevision ?? -1))
+          throw new Error("kitchen_local_conflict");
+        next = latest;
+      } else {
+        if (!navigator.onLine) throw new KitchenError("network");
+        const remote = await loadKitchen(owner);
+        if (!valid()) return false;
+        const pending = latest?.session?.dirty ? latest.session : null;
+        const stored = await refreshKitchenCache(
+          {
+            ...(latest ?? emptyKitchenCache(owner)),
+            versions: remote.versions,
+            session: pending ?? remote.active,
+            history:
+              pending && ["completed", "abandoned"].includes(pending.state.status)
+                ? [pending, ...remote.history.filter((item) => item.id !== pending.id)].slice(0, 20)
+                : remote.history,
+            verifiedAt: Date.now(),
+          },
+          latest?.cacheRevision ?? 0,
+        );
+        next = stored.cache;
+      }
+      if (!valid()) return false;
+      skipInitialSync.current = true;
+      needsRead.current = false;
+      setLocalConflict(false);
+      setConflict(null);
+      update(next);
+      setError("");
+      setReady(true);
+      return true;
+    } catch (cause) {
+      if (valid()) {
+        setError(
+          "Uppdateringen kunde inte hämtas. Vyn och dina utkast behålls. Försök hämta igen.",
+        );
+        if (cause instanceof KitchenError && cause.kind === "unavailable") {
+          await clearKitchenCache();
+          if (valid()) {
+            ref.current = null;
+            setCache(null);
+            setError(message(cause));
+          }
+        }
+      }
+      return false;
+    } finally {
+      if (valid()) {
+        running.current = false;
+        setBusy(false);
+      }
+    }
+  }
   async function change(state: CookingState, feedback: CookingFeedback | null = null) {
     let localSaved = false;
     const synchronized = await run(async (value) => {
@@ -360,6 +444,7 @@ export function useKitchen(owner: string | undefined) {
     offline,
     error,
     conflict,
+    localConflict,
     change,
     begin,
     save,
@@ -367,6 +452,6 @@ export function useKitchen(owner: string | undefined) {
     acceptRemote,
     keepLocal,
     sync: () => run(flush),
-    reload: () => window.location.reload(),
+    reload,
   };
 }

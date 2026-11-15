@@ -31,6 +31,17 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
+Current source handoff, November 15: explicit same-owner local-conflict read
+recovery is implemented without document reload, storage overwrite or write/AI
+replay. Full local Vitest passed 172 files/1,903 tests, typecheck/lint passed (two
+existing Chef warnings), and 91 isolated kitchen browser checks passed with no
+real backend/AI or fixture/page errors. The new installed tagged-fixture read-only
+two-document probe is prepared, not executed. Status observed the owner viewer
+closed with no active operator at 19:25:26 UTC. Follow the current canonical
+DEV-03 handoff for clean commit/CI and safe installed acceptance, then DEV-04.
+Earlier open-viewer instructions below are historical; still never force-close
+an owner viewer that has reopened. Old production and hosted test stay untouched.
+
 Current access decision, 2026-11-12: the owner abandoned mobile/password setup
 for now and requested local-only development. The owned tunnel is deliberately
 stopped with supervisor recovery disabled. Do not restart it, reset passwords or

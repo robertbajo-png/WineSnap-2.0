@@ -573,7 +573,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const t = useT();
   const routerHash = useRouterState({ select: (state) => state.location.hash });
   const kitchen = useKitchen(owner);
-  const { cache, busy, ready, offline, error, conflict } = kitchen;
+  const { cache, busy, ready, offline, error, conflict, localConflict } = kitchen;
   const [tab, setTab] = useState("library");
   const [journeyHash, setJourneyHash] = useState("");
   const appliedJourney = useRef("");
@@ -884,7 +884,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           {busy ? t(local?.dirty ? "state.syncing" : "state.saving") : statusText}
           <button
             className="k-text"
-            disabled={busy || offline || !cache || !!conflict}
+            disabled={busy || offline || !cache || !!conflict || localConflict}
             onClick={() => {
               void kitchen.sync();
             }}
@@ -900,9 +900,12 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             action={
               !conflict
                 ? {
-                    label: t(local?.dirty ? "state.retrySync" : "state.retryRead"),
-                    disabled: busy || offline,
-                    onClick: local?.dirty ? () => void kitchen.sync() : kitchen.reload,
+                    label: t(
+                      local?.dirty && !localConflict ? "state.retrySync" : "state.retryRead",
+                    ),
+                    disabled: busy || (offline && !localConflict),
+                    onClick: () =>
+                      void (local?.dirty && !localConflict ? kitchen.sync() : kitchen.reload()),
                   }
                 : undefined
             }
