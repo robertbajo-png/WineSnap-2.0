@@ -712,6 +712,10 @@ Seven focused files / 83 tests and full local Vitest (166 files / 1,767 tests),
 typecheck and full lint passed. Two existing ChefPanel lint warnings remain.
 The initial API regression reproduced unpinned/global token usage before the fix;
 initial TypeScript errors were fixed, not counted as passing checks.
+Full Quality/Database Safety passed for `cdf7cc0` (push/PR): 166 files / 1,766
+passing CI tests and one existing platform skip. Typecheck, lint, synthetic Node
+build/runtime, client budget and security checks passed. Two existing ChefPanel
+warnings remain; missing operator evidence still blocks public release.
 
 All 85 isolated kitchen browser checks passed on the final synthetic v3 artifact
 at 320/390/1440px and 125% text, including the previous 72. Eleven RPCs/nine
@@ -1065,6 +1069,8 @@ entry points passed validation; `git diff --check` passed.
   checks (prior 72 retained) passed at 320/390/1440px, 125% text, with 11 mocked
   RPCs/nine commits, 438 reads, zero real backend/AI/forbidden requests or page/
   fixture errors and confirmed cleanup. Final v3 screenshots inspected; no update.
+  Full Quality/Database Safety passed for `cdf7cc0` (push/PR), 166 files / 1,766
+  passing CI tests and one existing skip; synthetic build/runtime and budget pass.
 - DEV-03 late account-write helper preparation: five focused files / 107 tests,
   local full Vitest 163 files / 1,727 tests, typecheck and full lint passed.
   Full Quality/Database Safety passed for `6358f87` (push/PR), 163 files / 1,726

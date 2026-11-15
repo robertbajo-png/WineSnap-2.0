@@ -181,6 +181,9 @@ screenshots were inspected. Seven focused files / 83 tests, full local Vitest
 (166 files / 1,767 tests), typecheck and full lint passed. Two existing ChefPanel
 warnings remain. Initial red/API typing and fixture owner/dialog-timing failures
 are not accepted runs; prior artifacts/reports remain in ignored local dist.
+Full Quality/Database Safety passed for `cdf7cc0` (push/PR), 166 files / 1,766
+passing CI tests and one existing platform skip. Synthetic Node build/runtime,
+client budget and security checks passed; public release remains blocked.
 Keep the real owner viewer open. Next non-disruptive DEV-03 source preparation:
 extend the existing owned memory-control fixture for these read/uncertain/
 conflict/late states with ordinary tagged-account Auth/RLS, not real owner data
