@@ -35,6 +35,9 @@ function fakePage() {
     waitFor: vi.fn(),
     count: vi.fn(async () => 0),
     elementHandle: vi.fn(async () => root),
+    isVisible: vi.fn(async () => false),
+    or: vi.fn(),
+    first: vi.fn(),
     locator: vi.fn(),
     getByRole: vi.fn(),
     nth: vi.fn((index) => ({
@@ -43,6 +46,8 @@ function fakePage() {
   };
   node.locator.mockReturnValue(node);
   node.getByRole.mockReturnValue(node);
+  node.or.mockReturnValue(node);
+  node.first.mockReturnValue(node);
   return {
     url: () => url,
     goto: vi.fn(async (target) => {
@@ -120,6 +125,7 @@ describe("owned late-account browser orchestration preparation", () => {
       liveProvider: false,
       committedWrites: 2,
       privateTablesDenied: 3,
+      withheldPeerViews: 0,
     });
     expect(probe.arm.mock.calls).toEqual([["profile-account-late"], ["meal-account-late"]]);
     expect(probe.beginAccountSwitch).toHaveBeenCalledExactlyOnceWith(peer, [page, mealPage]);
@@ -153,6 +159,57 @@ describe("owned late-account browser orchestration preparation", () => {
     expect(controlPage.close).toHaveBeenCalledOnce();
     expect(page.root.dispose).toHaveBeenCalledOnce();
     expect(mealPage.root.dispose).toHaveBeenCalledOnce();
+  });
+  it("captures only the fixture meal page on failure and retains the original error", async () => {
+    switchAccount.mockRejectedValue(Error("synthetic_signin_failure"));
+    const captureFailure = vi.fn().mockRejectedValue(Error("synthetic_capture_failure"));
+    await expect(acceptOwnedMealAccountStates({ ...input(), captureFailure })).rejects.toThrow(
+      "synthetic_signin_failure",
+    );
+    expect(captureFailure).toHaveBeenCalledExactlyOnceWith(mealPage);
+    expect(mealPage.close).toHaveBeenCalledOnce();
+    expect(controlPage.close).toHaveBeenCalledOnce();
+    expect(page.close).not.toHaveBeenCalled();
+  });
+  it("keeps a cache-conflicted peer document withheld without reloading or releasing early", async () => {
+    const recoveryClick = vi.fn();
+    mealPage.getByRole.mockImplementation((_, options) =>
+      options.name === "H\u00e4mta igen"
+        ? { ...mealPage.node, click: recoveryClick }
+        : mealPage.node,
+    );
+    mealPage.getByText.mockImplementation((text) =>
+      text.startsWith("K\u00f6ket \u00e4ndrades i en annan flik.")
+        ? { ...mealPage.node, isVisible: vi.fn(async () => true) }
+        : mealPage.node,
+    );
+    const result = await acceptOwnedMealAccountStates(input());
+    expect(result.withheldPeerViews).toBe(1);
+    expect(mealPage.locator).toHaveBeenCalledWith(".meal-panel");
+    expect(probe.completeAccountSwitch).toHaveBeenCalledOnce();
+    expect(probe.release.mock.invocationCallOrder[0]).toBeGreaterThan(
+      probe.completeAccountSwitch.mock.invocationCallOrder[0],
+    );
+    expect(mealPage.goto).toHaveBeenCalledOnce();
+    expect(mealPage.root.evaluate).toHaveBeenCalled();
+    expect(mealPage.node.click).toHaveBeenCalledTimes(2);
+    expect(recoveryClick).not.toHaveBeenCalled();
+  });
+  it("rejects a cache-conflict notice that still exposes a private meal panel", async () => {
+    mealPage.getByText.mockImplementation((text) =>
+      text.startsWith("K\u00f6ket \u00e4ndrades i en annan flik.")
+        ? { ...mealPage.node, isVisible: vi.fn(async () => true) }
+        : mealPage.node,
+    );
+    mealPage.locator.mockImplementation((selector) =>
+      selector === ".meal-panel"
+        ? { ...mealPage.node, count: vi.fn(async () => 1) }
+        : mealPage.node,
+    );
+    await expect(acceptOwnedMealAccountStates(input())).rejects.toThrow();
+    expect(probe.release).not.toHaveBeenCalled();
+    expect(pass).not.toHaveBeenCalled();
+    expect(mealPage.close).toHaveBeenCalledOnce();
   });
   it("does not accept a reload replacing an original document as a cross-account test", async () => {
     page.root.evaluate.mockResolvedValue(false);
@@ -217,7 +274,10 @@ describe("owned late-account browser orchestration preparation", () => {
     expect(page.close).not.toHaveBeenCalled();
   });
   it("preserves the prior logout/isolation stages and never injects a browser session", () => {
-    const source = readFileSync(new URL("./owned-pilot-browser.mjs", import.meta.url), "utf8");
+    const source = readFileSync(
+      new URL("./owned-pilot-browser.mjs", import.meta.url),
+      "utf8",
+    ).replace(/\r\n/g, "\n");
     expect(source.indexOf("report.mealAccountStates =")).toBeGreaterThan(
       source.indexOf("report.mealStates ="),
     );
@@ -226,6 +286,9 @@ describe("owned late-account browser orchestration preparation", () => {
     );
     expect(source).toContain('report.passed.push("logout_hides_private_home")');
     expect(source).toContain("report.mealIsolation =");
+    expect(source).toContain(
+      'await page.goto(ownedApp + "/kitchen#memory");\n      // The held-reply proof is complete. Recover any multi-tab cache conflict before fresh reads.\n      await page.reload({ waitUntil: "domcontentloaded" });',
+    );
     expect(source.match(/cleanupMeals: true/g)).toHaveLength(2);
     const helper = readFileSync(
       new URL("./owned-meal-account-states.mjs", import.meta.url),

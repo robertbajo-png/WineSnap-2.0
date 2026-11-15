@@ -12,6 +12,7 @@ export async function acceptOwnedMealAccountStates({
   switchAccount,
   phase,
   pass,
+  captureFailure = async () => {},
 }) {
   validateBrowserFixture(fixture);
   validateBrowserFixture(peerFixture);
@@ -24,6 +25,21 @@ export async function acceptOwnedMealAccountStates({
   assert.equal(typeof pass, "function");
   const extraPages = [],
     roots = [];
+  let withheldPeerViews = 0;
+  async function peerView(current, emptyText) {
+    const empty = current.getByText(emptyText, { exact: true });
+    const withheld = current.getByText(
+      "K\u00f6ket \u00e4ndrades i en annan flik. H\u00e4mta uppdateringen innan du forts\u00e4tter.",
+      { exact: true },
+    );
+    await empty.or(withheld).first().waitFor();
+    if (await withheld.isVisible()) {
+      // A cache revision conflict withholds the panel. Never reload away the late-reply probe.
+      assert.equal(await current.locator(".meal-panel").count(), 0);
+      await current.getByRole("button", { name: "H\u00e4mta igen", exact: true }).waitFor();
+      withheldPeerViews++;
+    } else await empty.waitFor();
+  }
   try {
     return await withOwnedMealProbe({ page, context, fixture }, async (probe) => {
       phase("meals_installed_hold_profile_and_meal_for_account_switch");
@@ -61,13 +77,12 @@ export async function acceptOwnedMealAccountStates({
       extraPages.push(controlPage);
       phase("meals_installed_account_switch_with_replies_held");
       await switchAccount(controlPage);
+      phase("meals_installed_peer_family_read_with_replies_held");
       // BroadcastChannel/Auth changes, not navigation or injected session state,
       // must replace the two still-mounted kitchen documents with the peer UI.
-      await page.getByText("Inga matprofiler \u00e4nnu.", { exact: true }).waitFor();
-      await page.getByRole("button", { name: "Ny profil", exact: true }).waitFor();
-      await mealPage
-        .getByText("Inga kombinationer registrerade \u00e4nnu.", { exact: true })
-        .waitFor();
+      await peerView(page, "Inga matprofiler \u00e4nnu.");
+      phase("meals_installed_peer_meal_read_with_replies_held");
+      await peerView(mealPage, "Inga kombinationer registrerade \u00e4nnu.");
       assert.equal(new URL(page.url()).pathname, "/kitchen");
       assert.equal(new URL(mealPage.url()).pathname, "/kitchen");
       for (const root of roots) assert.equal(await root.evaluate((node) => node.isConnected), true);
@@ -122,8 +137,17 @@ export async function acceptOwnedMealAccountStates({
       assert.equal(result.blockedStaleReads, 0);
       assert.equal(result.fixtureErrors, 0);
       pass("meals_installed_late_profile_and_meal_replies_cannot_cross_accounts");
-      return { completed: true, liveProvider: false, privateTablesDenied: 3, ...result };
+      return {
+        completed: true,
+        liveProvider: false,
+        privateTablesDenied: 3,
+        withheldPeerViews,
+        ...result,
+      };
     });
+  } catch (error) {
+    if (extraPages[0]) await captureFailure(extraPages[0]).catch(() => {});
+    throw error;
   } finally {
     let failed = false;
     for (const root of roots)

@@ -470,6 +470,11 @@ export async function acceptOwnedPilotUi(
         peerFixture: peer,
         phase,
         pass: (name) => report.passed.push(name),
+        captureFailure: (mealPage) =>
+          mealPage.screenshot({
+            path: join(artifactDirectory, "meal-account-failure.png"),
+            fullPage: true,
+          }),
         switchAccount: async (controlPage) => {
           phase("logout");
           await controlPage.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
@@ -481,6 +486,7 @@ export async function acceptOwnedPilotUi(
           assert.equal(await controlPage.locator(".pilot-recent-wine").count(), 0);
           assert.equal(await cachedKitchenOwnerPresent(controlPage, fixture.userId), false);
           report.passed.push("logout_hides_private_home");
+          phase("meals_installed_peer_control_signin");
           await controlPage.goto(ownedApp + "/login");
           await controlPage.waitForFunction(() =>
             Object.keys(document.querySelector("#email") ?? {}).some((k) =>
@@ -503,6 +509,8 @@ export async function acceptOwnedPilotUi(
       phase("peer_account_isolation");
       assert.equal(await cachedKitchenOwnerPresent(page, fixture.userId), false);
       await page.goto(ownedApp + "/kitchen#memory");
+      // The held-reply proof is complete. Recover any multi-tab cache conflict before fresh reads.
+      await page.reload({ waitUntil: "domcontentloaded" });
       await page
         .getByText("Inga bekr\u00e4ftade matpreferenser \u00e4nnu.", { exact: true })
         .waitFor();
