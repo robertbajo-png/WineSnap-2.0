@@ -12,6 +12,7 @@ import {
   emptyKitchenCache,
   readKitchenCache,
   writeKitchenCache,
+  refreshKitchenCache,
   clearKitchenCache,
   type KitchenCache,
 } from "./storage";
@@ -37,6 +38,7 @@ export function useKitchen(owner: string | undefined) {
   const ownerRef = useRef(owner);
   const running = useRef(false);
   const generation = useRef(0);
+  const skipInitialSync = useRef(false);
   ownerRef.current = owner;
   function update(value: KitchenCache) {
     ref.current = value;
@@ -128,6 +130,7 @@ export function useKitchen(owner: string | undefined) {
     running.current = false;
     setRetryable(false);
     setBusy(false);
+    skipInitialSync.current = false;
     const valid = () => current === generation.current && ownerRef.current === owner;
     async function load() {
       if (!owner) {
@@ -172,7 +175,10 @@ export function useKitchen(owner: string | undefined) {
               ...emptyKitchenCache(owner, remote.versions, remote.active),
               history: remote.history,
             };
-        await persist(next);
+        const stored = await refreshKitchenCache(next, next.cacheRevision);
+        if (!valid()) return;
+        skipInitialSync.current = stored.reused;
+        update(stored.cache);
       } catch (cause) {
         if (valid()) {
           setError(message(cause));
@@ -215,6 +221,11 @@ export function useKitchen(owner: string | undefined) {
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => {
+    if (ready && skipInitialSync.current) {
+      // Another tab owns this pending attempt; merely opening a view must not send it.
+      skipInitialSync.current = false;
+      return;
+    }
     if (offline || !ready || !cache?.session?.dirty || running.current || conflict) return;
     // Foreground reconnect performs the same owner/active-account checks as a manual sync.
     const timer = window.setTimeout(() => {

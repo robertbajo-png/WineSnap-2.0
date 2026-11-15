@@ -10,12 +10,15 @@ import {
   waitForIndependentRuntime,
 } from "./lib/independent-readiness.mjs";
 import { createCoreKitchenFixture, acceptCoreKitchen } from "./lib/core-kitchen-browser.mjs";
+import { acceptCoreKitchenTabs } from "./lib/core-kitchen-tabs-browser.mjs";
 import { createCoreChatFixture, acceptCoreChat } from "./lib/core-chat-browser.mjs";
 import { createCoreCollectorFixture, acceptCoreCollector } from "./lib/core-collector-browser.mjs";
 import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-browser.mjs";
 
 // Synthetic source UI only. No installed backend, real account or provider credentials.
-const kitchenOnly = process.argv.length === 3 && process.argv[2] === "--kitchen";
+const kitchenTabsOnly = process.argv.length === 3 && process.argv[2] === "--kitchen-tabs";
+const kitchenOnly =
+  kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
 const chatOnly = process.argv.length === 3 && process.argv[2] === "--chat";
 const collectorOnly = process.argv.length === 3 && process.argv[2] === "--collector";
 const pricesOnly = process.argv.length === 3 && process.argv[2] === "--prices";
@@ -38,13 +41,15 @@ const artifacts = join(
   root,
   pricesOnly
     ? "dist/core-prices"
-    : kitchenOnly
-      ? "dist/core-kitchen"
-      : chatOnly
-        ? "dist/core-chat"
-        : collectorOnly
-          ? "dist/core-collector"
-          : "dist/core-experience",
+    : kitchenTabsOnly
+      ? "dist/core-kitchen-tabs"
+      : kitchenOnly
+        ? "dist/core-kitchen"
+        : chatOnly
+          ? "dist/core-chat"
+          : collectorOnly
+            ? "dist/core-collector"
+            : "dist/core-experience",
 );
 const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
@@ -514,17 +519,29 @@ try {
       peerSession,
     });
   } else if (kitchenFixture) {
-    await acceptCoreKitchen({
+    await acceptCoreKitchenTabs({
       page,
       context,
       base,
       artifacts,
       report,
       fixture: kitchenFixture,
+      owner: fixtureOwner,
       authKey,
-      ownerSession,
       peerSession,
     });
+    if (!kitchenTabsOnly)
+      await acceptCoreKitchen({
+        page,
+        context,
+        base,
+        artifacts,
+        report,
+        fixture: kitchenFixture,
+        authKey,
+        ownerSession,
+        peerSession,
+      });
   } else {
     report.phase = "wine_detail";
     await page.goto(base + "/wine/" + wineId, { waitUntil: "domcontentloaded" });

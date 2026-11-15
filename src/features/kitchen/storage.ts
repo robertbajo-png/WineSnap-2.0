@@ -76,24 +76,49 @@ export async function readKitchenCache(owner: string) {
   return validateCache(value, owner);
 }
 export async function writeKitchenCache(data: KitchenCache, expectedRevision: number) {
+  return (await commitKitchenCache(data, expectedRevision, false)).cache;
+}
+export function refreshKitchenCache(data: KitchenCache, expectedRevision: number) {
+  return commitKitchenCache(data, expectedRevision, true);
+}
+async function commitKitchenCache(
+  data: KitchenCache,
+  expectedRevision: number,
+  reuseNewer: boolean,
+) {
   validateCache(data, data.owner);
+  if (
+    !Number.isSafeInteger(expectedRevision) ||
+    expectedRevision < 0 ||
+    expectedRevision >= Number.MAX_SAFE_INTEGER
+  )
+    throw new Error("Invalid offline revision");
   const generation = epoch;
   const db = await database();
-  return new Promise<KitchenCache>((resolve, reject) => {
+  return new Promise<{ cache: KitchenCache; reused: boolean }>((resolve, reject) => {
     const transaction = db.transaction(store, "readwrite");
     const objectStore = transaction.objectStore(store);
     const read = objectStore.get(data.owner);
     let conflict = false;
     const next = { ...data, cacheRevision: expectedRevision + 1 };
+    let result = { cache: next, reused: false };
     read.onsuccess = () => {
-      if (generation !== epoch || (read.result?.cacheRevision ?? 0) !== expectedRevision) {
+      try {
+        if (generation !== epoch) throw new Error("kitchen_local_conflict");
+        if ((read.result?.cacheRevision ?? 0) !== expectedRevision) {
+          if (!reuseNewer || !read.result || read.result.cacheRevision <= expectedRevision)
+            throw new Error("kitchen_local_conflict");
+          // Startup reads may adopt a newer complete snapshot, never merge or overwrite it.
+          result = { cache: validateCache(read.result, data.owner), reused: true };
+          return;
+        }
+        objectStore.put(next);
+      } catch {
         conflict = true;
         transaction.abort();
-        return;
       }
-      objectStore.put(next);
     };
-    transaction.oncomplete = () => resolve(next);
+    transaction.oncomplete = () => resolve(result);
     transaction.onabort = transaction.onerror = () =>
       reject(new Error(conflict ? "kitchen_local_conflict" : "Offline storage unavailable"));
   });
