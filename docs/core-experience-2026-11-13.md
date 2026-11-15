@@ -8,7 +8,30 @@ Old production, abandoned hosted test and internet activation remain excluded.
 
 ## Current Installed Checkpoint
 
-Current installation update, November 15: clean `724e1d6` is now installed after
+Latest installation, November 15: clean `2d6f0f7` is installed after observed safe
+viewer closure, fresh actual-owner Check/scoped logout and encrypted backup
+`owned-20261115-190049361.dpapi` with an isolated 75-table/one-image restore and
+cleanup. Dark-v1/public-origin labels remain, ports loopback-only, tunnel/recovery
+disabled, and zero migrations ran (37 matched). All 94 installed browser checks
+and exact tagged-account cleanup passed, now including actual memory RPC conflict,
+saved/read failure, lost forget/reset, late-view/account delivery and normal peer
+RLS. The memory slice used five client writes/six RPCs/five commits; the account
+slice one held memory commit. All three peer panels rendered normally, with no
+withheld cache-conflict view. Eight AI replies/one price request were mocked;
+there was no live AI/catalog scenario or actual-owner content mutation.
+
+Fresh post-update owner Check/scoped logout passed. The first Open verified the
+owner but was observed closed; no cause is assumed. One launch through the
+verified existing Start-menu shortcut then reported ready/authenticated, active
+viewer and fresh server verification; same-run focus and healthy supervisor
+passed. Keep that viewer open and internet paused. No old production, hosted
+test, provider or password change occurred. The four source-only IDB/tab probes
+remain separate from the installed Auth/RLS checks; no cache seed was applied to
+the owner's context. See the canonical plan for exact timestamps and the next
+explicit read-only conflict-recovery source task. Broader DEV-03/human acceptance
+is not implied.
+
+Previous installation update, November 15: clean `724e1d6` was installed after
 observed safe owner-viewer closure, fresh actual-owner Check and encrypted backup
 `owned-20261115-161834495.dpapi` with an isolated 75-table/one-image restore and
 cleanup. Dark-v1/public-origin labels remain, all ports are loopback-only, and no

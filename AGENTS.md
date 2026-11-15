@@ -41,7 +41,31 @@ uses CurrentUser-protected operator access and normal loopback GoTrue Auth/RLS,
 not a public or anonymous login bypass. Never run its private worker directly or
 print grants/tokens/browser state. See `docs/local-development-access-2026-11-12.md`.
 
-Current installation, 2026-11-15: explicit owner request and observed safe viewer
+Latest installation, 2026-11-15: the viewer was already safely closed. Fresh
+actual-owner Check/scoped logout, encrypted backup `owned-20261115-190049361.dpapi`
+and isolated 75-table/one-image same-PC restore passed with cleanup. Update from
+clean `2d6f0f7` completed at 19:02:49 UTC, retaining dark-v1/public-origin labels,
+37 matched/zero new migrations, loopback ports and disabled tunnel/recovery.
+All 94 installed fixture checks and exact two-account cleanup passed first run,
+including the deeper memory saved/read-error, actual revision conflict, lost
+forget/reset, late-view/account probes and normal peer RLS. Memory expected
+budgets matched five client writes/six RPCs/five commits; account memory used one
+held commit and two verified peer memory reads. Both family/meal panels and the
+memory panel rendered after switching, with zero withheld cache-conflict views.
+Eight AI replies/one price request were mocked, never live provider/catalog
+scenarios. No helper fix, owner-content mutation or password/provider/production/
+hosted-test change occurred. Fresh post-update owner Check/scoped logout passed.
+First Open reached verification but was then closed, cause unknown. One launch
+through the verified existing local Start-menu shortcut then reached ready/
+authenticated/viewerRunning/operatorActive; duplicate focus passed. Supervisor
+fully healthy at 19:09:17 UTC, internet paused. Keep this viewer open and reuse it.
+Same-run server verification advanced to 19:10:12 UTC with a fresh authenticated
+heartbeat, active viewer and zero blocked requests.
+Canonical handoff has the exact evidence. Earlier pending/source-only statements
+below are historical. Next source work remains explicit read-only recovery for a
+genuine local edit conflict; DEV-03/human use/public release are not complete.
+
+Earlier installation, 2026-11-15: explicit owner request and observed safe viewer
 closure allowed Update from clean `724e1d6`, completed at 16:21:48 UTC. Fresh
 actual-owner Check, encrypted backup `owned-20261115-161834495.dpapi` and isolated
 75-table/one-image restore passed with clone cleanup. Dark-v1/public-origin
