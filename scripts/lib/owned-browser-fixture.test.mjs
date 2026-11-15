@@ -325,12 +325,11 @@ describe("owned meal fixture cascade verification", () => {
     expect(admin.deleteUser).toHaveBeenCalledExactlyOnceWith(value.userId);
   });
   it("does not expand a foreign account's cleanup when memory checks are requested", async () => {
-    admin.getUserById
-      .mockReset()
-      .mockResolvedValue({
-        data: { user: { id: value.userId, email: value.email, app_metadata: {} } },
-        error: null,
-      });
+    admin.getUserById.mockReset();
+    admin.getUserById.mockResolvedValue({
+      data: { user: { id: value.userId, email: value.email, app_metadata: {} } },
+      error: null,
+    });
     await expect(
       ownedBrowserFixture(keys(), "cleanup", value, undefined, { cleanupMemory: true }),
     ).rejects.toThrow();
