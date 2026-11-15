@@ -41,7 +41,31 @@ uses CurrentUser-protected operator access and normal loopback GoTrue Auth/RLS,
 not a public or anonymous login bypass. Never run its private worker directly or
 print grants/tokens/browser state. See `docs/local-development-access-2026-11-12.md`.
 
-Installed checkpoint, 2026-11-14 local time: the owner safely closed the viewer;
+Current installation, 2026-11-15: explicit owner request and observed safe viewer
+closure allowed Update from clean `724e1d6`, completed at 16:21:48 UTC. Fresh
+actual-owner Check, encrypted backup `owned-20261115-161834495.dpapi` and isolated
+75-table/one-image restore passed with clone cleanup. Dark-v1/public-origin
+labels are retained, all ports loopback-only, 37 migrations matched/zero new.
+Tunnel/recovery, passwords, providers, old production and hosted test unchanged.
+All 86 extended installed fixture checks and exact two-account cleanup passed.
+Eight AI replies/one price request were mocked. The late-account proof verified
+both original documents' peer-JWT reads before releasing two committed replies;
+one peer panel was withheld by a cache-revision guard, not fully rendered. Helper
+`54c23d8` recognizes only that exact hidden-panel state without reloading away
+the proof; the later independent memory read explicitly reloads. Five earlier
+failed runs remain failures, all with successful fixture cleanup. Full local
+Vitest passed 166 files/1,770 tests, typecheck/lint passed (two existing warnings),
+and full Quality/Database Safety passed on push/PR. Fresh actual-owner Check with
+scoped logout passed at 16:40:03 UTC, then visible Open/authentication and same-run
+duplicate focus passed; supervisor fully healthy at 16:42:13 UTC. Keep the real
+viewer open and reuse it. UI automation could list the WineSnap window but
+binding failed on fresh/recovered selection, so Memory-tab navigation was not
+performed or verified; the owner can select Kitchen > Memory. Canonical handoff
+has current evidence; earlier installed/source-only statements below are
+historical. Do not imply the multi-tab usability issue, deeper installed memory
+faults, live AI or human usage are verified by these fixture checks.
+
+Earlier installed checkpoint, 2026-11-14 local time: the owner safely closed the viewer;
 Status confirmed closure and normal lock release without a forced process stop.
 Fresh pre-update actual-owner Check passed, including scoped logout. Encrypted
 backup `owned-20261113-231907992.dpapi` and its isolated same-PC restore passed:

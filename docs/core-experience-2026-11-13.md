@@ -6,6 +6,29 @@ recorded stage, not the latest installed state. Source-only tests, installed
 fixture checks, actual owner authentication and human usage are separate evidence.
 Old production, abandoned hosted test and internet activation remain excluded.
 
+## Current Installed Checkpoint
+
+Current installation update, November 15: clean `724e1d6` is now installed after
+observed safe owner-viewer closure, fresh actual-owner Check and encrypted backup
+`owned-20261115-161834495.dpapi` with an isolated 75-table/one-image restore and
+cleanup. Dark-v1/public-origin labels remain, all ports are loopback-only, and no
+new migration ran. All 86 final installed fixture checks and exact two-account
+cleanup passed, including memory read/offline/correction and new household/meal/
+late-account/peer-RLS coverage. Eight AI replies/one catalog request were mocked.
+One original peer panel was withheld by the local cache-revision guard; this is
+safe isolation evidence, not proof of successful rendering in both peer panels
+or a fix for that multi-tab limitation. Helper `54c23d8` retains both original
+documents and verified peer reads before releasing late replies, then explicitly
+reloads only the separate fresh-read stage. Five prior failures remain retained.
+Full local Vitest passed 166 files/1,770 tests and full CI passed on push/PR.
+Fresh real-owner Check/scoped logout, visible Open and same-run duplicate focus
+passed; supervisor healthy. UI automation failed to bind the observed browser
+window, so Memory-tab selection was not performed; the owner can select it in
+the authenticated window. Keep that viewer open. See the canonical
+development-plan handoff; deeper memory fault paths retain separate source
+evidence, and fixture checks do not prove human-use acceptance. No old
+production, hosted test, password, provider or internet setting was changed.
+
 ## First Source Slice
 
 - The wine-detail bottle and gallery thumbnails now use contain, not cover:
