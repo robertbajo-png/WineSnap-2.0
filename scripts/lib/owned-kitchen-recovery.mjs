@@ -16,6 +16,10 @@ export function assertKitchenRecoveryRead(url, method, fixture) {
   assert.equal(method, "GET");
   assert.equal(parsed.searchParams.get("user_id"), "eq." + fixture.userId);
 }
+export function assertKitchenAccessRead(body) {
+  assert.ok(body && typeof body === "object" && !Array.isArray(body));
+  assert.deepEqual(Object.keys(body), []);
+}
 
 // Tagged synthetic account only. One normal peer-tab edit, then read-only recovery.
 export async function acceptOwnedKitchenRecovery({
@@ -26,12 +30,15 @@ export async function acceptOwnedKitchenRecovery({
   capture,
   pass,
   report = {},
+  setGate,
 }) {
   validateBrowserFixture(fixture);
+  assert.equal(typeof setGate, "function");
   Object.assign(report, {
     completed: false,
     authChecks: 0,
     scopedReads: 0,
+    accessChecks: 0,
     writes: 0,
     blockedWrites: 0,
     fixtureErrors: 0,
@@ -50,7 +57,10 @@ export async function acceptOwnedKitchenRecovery({
       }
       const url = new URL(request.url());
       assert.equal(url.origin, ownedApi);
-      if (request.method() === "GET") {
+      if (request.method() === "POST" && url.pathname === "/rest/v1/rpc/kitchen_access") {
+        assertKitchenAccessRead(request.postDataJSON());
+        report.accessChecks++;
+      } else if (request.method() === "GET") {
         assertKitchenRecoveryRead(request.url(), "GET", fixture);
         report.scopedReads++;
       } else {
@@ -83,7 +93,7 @@ export async function acceptOwnedKitchenRecovery({
   };
   try {
     phase("kitchen_installed_read_recovery");
-    await page.goto("about:blank");
+    await page.goto(ownedApp + "/cellar", { waitUntil: "domcontentloaded" });
     const [initial] = await Promise.all([
       page.waitForRequest((request) => {
         const url = new URL(request.url());
@@ -112,12 +122,9 @@ export async function acceptOwnedKitchenRecovery({
       await auth.dispose();
     }
     phase("kitchen_recovery_auth_verified");
-    // Quiesce the fixture document before changing interception; never discard owner drafts.
-    await page.goto("about:blank");
-    phase("kitchen_recovery_blank_ready");
-    await context.route(pattern, handler);
+    // Reuse the already-installed context guard; never reconfigure interception mid-request.
+    setGate({ pattern, handler });
     phase("kitchen_recovery_routes_ready");
-    await page.goto(ownedApp + "/kitchen#cook");
     const toggle = page.getByRole("button", { name: /^(Pausa|\u00c5teruppta) matlagningen$/ });
     await toggle.waitFor();
     phase("kitchen_recovery_first_ready");
@@ -158,7 +165,7 @@ export async function acceptOwnedKitchenRecovery({
     assert.equal(report.writes, 1);
     assert.equal(report.fixtureErrors, 0);
     assert.equal(report.authChecks, 1);
-    assert.ok(report.scopedReads >= 6);
+    assert.ok(report.scopedReads >= 3);
     await page.setViewportSize({ width: 390, height: 844 });
     await capture("kitchen-read-recovered", 390);
     pass("kitchen_installed_read_recovery_preserves_document_search_and_never_replays_write");
@@ -167,7 +174,7 @@ export async function acceptOwnedKitchenRecovery({
   } finally {
     await root?.dispose();
     if (second && !second.isClosed()) await second.close();
-    await context.unroute(pattern, handler);
+    setGate(null);
     verified = null;
     report.cleanupCompleted = !second || second.isClosed();
     assert.equal(report.cleanupCompleted, true);

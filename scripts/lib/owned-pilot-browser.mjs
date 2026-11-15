@@ -50,7 +50,11 @@ export async function acceptOwnedPilotUi(
     phase: "prepare",
     scope: kitchenRecoveryOnly ? "kitchen-recovery-only" : "full",
   };
-  let fixture, peer, browser, context, page;
+  let fixture, peer, browser, context, page, kitchenGate;
+  const setKitchenGate = (value) => {
+    assert.ok(!kitchenGate || value === null);
+    kitchenGate = value;
+  };
   const phase = (name) => {
     report.phase = name;
     writeFileSync(
@@ -83,7 +87,10 @@ export async function acceptOwnedPilotUi(
     await context.addInitScript(() => localStorage.setItem("lang", "sv"));
     await context.route("**/*", async (route) => {
       const policy = offlineRequestPolicy(route.request().url());
-      if (policy === "local") return route.continue();
+      if (policy === "local") {
+        if (kitchenGate?.pattern.test(route.request().url())) return kitchenGate.handler(route);
+        return route.continue();
+      }
       if (policy === "ai") report.blockedAiRequests++;
       else report.externalRequests++;
       return route.abort();
@@ -196,6 +203,7 @@ export async function acceptOwnedPilotUi(
         capture,
         pass: (name) => report.passed.push(name),
         report: report.kitchenRecovery,
+        setGate: setKitchenGate,
       });
     }
     if (kitchenRecoveryOnly) {

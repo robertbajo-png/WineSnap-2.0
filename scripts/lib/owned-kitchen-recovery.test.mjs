@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { assertKitchenRecoveryRead } from "./owned-kitchen-recovery.mjs";
+import { assertKitchenAccessRead, assertKitchenRecoveryRead } from "./owned-kitchen-recovery.mjs";
 const id = (n) => `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const fixture = {
   project: "winesnap-owned-local",
@@ -15,6 +15,15 @@ const fixture = {
 };
 const url = "http://127.0.0.1:54323/rest/v1/cooking_sessions?user_id=eq." + fixture.userId;
 describe("installed kitchen read probe boundary", () => {
+  it("admits the existing no-argument read-only access RPC, not a business write", () => {
+    expect(() => assertKitchenAccessRead({})).not.toThrow();
+  });
+  it.each([null, [], { user_id: id(9) }, { _id: id(7) }, "{}"])(
+    "rejects access arguments %j",
+    (body) => {
+      expect(() => assertKitchenAccessRead(body)).toThrow();
+    },
+  );
   it("keeps the focused mode explicit, parent-controlled, fixture-cleaned and separate from full acceptance", () => {
     const read = (name) => readFileSync(new URL(name, import.meta.url), "utf8");
     const parent = read("../run-owned-windows.ps1");
@@ -30,7 +39,9 @@ describe("installed kitchen read probe boundary", () => {
     expect(browser).toContain('ownedBrowserFixture(keys, "cleanup", fixture');
     expect(browser).toContain("for (const width of pilotViewports)");
     const recovery = read("./owned-kitchen-recovery.mjs");
-    expect(recovery).toContain('await page.goto("about:blank")');
+    expect(recovery).toContain("setGate({ pattern, handler })");
+    expect(recovery).not.toContain("context.route(");
+    expect(recovery).not.toContain("context.unroute(");
     expect(recovery).toContain("assertFixtureOwner(await auth.json(), fixture)");
     expect(recovery).toContain("assert.equal(headers.authorization, verified.authorization)");
     expect(recovery).toContain("assert.equal(headers.apikey, verified.apikey)");
