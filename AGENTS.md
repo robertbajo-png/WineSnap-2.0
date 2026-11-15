@@ -42,9 +42,13 @@ Earlier failed/interrupted full/focused runs are retained, not passes; no new
 full 95-case pass is claimed. Prior 94 installed checks remain separate evidence.
 Fresh actual-owner Check/scoped logout passed at 20:47:28 UTC. The validated
 existing local shortcut was launched once; run 5f469d75-212d-4305-a737-93f24c6fc54f
-was starting_backend at 20:48:44 UTC. Verify readiness and preserve that viewer;
-never force-close/reinstall over it. Final helper commit 1444528 is pushed and
-awaits full CI. Read the canonical latest handoff for later readiness/CI evidence.
+reached ready/authenticated/viewerRunning/operatorActive with a fresh heartbeat
+at 20:50:53 UTC. Duplicate focus passed and the read-only supervisor was fully
+healthy at 20:51:54 UTC, internet paused. Preserve/reuse this viewer; never
+force-close/reinstall over it. Final helper commit 1444528 passed full Quality/
+Database Safety on push/PR: 173 files, 1,943 passing tests, one existing platform
+skip; typecheck/lint (two existing warnings), security, synthetic build/runtime
+and client budget passed. Read the canonical latest handoff for later evidence.
 DEV-04 has 33 fixed synthetic quality cases and a content-free deterministic CLI,
 not live-provider/semantic or human-use proof. Next: bounded action observations
 and the guarded live cohort in docs/ai-quality.md. Old production, hosted test,

@@ -289,8 +289,12 @@ full CI passed through `f11f42b`, but must also cover these final helper changes
 Fresh actual-owner Check passed at 20:47:28 UTC, with server verification at
 20:47:05 UTC, scoped probe logout, zero blocked requests and internet paused.
 The verified existing local Start-menu shortcut was launched once. Its new run
-`5f469d75-212d-4305-a737-93f24c6fc54f` was starting_backend at 20:48:44 UTC, not
-yet a visible/ready proof. Do not launch another viewer or force-close this one.
+`5f469d75-212d-4305-a737-93f24c6fc54f` was starting_backend at 20:48:44 UTC, then
+ready/authenticated/viewerRunning/operatorActive with a fresh verified heartbeat
+at 20:50:53 UTC. Internet remains paused and blocked requests are zero. Duplicate
+Open focused the existing viewer, not a second grant/window. Read-only supervisor
+health was fully healthy at 20:51:54 UTC. Preserve/reuse this viewer; never
+force-close it or reinstall for documentation changes.
 
 DEV-03 is technically complete based on the affected 91 source browser checks,
 successful installed focused recovery/cleanup, previous wider 94 installed
@@ -298,9 +302,13 @@ checks and fresh actual-owner Check. This is layered evidence, not a new full
 95-case pass or human acceptance. These remain explicitly separate for DEV-05.
 No new core redesign or further DEV-03 expansion is needed on continuation.
 
-Current handoff: preserve the starting owner viewer and verify its readiness.
-Final helper source `1444528` is pushed; await its full CI result. Do not repeat
-paid calls or reinstall the app for helper/docs-only changes. DEV-04 is Pagar
+Final helper source `1444528` passed full Quality/Database Safety on push and PR:
+173 test files, 1,943 passing tests and one existing platform skip. Typecheck,
+lint (two existing Chef warnings), security, synthetic Node build/runtime and
+client budget passed. CI still enforces the separate public-release block.
+
+Current handoff: preserve/reuse the ready owner viewer. Do not repeat paid calls
+or reinstall the app for helper/docs-only changes. DEV-04 is Pagar
 with 33 fixed quality cases
 (26 production-validator and seven Chef-handler cases); see [AI quality](ai-quality.md).
 Actual live-provider quality, common per-action usage/error visibility and
