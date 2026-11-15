@@ -258,7 +258,12 @@ export async function acceptOwnedCoreStates({ page, context, fixture, phase, cap
     await page.goto(ownedApp + "/scan", { waitUntil: "domcontentloaded" });
     await page
       .locator('input[type="file"]')
-      .setInputFiles(join(process.env.USERPROFILE, "OneDrive/Desktop/Winesnap/54456874_400.webp"));
+      .setInputFiles(
+        join(
+          process.env.USERPROFILE,
+          "Projects/New project/legacy-winesnap-assets/54456874_400.webp",
+        ),
+      );
     await page.getByRole("button", { name: "Anv\u00e4nd hela bilden", exact: true }).click();
     await page
       .getByText("Den valda bilden finns kvar f\u00f6r en ny analys.", { exact: true })

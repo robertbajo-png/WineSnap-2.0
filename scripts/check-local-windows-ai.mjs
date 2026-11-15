@@ -141,7 +141,7 @@ try {
       false,
     );
   });
-  const original = `${process.env.USERPROFILE}/OneDrive/Desktop/Winesnap/54456874_400.webp`;
+  const original = `${process.env.USERPROFILE}/Projects/New project/legacy-winesnap-assets/54456874_400.webp`;
   await check("original bottle image scan through the app and OpenAI", async () => {
     await readFile(original); // Fail explicitly if the approved original is missing.
     await page.goto(`${app}/scan`);

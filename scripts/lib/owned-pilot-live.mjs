@@ -20,7 +20,10 @@ export async function acceptOwnedLiveJourneys({
   report.completed = false;
   report.imageAnalysisReplayed = replayApprovedImage;
   report.liveProviderScenarios = 0;
-  const imagePath = join(process.env.USERPROFILE, "OneDrive/Desktop/Winesnap/54456874_400.webp");
+  const imagePath = join(
+    process.env.USERPROFILE,
+    "Projects/New project/legacy-winesnap-assets/54456874_400.webp",
+  );
   const original = await readFile(imagePath);
   const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
   const count = { scan: 0, chef: 0 };

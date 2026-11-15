@@ -893,9 +893,9 @@ try {
         ? {
             scanImage: join(
               process.env.USERPROFILE,
-              "OneDrive",
-              "Desktop",
-              "Winesnap",
+              "Projects",
+              "New project",
+              "legacy-winesnap-assets",
               "54456874_400.webp",
             ),
           }

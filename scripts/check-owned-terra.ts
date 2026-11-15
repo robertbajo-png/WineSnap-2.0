@@ -275,7 +275,10 @@ try {
   const images = imageOnly ? undefined : await fixturesImages();
   const originalImage = async (owner: Fixture) => {
     const image = await readFile(
-      join(process.env.USERPROFILE!, "OneDrive/Desktop/Winesnap/54456874_400.webp"),
+      join(
+        process.env.USERPROFILE!,
+        "Projects/New project/legacy-winesnap-assets/54456874_400.webp",
+      ),
     );
     const r = await post(owner, "/api/ai/analyze-wine", {
       imageBase64: image.toString("base64"),

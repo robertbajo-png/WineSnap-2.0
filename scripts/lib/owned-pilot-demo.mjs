@@ -18,7 +18,10 @@ export async function showOwnedPilotDemo(
   validateOwnedKeys(keys);
   assert.equal(typeof remember, "function");
   assert.equal(typeof acceptance, "boolean");
-  const imagePath = join(process.env.USERPROFILE, "OneDrive/Desktop/Winesnap/54456874_400.webp");
+  const imagePath = join(
+    process.env.USERPROFILE,
+    "Projects/New project/legacy-winesnap-assets/54456874_400.webp",
+  );
   const file = await lstat(imagePath);
   assert.ok(file.isFile() && !file.isSymbolicLink() && file.size <= 5 * 1024 * 1024);
   const original = await readFile(imagePath);

@@ -22,6 +22,18 @@ function Assert-Safe([string]$Path) {
     $current=[IO.Path]::GetDirectoryName($current)
   }
 }
+function Assert-PortableOutput([string]$Path) {
+  $full=[IO.Path]::GetFullPath($Path)
+  if($full -match '(?i)(^|[\\/])OneDrive(?:Consumer|Commercial| - [^\\/]+)?([\\/]|$)'){throw 'OneDrive output paths are not accepted.'}
+  foreach($name in @('OneDrive','OneDriveConsumer','OneDriveCommercial')){
+    $value=[Environment]::GetEnvironmentVariable($name)
+    if($value -and [IO.Path]::IsPathFullyQualified($value)){
+      $cloud=[IO.Path]::GetFullPath($value).TrimEnd('\','/')
+      if($full.Equals($cloud,[StringComparison]::OrdinalIgnoreCase) -or $full.StartsWith($cloud+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'OneDrive output paths are not accepted.'}
+    }
+  }
+  Assert-Safe $full
+}
 function Assert-Private([string]$Path) {
   Assert-Safe $Path
   $acl=Get-Acl -LiteralPath $Path
@@ -32,7 +44,7 @@ function Assert-Private([string]$Path) {
   }
 }
 function Initialize-PortableDirectory {
-  Assert-Safe $portable
+  Assert-PortableOutput $portable
   if(-not (Test-Path -LiteralPath $portable)){
     New-Item -ItemType Directory -Path $portable|Out-Null
     $acl=Get-Acl -LiteralPath $portable;$acl.SetAccessRuleProtection($true,$false)
@@ -48,7 +60,7 @@ function Initialize-PortableDirectory {
 function Write-Status {
   $report.checkedAt=[DateTime]::UtcNow.ToString('o')
   $file=Join-Path $portable 'portable-status.json';$pending=Join-Path $portable 'portable-status.pending.json'
-  Assert-Safe $file;Assert-Safe $pending
+  Assert-PortableOutput $file;Assert-PortableOutput $pending
   [IO.File]::WriteAllText($pending,($report|ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
   Move-Item -LiteralPath $pending -Destination $file -Force
 }
@@ -130,7 +142,7 @@ function Read-CipherFile([string]$Path) {
   return ,[IO.File]::ReadAllBytes($item.FullName)
 }
 function Protect-Json($Value,[string]$Path) {
-  Assert-Safe $Path
+  Assert-PortableOutput $Path
   $bytes=[Text.Encoding]::UTF8.GetBytes(($Value|ConvertTo-Json -Depth 40 -Compress))
   try {
     $cipher=[Security.Cryptography.ProtectedData]::Protect($bytes,$null,'CurrentUser')
@@ -171,7 +183,7 @@ function Clear-PortableRehearsal {
 }
 try {
   Initialize-PortableDirectory
-  Assert-Safe (Join-Path $portable 'portable.lock')
+  Assert-PortableOutput (Join-Path $portable 'portable.lock')
   $lock=[IO.File]::Open((Join-Path $portable 'portable.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
   if($Action -eq 'Status'){$report.completed=$true;$report.privateDirectoryPrepared=$true}
   else {
@@ -215,8 +227,8 @@ try {
       }else{
       $cipher=[Convert]::FromBase64String($result.ciphertext);$result=$null
       $backupDirectory=$portable
-      if($selfTest){$testDirectory=Join-Path $portable ('selftest-'+$run);Assert-Safe $testDirectory;New-Item -ItemType Directory -Path $testDirectory|Out-Null;$backupDirectory=$testDirectory}
-      $BackupPath=Join-Path $backupDirectory ('winesnap-portable-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'.age');Assert-Safe $BackupPath
+      if($selfTest){$testDirectory=Join-Path $portable ('selftest-'+$run);Assert-PortableOutput $testDirectory;New-Item -ItemType Directory -Path $testDirectory|Out-Null;$backupDirectory=$testDirectory}
+      $BackupPath=Join-Path $backupDirectory ('winesnap-portable-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'.age');Assert-PortableOutput $BackupPath
       $handle=[IO.File]::Open($BackupPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
       try{$handle.Write($cipher,0,$cipher.Length)}finally{$handle.Dispose()}
       [Array]::Clear($cipher,0,$cipher.Length);$cipher=$null
@@ -238,7 +250,7 @@ try {
         $stamp=[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'-'+$run
         $stageParent=if($selfTest){$testDirectory}else{$portable}
         $stage=Join-Path $stageParent ('recovering-'+$stamp)
-        Assert-Safe $stage;New-Item -ItemType Directory -Path $stage|Out-Null
+        Assert-PortableOutput $stage;New-Item -ItemType Directory -Path $stage|Out-Null
         Protect-Json $recovery.application.configuration (Join-Path $stage 'backend.dpapi')
         Protect-Json $recovery.credentials.gate (Join-Path $stage 'internet-gate.dpapi')
         Protect-Json $recovery.credentials.tunnel (Join-Path $stage 'internet-tunnel.dpapi')
@@ -255,7 +267,7 @@ try {
           [IO.File]::WriteAllText((Join-Path $stage ($name+'-status.json')),(@{project='winesnap-owned-local';enabled=$false;checkedAt=[DateTime]::UtcNow.ToString('o')}|ConvertTo-Json -Compress))
         }
         [IO.File]::WriteAllText((Join-Path $stage 'RECOVERY.json'),(@{project='winesnap-owned-local';complete=$true;activeInstallationCreated=$false;providersIncluded=$false;internetDisabled=$true;backupFile=$report.backupFile}|ConvertTo-Json -Compress))
-        $final=Join-Path $stageParent ('recovered-'+$stamp);Assert-Safe $final
+        $final=Join-Path $stageParent ('recovered-'+$stamp);Assert-PortableOutput $final
         if(Test-Path -LiteralPath $final){throw 'Recovery destination exists.'}
         Move-Item -LiteralPath $stage -Destination $final;$stage=$final
         $report.recoveredDirectory=[IO.Path]::GetFileName($stage);$report.recoveredFilesEncryptedForCurrentUser=$true
@@ -269,9 +281,9 @@ try {
       Add-Type -AssemblyName System.Windows.Forms
       $dialog=[Windows.Forms.SaveFileDialog]::new()
       try {
-        $dialog.Title='WineSnap - Save an additional encrypted copy (USB or a folder you choose)';$dialog.Filter='Encrypted WineSnap backup (*.age)|*.age';$dialog.FileName=[IO.Path]::GetFileName($BackupPath);$dialog.InitialDirectory=[Environment]::GetFolderPath('Desktop')
+        $dialog.Title='WineSnap - Save an additional encrypted copy (USB or a local folder)';$dialog.Filter='Encrypted WineSnap backup (*.age)|*.age';$dialog.FileName=[IO.Path]::GetFileName($BackupPath);$dialog.InitialDirectory=$portable
         if($dialog.ShowDialog() -eq [Windows.Forms.DialogResult]::OK -and [IO.Path]::GetFullPath($dialog.FileName) -ne [IO.Path]::GetFullPath($BackupPath)){
-          Assert-Safe $dialog.FileName
+          Assert-PortableOutput $dialog.FileName
           $sourceStream=[IO.File]::OpenRead($BackupPath);$target=$null
           try{$target=[IO.File]::Open($dialog.FileName,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None);$sourceStream.CopyTo($target)}finally{if($target){$target.Dispose()};$sourceStream.Dispose()}
           if((Get-FileHash -LiteralPath $BackupPath -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $dialog.FileName -Algorithm SHA256).Hash){throw 'Encrypted copy did not match.'}

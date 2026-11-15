@@ -246,6 +246,35 @@ remaining substeps and the current handoff before the final response. Log scope
 or priority changes with a revision/reason; retain IDs and historical decisions.
 Never put real participant notes, health values, secrets or private exports here.
 
+### DEV-02 Local Output Paths, November 15
+
+The owner requested all projects and future project output outside OneDrive.
+The optional encrypted portable-copy dialog now starts in
+`%USERPROFILE%\WineSnapPortable`. Output checks reject named or configured
+OneDrive roots and redirected ancestors, including prospective files whose
+parent folders do not exist yet. Input-file validation and private snapshot,
+passphrase, encryption and recovery behavior remain unchanged.
+
+Six approved-label fixture lookups now use
+`%USERPROFILE%\Projects\New project\legacy-winesnap-assets\54456874_400.webp`.
+The local file is 39,438 bytes; its SHA-256 remains
+`3f52f3110c65dcb490a2b99e0b8d30eafce0492ffa6074e871261c6c49570a20`.
+Changing its path does not authorize another paid/provider scenario.
+
+Ten isolated native Windows checks passed using only the extracted output-path
+helpers and synthetic local folders, a junction and process-scoped cloud-root
+configuration. They covered normalized paths, configured roots, literal personal/
+business roots, sibling boundaries and a redirected parent. No backup/export,
+decryption, provider request, runtime, owner viewer or account operation ran.
+The probe is retained under the collection's
+`.codex/onedrive-disconnect-20261115/test-portable-output-paths.ps1`.
+Focused mocked regression results are recorded below; this source-only repair
+does not rerun installed acceptance or advance DEV-03.
+
+Handoff: keep the current owner viewer and installed runtime. Continue the
+existing DEV-03 handoff after the local-project migration completes; do not
+create new output under the redirected Windows Desktop or Documents folders.
+
 ### DEV-02 Startup Window Repair, November 14
 
 The owner reported an empty terminal repeatedly opening with Codex closed.
@@ -927,6 +956,18 @@ entry points passed validation; `git diff --check` passed.
 
 ## Verification Record
 
+- DEV-02 local output/fixture paths: ten isolated Windows path checks passed,
+  including configured/named cloud roots and a junction ancestor. Four focused
+  synthetic Vitest files passed, 33 tests: core states, pilot browser, stage five
+  and portable archives. These mocked checks made no live AI/backend request.
+  PowerShell parsing, the affected TypeScript syntax check, focused ESLint,
+  formatting and `git diff --check` passed. No installed acceptance, owner access,
+  export or SDK build was run.
+  Full local typecheck, ESLint and Vitest also passed: 163 files / 1,724 tests,
+  including the pre-existing, unrelated DEV-03 worktree changes. A fresh synthetic
+  Node build/runtime, client budget and the CI Chef source build passed. The
+  migration commit contains only these eight owned path/tool/documentation files;
+  the existing DEV-03 work remains separate. Full CI checks the committed tree.
 - DEV-03 owned household/meal/pairing acceptance preparation: local full Vitest
   passed, 162 files / 1,699 tests; five focused files / 83 tests, typecheck and
   full lint also pass. Full Quality/Database Safety passed for `b363b14`
