@@ -29,6 +29,31 @@ development-plan handoff; deeper memory fault paths retain separate source
 evidence, and fixture checks do not prove human-use acceptance. No old
 production, hosted test, password, provider or internet setting was changed.
 
+## Prepared Memory Fault Follow-Up
+
+The November 15 follow-up adds guarded owned-memory acceptance preparation, not
+another app installation or browser run. Exact immutable fixture identity and
+normal JWT/RLS constrain all reads/writes; method/body/ID/budget guards and an AI
+blocker prevent accidental scope expansion. Prepared cases cover committed-save
+reread failure, a real RPC correction conflict with the captured old revision,
+lost forget/reset responses, and late responses after view/account changes.
+The existing peer UI sign-in is reused, with one extra document retained through
+server-verified peer reads before releasing its committed response. Withheld
+cache-conflict views are reported separately from rendered memory. Teardown
+closes the extra page before unregistering its guards and drains handlers; six
+fixed memory/Chef tables are checked after exact tagged-fixture cleanup.
+
+Four focused files/131 tests and full local Vitest (168 files/1,847 tests) passed,
+with typecheck/full lint and two existing ChefPanel warnings. Initial CI failed
+test formatting; corrected `caf78e4` passed full Quality/Database Safety on push/
+PR, including synthetic build/runtime, client budget and security. The final
+teardown-order refinement has focused/full-CI coverage; the full local run is
+earlier. These mocks do not replace the pending installed database/browser/RLS
+checks or human observations. The
+installed `724e1d6` app and open actual-owner viewer were not touched. Next work
+can review multi-tab cache behavior in isolated source tests; DEV-03 remains in
+progress. See the canonical plan for the exact handoff.
+
 ## First Source Slice
 
 - The wine-detail bottle and gallery thumbnails now use contain, not cover:

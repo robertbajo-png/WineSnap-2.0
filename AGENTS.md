@@ -65,6 +65,26 @@ has current evidence; earlier installed/source-only statements below are
 historical. Do not imply the multi-tab usability issue, deeper installed memory
 faults, live AI or human usage are verified by these fixture checks.
 
+The November 15 owned memory-fault follow-up is now prepared/unit-tested, not
+executed against the installation. Exact tagged-fixture JWT/body/method/owner
+guards bound save/reread, actual correction-conflict, lost forget/reset and
+late-view/account probes. The normal existing peer UI sign-in is reused; one
+extra still-mounted memory document must read with a server-verified peer JWT
+before its single held commit is released. A withheld cache-conflict panel is
+reported separately, never successful memory rendering. No reload or injected
+browser session bypasses the proof. Guarded requests drain before route removal;
+the extra document closes first. Six exact-owner memory/Chef cascades are checked
+after tagged-account cleanup. Four focused files/131 tests and full local Vitest
+(168 files/1,847 tests), typecheck and lint passed; two existing Chef warnings
+remain. The first CI test-formatting failure is not accepted; `caf78e4` corrects
+it and passed full Quality/Database Safety on push/PR, including synthetic build/
+runtime, client budget and security. Focused tests/full CI cover the final teardown
+order; the earlier full local run predates that small refinement. No installed
+wrapper, real user/data/key, AI,
+fixture, password, internet or production action occurred. Keep the owner viewer
+open; next independent work reviews multi-tab cache conflicts with isolated
+source tests. Canonical handoff separates preparation from installed evidence.
+
 Earlier installed checkpoint, 2026-11-14 local time: the owner safely closed the viewer;
 Status confirmed closure and normal lock release without a forced process stop.
 Fresh pre-update actual-owner Check passed, including scoped logout. Encrypted
