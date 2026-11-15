@@ -59,6 +59,7 @@ function route(path, body, options = {}) {
         },
       postDataJSON: () => body,
       failure: () => (options.cancelled ? { errorText: "net::ERR_ABORTED" } : null),
+      frame: () => ({ page: () => options.page }),
     }),
     fetch: vi.fn().mockResolvedValue(response(null, 204)),
     fulfill: vi.fn().mockResolvedValue(),
@@ -79,6 +80,250 @@ beforeEach(() => {
     unroute: vi.fn(),
   };
   probe = createOwnedMealProbe(context, fixture);
+});
+
+describe("owned meal late writes across accounts", () => {
+  const profileBody = () => ({
+    _action: "save_diner",
+    _id: randomUUID(),
+    _revision: 0,
+    _data: {
+      document: { name: "Local QA account profile", kind: "adult", preferences: [] },
+      householdId: null,
+      shared: false,
+    },
+  });
+  async function holdPair() {
+    probe.arm("profile-account-late");
+    const profile = route("/rest/v1/rpc/kitchen_family_change", profileBody());
+    const first = probe.handler(profile);
+    await probe.waitHeld();
+    probe.arm("meal-account-late");
+    const meal = route(
+      "/rest/v1/rpc/kitchen_meal_save",
+      bodyMeal(randomUUID(), 2, "Local QA account meal"),
+    );
+    const second = probe.handler(meal);
+    await probe.waitHeld();
+    return { profile, meal, first, second };
+  }
+  async function enterPeer(peer, pages) {
+    user = { id: peer.userId, email: peer.email, app_metadata: { owned_browser_run: peer.run } };
+    for (const page of pages) {
+      const read = route("/rest/v1/kitchen_diners", null, { method: "GET", page });
+      await probe.handler(read);
+      expect(read.fallback).toHaveBeenCalledOnce();
+    }
+  }
+  it("cannot begin a switch before two exact fixture commits", async () => {
+    expect(() => probe.beginAccountSwitch(manifest(), [{}, {}])).toThrow();
+    expect(context.request.get).not.toHaveBeenCalled();
+    expect(probe.snapshot().accountSwitches).toBe(0);
+  });
+  it("rejects duplicate or unvalidated fixture/page declarations", async () => {
+    const held = await holdPair();
+    try {
+      expect(() => probe.beginAccountSwitch(fixture, [{}, {}])).toThrow();
+      expect(() =>
+        probe.beginAccountSwitch({ ...manifest(), email: "real@example.com" }, [{}, {}]),
+      ).toThrow();
+      expect(() => probe.beginAccountSwitch(manifest(), [{}])).toThrow();
+      const page = {};
+      expect(() => probe.beginAccountSwitch(manifest(), [page, page])).toThrow();
+      expect(probe.snapshot().accountSwitches).toBe(0);
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it("does not treat the prior view-only holds as an account-switch pair", async () => {
+    const pending = [];
+    try {
+      for (let index = 0; index < 2; index++) {
+        probe.arm("profile-late");
+        const body = profileBody();
+        body._data.document.name = "Local QA late profile";
+        pending.push(probe.handler(route("/rest/v1/rpc/kitchen_family_change", body)));
+        await probe.waitHeld();
+      }
+      expect(() => probe.beginAccountSwitch(manifest(), [{}, {}])).toThrow();
+    } finally {
+      await probe.close();
+      for (const result of pending) await result;
+    }
+  });
+  it("holds both committed replies until both mounted pages read as the verified peer", async () => {
+    const held = await holdPair();
+    const pages = [{}, {}],
+      peer = manifest();
+    try {
+      probe.beginAccountSwitch(peer, pages);
+      expect(() => probe.completeAccountSwitch()).toThrow();
+      await enterPeer(peer, [pages[0]]);
+      expect(() => probe.completeAccountSwitch()).toThrow();
+      await enterPeer(peer, [pages[1]]);
+      probe.completeAccountSwitch();
+      expect(held.profile.fulfill).not.toHaveBeenCalled();
+      expect(held.meal.fulfill).not.toHaveBeenCalled();
+      expect(() => probe.arm("child")).toThrow();
+      expect(() => probe.completeAccountSwitch()).toThrow();
+      probe.release();
+      await probe.waitReleased();
+      expect(held.profile.fulfill).toHaveBeenCalledOnce();
+      expect(held.meal.fulfill).toHaveBeenCalledOnce();
+      expect(probe.snapshot()).toMatchObject({
+        clientWriteRequests: 2,
+        forwardedRpcRequests: 2,
+        committedWrites: 2,
+        peerReadRequests: 2,
+        accountSwitches: 1,
+        releasedReplies: 2,
+        fixtureErrors: 0,
+      });
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it("does not accept a peer read from the control tab as proof for both original pages", async () => {
+    const held = await holdPair();
+    try {
+      const pages = [{}, {}],
+        peer = manifest();
+      probe.beginAccountSwitch(peer, pages);
+      await enterPeer(peer, [{}]);
+      expect(() => probe.completeAccountSwitch()).toThrow();
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it("rejects a third account and never forwards its read", async () => {
+    const held = await holdPair();
+    try {
+      probe.beginAccountSwitch(manifest(), [{}, {}]);
+      user = { ...user, id: randomUUID() };
+      const read = route("/rest/v1/kitchen_diners", null, { method: "GET", page: {} });
+      await probe.handler(read);
+      expect(read.fallback).not.toHaveBeenCalled();
+      expect(probe.snapshot().fixtureErrors).toBe(1);
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it("rejects all additional writes during the account transition", async () => {
+    const held = await holdPair();
+    try {
+      const peer = manifest();
+      probe.beginAccountSwitch(peer, [{}, {}]);
+      user = { id: peer.userId, email: peer.email, app_metadata: { owned_browser_run: peer.run } };
+      const checks = context.request.get.mock.calls.length;
+      const write = route("/rest/v1/rpc/kitchen_family_change", profileBody());
+      await probe.handler(write);
+      expect(write.fetch).not.toHaveBeenCalled();
+      expect(context.request.get).toHaveBeenCalledTimes(checks);
+      expect(probe.snapshot().blockedSwitchWrites).toBe(1);
+      expect(probe.snapshot().committedWrites).toBe(2);
+      expect(probe.snapshot().fixtureErrors).toBe(1);
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it("rejects an old-owner read after the peer switch instead of forwarding stale reconciliation", async () => {
+    const held = await holdPair();
+    try {
+      const peer = manifest(),
+        pages = [{}, {}],
+        previous = user;
+      probe.beginAccountSwitch(peer, pages);
+      await enterPeer(peer, pages);
+      probe.completeAccountSwitch();
+      user = previous;
+      const read = route("/rest/v1/kitchen_diners", null, { method: "GET", page: pages[0] });
+      await probe.handler(read);
+      expect(read.fallback).not.toHaveBeenCalled();
+      expect(probe.snapshot().fixtureErrors).toBe(1);
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it("binds post-switch foreign reads to the peer JWT, not the original fixture", async () => {
+    const held = await holdPair();
+    try {
+      const peer = manifest(),
+        pages = [{}, {}];
+      probe.beginAccountSwitch(peer, pages);
+      await enterPeer(peer, pages);
+      probe.completeAccountSwitch();
+      context.request.get.mockImplementation(async (url) =>
+        response(url.endsWith("/auth/v1/user") ? user : []),
+      );
+      await expect(probe.assertForeignReads(fixture)).resolves.toBeUndefined();
+      const reads = context.request.get.mock.calls.filter(
+        ([url]) => !url.endsWith("/auth/v1/user"),
+      );
+      expect(reads).toHaveLength(3);
+      for (const [url] of reads)
+        expect(new URL(url).searchParams.get("user_id")).toBe("eq." + fixture.userId);
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it("counts and blocks an old-owner reconciliation before asynchronous Auth can hide the attempt", async () => {
+    const held = await holdPair();
+    try {
+      const peer = manifest(),
+        pages = [{}, {}];
+      probe.beginAccountSwitch(peer, pages);
+      await enterPeer(peer, pages);
+      probe.completeAccountSwitch();
+      const checks = context.request.get.mock.calls.length;
+      const read = route("/rest/v1/meal_wine_links?user_id=eq." + fixture.userId, null, {
+        method: "GET",
+        page: pages[1],
+      });
+      await probe.handler(read);
+      expect(context.request.get).toHaveBeenCalledTimes(checks);
+      expect(read.fallback).not.toHaveBeenCalled();
+      expect(probe.snapshot()).toMatchObject({ blockedStaleReads: 1, fixtureErrors: 1 });
+    } finally {
+      await probe.close();
+      await held.first;
+      await held.second;
+    }
+  });
+  it.each([1, 3])("rejects an unexpected meal revision %i before committing", async (revision) => {
+    probe.arm("meal-account-late");
+    const request = route(
+      "/rest/v1/rpc/kitchen_meal_save",
+      bodyMeal(randomUUID(), revision, "Local QA account meal"),
+    );
+    await probe.handler(request);
+    expect(request.fetch).not.toHaveBeenCalled();
+    expect(probe.snapshot().committedWrites).toBe(0);
+    await probe.close();
+  });
+  it("releases both held replies on failure cleanup without another write", async () => {
+    const held = await holdPair();
+    await probe.close();
+    await held.first;
+    await held.second;
+    expect(held.profile.fulfill).toHaveBeenCalledOnce();
+    expect(held.meal.fulfill).toHaveBeenCalledOnce();
+    expect(probe.snapshot()).toMatchObject({ forwardedRpcRequests: 2, committedWrites: 2 });
+    await expect(probe.assertForeignReads(manifest())).rejects.toThrow();
+  });
 });
 describe("owned meal probe identity and forwarding", () => {
   it("rejects a real or foreign manifest before page, file or network activity", async () => {

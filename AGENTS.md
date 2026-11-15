@@ -151,11 +151,25 @@ Full Quality/Database Safety passed for `b363b14` (push/PR), with 162 files /
 1,698 passing CI tests and one existing platform skip. Synthetic build/runtime
 and client budget passed; four existing Chef lint warnings remain.
 No fixture, browser, account, provider or runtime was started/changed.
-Keep the real owner viewer open. Next non-disruptive source preparation may
-extend the late-write probe across account change (distinct from late view
-and peer reads); installed regression still requires safe closure and the
-normal Check/backup/restore/Update/fixture/owner gates. Do not infer installed
-acceptance from the 72 synthetic cases or start DEV-04 yet.
+The late-account-write follow-up is now prepared/unit-tested in source, not run
+against the installed app. It holds one committed profile save and one revision-2
+meal edit, signs into the existing peer fixture through normal UI in a control
+tab, and requires peer-JWT reads in both original still-mounted documents before
+releasing either reply. Further writes/stale reconciliation are blocked/counted;
+old drafts/notices, document replacement and partial page cleanup fail the probe.
+No session injection or saved browser state is added. Existing logout/peer checks
+and tagged-account cleanup remain. Five focused files / 107 tests and local full
+Vitest (163 files / 1,727 tests), typecheck and full lint passed. Four existing
+Chef warnings remain. The interrupted older full run has no retained outcome.
+QA dependencies were restored from the unchanged lockfile, without install
+scripts, in ignored `.qa-account-regression.local`; the dangling root dependency
+junction now points there, not OneDrive or the missing external QA directory.
+No installed runtime, real account/key/provider, password or internet change was
+made. Keep the real owner viewer open. Next non-disruptive DEV-03 source review:
+memory correction/forgetting read/error/account and keyboard recovery states,
+using synthetic fixtures, not new AI inference. Installed acceptance still needs
+safe closure and the normal Check/backup/restore/Update/fixture/owner gates. Do
+not infer installed acceptance from the 72 synthetic cases or start DEV-04 yet.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

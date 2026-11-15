@@ -14,6 +14,8 @@ const names = {
   adult: "Local QA adult",
   child: "Local QA child",
   late: "Local QA late profile",
+  accountProfile: "Local QA account profile",
+  accountMeal: "Local QA account meal",
   meal: "Local QA meal",
   draft: "Local QA draft meal",
   server: "Local QA server meal",
@@ -67,6 +69,8 @@ export function createOwnedMealProbe(context, fixture) {
   const sessionId = ownedMealSessionId(fixture),
     ids = {};
   const faults = new Set();
+  const heldReplies = [];
+  const verifiedPeerPages = new WeakSet();
   const result = {
     clientWriteRequests: 0,
     forwardedRpcRequests: 0,
@@ -75,12 +79,20 @@ export function createOwnedMealProbe(context, fixture) {
     injectedReadErrors: 0,
     inspectionReads: 0,
     authChecks: 0,
+    peerReadRequests: 0,
+    accountSwitches: 0,
+    releasedReplies: 0,
+    blockedSwitchWrites: 0,
+    blockedStaleReads: 0,
     fixtureErrors: 0,
   };
   let mode = "",
     latch,
     failed = false,
     closed = false,
+    peerFixture = null,
+    switched = false,
+    expectedPeerPages = [],
     lastHeaders = null;
   async function verify(request) {
     let response;
@@ -100,10 +112,14 @@ export function createOwnedMealProbe(context, fixture) {
         timeout: 15000,
       });
       assert.equal(response.status(), 200);
-      assertFixtureOwner(await response.json(), fixture);
+      const user = await response.json();
+      const reader = user?.id === fixture.userId && !switched ? fixture : peerFixture;
+      assert.ok(reader);
+      assertFixtureOwner(user, reader);
       assert.equal(closed, false);
       result.authChecks++;
       lastHeaders = { authorization, apikey };
+      return reader;
     } catch {
       throw new Error("owned_meal_fixture_identity_failed");
     } finally {
@@ -116,21 +132,26 @@ export function createOwnedMealProbe(context, fixture) {
     return id;
   }
   function validateWrite(table, body, step) {
-    if (step === "meal-lost" || step === "meal-conflict") {
+    if (["meal-lost", "meal-conflict", "meal-account-late"].includes(step)) {
       assert.equal(table, "rpc/kitchen_meal_save");
-      const id = step === "meal-lost" ? newId(body._id) : ids.meal;
+      const id = step === "meal-conflict" ? ids.meal : newId(body._id);
       assert.deepEqual(body, {
         _id: id,
-        _revision: step === "meal-lost" ? 0 : 1,
+        _revision: step === "meal-lost" ? 0 : step === "meal-conflict" ? 1 : 2,
         _input: {
           sessionId,
           wineId: fixture.wineId,
           wineRating: 4,
           pairingRating: 3,
-          note: step === "meal-lost" ? names.meal : names.draft,
+          note:
+            step === "meal-lost"
+              ? names.meal
+              : step === "meal-conflict"
+                ? names.draft
+                : names.accountMeal,
         },
       });
-      if (step === "meal-lost") ids.meal = id;
+      if (step !== "meal-conflict") ids.meal = id;
       return;
     }
     assert.equal(table, "rpc/kitchen_family_change");
@@ -152,9 +173,18 @@ export function createOwnedMealProbe(context, fixture) {
         _data: { name: names.renamed },
       });
     } else {
-      assert.ok(["adult-read-error", "child", "profile-late"].includes(step));
+      assert.ok(
+        ["adult-read-error", "child", "profile-late", "profile-account-late"].includes(step),
+      );
       const id = newId(body._id),
-        key = step === "adult-read-error" ? "adult" : step === "child" ? "child" : "late";
+        key =
+          step === "adult-read-error"
+            ? "adult"
+            : step === "child"
+              ? "child"
+              : step === "profile-late"
+                ? "late"
+                : "accountProfile";
       assert.deepEqual(body, {
         _action: "save_diner",
         _id: id,
@@ -198,17 +228,36 @@ export function createOwnedMealProbe(context, fixture) {
       assert.equal(url.origin, ownedApi);
       assert.ok(url.pathname.startsWith("/rest/v1/"));
       if (request.method() === "OPTIONS") return await route.fallback();
-      await verify(request);
+      if (peerFixture && request.method() !== "GET" && table !== "rpc/kitchen_access") {
+        result.blockedSwitchWrites++;
+        throw new Error("owned_meal_switch_write_blocked");
+      }
+      if (
+        switched &&
+        request.method() === "GET" &&
+        (url.searchParams.get("user_id") === "eq." + fixture.userId ||
+          Object.values(ids).some((id) => url.searchParams.get("id") === "eq." + id))
+      ) {
+        result.blockedStaleReads++;
+        throw new Error("owned_meal_stale_read_blocked");
+      }
+      const reader = await verify(request);
       assert.equal(closed, false);
       if (request.method() === "GET") {
         assert.ok(ownerTables.has(table) || familyTables.has(table));
         if (ownerTables.has(table))
-          assert.equal(url.searchParams.get("user_id"), "eq." + fixture.userId);
+          assert.equal(url.searchParams.get("user_id"), "eq." + reader.userId);
         const exact = url.searchParams.get("id");
         if (exact && ["kitchen_households", "kitchen_diners", "meal_wine_links"].includes(table)) {
           assert.equal(url.searchParams.get("user_id"), "eq." + fixture.userId);
           assert.ok(Object.values(ids).some((id) => exact === "eq." + id));
           result.inspectionReads++;
+        }
+        if (reader === peerFixture) {
+          const sourcePage = request.frame().page();
+          assert.ok(sourcePage && typeof sourcePage === "object");
+          verifiedPeerPages.add(sourcePage);
+          result.peerReadRequests++;
         }
         if (
           (faults.has("household-inspect") &&
@@ -230,6 +279,7 @@ export function createOwnedMealProbe(context, fixture) {
       }
       assert.equal(request.method(), "POST");
       if (table === "rpc/kitchen_access") return await route.fallback();
+      assert.equal(peerFixture, null);
       assert.ok(["rpc/kitchen_family_change", "rpc/kitchen_meal_save"].includes(table));
       assert.equal(url.search, "");
       assert.notEqual(mode, "");
@@ -239,7 +289,9 @@ export function createOwnedMealProbe(context, fixture) {
       mode = "";
       result.clientWriteRequests++;
       assert.ok(result.clientWriteRequests <= 7);
-      if (["rename-late", "profile-late"].includes(step)) {
+      if (
+        ["rename-late", "profile-late", "profile-account-late", "meal-account-late"].includes(step)
+      ) {
         held = latch;
         held.started = true;
       }
@@ -254,6 +306,7 @@ export function createOwnedMealProbe(context, fixture) {
       }
       const response = await forward(route);
       committed(response);
+      if (held) held.committed = true;
       if (["household-lost", "meal-lost"].includes(step)) return await route.abort("failed");
       if (step === "adult-read-error") faults.add("diners-list");
       if (held) {
@@ -280,6 +333,7 @@ export function createOwnedMealProbe(context, fixture) {
     arm(step) {
       assert.equal(failed, false);
       assert.equal(closed, false);
+      assert.equal(peerFixture, null);
       assert.equal(mode, "");
       assert.ok(
         [
@@ -290,11 +344,26 @@ export function createOwnedMealProbe(context, fixture) {
           "meal-lost",
           "meal-conflict",
           "profile-late",
+          "profile-account-late",
+          "meal-account-late",
         ].includes(step),
       );
+      if (
+        ["rename-late", "profile-late", "profile-account-late", "meal-account-late"].includes(step)
+      ) {
+        assert.ok(heldReplies.length < 2);
+        latch = {
+          step,
+          arrived: deferred(),
+          release: deferred(),
+          done: deferred(),
+          started: false,
+          committed: false,
+          released: false,
+        };
+        heldReplies.push(latch);
+      }
       mode = step;
-      if (["rename-late", "profile-late"].includes(step))
-        latch = { arrived: deferred(), release: deferred(), done: deferred(), started: false };
     },
     fault(name, enabled) {
       assert.ok(["household-inspect", "diners-list", "meals-list"].includes(name));
@@ -303,20 +372,59 @@ export function createOwnedMealProbe(context, fixture) {
       else faults.delete(name);
     },
     waitHeld: () => bounded(latch.arrived.promise),
-    waitReleased: () => bounded(latch.done.promise),
-    release: () => latch?.release.resolve(),
+    async waitReleased() {
+      for (const held of heldReplies) if (held.started) await bounded(held.done.promise);
+    },
+    release() {
+      for (const held of heldReplies) {
+        if (!held.released) result.releasedReplies++;
+        held.released = true;
+        held.release.resolve();
+      }
+    },
+    beginAccountSwitch(other, pages) {
+      validateBrowserFixture(other);
+      assert.notEqual(other.userId, fixture.userId);
+      assert.notEqual(other.run, fixture.run);
+      assert.notEqual(other.email, fixture.email);
+      assert.equal(failed, false);
+      assert.equal(closed, false);
+      assert.equal(peerFixture, null);
+      assert.equal(mode, "");
+      assert.equal(heldReplies.length, 2);
+      assert.deepEqual(heldReplies.map((held) => held.step).sort(), [
+        "meal-account-late",
+        "profile-account-late",
+      ]);
+      assert.ok(heldReplies.every((held) => held.committed && !held.released));
+      assert.ok(Array.isArray(pages) && pages.length === 2 && pages[0] !== pages[1]);
+      assert.ok(pages.every((page) => page && typeof page === "object"));
+      expectedPeerPages = [...pages];
+      peerFixture = other;
+      result.accountSwitches++;
+    },
+    completeAccountSwitch() {
+      assert.equal(failed, false);
+      assert.equal(closed, false);
+      assert.ok(peerFixture && !switched);
+      assert.ok(expectedPeerPages.every((page) => verifiedPeerPages.has(page)));
+      assert.ok(heldReplies.every((held) => held.committed && !held.released));
+      switched = true;
+    },
     async close() {
       closed = true;
       lastHeaders = null;
-      latch?.release.resolve();
-      if (latch?.started) await bounded(latch.done.promise);
+      for (const held of heldReplies) held.release.resolve();
+      for (const held of heldReplies) if (held.started) await bounded(held.done.promise);
     },
     async assertForeignReads(other) {
       assert.equal(closed, false);
       validateBrowserFixture(other);
-      assert.notEqual(other.userId, fixture.userId);
+      assert.ok(!peerFixture || switched);
+      const current = switched ? peerFixture : fixture;
+      assert.notEqual(other.userId, current.userId);
       assert.ok(lastHeaders);
-      await verify({ headers: () => lastHeaders });
+      assert.equal(await verify({ headers: () => lastHeaders }), current);
       for (const table of ["kitchen_households", "kitchen_diners", "meal_wine_links"]) {
         const url = new URL(ownedApi + "/rest/v1/" + table);
         url.searchParams.set("select", "id");
@@ -328,6 +436,7 @@ export function createOwnedMealProbe(context, fixture) {
           timeout: 15000,
         });
         try {
+          assert.equal(closed, false);
           assert.equal(response.status(), 200);
           const rows = await response.json();
           assert.ok(Array.isArray(rows));

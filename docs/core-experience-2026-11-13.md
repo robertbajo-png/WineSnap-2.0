@@ -859,6 +859,39 @@ remains `05172af`, real owner viewer preserved and internet state unchanged.
 Old production and abandoned hosted test were untouched. A future installed
 run still requires safe owner closure and the ordinary installation gates.
 
+## Late Writes Across Account Change: Prepared November 15
+
+The owned regression now prepares two simultaneous held replies: one committed
+private diner profile and the fixture's existing meal edited at revision 2.
+It uses normal verified fixture Auth/RLS, exact session/wine/payload guards and
+the same peer account/cleanup as before. A control tab performs normal UI logout
+and peer sign-in; the family/meal pages themselves are not navigated or reloaded.
+Their original DOM handles must remain connected and both pages must render
+the peer's empty state and perform a verified peer-JWT read. An Auth read in
+only the control tab is insufficient. No browser session is injected/exported.
+
+Only these two commits can precede the handoff. Further writes during the switch
+and old-owner reconciliation reads afterward are blocked and counted immediately.
+Both saved replies are released only after the original pages pass peer checks.
+Old drafts, profile/meal-saved notices, recovery controls, extra inspections or
+writes fail acceptance. Final counters are captured after three peer-RLS absence
+reads. All routes/held replies and both extra pages are cleaned on failure;
+the original test page and real owner's separate viewer are not closed.
+
+Five focused files / 107 tests passed, as did full local Vitest (163 files /
+1,727 tests), typecheck and full lint. Four pre-existing Chef warnings remain.
+The interrupted older full run had no recoverable process/result and is not a
+pass. QA dependencies were recovered from the unchanged lockfile without install
+scripts inside ignored `.qa-account-regression.local`; the old dangling root
+junction now points there. Actual resolved paths were checked outside OneDrive.
+No source dependency version/lock change or installed app/runtime change was made.
+
+This is helper/unit verification, not an executed two-tab browser/RPC/RLS result.
+The intended new-stage budget is two client writes/two RPCs/two commits, excluding
+setup and earlier stages. No real key/account/provider was used, nor any old
+production/hosted test, password or internet setting changed. The existing
+owner-viewer preservation and safe installation gates still apply.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -889,9 +922,10 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - The owned household/meal/pairing fixtures above are now prepared/unit-tested,
-  not executed. Next non-disruptive source preparation can extend held writes
-  across account change, distinctly from view changes and peer reads. Keep the
-  owner viewer open. Ranking remains deterministic; no later DEV stage.
+  including held writes across account change, not executed. Next source review:
+  memory correction/forgetting read/error/account states and keyboard recovery,
+  using existing synthetic fixtures, not new inference/provider evaluation.
+  Keep the owner viewer open. Ranking remains deterministic; no later DEV stage.
 - Earlier accumulated source changes are installed and the narrower 69-case owned
   regression passed; this latest mutation slice is source-only. Broader remaining review and actual owner observations are
   still required; do not mark DEV-03 complete from installation/auth alone.

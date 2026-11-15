@@ -455,40 +455,53 @@ export async function acceptOwnedPilotUi(
       });
       assert.equal(report.mealStates.completed, true);
     }
-    phase("logout");
-    await page.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Logga ut", exact: true }).click();
-    await page.getByText(/Logga in f.r att forts.tta/).waitFor();
-    await page.goto(ownedApp + "/", { waitUntil: "domcontentloaded" });
-    await page.getByRole("link", { name: "Logga in", exact: true }).waitFor();
-    assert.equal(await page.locator(".pilot-resume").count(), 0);
-    assert.equal(await page.locator(".pilot-recent-wine").count(), 0);
-    report.passed.push("logout_hides_private_home");
     {
-      phase("peer_account_isolation");
       const { cachedKitchenOwnerPresent } = await import("./owned-pilot-live.mjs");
-      assert.equal(await cachedKitchenOwnerPresent(page, fixture.userId), false);
       const createdPeer = await ownedBrowserFixture(keys, "prepare", undefined, async (value) => {
         peer = value;
         await rememberPeer(value);
       });
       peer = createdPeer.fixture;
-      await page.goto(ownedApp + "/login");
-      await page.waitForFunction(() =>
-        Object.keys(document.querySelector("#email") ?? {}).some((k) =>
-          k.startsWith("__reactProps"),
-        ),
-      );
-      await page.locator("#email").fill(peer.email);
-      await page
-        .locator("#password")
-        .fill(
-          createHmac("sha256", keys.jwtSecret)
-            .update(`owned-browser-fixture-password-v1:${peer.run}`)
-            .digest("hex"),
-        );
-      await page.locator('button[type="submit"]').click();
-      await page.waitForURL(ownedApp + "/");
+      const { acceptOwnedMealAccountStates } = await import("./owned-meal-account-states.mjs");
+      report.mealAccountStates = await acceptOwnedMealAccountStates({
+        page,
+        context,
+        fixture,
+        peerFixture: peer,
+        phase,
+        pass: (name) => report.passed.push(name),
+        switchAccount: async (controlPage) => {
+          phase("logout");
+          await controlPage.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
+          await controlPage.getByRole("button", { name: "Logga ut", exact: true }).click();
+          await controlPage.getByText(/Logga in f.r att forts.tta/).waitFor();
+          await controlPage.goto(ownedApp + "/", { waitUntil: "domcontentloaded" });
+          await controlPage.getByRole("link", { name: "Logga in", exact: true }).waitFor();
+          assert.equal(await controlPage.locator(".pilot-resume").count(), 0);
+          assert.equal(await controlPage.locator(".pilot-recent-wine").count(), 0);
+          assert.equal(await cachedKitchenOwnerPresent(controlPage, fixture.userId), false);
+          report.passed.push("logout_hides_private_home");
+          await controlPage.goto(ownedApp + "/login");
+          await controlPage.waitForFunction(() =>
+            Object.keys(document.querySelector("#email") ?? {}).some((k) =>
+              k.startsWith("__reactProps"),
+            ),
+          );
+          await controlPage.locator("#email").fill(peer.email);
+          await controlPage
+            .locator("#password")
+            .fill(
+              createHmac("sha256", keys.jwtSecret)
+                .update(`owned-browser-fixture-password-v1:${peer.run}`)
+                .digest("hex"),
+            );
+          await controlPage.locator('button[type="submit"]').click();
+          await controlPage.waitForURL(ownedApp + "/");
+        },
+      });
+      assert.equal(report.mealAccountStates.completed, true);
+      phase("peer_account_isolation");
+      assert.equal(await cachedKitchenOwnerPresent(page, fixture.userId), false);
       await page.goto(ownedApp + "/kitchen#memory");
       await page
         .getByText("Inga bekr\u00e4ftade matpreferenser \u00e4nnu.", { exact: true })
