@@ -168,11 +168,25 @@ QA dependencies were restored from the unchanged lockfile, without install
 scripts, in ignored `.qa-account-regression.local`; the dangling root dependency
 junction now points there, not OneDrive or the missing external QA directory.
 No installed runtime, real account/key/provider, password or internet change was
-made. Keep the real owner viewer open. Next non-disruptive DEV-03 source review:
-memory correction/forgetting read/error/account and keyboard recovery states,
-using synthetic fixtures, not new AI inference. Installed acceptance still needs
+made. Memory recovery is now implemented/source-verified, not installed: owner-
+keyed state, bounded verified-token reads/writes, cancellation, retained conflict
+drafts and committed-result notices. Unknown replies require explicit read and
+nonwriting completion; no mutation/reset/AI replay is automatic. The existing
+fresh-read helper and account scope are reused. The final isolated kitchen run
+passed all 85 checks at 320/390/1440px and 125% text, retaining the prior 72,
+including visible keyboard recovery above the mobile nav. Eleven RPCs/nine
+commits and 438 reads were simulated; real backend/AI, forbidden requests and
+page/fixture errors were zero, with confirmed cleanup. Mobile/desktop memory
+screenshots were inspected. Seven focused files / 83 tests, full local Vitest
+(166 files / 1,767 tests), typecheck and full lint passed. Two existing ChefPanel
+warnings remain. Initial red/API typing and fixture owner/dialog-timing failures
+are not accepted runs; prior artifacts/reports remain in ignored local dist.
+Keep the real owner viewer open. Next non-disruptive DEV-03 source preparation:
+extend the existing owned memory-control fixture for these read/uncertain/
+conflict/late states with ordinary tagged-account Auth/RLS, not real owner data
+or provider evaluation. Installed acceptance still needs
 safe closure and the normal Check/backup/restore/Update/fixture/owner gates. Do
-not infer installed acceptance from the 72 synthetic cases or start DEV-04 yet.
+not infer installed acceptance from the 85 synthetic cases or start DEV-04 yet.
 
 Current migration status and cutover order:
 `docs/lovable-exit-2026-10-23.md`. Earlier dated documents describe historical

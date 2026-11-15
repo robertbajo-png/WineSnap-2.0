@@ -4,12 +4,13 @@ import { emptyChefContext } from "./domain";
 
 const mocks = vi.hoisted(() => ({
   session: vi.fn(),
+  user: vi.fn(),
   rpc: vi.fn(),
   create: vi.fn(),
   send: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { auth: { getSession: mocks.session } },
+  supabase: { auth: { getSession: mocks.session, getUser: mocks.user } },
 }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.create }));
 vi.mock("./feature", () => ({ chefEnabled: true }));
@@ -19,7 +20,10 @@ beforeEach(() => {
   mocks.session.mockResolvedValue({
     data: { session: { user: { id: owner }, access_token: "synthetic-owner-token" } },
   });
-  mocks.rpc.mockResolvedValue({ error: null });
+  mocks.user.mockResolvedValue({ data: { user: { id: owner } }, error: null });
+  mocks.rpc.mockImplementation((name: string) => ({
+    abortSignal: vi.fn(async () => ({ data: name === "chef_access" ? true : null, error: null })),
+  }));
   mocks.create.mockReturnValue({ rpc: mocks.rpc });
   vi.stubGlobal("fetch", mocks.send);
 });

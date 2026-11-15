@@ -38,6 +38,80 @@ beforeEach(() => {
   });
 });
 describe("isolated kitchen fixture boundary", () => {
+  const memoryBody = (id, value = "syntheticspice") => ({
+    _action: "add",
+    _id: id,
+    _revision: 0,
+    _entry: { attribute: "ingredient", value, direction: 1 },
+  });
+  it("does not permit an unarmed memory mutation even for the synthetic owner", async () => {
+    const request = route("/rest/v1/rpc/food_memory_change", {
+      method: "POST",
+      body: memoryBody(crypto.randomUUID()),
+    });
+    await expect(fixture.route(request)).rejects.toThrow();
+    expect(request.continue).not.toHaveBeenCalled();
+    expect(fixture.memory.counts()).toEqual({ writeCount: 0, commits: 0 });
+  });
+  it("does not let another account use an armed memory scenario", async () => {
+    fixture.memory.arm("add-read-error");
+    const request = route("/rest/v1/rpc/food_memory_change", {
+      method: "POST",
+      user: "synthetic-peer",
+      body: memoryBody(crypto.randomUUID()),
+    });
+    await expect(fixture.route(request)).rejects.toThrow();
+    expect(request.continue).not.toHaveBeenCalled();
+    expect(fixture.memory.counts().commits).toBe(0);
+  });
+  it("requires the exact bounded memory payload rather than arbitrary preferences or reset", async () => {
+    fixture.memory.arm("add-read-error");
+    const request = route("/rest/v1/rpc/food_memory_change", {
+      method: "POST",
+      body: { ...memoryBody(crypto.randomUUID()), _action: "reset" },
+    });
+    await expect(fixture.route(request)).rejects.toThrow();
+    expect(fixture.memory.counts().commits).toBe(0);
+  });
+  it("mocks one committed memory write and failed read without forwarding or allowing a duplicate", async () => {
+    fixture.memory.arm("add-read-error");
+    const id = crypto.randomUUID();
+    const request = route("/rest/v1/rpc/food_memory_change", {
+      method: "POST",
+      body: memoryBody(id),
+    });
+    await fixture.route(request);
+    expect(request.continue).not.toHaveBeenCalled();
+    expect(fixture.memory.counts()).toEqual({ writeCount: 1, commits: 1 });
+    expect(fixture.failedTables.has("food_signals")).toBe(true);
+    expect(fixture.memory.rows(owner).some((s) => s.id === id)).toBe(true);
+    expect(fixture.memory.rows(peer)).toEqual([]);
+    await expect(fixture.route(request)).rejects.toThrow();
+    expect(fixture.memory.counts()).toEqual({ writeCount: 1, commits: 1 });
+  });
+  it("uses a newer revision only for the captured synthetic signal when injecting a conflict", async () => {
+    const id = crypto.randomUUID();
+    fixture.memory.arm("add-read-error");
+    await fixture.route(
+      route("/rest/v1/rpc/food_memory_change", { method: "POST", body: memoryBody(id) }),
+    );
+    fixture.memory.arm("correct-conflict");
+    const request = route("/rest/v1/rpc/food_memory_change", {
+      method: "POST",
+      body: { ...memoryBody(id, "syntheticdraft"), _action: "correct", _revision: 1 },
+    });
+    await fixture.route(request);
+    expect(request.fulfill.mock.calls[0][0].status).toBe(409);
+    expect(fixture.memory.rows(owner).find((s) => s.id === id)).toMatchObject({
+      revision: 2,
+      value: "syntheticserver",
+    });
+    expect(fixture.memory.counts()).toEqual({ writeCount: 2, commits: 1 });
+  });
+  it("rejects an unapproved memory scenario without enabling a write", () => {
+    expect(() => fixture.memory.arm("arbitrary-action")).toThrow();
+    expect(fixture.memory.counts().commits).toBe(0);
+  });
   it("only replaces wine stock through the known synthetic pairing modes", async () => {
     expect(() => fixture.changePairingWines("unapproved")).toThrow();
     fixture.changePairingWines("consumed-and-alternate");

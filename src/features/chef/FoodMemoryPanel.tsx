@@ -9,7 +9,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { askChef, changeFoodMemory, foodMemory } from "./api";
+import { askChef, changeFoodMemory } from "./api";
+import { useFoodMemoryState } from "./useFoodMemoryState";
 import {
   attributes,
   attributeLabels,
@@ -20,23 +21,31 @@ import {
 } from "./domain";
 import "./chef.css";
 
-export function FoodMemoryPanel({
-  owner,
-  offline,
-  onChanged,
-}: {
+type FoodMemoryProps = {
   owner: string;
   offline: boolean;
   onChanged: () => void;
-}) {
+};
+export function FoodMemoryPanel(props: FoodMemoryProps) {
+  return <MemoryForOwner key={props.owner} {...props} />;
+}
+function MemoryForOwner({ owner, offline, onChanged }: FoodMemoryProps) {
   const t = useT();
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
-  const readSequence = useRef(0);
-  const working = useRef(false);
-  const [data, setData] = useState<Awaited<ReturnType<typeof foodMemory>> | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
+  const {
+    data,
+    loadState,
+    busy,
+    error,
+    notice,
+    reload,
+    run,
+    uncertain,
+    reviewReady,
+    requiresRead,
+    finishUncertain,
+  } = useFoodMemoryState(owner, offline, onChanged);
+  const [validationError, setValidationError] = useState("");
+  const locked = busy || uncertain;
   const [attribute, setAttribute] = useState<(typeof attributes)[number]>("ingredient"),
     [value, setValue] = useState(""),
     [direction, setDirection] = useState<1 | -1>(1);
@@ -50,104 +59,49 @@ export function FoodMemoryPanel({
     action: "forget" | "reset";
     signal?: FoodSignal;
   } | null>(null);
-  const live = useRef(true),
-    request = useRef<{ feedback: string; id: string } | null>(null);
+  const request = useRef<{ feedback: string; id: string } | null>(null);
   useEffect(() => {
-    live.current = true;
-    return () => {
-      live.current = false;
-      readSequence.current++;
-    };
-  }, []);
-  async function reload() {
-    const sequence = ++readSequence.current;
-    setData(null);
-    setLoadState("loading");
-    setError("");
-    try {
-      const result = await foodMemory(owner);
-      if (live.current && sequence === readSequence.current) {
-        setData(result);
-        setLoadState("ready");
-        setFeedbackId((old) =>
-          result.feedback.some((f) => f.id === old) ? old : (result.feedback[0]?.id ?? ""),
-        );
-      }
-    } catch {
-      if (live.current && sequence === readSequence.current) {
-        setData(null);
-        setLoadState("error");
-      }
-    }
-  }
-  useEffect(() => {
-    let active = true;
-    const sequence = ++readSequence.current;
-    setData(null);
-    setError("");
-    if (!offline) {
-      setLoadState("loading");
-      void foodMemory(owner)
-        .then((result) => {
-          if (active && sequence === readSequence.current) {
-            setData(result);
-            setLoadState("ready");
-            setFeedbackId(result.feedback[0]?.id ?? "");
-          }
-        })
-        .catch(() => {
-          if (active && sequence === readSequence.current) setLoadState("error");
-        });
-    }
-    return () => {
-      active = false;
-      readSequence.current++;
-    };
-  }, [owner, offline]);
-  async function run(action: () => Promise<void>, message: string) {
-    if (working.current || offline || loadState !== "ready") return;
-    working.current = true;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await action();
-      if (!live.current) return;
-      setNotice(message);
-      onChanged();
-      await reload();
-    } catch (cause) {
-      if (live.current) {
-        setData(null);
-        setLoadState("error");
-        setError(cause instanceof Error ? cause.message : "Kunde inte uppdatera matminnet.");
-      }
-    } finally {
-      working.current = false;
-      if (live.current) setBusy(false);
-    }
-  }
+    if (data)
+      setFeedbackId((old) =>
+        data.feedback.some((f) => f.id === old) ? old : (data.feedback[0]?.id ?? ""),
+      );
+    if (offline || !data) setConfirm(null);
+  }, [data, offline]);
   function submit(event: FormEvent) {
     event.preventDefault();
     const entry = memoryEntrySchema.safeParse({ attribute, value, direction });
     if (!entry.success) {
-      setError("Ange en matpreferens, inte allergier eller medicinska uppgifter.");
+      setValidationError("Ange en matpreferens, inte allergier eller medicinska uppgifter.");
       return;
     }
-    void run(async () => {
-      await changeFoodMemory(
-        owner,
-        editing ? "correct" : "add",
-        editing?.id ?? crypto.randomUUID(),
-        editing?.revision ?? 0,
-        entry.data,
-      );
-      if (live.current) {
+    if (draftStale) return;
+    setValidationError("");
+    void run(
+      (scope) =>
+        changeFoodMemory(
+          owner,
+          editing ? "correct" : "add",
+          editing?.id ?? crypto.randomUUID(),
+          editing?.revision ?? 0,
+          entry.data,
+          scope,
+        ),
+      "Matminnet är uppdaterat.",
+      () => {
         setValue("");
         setEditing(null);
-      }
-    }, "Matminnet är uppdaterat.");
+      },
+    );
   }
+  const draftStale =
+    !!editing &&
+    !!data &&
+    !data.signals.some(
+      (s) =>
+        s.id === editing.id &&
+        s.revision === editing.revision &&
+        ["pending", "confirmed"].includes(s.status),
+    );
   const preferences = data ? deriveFoodMemory(data.signals, owner) : [];
   return (
     <section className="chef-panel" aria-labelledby="food-memory-title">
@@ -169,7 +123,7 @@ export function FoodMemoryPanel({
         </button>
         <button
           className="k-text"
-          disabled={busy || offline || !data}
+          disabled={locked || offline || !data}
           onClick={() => setConfirm({ action: "reset" })}
         >
           <Trash2 size={18} />
@@ -185,16 +139,40 @@ export function FoodMemoryPanel({
           kind="error"
           action={{ label: t("state.retryRead"), disabled: busy, onClick: () => void reload() }}
         >
-          {t("state.memoryFailed")}
+          {requiresRead
+            ? "Ändringen behöver kontrolleras. Hämta aktuella uppgifter."
+            : t("state.memoryFailed")}
         </OperationNotice>
       )}
-      {busy && <OperationNotice kind="loading">{t("state.memoryWorking")}</OperationNotice>}
-      {error && (
+      {busy && loadState !== "loading" && (
+        <OperationNotice kind="loading">{t("state.memoryWorking")}</OperationNotice>
+      )}
+      {loadState !== "ready" && (editing || value) && <p role="status">Ditt utkast finns kvar.</p>}
+      {(error || validationError) && (
         <p className="k-error" role="alert">
-          {error}
+          {validationError || error}
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && !uncertain && <p role="status">{notice}</p>}
+      {uncertain && (
+        <OperationNotice
+          kind="pending"
+          action={{
+            label: "Avsluta försöket",
+            disabled: !reviewReady || busy,
+            onClick: () => {
+              if (finishUncertain()) {
+                setValue("");
+                setEditing(null);
+                setConfirm(null);
+                setValidationError("");
+              }
+            },
+          }}
+        >
+          {reviewReady ? notice : "Försöket väntar på en aktuell läsning."}
+        </OperationNotice>
+      )}
       {!offline && data && loadState === "ready" && (
         <>
           <h2>Bekräftat</h2>
@@ -213,7 +191,7 @@ export function FoodMemoryPanel({
                         className="k-icon"
                         title={`Korrigera ${p.value}`}
                         aria-label={`Korrigera ${p.value}`}
-                        disabled={busy}
+                        disabled={locked}
                         onClick={() => {
                           setEditing(p.sources[0]);
                           setAttribute(p.attribute);
@@ -227,7 +205,7 @@ export function FoodMemoryPanel({
                         className="k-icon"
                         title={`Glöm ${p.value}`}
                         aria-label={`Glöm ${p.value}`}
-                        disabled={busy}
+                        disabled={locked}
                         onClick={() => setConfirm({ action: "forget", signal: p.sources[0] })}
                       >
                         <Trash2 size={18} />
@@ -263,13 +241,19 @@ export function FoodMemoryPanel({
                 återanvänder den gamla uppgiften.
               </p>
             )}
+            {draftStale && (
+              <OperationNotice kind="error">
+                Preferensen har ändrats. Ditt utkast finns kvar. Avbryt utkastet och öppna den
+                aktuella preferensen innan du sparar.
+              </OperationNotice>
+            )}
             <div className="k-form-row">
               <label>
                 Kategori
                 <select
                   aria-label="Kategori"
                   value={attribute}
-                  disabled={busy}
+                  disabled={locked}
                   onChange={(e) => setAttribute(e.target.value as typeof attribute)}
                 >
                   {attributes.map((a) => (
@@ -284,7 +268,7 @@ export function FoodMemoryPanel({
                 <select
                   aria-label="Inställning"
                   value={direction}
-                  disabled={busy}
+                  disabled={locked}
                   onChange={(e) => setDirection(Number(e.target.value) as 1 | -1)}
                 >
                   <option value={1}>Gillar</option>
@@ -299,12 +283,12 @@ export function FoodMemoryPanel({
                 value={value}
                 maxLength={80}
                 required
-                disabled={busy}
+                disabled={locked}
                 onChange={(e) => setValue(e.target.value)}
               />
             </label>
             <div className="k-actions">
-              <button className="k-primary" disabled={busy || !value.trim()}>
+              <button className="k-primary" disabled={locked || draftStale || !value.trim()}>
                 <Plus size={18} />
                 {editing ? "Spara rättning" : "Lägg till"}
               </button>
@@ -312,9 +296,11 @@ export function FoodMemoryPanel({
                 <button
                   type="button"
                   className="k-secondary"
+                  disabled={busy || uncertain}
                   onClick={() => {
                     setEditing(null);
                     setValue("");
+                    setValidationError("");
                   }}
                 >
                   Avbryt
@@ -331,7 +317,7 @@ export function FoodMemoryPanel({
                   <select
                     aria-label="Välj din feedback"
                     value={feedbackId}
-                    disabled={busy}
+                    disabled={locked}
                     onChange={(e) => setFeedbackId(e.target.value)}
                   >
                     {data.feedback.map((f) => (
@@ -344,25 +330,32 @@ export function FoodMemoryPanel({
                 <blockquote>{data.feedback.find((f) => f.id === feedbackId)?.note}</blockquote>
                 <button
                   className="k-secondary"
-                  disabled={busy || !feedbackId}
+                  disabled={locked || !feedbackId}
                   onClick={() =>
-                    void run(async () => {
-                      const id =
-                        request.current?.feedback === feedbackId
-                          ? request.current.id
-                          : crypto.randomUUID();
-                      request.current = { feedback: feedbackId, id };
-                      await askChef(
-                        {
-                          action: "extract",
-                          requestId: id,
-                          context: emptyChefContext,
-                          feedbackId,
-                        },
-                        owner,
-                      );
-                      request.current = null;
-                    }, "Analysen är klar. Eventuella förslag väntar på ditt godkännande.")
+                    void run(
+                      async (scope) => {
+                        const id =
+                          request.current?.feedback === feedbackId
+                            ? request.current.id
+                            : crypto.randomUUID();
+                        request.current = { feedback: feedbackId, id };
+                        await askChef(
+                          {
+                            action: "extract",
+                            requestId: id,
+                            context: emptyChefContext,
+                            feedbackId,
+                          },
+                          owner,
+                          scope.signal,
+                        );
+                      },
+                      "Analysen är klar. Eventuella förslag väntar på ditt godkännande.",
+                      () => {
+                        request.current = null;
+                      },
+                      75000,
+                    )
                   }
                 >
                   <Sparkles size={18} />
@@ -393,10 +386,18 @@ export function FoodMemoryPanel({
                       <div className="k-actions">
                         <button
                           className="k-secondary"
-                          disabled={busy}
+                          disabled={locked}
                           onClick={() =>
                             void run(
-                              () => changeFoodMemory(owner, "confirm", s.id, s.revision),
+                              (scope) =>
+                                changeFoodMemory(
+                                  owner,
+                                  "confirm",
+                                  s.id,
+                                  s.revision,
+                                  undefined,
+                                  scope,
+                                ),
                               "Förslaget är bekräftat.",
                             )
                           }
@@ -406,7 +407,7 @@ export function FoodMemoryPanel({
                         </button>
                         <button
                           className="k-text"
-                          disabled={busy}
+                          disabled={locked}
                           onClick={() => {
                             setEditing(s);
                             setAttribute(s.attribute);
@@ -419,7 +420,7 @@ export function FoodMemoryPanel({
                         </button>
                         <button
                           className="k-text"
-                          disabled={busy}
+                          disabled={locked}
                           onClick={() => setConfirm({ action: "forget", signal: s })}
                         >
                           <Trash2 size={18} />
@@ -461,23 +462,29 @@ export function FoodMemoryPanel({
             </button>
             <button
               className="k-primary"
-              disabled={busy || offline || loadState !== "ready"}
+              disabled={locked || offline || loadState !== "ready"}
               onClick={() => {
                 const choice = confirm;
                 if (choice)
-                  void run(async () => {
-                    await changeFoodMemory(
-                      owner,
-                      choice.action,
-                      choice.signal?.id ?? crypto.randomUUID(),
-                      choice.signal?.revision ?? 0,
-                    );
-                    if (live.current) {
+                  void run(
+                    async (scope) => {
+                      setConfirm(null);
+                      await changeFoodMemory(
+                        owner,
+                        choice.action,
+                        choice.signal?.id ?? crypto.randomUUID(),
+                        choice.signal?.revision ?? 0,
+                        undefined,
+                        scope,
+                      );
+                    },
+                    "Matminnet är uppdaterat.",
+                    () => {
                       setConfirm(null);
                       setEditing(null);
                       setValue("");
-                    }
-                  }, "Matminnet är uppdaterat.");
+                    },
+                  );
               }}
             >
               <Trash2 size={18} />

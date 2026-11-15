@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { createCoreMemoryFixture, acceptCoreMemoryRecovery } from "./core-memory-browser.mjs";
 
 // This fixture never forwards a request, including to the installed loopback API.
 export function createCoreKitchenFixture({ origin, key, owner, users, report, base }) {
@@ -165,7 +166,9 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
     "food_signals",
     "kitchen_diners",
   ]);
+  const memory = createCoreMemoryFixture({ owner, signal, report, failedTables, base });
   return {
+    memory,
     recipeTitle,
     stepTitle,
     memoryValue,
@@ -292,6 +295,8 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
       )
         return json(route, true);
       const table = url.pathname.slice("/rest/v1/".length);
+      if (request.method() === "POST" && table === "rpc/food_memory_change")
+        return memory.write(route, user);
       if (
         exerciseMeals &&
         request.method() === "POST" &&
@@ -494,7 +499,7 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
           !(url.searchParams.get("state->>status") ?? "").includes("completed")
         )
           rows = [active];
-        if (table === "food_signals") rows = [signal];
+        if (table === "food_signals") rows = memory.rows(user.id);
         if (table === "kitchen_diners") rows = pairingDiners ?? diners;
       }
       return json(
@@ -662,7 +667,26 @@ export async function acceptCoreKitchen({
         { key: authKey, session: peerSession },
       ),
   });
-  await views.selectOption("pairings");
+  await acceptCoreMemoryRecovery({
+    page,
+    base,
+    fixture,
+    report,
+    capture: (name) => layout(page, artifacts, report, name),
+    switchAccount: () =>
+      page.evaluate(
+        ({ key, session }) => {
+          localStorage.setItem(key, JSON.stringify(session));
+          const channel = new BroadcastChannel(key);
+          channel.postMessage({ event: "SIGNED_IN", session });
+          channel.close();
+        },
+        { key: authKey, session: peerSession },
+      ),
+  });
+  await page.goto(base + "/kitchen#pairings", { waitUntil: "domcontentloaded" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByText(fixture.childName + " (barn)", { exact: true }).waitFor();
   report.phase = "kitchen-account-isolation";
   await page.evaluate(
     ({ key, session }) => {
@@ -683,7 +707,10 @@ export async function acceptCoreKitchen({
   ])
     assert.equal(await page.getByText(text, { exact: true }).count(), 0);
   report.passed.push("kitchen-account-change-clears-owner-view");
-  assert.equal(report.simulatedWrites, fixture.counts().writeCount);
+  assert.equal(
+    report.simulatedWrites,
+    fixture.counts().writeCount + fixture.memory.counts().writeCount,
+  );
   assert.equal(report.simulatedAiRequests, 0);
   await context.clearCookies();
 }

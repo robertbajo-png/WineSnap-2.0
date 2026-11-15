@@ -896,6 +896,49 @@ setup and earlier stages. No real key/account/provider was used, nor any old
 production/hosted test, password or internet setting changed. The existing
 owner-viewer preservation and safe installation gates still apply.
 
+## Memory Read And Mutation Recovery (November 15)
+
+Memory now reuses the existing bounded fresh-data/account helpers. Reads and
+mutations use a captured, server-verified token, the independent Chef gate and
+a shared abort deadline, never a later global session. Failed/offline reads
+hide records; changing owner keys/remounts the complete view and aborts pending
+work. A stalled cached-session lookup is bounded for Chef AI as well; actual
+models, quotas, safety constraints and server contracts are unchanged.
+
+Known commit plus failed reread is presented as saved with read recovery.
+Unknown replies keep typed drafts but block further writes. Recovery performs
+only a fresh read, then requires explicit completion without resending the old
+operation. This includes non-idempotent reset/correction and uncertain AI work;
+no reconnect replays them. A correction remains pinned to its original revision,
+with explicit cancel before editing newer data. Forget/reset confirmations close
+when dispatch begins, so a recovery read cannot resubmit an old destructive choice.
+Late callbacks cannot clear a new owner's draft or publish old notices. Mobile
+copy uses one recovery message and a visible keyboard-native completion control.
+
+Seven focused files / 83 tests, full local Vitest (166 files / 1,767 tests),
+typecheck and full lint passed. Two existing ChefPanel warnings remain; the two
+former memory warnings disappeared with the replaced lifecycle. Initial red API
+and TypeScript failures remain failed evidence, not passing results.
+
+All 85 isolated kitchen cases passed with the final v3 artifact, retaining the
+previous 72. Widths 320/390/1440 and 125% text include committed-save/read failure,
+double submit, conflict/draft preservation, uncertain forget with failed/successful
+read-only recovery, explicit completion, a late save across account change and
+the completion button above the mobile nav. Eleven RPCs/nine commits and 438
+reads were mocked; real backend/AI, forbidden calls and page/fixture errors were
+zero, and process cleanup passed. New memory-only counts: four RPCs/three commits,
+plus one injected newer revision. The 320px review/1440px draft screenshots were
+visually inspected. A synthetic-owner restore failure and an immediate dialog-
+animation assertion failed in earlier runs; reports were preserved, not accepted.
+Fixture reload/hidden-state waits corrected them. The earlier v2 success predates
+copy consolidation; final v3 is the current UI evidence. All 339 archive entries
+were validated before extraction into the verified local non-OneDrive project.
+
+No real owner/credential/provider, schema, password, route, old production or
+hosted test was used/changed. The real owner viewer remains untouched and the
+installed `05172af` checkpoint is not relabelled as updated. Safe installation,
+ordinary-JWT backend acceptance and human observations remain separate gates.
+
 ## Remaining DEV-03 Work
 
 These are substeps of the canonical roadmap, not a competing development plan:
@@ -904,7 +947,8 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Gallery, overview, meal-history and scan source slices passed full CI; retain
   all sixteen wine-browser scenarios in broader core regression. Mocked auth/AI is not live-provider,
   real-JWT/RLS or installed-owner acceptance.
-- Wider kitchen source checks and CI passed; retain all 72 cases alongside the
+- Wider kitchen source checks and CI passed; retain all 85 cases (including the
+  prior 72) alongside the
   16 wine cases. Failed startup/layout/navigation runs remain failures, not partial
   acceptance. Installed journeys and broader actual-owner use remain separate.
 - The bounded AI session follow-up passes 101 focused tests, typecheck, lint and
@@ -926,9 +970,10 @@ These are substeps of the canonical roadmap, not a competing development plan:
 - Review the remaining core screens, scan review/save, cookbook/Cook Mode,
   household/meal panels, memory, price provenance and keyboard/error states.
 - The owned household/meal/pairing fixtures above are now prepared/unit-tested,
-  including held writes across account change, not executed. Next source review:
-  memory correction/forgetting read/error/account states and keyboard recovery,
-  using existing synthetic fixtures, not new inference/provider evaluation.
+  including held writes across account change, not executed. Memory recovery
+  above is source-verified. Next prepare the existing owned memory-control
+  fixture's read/uncertain/conflict/late coverage, with ordinary tagged Auth/RLS,
+  not real owner data or new inference/provider evaluation.
   Keep the owner viewer open. Ranking remains deterministic; no later DEV stage.
 - Earlier accumulated source changes are installed and the narrower 69-case owned
   regression passed; this latest mutation slice is source-only. Broader remaining review and actual owner observations are
