@@ -99,9 +99,11 @@ export async function acceptOwnedKitchenRecovery({
     await page.goto(ownedApp + "/kitchen#cook");
     const toggle = page.getByRole("button", { name: /^(Pausa|\u00c5teruppta) matlagningen$/ });
     await toggle.waitFor();
+    phase("kitchen_recovery_first_ready");
     root = await page.locator("html").elementHandle();
     second = await context.newPage();
     await second.goto(ownedApp + "/kitchen#cook");
+    phase("kitchen_recovery_second_open");
     const edited = second.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/rest/v1/rpc/kitchen_save_session" &&
@@ -109,21 +111,25 @@ export async function acceptOwnedKitchenRecovery({
     );
     await second.getByRole("button", { name: /^(Pausa|\u00c5teruppta) matlagningen$/ }).click();
     assert.equal((await edited).status(), 200);
+    phase("kitchen_recovery_peer_committed");
     await second.waitForFunction(
       () => document.querySelector(".k-status button")?.disabled === false,
     );
     await toggle.click();
+    phase("kitchen_recovery_old_edit_clicked");
     await page
       .getByText(
         "K\u00f6ket \u00e4ndrades i en annan flik. H\u00e4mta uppdateringen innan du forts\u00e4tter.",
         { exact: true },
       )
       .waitFor();
+    phase("kitchen_recovery_conflict_observed");
     await page.goto(ownedApp + "/kitchen#library");
     const search = page.getByRole("searchbox", { name: "S\u00f6k recept" });
     await search.fill("local qa unsaved search");
     await page.getByRole("button", { name: "H\u00e4mta igen", exact: true }).click();
     await page.getByRole("alert").waitFor({ state: "hidden" });
+    phase("kitchen_recovery_read_completed");
     assert.equal(await search.inputValue(), "local qa unsaved search");
     assert.equal(await root.evaluate((node) => node.isConnected), true);
     await page.waitForTimeout(800);

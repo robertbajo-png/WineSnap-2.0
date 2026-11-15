@@ -3,7 +3,8 @@ param(
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly,
-  [switch]$ReplayApprovedImage
+  [switch]$ReplayApprovedImage,
+  [switch]$KitchenRecoveryOnly
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
@@ -11,6 +12,7 @@ if(($PublicOrigin -or $LocalOnly) -and $Action -ne 'Update'){throw 'Changing the
 if($PublicOrigin -and $LocalOnly){throw 'Choose one owned origin mode.'}
 if($PilotUi -and $Action -ne 'Update'){throw 'Changing the pilot UI requires an explicit Update.'}
 if($ReplayApprovedImage -and $Action -ne 'PilotJourneys'){throw 'Image replay is only for manual pilot acceptance.'}
+if($KitchenRecoveryOnly -and $Action -ne 'PilotAccept'){throw 'Focused kitchen acceptance requires PilotAccept.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 . (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
@@ -110,6 +112,7 @@ try {
   if($LocalOnly){$start.Environment['WINESNAP_OWNED_ORIGIN_RESET']='1'}
   if($PilotUi){$start.Environment['WINESNAP_OWNED_PILOT_UI']=$PilotUi}
   if($ReplayApprovedImage){$start.Environment['WINESNAP_OWNED_REPLAY_APPROVED_IMAGE']='1'}
+  if($KitchenRecoveryOnly){$start.Environment['WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY']='1'}
   $start.ArgumentList.Add((Join-Path $PSScriptRoot 'manage-owned-backend.mjs'));$start.ArgumentList.Add($Action)
   $phase='owned_backend_operation'
   $process=[Diagnostics.Process]::Start($start)

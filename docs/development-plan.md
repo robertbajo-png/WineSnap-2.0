@@ -304,6 +304,16 @@ other document before testing read-only recovery. No injected session/IDB seed
 or actual-owner edit is used. Its failed artifact was preserved separately.
 The full installed rerun is in progress, not a pass. Local broad type/lint checks
 for this follow-up were interrupted under resource pressure; full CI is required.
+Full Quality/Database Safety subsequently passed for `b491512` on push and PR:
+173 test files, 1,936 passing tests and one existing platform skip, plus typecheck,
+lint, synthetic build/runtime, client budget and security checks. Two existing
+Chef warnings remain. This does not make the still-running installed probe a pass.
+An explicit `PilotAccept -KitchenRecoveryOnly` mode is prepared to isolate this
+new regression if needed. It retains normal private wrapper/fixture/Auth/RLS and
+cleanup, blocks live journeys, and labels its result `kitchen-recovery-only`,
+never full acceptance. Granular phase markers identify the exact stalled step.
+No timeout, write guard or full-mode check is weakened. This focused mode has not
+yet run. Keep current installed and CI evidence distinct.
 Next after DEV-03 acceptance: bounded content-free provider observations and the
 eight-scenario guarded live cohort, with qualitative review and exact cleanup.
 

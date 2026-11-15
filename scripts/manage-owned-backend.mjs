@@ -820,6 +820,8 @@ try {
         fixture,
         remember,
         liveJourneys: action === "PilotJourneys",
+        kitchenRecoveryOnly:
+          action === "PilotAccept" && process.env.WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY === "1",
         replayApprovedImage: process.env.WINESNAP_OWNED_REPLAY_APPROVED_IMAGE === "1",
         peerFixture,
         rememberPeer: (value) =>

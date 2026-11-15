@@ -19,6 +19,7 @@ export async function acceptOwnedPilotUi(
     peerFixture: previousPeer,
     rememberPeer,
     liveJourneys = false,
+    kitchenRecoveryOnly = false,
     replayApprovedImage = false,
     artifactDirectory,
     progress = () => {},
@@ -26,6 +27,8 @@ export async function acceptOwnedPilotUi(
 ) {
   validateOwnedKeys(keys);
   assert.equal(typeof liveJourneys, "boolean");
+  assert.equal(typeof kitchenRecoveryOnly, "boolean");
+  if (kitchenRecoveryOnly) assert.equal(liveJourneys, false);
   assert.equal(typeof replayApprovedImage, "boolean");
   if (replayApprovedImage) assert.equal(liveJourneys, true);
   assert.equal(typeof rememberPeer, "function");
@@ -45,6 +48,7 @@ export async function acceptOwnedPilotUi(
     pageErrors: 0,
     passed: [],
     phase: "prepare",
+    scope: kitchenRecoveryOnly ? "kitchen-recovery-only" : "full",
   };
   let fixture, peer, browser, context, page;
   const phase = (name) => {
@@ -181,6 +185,27 @@ export async function acceptOwnedPilotUi(
       report.passed.push(`${screen}_${width}`);
     }
 
+    async function kitchenRecovery() {
+      const { acceptOwnedKitchenRecovery } = await import("./owned-kitchen-recovery.mjs");
+      report.kitchenRecovery = {};
+      await acceptOwnedKitchenRecovery({
+        page,
+        context,
+        fixture,
+        phase,
+        capture,
+        pass: (name) => report.passed.push(name),
+        report: report.kitchenRecovery,
+      });
+    }
+    if (kitchenRecoveryOnly) {
+      await kitchenRecovery();
+      assert.equal(report.externalRequests, 0);
+      assert.equal(report.blockedAiRequests, 0);
+      assert.equal(report.pageErrors, 0);
+      report.completed = true;
+      return report;
+    }
     for (const width of pilotViewports) {
       await page.setViewportSize({ width, height: width < 600 ? 844 : 1000 });
       phase("home");
@@ -405,19 +430,7 @@ export async function acceptOwnedPilotUi(
         report: report.liveJourneys,
       });
     }
-    {
-      const { acceptOwnedKitchenRecovery } = await import("./owned-kitchen-recovery.mjs");
-      report.kitchenRecovery = {};
-      await acceptOwnedKitchenRecovery({
-        page,
-        context,
-        fixture,
-        phase,
-        capture,
-        pass: (name) => report.passed.push(name),
-        report: report.kitchenRecovery,
-      });
-    }
+    await kitchenRecovery();
     const { acceptOwnedCoreStates } = await import("./owned-core-states.mjs");
     report.coreStates = await acceptOwnedCoreStates({
       page,
