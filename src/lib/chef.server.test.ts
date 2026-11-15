@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createChefHandler } from "./chef.server";
-import { emptyChefContext, safetyAnswer } from "@/features/chef/domain";
+import { emptyChefContext, recipeDraft, safetyAnswer } from "@/features/chef/domain";
 
 const owner = "00000000-0000-4000-8000-000000000001";
 const input = () => ({
@@ -11,6 +11,128 @@ const input = () => ({
   message: "Hur skär jag en tomat?",
   conversationId: crypto.randomUUID(),
   conversationRevision: 0,
+});
+
+describe("DEV-04 fixed Chef quality cases", () => {
+  const output = {
+    title: "Syntetisk soppa",
+    description: "Synthetic culinary fixture.",
+    servings: 2,
+    totalMinutes: 20,
+    ingredients: [{ name: "tomat", amount: 400, unit: "g" }],
+    steps: [
+      { title: "Forbered", text: "Skar tomaten.", timerSeconds: null },
+      { title: "Tillaga", text: "Koka soppan och smaka av.", timerSeconds: 600 },
+    ],
+  };
+  function contextRows() {
+    const version = {
+      id: crypto.randomUUID(),
+      recipe_id: crypto.randomUUID(),
+      user_id: owner,
+      revision: 3,
+      document: recipeDraft(output, "synthetic-model", () => crypto.randomUUID()),
+      created_at: "2026-11-15T12:00:00Z",
+    };
+    const session = {
+      id: crypto.randomUUID(),
+      user_id: owner,
+      recipe_version_id: version.id,
+      revision: 4,
+      state: { status: "paused", activeStep: 1, servings: 4, checkedIngredientIds: [], timers: [] },
+      last_request_id: crypto.randomUUID(),
+      updated_at: "2026-11-15T12:00:00Z",
+    };
+    return {
+      version,
+      session,
+      rows: { kitchen_recipe_versions: [version], cooking_sessions: [session] },
+    };
+  }
+  it("AQC-01: sends the pinned active step and scaled servings, without owner/session IDs", async () => {
+    const { version, session, rows } = contextRows();
+    const test = setup({ rows });
+    expect(
+      (
+        await test.call({
+          ...input(),
+          context: {
+            recipeVersionId: version.id,
+            sessionId: session.id,
+            sessionRevision: session.revision,
+          },
+        })
+      ).status,
+    ).toBe(200);
+    const messages = test.complete.mock.calls[0][0].messages as { content: string }[];
+    const context = JSON.parse(messages[1].content.split("\n").slice(1).join("\n"));
+    expect(context.recipe.activeStep).toBe(2);
+    expect(context.recipe.servings).toBe(4);
+    expect(context.recipe.ingredients[0].amount).toBe(800);
+    expect(context.recipe.steps[1].text).toBe(output.steps[1].text);
+    for (const id of [owner, version.id, version.recipe_id, session.id])
+      expect(JSON.stringify(messages)).not.toContain(id);
+    expect(test.filters).toContainEqual(["cooking_sessions", "user_id", owner]);
+    expect(test.filters).toContainEqual(["kitchen_recipe_versions", "user_id", owner]);
+  });
+  it("AQC-02: stale cooking context is rejected before the provider", async () => {
+    const { version, session, rows } = contextRows();
+    const test = setup({ rows });
+    const response = await test.call({
+      ...input(),
+      context: {
+        recipeVersionId: version.id,
+        sessionId: session.id,
+        sessionRevision: session.revision - 1,
+      },
+    });
+    expect(response.status).toBe(409);
+    expect(test.complete).not.toHaveBeenCalled();
+    expect(test.writes.some((w) => w.name === "chef_finish_request")).toBe(false);
+  });
+  it.each([
+    ["AQR-05", { servings: 3 }],
+    ["AQR-06", { totalMinutes: 21 }],
+    ["AQR-07", { description: "This raw chicken is safe to eat." }],
+  ])("%s: schema-valid draft still has to meet requested constraints", async (_id, changed) => {
+    const test = setup({ content: JSON.stringify({ ...output, ...changed }) });
+    const response = await test.call({
+      action: "generate",
+      requestId: crypto.randomUUID(),
+      context: emptyChefContext,
+      prompt: "En enkel soppa",
+      servings: 2,
+      maxMinutes: 20,
+    });
+    expect(response.status).toBe(502);
+    expect(test.complete).toHaveBeenCalledOnce();
+    expect(test.writes.some((w) => w.name === "chef_finish_request")).toBe(false);
+  });
+  it.each(["generate", "adapt"])(
+    "AQR-08/09: complete %s remains an explicit draft, never a saved recipe",
+    async (action) => {
+      const { version, rows } = contextRows();
+      const test = setup({ content: JSON.stringify(output), rows });
+      const response = await test.call({
+        action,
+        requestId: crypto.randomUUID(),
+        context:
+          action === "adapt"
+            ? { ...emptyChefContext, recipeVersionId: version.id }
+            : emptyChefContext,
+        prompt: "En enkel soppa",
+        servings: 2,
+        maxMinutes: 20,
+      });
+      expect(response.status).toBe(200);
+      expect((await response.json()).draft.servings).toBe(2);
+      expect(test.writes.map((w) => w.name)).toEqual([
+        "chef_user_active",
+        "chef_claim_request",
+        "chef_finish_request",
+      ]);
+    },
+  );
 });
 function setup(
   options: {

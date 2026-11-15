@@ -407,13 +407,15 @@ export async function acceptOwnedPilotUi(
     }
     {
       const { acceptOwnedKitchenRecovery } = await import("./owned-kitchen-recovery.mjs");
-      report.kitchenRecovery = await acceptOwnedKitchenRecovery({
+      report.kitchenRecovery = {};
+      await acceptOwnedKitchenRecovery({
         page,
         context,
         fixture,
         phase,
         capture,
         pass: (name) => report.passed.push(name),
+        report: report.kitchenRecovery,
       });
     }
     const { acceptOwnedCoreStates } = await import("./owned-core-states.mjs");

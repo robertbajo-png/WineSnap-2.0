@@ -17,16 +17,25 @@ export function assertKitchenRecoveryRead(url, method, fixture) {
   assert.equal(parsed.searchParams.get("user_id"), "eq." + fixture.userId);
 }
 
-// Tagged synthetic account only. Real Auth/RLS, no injected session or IDB edit.
-export async function acceptOwnedKitchenRecovery({ page, context, fixture, phase, capture, pass }) {
+// Tagged synthetic account only. One normal peer-tab edit, then read-only recovery.
+export async function acceptOwnedKitchenRecovery({
+  page,
+  context,
+  fixture,
+  phase,
+  capture,
+  pass,
+  report = {},
+}) {
   validateBrowserFixture(fixture);
-  const report = {
+  Object.assign(report, {
     completed: false,
     authChecks: 0,
+    writes: 0,
     blockedWrites: 0,
     fixtureErrors: 0,
     cleanupCompleted: false,
-  };
+  });
   const patterns = [
     "kitchen_recipes",
     "kitchen_recipe_versions",
@@ -39,11 +48,32 @@ export async function acceptOwnedKitchenRecovery({ page, context, fixture, phase
     let response;
     try {
       const request = route.request();
-      if (request.method() !== "GET") {
+      if (request.method() === "OPTIONS") return await route.fallback();
+      if (!["GET", "POST"].includes(request.method())) {
         report.blockedWrites++;
         throw Error("unexpected_probe_write");
       }
-      assertKitchenRecoveryRead(request.url(), request.method(), fixture);
+      const url = new URL(request.url());
+      assert.equal(url.origin, ownedApi);
+      if (request.method() === "GET") assertKitchenRecoveryRead(request.url(), "GET", fixture);
+      else {
+        assert.equal(request.frame().page(), second);
+        assert.equal(url.pathname, "/rest/v1/rpc/kitchen_save_session");
+        assert.equal(report.writes, 0);
+        const body = request.postDataJSON();
+        assert.deepEqual(
+          Object.keys(body).sort(),
+          ["_id", "_version_id", "_expected_revision", "_request_id", "_state", "_feedback"].sort(),
+        );
+        assert.equal(body._id, fixture.sessionId);
+        assert.equal(body._version_id, fixture.versionId);
+        assert.equal(body._feedback, null);
+        assert.ok(Number.isInteger(body._expected_revision) && body._expected_revision > 0);
+        assert.match(body._request_id, /^[a-f0-9-]{36}$/);
+        assert.ok(["running", "paused"].includes(body._state?.status));
+        assert.ok(JSON.stringify(body._state).length < 8192);
+        report.writes++;
+      }
       const headers = request.headers();
       assert.ok(headers.authorization?.startsWith("Bearer ") && headers.apikey);
       response = await context.request.get(ownedApi + "/auth/v1/user", {
@@ -72,7 +102,16 @@ export async function acceptOwnedKitchenRecovery({ page, context, fixture, phase
     root = await page.locator("html").elementHandle();
     second = await context.newPage();
     await second.goto(ownedApp + "/kitchen#cook");
-    await second.getByRole("button", { name: /^(Pausa|\u00c5teruppta) matlagningen$/ }).waitFor();
+    const edited = second.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/rest/v1/rpc/kitchen_save_session" &&
+        response.request().method() === "POST",
+    );
+    await second.getByRole("button", { name: /^(Pausa|\u00c5teruppta) matlagningen$/ }).click();
+    assert.equal((await edited).status(), 200);
+    await second.waitForFunction(
+      () => document.querySelector(".k-status button")?.disabled === false,
+    );
     await toggle.click();
     await page
       .getByText(
@@ -89,8 +128,10 @@ export async function acceptOwnedKitchenRecovery({ page, context, fixture, phase
     assert.equal(await root.evaluate((node) => node.isConnected), true);
     await page.waitForTimeout(800);
     assert.equal(report.blockedWrites, 0);
+    assert.equal(report.writes, 1);
     assert.equal(report.fixtureErrors, 0);
     assert.ok(report.authChecks >= 6);
+    await page.setViewportSize({ width: 390, height: 844 });
     await capture("kitchen-read-recovered", 390);
     pass("kitchen_installed_read_recovery_preserves_document_search_and_never_replays_write");
     report.completed = true;
