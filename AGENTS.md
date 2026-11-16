@@ -31,7 +31,26 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff, November 15: DEV-03 technical acceptance is complete; DEV-04 is
+Current handoff, November 16: DEV-03 technical acceptance remains complete;
+DEV-04 is Pagar. Shared optional content-free AI observations and sommelier taste
+context minimization are implemented. All eight bounded live cases passed from
+source 606f712 at 17:06:59 UTC using real owned Auth/RLS and native existing
+providers; exactly eight attempts, no fallback/retry. Exact tagged-fixture cleanup
+and absence checks passed. Do not rerun successful paid cases. An earlier
+zero-provider preflight failure was fixed and is documented, not a pass.
+Full Quality/Database Safety on push/PR passed: 176 files, 1,980 tests, one existing
+platform skip; two existing Chef lint warnings. These are source/live gates,
+not installed browser, free-form semantic, medical or human-use certification.
+The real viewer remained ready/authenticated/operator-active with a fresh
+heartbeat at 17:02:39 UTC, same run 5f469d75-212d-4305-a737-93f24c6fc54f. Installed
+app is still b7dc0b2. One safe-closure request is outstanding; do not force-close
+or update over it. Final read-only supervisor check was fully healthy with a
+fresh heartbeat at 17:10:13 UTC. After verified closure: fresh Check, encrypted backup/isolated
+restore, Update, affected installed checks and validated shortcut Open/heartbeat.
+Read the current canonical handoff and docs/ai-quality.md before doing so. No old
+production, abandoned test, tunnel, passwords, models or credentials changed.
+
+Previous handoff, November 15 (historical): DEV-03 technical acceptance is complete; DEV-04 is
 Pagar. The read recovery is installed from clean b7dc0b2, with verified same-PC
 backup/restore. All 91 isolated source browser cases and the focused installed
 normal-Auth/RLS recovery passed. The focused run at 20:43:07 UTC observed one Auth
