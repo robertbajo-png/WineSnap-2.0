@@ -6,6 +6,7 @@ import {
   liveQualityIds,
   maySendQualityCase,
   qualityAction,
+  qualityPreflightStageSchema,
 } from "../../scripts/lib/ai-quality-live-contract";
 
 describe("bounded live quality cohort contracts", () => {
@@ -40,6 +41,12 @@ describe("bounded live quality cohort contracts", () => {
         liveQualityCaseSchema.safeParse({ ...freshQualityCase("LIVE-02"), ...extra }).success,
       ).toBe(false);
     }
+  });
+  it("reports only fixed preflight stages, never database exceptions or request contents", () => {
+    expect(qualityPreflightStageSchema.parse("wine_prepare")).toBe("wine_prepare");
+    expect(qualityPreflightStageSchema.parse("ready")).toBe("ready");
+    expect(qualityPreflightStageSchema.safeParse("private database error").success).toBe(false);
+    expect(qualityPreflightStageSchema.safeParse({ token: "private" }).success).toBe(false);
   });
   it("uses the Windows wrapper's existing private stores, not environment credentials or arguments", () => {
     const parent = readFileSync(

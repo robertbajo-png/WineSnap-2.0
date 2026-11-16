@@ -50,6 +50,7 @@ let report: LiveQualityReport = {
   finished: false,
   cleanupCompleted: false,
   backendVerified: null,
+  preflightStage: "not_started",
   productionTouched: false,
   configurationChanged: false,
   realAccountsChanged: false,
@@ -185,6 +186,7 @@ async function acceptQualityFixtures(
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
+      report.preflightStage = "fixture_prepare";
       const created = await ownedBrowserFixture(
         keys,
         "prepare",
@@ -199,6 +201,7 @@ async function acceptQualityFixtures(
         },
       );
       const fixture = validateBrowserFixture(created.fixture);
+      report.preflightStage = "fixture_login";
       const app = createClient(ownedApi, ownedToken(keys!, "anon"), options);
       const password = createHmac("sha256", keys!.jwtSecret)
         .update(`owned-browser-fixture-password-v1:${fixture.run}`)
@@ -215,6 +218,7 @@ async function acceptQualityFixtures(
     const owner = actors[0],
       peer = actors[1],
       fixture = fixtures[0];
+    report.preflightStage = "fixture_documents";
     const wine = ok(await owner.app.from("wines").select("id").eq("id", fixture.wineId).single());
     const version = versionSchema.parse(
       ok(
@@ -228,6 +232,7 @@ async function acceptQualityFixtures(
     const session = savedSessionSchema.parse(
       ok(await owner.app.from("cooking_sessions").select("*").eq("id", fixture.sessionId).single()),
     );
+    report.preflightStage = "fixture_session";
     ok(
       await owner.app.rpc("kitchen_save_session", {
         _id: session.id,
@@ -323,8 +328,10 @@ try {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+  report.preflightStage = "containers";
   for (const name of ["winesnap-owned-web", "winesnap-owned-auth", "winesnap-owned-gateway"])
     await inspectContainer(name, keys.installationId);
+  report.preflightStage = "prior_cleanup";
   await cleanupPriorFixtures();
   if (report.cases.length === liveQualityIds.length) {
     report.finished = true;
@@ -404,9 +411,11 @@ try {
       assert.ok(handler);
       return handler(request);
     };
+    report.preflightStage = "images";
     const pictures = await images();
     globalThis.fetch = checkedFetch;
     const backend = await acceptQualityFixtures(async ({ owner, peer, wine, version }) => {
+      report.preflightStage = "fixture_auth";
       for (const user of [owner, peer]) {
         await actor(user.token);
         privateIds.add(user.id);
@@ -416,7 +425,8 @@ try {
         for (const value of Object.values(fixture))
           if (typeof value === "string" && /^[a-f0-9-]{36}$/.test(value)) privateIds.add(value);
       for (const id of [wine.id, version.id, version.recipe_id]) privateIds.add(id);
-      ok(
+      report.preflightStage = "wine_prepare";
+      const preparedWine = ok(
         await owner.app
           .from("wines")
           .update({
@@ -425,15 +435,29 @@ try {
             vintage: null,
             is_public: false,
           })
-          .eq("id", wine.id),
+          .eq("id", wine.id)
+          .select("id")
+          .single(),
       );
-      ok(
-        await owner.app.rpc("food_memory_change", {
-          _action: "add",
-          _id: randomUUID(),
-          _entry: { attribute: "ingredient", value: "svamp", direction: -1 },
-        }),
+      assert.equal(preparedWine.id, wine.id);
+      report.preflightStage = "memory_prepare";
+      const memoryId = randomUUID();
+      privateIds.add(memoryId);
+      const changed = await owner.app.rpc("food_memory_change", {
+        _action: "add",
+        _id: memoryId,
+        _entry: { attribute: "ingredient", value: "svamp", direction: -1 },
+      });
+      // This RPC returns void. Verify its effect with the fixture's normal JWT.
+      assert.equal(changed.error, null);
+      const memory = ok(
+        await owner.app
+          .from("food_signals")
+          .select("status,value,direction")
+          .eq("id", memoryId)
+          .single(),
       );
+      assert.deepEqual(memory, { status: "confirmed", value: "svamp", direction: -1 });
       const empty = { recipeVersionId: null, sessionId: null, sessionRevision: null };
       const post = async (path: string, body: object) => {
         const response = await dispatch(
@@ -456,6 +480,7 @@ try {
           servings: 2,
           maxMinutes: 20,
         });
+      report.preflightStage = "ready";
       for (const id of liveQualityIds) {
         if (report.cases.some((c) => c.id === id && c.outboundAttempts === 1)) continue;
         const row = freshQualityCase(id);

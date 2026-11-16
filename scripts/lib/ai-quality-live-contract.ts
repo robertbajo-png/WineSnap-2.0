@@ -58,6 +58,20 @@ export const liveQualityCaseSchema = z
   })
   .strict();
 export type LiveQualityCase = z.infer<typeof liveQualityCaseSchema>;
+export const qualityPreflightStageSchema = z.enum([
+  "not_started",
+  "containers",
+  "prior_cleanup",
+  "images",
+  "fixture_prepare",
+  "fixture_login",
+  "fixture_documents",
+  "fixture_session",
+  "fixture_auth",
+  "wine_prepare",
+  "memory_prepare",
+  "ready",
+]);
 export const liveQualityReportSchema = z
   .object({
     suite: z.literal("winesnap-ai-quality-live-v1"),
@@ -66,6 +80,7 @@ export const liveQualityReportSchema = z
     finished: z.boolean(),
     cleanupCompleted: z.boolean(),
     backendVerified: z.boolean().nullable(),
+    preflightStage: qualityPreflightStageSchema.default("not_started"),
     productionTouched: z.literal(false),
     configurationChanged: z.literal(false),
     realAccountsChanged: z.literal(false),
