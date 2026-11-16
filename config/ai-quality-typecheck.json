@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["../scripts/check-owned-ai-quality.ts"],
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["vite/client", "node"]
+  }
+}

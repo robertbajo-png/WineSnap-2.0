@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createChefHandler } from "./chef.server";
 import { emptyChefContext, recipeDraft, safetyAnswer } from "@/features/chef/domain";
+import type { AiObserver, AiCallObservation } from "../../supabase/functions/_shared/aiObservation";
 
 const owner = "00000000-0000-4000-8000-000000000001";
 const input = () => ({
@@ -145,6 +146,8 @@ function setup(
     providerStatus?: number;
     authorizeStatus?: boolean;
     rows?: Record<string, Record<string, unknown>[]>;
+    observation?: AiCallObservation;
+    providerTimeout?: boolean;
   } = {},
 ) {
   const writes: { name: string; args: Record<string, unknown> }[] = [];
@@ -174,20 +177,25 @@ function setup(
     };
     return query;
   });
-  const complete = vi.fn(async (_body: Record<string, unknown>) => ({
-    model: "gemini-synthetic",
-    response: options.providerStatus
-      ? new Response("private provider error", { status: options.providerStatus })
-      : Response.json({
-          choices: [
-            {
-              finish_reason: options.finish ?? "stop",
-              message: { content: options.content ?? "**Tomat:** Skär försiktigt." },
-            },
-          ],
-          usage: { prompt_tokens: 50, completion_tokens: 15 },
-        }),
-  }));
+  const complete = vi.fn(async (_body: Record<string, unknown>, observe?: AiObserver) => {
+    if (options.observation) observe?.(options.observation);
+    if (options.providerTimeout) throw new DOMException("private provider timeout", "TimeoutError");
+    return {
+      model: "gemini-synthetic",
+      response: options.providerStatus
+        ? new Response("private provider error", { status: options.providerStatus })
+        : Response.json({
+            choices: [
+              {
+                finish_reason: options.finish ?? "stop",
+                message: { content: options.content ?? "**Tomat:** Skär försiktigt." },
+              },
+            ],
+            usage: { prompt_tokens: 50, completion_tokens: 15 },
+          }),
+      observation: options.observation,
+    };
+  });
   const authorize = vi.fn(async () => {
     if (options.authorizeStatus) throw new Error("private auth error");
     return { owner, admin: { rpc, from } as unknown as SupabaseClient };
@@ -209,6 +217,86 @@ function setup(
   return { call, complete, authorize, writes, filters };
 }
 describe("test-only Chef security boundary", () => {
+  const measured: AiCallObservation = {
+    selectedModel: "gemini-3.8-flash",
+    returnedModel: null,
+    providerStatus: 200,
+    outcome: "http_ok",
+    attempts: 1,
+    durationMs: 10,
+    inputTokens: 50,
+    outputTokens: 15,
+  };
+  it("returns per-action metadata without putting measurements into conversation content", async () => {
+    const test = setup({ observation: measured });
+    const response = await test.call();
+    expect(JSON.parse(response.headers.get("X-WineSnap-AI-Metrics")!)).toMatchObject({
+      action: "chef-chat",
+      ...measured,
+      routeStatus: 200,
+    });
+    expect(await response.text()).not.toContain("providerStatus");
+    expect(
+      test.writes.find((w) => w.name === "chef_finish_request")?.args.result,
+    ).not.toHaveProperty("observation");
+  });
+  it("distinguishes provider HTTP success from rejected recipe content", async () => {
+    const test = setup({ observation: measured, content: '{"title":"partial"}' });
+    const response = await test.call({
+      action: "generate",
+      requestId: crypto.randomUUID(),
+      context: emptyChefContext,
+      prompt: "Soppa",
+      servings: 2,
+      maxMinutes: 20,
+    });
+    expect(response.status).toBe(502);
+    expect(JSON.parse(response.headers.get("X-WineSnap-AI-Metrics")!)).toMatchObject({
+      action: "chef-generate",
+      outcome: "http_ok",
+      providerStatus: 200,
+      routeStatus: 502,
+    });
+  });
+  it("retains timeout metadata without exposing the thrown provider error", async () => {
+    const test = setup({
+      observation: {
+        ...measured,
+        providerStatus: null,
+        outcome: "timeout",
+        inputTokens: null,
+        outputTokens: null,
+      },
+      providerTimeout: true,
+    });
+    const response = await test.call();
+    expect(response.status).toBe(504);
+    expect(JSON.parse(response.headers.get("X-WineSnap-AI-Metrics")!)).toMatchObject({
+      action: "chef-chat",
+      outcome: "timeout",
+      routeStatus: 504,
+      inputTokens: null,
+    });
+    expect(await response.text()).not.toContain("private");
+  });
+  it("does not pretend cached, safety, disabled or quota-denied results made a new provider call", async () => {
+    for (const options of [
+      { cached: { answer: "stored", model: "old-model" } },
+      { quota: true },
+      { active: false },
+    ]) {
+      const test = setup({ ...options, observation: measured });
+      expect((await test.call()).headers.get("X-WineSnap-AI-Metrics")).toBeNull();
+      expect(test.complete).not.toHaveBeenCalled();
+    }
+    const safety = setup({ observation: measured });
+    expect(
+      (await safety.call({ ...input(), message: "Can I eat raw chicken?" })).headers.get(
+        "X-WineSnap-AI-Metrics",
+      ),
+    ).toBeNull();
+    expect(safety.complete).not.toHaveBeenCalled();
+  });
   it("rejects disabled, unauthenticated and unexpected fields before provider access", async () => {
     const disabled = setup({ enabled: false });
     expect((await disabled.call()).status).toBe(503);

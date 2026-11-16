@@ -246,6 +246,19 @@ describe("local Gemini chat and recommendation boundary", () => {
     expect(send.mock.calls[0][0]).toBe(
       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     );
+    const metrics = JSON.parse(response.headers.get("X-WineSnap-AI-Metrics")!);
+    expect(metrics).toMatchObject({
+      action: "ask-winesnap",
+      selectedModel: "gemini-3.8-flash",
+      providerStatus: 502,
+      outcome: "http_error",
+      inputTokens: null,
+      outputTokens: null,
+      attempts: 1,
+      routeStatus: 502,
+    });
+    expect(JSON.stringify(metrics)).not.toMatch(/synthetic|Suggest a dish|Bearer|user_id/);
+    expect(response.headers.get("cache-control")).toBe("no-store");
   });
   it.each(names)("keeps %s off outside the explicit local runtime", async (name) => {
     vi.stubEnv("WINESNAP_LOCAL_AI_ENABLED", "false");

@@ -8,6 +8,11 @@ import { createHandler as createWineSuggestions } from "../../supabase/functions
 import { createHandler as createRestaurantMatch } from "../../supabase/functions/restaurant-match/handler";
 import { createHandler as createPreferenceSignals } from "../../supabase/functions/extract-preference-signals/handler";
 import type { LocalAiFunction } from "./aiTransport";
+import { createAiClient } from "../../supabase/functions/_shared/aiClient";
+import {
+  aiObservationHeaders,
+  type AiCallObservation,
+} from "../../supabase/functions/_shared/aiObservation";
 
 import { loadCredentials } from "./localCredentials.server";
 import { approvedLocalBackend } from "./backendScope";
@@ -102,9 +107,13 @@ async function readInput(request: Request, name: LocalAiFunction) {
 
 // This adapter is opt-in and test-only. It does not enable unrelated admin routes.
 export async function handleLocalAi(request: Request, name: LocalAiFunction) {
+  let observation: AiCallObservation | undefined;
   const origin = approvedLocalBackend(process.env);
   const json = (error: string, status: number) =>
-    Response.json({ error }, { status, headers: cacheHeaders });
+    Response.json(
+      { error },
+      { status, headers: { ...cacheHeaders, ...aiObservationHeaders(name, observation, status) } },
+    );
   if (process.env.WINESNAP_LOCAL_AI_ENABLED !== "true" || !origin)
     return json("Local AI is not enabled", 503);
   if (!Object.hasOwn(schemas, name)) return json("Unknown AI function", 404);
@@ -147,6 +156,17 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
       }),
     );
     const dependencies = {
+      aiClient: ((workload, env, send) =>
+        createAiClient(
+          workload,
+          env,
+          send,
+          process.env.WINESNAP_OWNED_BACKEND_ENABLED === "true"
+            ? (value) => {
+                observation = value;
+              }
+            : undefined,
+        )) as typeof createAiClient,
       env,
       requireAccess: access,
       createClient: (
@@ -174,6 +194,10 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
     headers.delete("access-control-allow-origin");
     headers.delete("access-control-allow-headers");
     for (const [name, value] of Object.entries(cacheHeaders)) headers.set(name, value);
+    for (const [key, value] of Object.entries(
+      aiObservationHeaders(name, observation, response.status),
+    ))
+      headers.set(key, value);
     return new Response(response.body, { status: response.status, headers });
   } catch {
     return json("Local AI is unavailable", 503);

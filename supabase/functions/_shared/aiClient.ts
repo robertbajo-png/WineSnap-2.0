@@ -1,4 +1,5 @@
 import { AI_MODELS } from "./aiModels.ts";
+import { observeAiCompletion, type AiObserver } from "./aiObservation.ts";
 
 type Workload = keyof typeof AI_MODELS;
 type Environment = (name: string) => string | undefined;
@@ -73,7 +74,12 @@ async function sendGeminiWithRetry(
   }
 }
 
-export function createAiClient(workload: Workload, env: Environment, send: typeof fetch = fetch) {
+export function createAiClient(
+  workload: Workload,
+  env: Environment,
+  send: typeof fetch = fetch,
+  observe?: AiObserver,
+) {
   const provider = providers[workload];
   const key = env(provider.key)?.trim();
   const model = env(provider.model)?.trim() || AI_MODELS[workload];
@@ -117,6 +123,14 @@ export function createAiClient(workload: Workload, env: Environment, send: typeo
       } else {
         delete payload.max_completion_tokens;
       }
+      const started = Date.now();
+      let attempts = 0;
+      const measuredSend: typeof fetch = observe
+        ? (url, init) => {
+            attempts++;
+            return send(url, init);
+          }
+        : send;
       const init: RequestInit = {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -125,9 +139,17 @@ export function createAiClient(workload: Workload, env: Environment, send: typeo
         cache: "no-store",
         body: JSON.stringify(payload),
       };
-      return retryGemini
-        ? sendGeminiWithRetry(send, provider.endpoint, init, timeoutMs)
-        : send(provider.endpoint, init);
+      const execute = () =>
+        retryGemini
+          ? sendGeminiWithRetry(measuredSend, provider.endpoint, init, timeoutMs)
+          : measuredSend(provider.endpoint, init);
+      return observe
+        ? observeAiCompletion(
+            execute,
+            { model, started, timeoutMs, attempts: () => attempts },
+            observe,
+          )
+        : execute();
     },
   };
 }

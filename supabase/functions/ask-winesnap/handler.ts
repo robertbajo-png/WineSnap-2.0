@@ -53,6 +53,28 @@ function formatPreference(item: Record<string, unknown>) {
   return `- ${direction} ${item.attribute}: ${String(value).slice(0, 120)} (confidence ${Math.round(Number(item.confidence ?? 0) * 100)}%, ${item.evidence_count ?? 1} evidence)`;
 }
 
+export function tasteContext(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const fields = [
+    "avg_body",
+    "avg_tannin",
+    "avg_acidity",
+    "avg_sweetness",
+    "avg_oak",
+    "avg_fruit",
+    "favorite_grapes",
+    "favorite_regions",
+    "favorite_types",
+    "memory_confidence",
+    "signal_count",
+    "total_wines",
+  ];
+  return Object.fromEntries(
+    fields.filter((key) => Object.hasOwn(row, key)).map((key) => [key, row[key]]),
+  );
+}
+
 export function createHandler(dependencies: AiRuntime) {
   const { env, createClient, requireAccess: requireAiAccess } = dependencies;
   return async (req: Request) => {
@@ -165,7 +187,7 @@ export function createHandler(dependencies: AiRuntime) {
         screen: screenFacts,
         currentWine: currentWine ? wineFacts : null,
         statedProfile: profileResult.data,
-        computedTaste: tasteResult.data,
+        computedTaste: tasteContext(tasteResult.data),
         reliableMemory: memory.map(formatPreference),
         cellar: cellar.map((wine) => ({
           producer: wine.producer,
