@@ -138,7 +138,16 @@ These automated tripwires are not free-form semantic review, original-photo
 accuracy, installed-browser verification, human acceptance or medical/allergen
 safety certification. Their flags remain explicitly false.
 
-Next: safely install and verify affected routes after the owner saves/closes the
-open local viewer. Keep DEV-04 Pagar until that delivery check; retain actual
-owner use and qualitative review separately. Never close the viewer or replay
-successful paid cases just to advance the status board.
+## November 17 Installation
+
+The owned Windows installation was updated from clean `f9bb532` after confirmed
+viewer closure and verified encrypted backup/isolated restore. No new migration,
+model, provider or public change. All six installed wine AI routes and Chef
+denied anonymous POSTs with 401, no-store and no AI metrics header. Eleven
+installed Features checks passed, including normal fixture Auth/RLS, memory and
+the provider-free Chef safety path. Exact fixture cleanup passed; zero runs of
+the paid cases. See the canonical development plan for the installation receipt.
+
+This completes the scoped technical DEV-04 checks. Three actual owner usage
+passes and qualitative review remain separate in DEV-05; no broad semantic or
+medical conclusion follows from these automated checks.

@@ -31,7 +31,24 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff, November 16: DEV-03 technical acceptance remains complete;
+Current handoff, November 17: DEV-04 technical scope is complete and DEV-05 is
+Pagar. The owned local app was updated from clean f9bb532 at 21:39:49 UTC, after
+fresh owner Check, encrypted backup owned-20261117-212540616.dpapi and successful
+isolated same-PC restore/cleanup. Dark-v1/origin label retained, loopback only,
+37 migrations matched/none new. Full CI green on push/PR for that source. Seven
+installed anonymous AI route probes denied access with no-store and no metrics.
+All 11 installed Features checks and exact two-account cleanup passed, zero new
+paid requests. Fresh after-update owner Check/scoped logout passed at 21:50:32
+UTC. A single launch from the validated WineSnap lokalt shortcut reached ready/
+authenticated with an advancing heartbeat at 21:54:08 UTC, viewer run
+d2984091-ec18-47a7-9036-627490d812a2, internet paused and zero blocked requests.
+The read-only supervisor was fully healthy. Reuse the active viewer; do not
+force-close or reinstall over it. Next: actual owner usage pass for scan/review/
+save/image in the canonical plan. No human pass, fresh full browser sweep or
+second-PC recovery is claimed. No old production, hosted test, tunnel, password,
+provider or model change. Do not replay the eight successful live cases.
+
+Previous handoff, November 16 (historical): DEV-03 technical acceptance remains complete;
 DEV-04 is Pagar. Shared optional content-free AI observations and sommelier taste
 context minimization are implemented. All eight bounded live cases passed from
 source 606f712 at 17:06:59 UTC using real owned Auth/RLS and native existing
