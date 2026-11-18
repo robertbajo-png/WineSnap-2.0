@@ -39,6 +39,8 @@ serving/unit logic, unknown quantities and basis-scoped list edits. No planner
 database, UI, local install or public change. Next is owner-scoped revisioned
 persistence and associated export/deletion/backup scope, then Kitchen UI and
 exact-version Cook Mode. See the current DEV-06 plan handoff before continuing.
+All 25 focused tests passed; Quality/Database Safety were green on push/PR
+at e869e8f (1,992 tests passed, one existing skip).
 
 Previous handoff, November 18 afternoon: DEV-05 is Pagar, app remains f9bb532.
 Passive request/response and guard counters narrowed two focused timeouts to

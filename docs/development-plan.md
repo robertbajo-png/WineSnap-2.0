@@ -285,6 +285,10 @@ Two focused planning/kitchen domain files passed all 25 tests, including civil
 date edges, validation, exact-version isolation, mixed units, unknown amounts
 and the manual/edit round trip. This is pure source logic, not a database or
 browser acceptance run.
+Quality and Database Safety at `e869e8f` passed on push and PR: 177 test
+files, 1,992 passed and one existing skip. Typecheck, lint, synthetic Node
+build/runtime, client budget and the required npm audits ran. No deployment
+or local installation ran; the existing public-release check remains in place.
 
 Next: add owner-scoped persistence with revision checks and exact owned-version
 validation, plus relevant export/deletion and backup coverage. Then add the
