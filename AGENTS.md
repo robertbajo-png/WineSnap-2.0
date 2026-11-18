@@ -31,7 +31,18 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06 adds private week-plan persistence in source. Additive
+Current handoff: DEV-06 adds Veckoplan under Mer i koket in source. The UI
+plans exact recipe versions and servings, derives editable purchases, and
+keeps a draft in memory until explicit save. Revision conflict and uncertain
+save recovery require a read and never automatically replay a write.
+Synthetic Chromium covered the planner and list at 320, 390 and 1440 px
+with 125% text, explicit recovery/reconnect and exact-version Cook Mode.
+No installed app, real account, old production or hosted test change.
+Next: isolated migrated PostgREST/browser and backup/restore acceptance for
+the new table, then local delivery only after the applicable release gates.
+The DEV-05 owner bottle test stays deferred. See the canonical plan.
+
+Previous handoff: DEV-06 adds private week-plan persistence in source. Additive
 migration 20261118200000_kitchen_week_plans.sql, owner RLS, revisioned and
 idempotent save RPC, pinned-version client reads, export and erasure coverage
 are in place. The owned database backup already captures all relations; a

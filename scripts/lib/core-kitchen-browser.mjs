@@ -169,6 +169,7 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
   const memory = createCoreMemoryFixture({ owner, signal, report, failedTables, base });
   return {
     memory,
+    version,
     recipeTitle,
     stepTitle,
     memoryValue,
@@ -510,7 +511,7 @@ export function createCoreKitchenFixture({ origin, key, owner, users, report, ba
   };
 }
 
-async function layout(page, artifacts, report, name) {
+export async function layout(page, artifacts, report, name) {
   for (const width of [320, 390, 1440]) {
     report.phase = `${name}-layout-${width}`;
     await page.setViewportSize({ width, height: width < 500 ? 844 : 1000 });

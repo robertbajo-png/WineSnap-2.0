@@ -11,14 +11,16 @@ import {
 } from "./lib/independent-readiness.mjs";
 import { createCoreKitchenFixture, acceptCoreKitchen } from "./lib/core-kitchen-browser.mjs";
 import { acceptCoreKitchenTabs } from "./lib/core-kitchen-tabs-browser.mjs";
+import { createCorePlanningFixture, acceptCorePlanning } from "./lib/core-planning-browser.mjs";
 import { createCoreChatFixture, acceptCoreChat } from "./lib/core-chat-browser.mjs";
 import { createCoreCollectorFixture, acceptCoreCollector } from "./lib/core-collector-browser.mjs";
 import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-browser.mjs";
 
 // Synthetic source UI only. No installed backend, real account or provider credentials.
 const kitchenTabsOnly = process.argv.length === 3 && process.argv[2] === "--kitchen-tabs";
+const planningOnly = process.argv.length === 3 && process.argv[2] === "--planning";
 const kitchenOnly =
-  kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
+  planningOnly || kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
 const chatOnly = process.argv.length === 3 && process.argv[2] === "--chat";
 const collectorOnly = process.argv.length === 3 && process.argv[2] === "--collector";
 const pricesOnly = process.argv.length === 3 && process.argv[2] === "--prices";
@@ -27,29 +29,33 @@ const ownedFixture = kitchenOnly || chatOnly || collectorOnly || pricesOnly;
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = join(
   root,
-  pricesOnly
-    ? "dist/core-prices-runtime"
-    : kitchenOnly
-      ? "dist/core-kitchen-runtime"
-      : chatOnly
-        ? "dist/core-chat-runtime"
-        : collectorOnly
-          ? "dist/core-collector-runtime"
-          : "dist/independent-runtime",
+  planningOnly
+    ? "dist/core-planning-runtime"
+    : pricesOnly
+      ? "dist/core-prices-runtime"
+      : kitchenOnly
+        ? "dist/core-kitchen-runtime"
+        : chatOnly
+          ? "dist/core-chat-runtime"
+          : collectorOnly
+            ? "dist/core-collector-runtime"
+            : "dist/independent-runtime",
 );
 const artifacts = join(
   root,
-  pricesOnly
-    ? "dist/core-prices"
-    : kitchenTabsOnly
-      ? "dist/core-kitchen-tabs"
-      : kitchenOnly
-        ? "dist/core-kitchen"
-        : chatOnly
-          ? "dist/core-chat"
-          : collectorOnly
-            ? "dist/core-collector"
-            : "dist/core-experience",
+  planningOnly
+    ? "dist/core-planning"
+    : pricesOnly
+      ? "dist/core-prices"
+      : kitchenTabsOnly
+        ? "dist/core-kitchen-tabs"
+        : kitchenOnly
+          ? "dist/core-kitchen"
+          : chatOnly
+            ? "dist/core-chat"
+            : collectorOnly
+              ? "dist/core-collector"
+              : "dist/core-experience",
 );
 const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
@@ -120,15 +126,17 @@ const syntheticUsers = new Map([
 const report = {
   synthetic: true,
   fixtureDataMocked: true,
-  sourceViewScope: pricesOnly
-    ? "core-prices"
-    : kitchenOnly
-      ? "core-kitchen"
-      : chatOnly
-        ? "core-chat"
-        : collectorOnly
-          ? "core-collector"
-          : "wine-detail-scan",
+  sourceViewScope: planningOnly
+    ? "core-planning"
+    : pricesOnly
+      ? "core-prices"
+      : kitchenOnly
+        ? "core-kitchen"
+        : chatOnly
+          ? "core-chat"
+          : collectorOnly
+            ? "core-collector"
+            : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -264,6 +272,17 @@ try {
         base,
       })
     : null;
+  const planningFixture = planningOnly
+    ? createCorePlanningFixture({
+        kitchen: kitchenFixture,
+        origin: fixtureOrigin,
+        owner: fixtureOwner,
+        users: syntheticUsers,
+        key: fixtureKey,
+        report,
+        base,
+      })
+    : null;
   const chatFixture = chatOnly
     ? createCoreChatFixture({
         origin: fixtureOrigin,
@@ -314,6 +333,7 @@ try {
       body: JSON.stringify(data),
     });
   const routeFixture = async (route) => {
+    if (planningFixture) return planningFixture.route(route);
     if (pricesFixture) return pricesFixture.route(route);
     if (kitchenFixture) return kitchenFixture.route(route);
     if (chatFixture) return chatFixture.route(route);
@@ -486,7 +506,9 @@ try {
   page.setDefaultTimeout(30000);
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
-  if (pricesFixture) {
+  if (planningFixture) {
+    await acceptCorePlanning({ page, base, artifacts, report, fixture: planningFixture, context });
+  } else if (pricesFixture) {
     await acceptCorePrices({
       page,
       base,

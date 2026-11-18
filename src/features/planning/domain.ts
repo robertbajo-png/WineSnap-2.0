@@ -31,6 +31,13 @@ export function weekDates(weekStart: string) {
   return Array.from({ length: 7 }, (_, index) => dateOffset(start, index));
 }
 
+export function neighboringWeek(weekStart: string, direction: -1 | 1) {
+  const result = weekStartSchema.safeParse(
+    dateOffset(weekStartSchema.parse(weekStart), direction * 7),
+  );
+  return result.success ? result.data : null;
+}
+
 const plannedMeal = z
   .object({
     date: day,
@@ -39,11 +46,11 @@ const plannedMeal = z
     servings: z.number().int().min(1).max(24),
   })
   .strict();
-type PlannedMeal = z.infer<typeof plannedMeal>;
+export type PlannedMeal = z.infer<typeof plannedMeal>;
 const mealKey = (meal: Pick<PlannedMeal, "date" | "meal">) =>
   meal.date + ":" + mealSlots.indexOf(meal.meal);
 
-const purchase = z
+export const purchaseSchema = z
   .object({
     name,
     amount: z.number().positive().max(largestScaledTotal).nullable(),
@@ -51,7 +58,8 @@ const purchase = z
   })
   .strict()
   .refine(({ amount, unit }) => amount === null || unit !== null, "Amount requires a unit");
-const manualItem = z.object({ id, item: purchase, checked: z.boolean() }).strict();
+export type Purchase = z.infer<typeof purchaseSchema>;
+const manualItem = z.object({ id, item: purchaseSchema, checked: z.boolean() }).strict();
 const basis = z
   .object({
     knownAmount: z.number().positive().max(largestScaledTotal).nullable(),
@@ -68,7 +76,7 @@ const shoppingEdit = z
     basis,
     checked: z.boolean(),
     excluded: z.boolean(),
-    adjustment: purchase.nullable(),
+    adjustment: purchaseSchema.nullable(),
   })
   .strict();
 

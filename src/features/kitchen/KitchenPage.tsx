@@ -97,6 +97,9 @@ const FamilyPanel = lazy(() =>
 const MealHistoryPanel = lazy(() =>
   import("../meals/MealHistoryPanel").then((m) => ({ default: m.MealHistoryPanel })),
 );
+const WeekPlanner = lazy(() =>
+  import("../planning/WeekPlanner").then((m) => ({ default: m.WeekPlanner })),
+);
 
 const unitLabel: Record<(typeof units)[number], string> = {
   g: "g",
@@ -575,6 +578,14 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const kitchen = useKitchen(owner);
   const { cache, busy, ready, offline, error, conflict, localConflict } = kitchen;
   const [tab, setTab] = useState("library");
+  const [plannerVisited, setPlannerVisited] = useState(false);
+  const workspace = useRef(false);
+  useEffect(() => {
+    workspace.current = true;
+    return () => {
+      workspace.current = false;
+    };
+  }, []);
   const [journeyHash, setJourneyHash] = useState("");
   const appliedJourney = useRef("");
   const [extraVersion, setExtraVersion] = useState<{
@@ -670,9 +681,11 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   useEffect(() => {
     const route = () => {
       const hash = window.location.hash.slice(1).split("?")[0];
+      if (hash === "plan") setPlannerVisited(true);
       setJourneyHash(window.location.hash);
       setTab(
         hash === "cook" ||
+          hash === "plan" ||
           (chefEnabled && ["chef", "memory"].includes(hash)) ||
           (mealsEnabled && ["pairings", "family", "meals"].includes(hash)) ||
           (nutritionEnabled && hash === "nutrition")
@@ -709,10 +722,25 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       "family",
       "meals",
       "nutrition",
+      "plan",
     ].includes(next)
       ? next
       : "recipes";
     setTab(next);
+  };
+  const canPlanCook =
+    !!cache &&
+    ready &&
+    !offline &&
+    !busy &&
+    !conflict &&
+    !localConflict &&
+    !["running", "paused"].includes(cache.session?.state.status ?? "");
+  const startPlanned = async (version: RecipeVersion, portion: number) => {
+    if (!canPlanCook || tab !== "plan" || version.user_id !== owner) return false;
+    const started = await kitchen.begin(version, portion);
+    if (started && workspace.current && window.location.hash === "#plan") navigate("cook");
+    return started;
   };
   const openRecipe = (version: RecipeVersion, wine?: string) => {
     window.location.hash = pilotUiEnabled
@@ -844,56 +872,57 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             </>
           )}
         </nav>
-        {(mealsEnabled || nutritionEnabled) && (
-          <div className="k-extra-nav">
-            <label>
-              <span className="sr-only">Fler vyer i köket</span>
-              <select
-                value={["pairings", "family", "meals", "nutrition"].includes(tab) ? tab : ""}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setPairingRecipe(undefined);
-                    setMealSession(undefined);
-                    setNutritionVersion(undefined);
-                    setNutritionServings(undefined);
-                    navigate(e.target.value);
-                  }
-                }}
-              >
-                <option value="">Mer i köket…</option>
-                {mealsEnabled && (
-                  <>
-                    <option value="pairings">Mat & vin</option>
-                    <option value="family">Familj</option>
-                    <option value="meals">Måltider & vin</option>
-                  </>
-                )}
-                {nutritionEnabled && <option value="nutrition">Receptens kolhydrater</option>}
-              </select>
-            </label>
+        <div className="k-extra-nav">
+          <label>
+            <span className="sr-only">Fler vyer i köket</span>
+            <select
+              value={["pairings", "family", "meals", "nutrition", "plan"].includes(tab) ? tab : ""}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setPairingRecipe(undefined);
+                  setMealSession(undefined);
+                  setNutritionVersion(undefined);
+                  setNutritionServings(undefined);
+                  navigate(e.target.value);
+                }
+              }}
+            >
+              <option value="">Mer i köket…</option>
+              <option value="plan">Veckoplan</option>
+              {mealsEnabled && (
+                <>
+                  <option value="pairings">Mat & vin</option>
+                  <option value="family">Familj</option>
+                  <option value="meals">Måltider & vin</option>
+                </>
+              )}
+              {nutritionEnabled && <option value="nutrition">Receptens kolhydrater</option>}
+            </select>
+          </label>
+        </div>
+        {tab !== "plan" && (
+          <div className="k-status" role="status">
+            {offline ? (
+              <CloudOff size={16} />
+            ) : local?.dirty ? (
+              <RefreshCw size={16} />
+            ) : (
+              <CheckCheck size={16} />
+            )}
+            {busy ? t(local?.dirty ? "state.syncing" : "state.saving") : statusText}
+            <button
+              className="k-text"
+              disabled={busy || offline || !cache || !!conflict || localConflict}
+              onClick={() => {
+                void kitchen.sync();
+              }}
+              title="Synka matlagningen"
+            >
+              <RefreshCw size={15} />
+              <span className="sr-only">Synka matlagningen</span>
+            </button>
           </div>
         )}
-        <div className="k-status" role="status">
-          {offline ? (
-            <CloudOff size={16} />
-          ) : local?.dirty ? (
-            <RefreshCw size={16} />
-          ) : (
-            <CheckCheck size={16} />
-          )}
-          {busy ? t(local?.dirty ? "state.syncing" : "state.saving") : statusText}
-          <button
-            className="k-text"
-            disabled={busy || offline || !cache || !!conflict || localConflict}
-            onClick={() => {
-              void kitchen.sync();
-            }}
-            title="Synka matlagningen"
-          >
-            <RefreshCw size={15} />
-            <span className="sr-only">Synka matlagningen</span>
-          </button>
-        </div>
         {error && (
           <OperationNotice
             kind="error"
@@ -946,7 +975,20 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             </div>
           </section>
         )}
-        {!ready ? (
+        {(plannerVisited || tab === "plan") && (
+          <div hidden={tab !== "plan"}>
+            <Suspense fallback={<p aria-busy="true">Öppnar veckoplanen…</p>}>
+              <WeekPlanner
+                owner={owner}
+                online={!offline}
+                recipes={cache?.versions ?? []}
+                canCook={canPlanCook}
+                onCook={startPlanned}
+              />
+            </Suspense>
+          </div>
+        )}
+        {tab === "plan" ? null : !ready ? (
           <p aria-busy="true">Hämtar din kokbok…</p>
         ) : !cache ? (
           <section className="k-empty">
