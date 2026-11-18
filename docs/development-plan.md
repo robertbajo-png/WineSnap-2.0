@@ -287,7 +287,23 @@ including when a preceding check failed. Both commands and their high
 severity threshold remain required in the same Quality job; neither permits
 failure. This lets the other checks report independently without changing
 dependencies, branch protection or release policy. Unpatched dependency
-status still blocks a green Quality run.
+findings reported at the required severity still fail Quality.
+
+Verification for `2a2e7f2`: Quality and Database Safety finished green on
+push and PR. The push job ran main/AI-worker typecheck, lint, 176 test files
+(1,984 passed, one existing skip), the synthetic Node build/runtime, client
+budget and Chef build. The no-operator public-release check also passed by
+keeping release blocked. Both explicit npm audits ran and reported no
+findings, unlike the earlier app-audit run. The lockfile was unchanged and
+the GitHub advisory still reported the package as affected with no fixed
+version. Retain the known advisory as an unresolved release review item;
+the latest audit output is not evidence of remediation.
+
+The local backend health endpoint answered 200 on the loopback port. The
+owner viewer was closed when checked and was not restarted. No assisted
+or actual owner usage pass is recorded. The next step is still opening
+WineSnap lokalt from the existing shortcut and confirming the real
+scan/review/save/reopen flow.
 
 #### Same-Document Account Diagnosis (Afternoon)
 

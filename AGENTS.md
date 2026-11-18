@@ -47,6 +47,10 @@ The running owned artifact inventory found no separate picomatch package or
 recognizable references; it had no source maps, so this is not an absence
 guarantee. Quality runs both unchanged, required audits after code/build checks
 when the relevant installs succeeded. An audit failure still fails Quality.
+Quality and Database Safety were green on push/PR at 2a2e7f2 (1,984 tests
+passed, one existing skip). npm did not report the advisory in that run;
+the unchanged lock and still-open upstream advisory are not remediation.
+The loopback backend was healthy; the owner viewer was closed and left closed.
 
 Previous handoff, November 18 morning: DEV-05 is Pagar, installed app remains f9bb532.
 Five installed PilotDemoAccept checks (mocked AI, real fixture saves and a
