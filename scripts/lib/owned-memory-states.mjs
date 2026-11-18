@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { ownedApp } from "./owned-backend.mjs";
 import { validateBrowserFixture } from "./owned-browser-fixture.mjs";
-import { ownedMemoryLabels as labels, withOwnedMemoryProbe } from "./owned-memory-probe.mjs";
+import {
+  ownedMemoryLabels as labels,
+  traceOwnedMemoryReads,
+  withOwnedMemoryProbe,
+} from "./owned-memory-probe.mjs";
 
 const memoryUrl = ownedApp + "/kitchen#memory";
 const input = (page) => page.getByLabel("Matpreferens", { exact: true });
@@ -156,6 +160,7 @@ export async function acceptOwnedMemoryAccountStates({
   phase,
   pass,
   captureFailure = async () => {},
+  diagnostics = {},
 }) {
   validateBrowserFixture(fixture);
   validateBrowserFixture(peerFixture);
@@ -165,11 +170,13 @@ export async function acceptOwnedMemoryAccountStates({
   assert.equal(typeof captureFailure, "function");
   let page,
     root,
+    trace,
     cleaned = false;
   async function cleanup() {
     if (cleaned) return;
     cleaned = true;
     let failed = false;
+    trace?.close();
     try {
       await root?.dispose();
     } catch {
@@ -190,6 +197,7 @@ export async function acceptOwnedMemoryAccountStates({
       try {
         phase("memory_installed_account_open_view");
         page = await context.newPage();
+        trace = traceOwnedMemoryReads(page);
         await page.goto(memoryUrl, { waitUntil: "domcontentloaded" });
         phase("memory_installed_account_wait_for_input");
         await input(page).waitFor();
@@ -202,6 +210,7 @@ export async function acceptOwnedMemoryAccountStates({
         phase("memory_installed_account_wait_for_held_reply");
         await probe.waitHeld();
         probe.beginAccountSwitch(peerFixture, page);
+        trace.beginSwitch();
         await switchAccount();
         phase("memory_installed_verified_peer_before_late_reply");
         const empty = page.getByText("Inga bekr\u00e4ftade matpreferenser \u00e4nnu.", {
@@ -265,6 +274,8 @@ export async function acceptOwnedMemoryAccountStates({
           await captureFailure(page).catch(() => {});
         throw error;
       } finally {
+        if (trace) diagnostics.reads = trace.snapshot();
+        diagnostics.guard = probe.snapshot();
         // Close the extra fixture document before removing its request guards.
         await cleanup();
       }

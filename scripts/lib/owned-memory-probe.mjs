@@ -22,6 +22,67 @@ const patterns = [
   ownedApi + "/rest/v1/" + rpc + "*",
   ownedApp + "/api/chef*",
 ];
+
+const observedReads = {
+  auth: ["GET", "/auth/v1/user"],
+  kitchenAccess: ["POST", "/rest/v1/rpc/kitchen_access"],
+  recipes: ["GET", "/rest/v1/kitchen_recipes"],
+  versions: ["GET", "/rest/v1/kitchen_recipe_versions"],
+  sessions: ["GET", "/rest/v1/cooking_sessions"],
+  access: ["POST", "/rest/v1/rpc/chef_access"],
+  signals: ["GET", "/rest/v1/food_signals"],
+  state: ["GET", "/rest/v1/food_memory_state"],
+  feedback: ["GET", "/rest/v1/cooking_feedback"],
+};
+
+// Passive fixture-page observation: no interception, auth headers or response bodies.
+export function traceOwnedMemoryReads(page) {
+  const counts = (keys) =>
+    Object.fromEntries(
+      keys.map((key) => [key, { sent: 0, ok: 0, other: 0, finished: 0, failed: 0 }]),
+    );
+  const stages = {
+    initial: counts(Object.keys(observedReads)),
+    switching: counts(Object.keys(observedReads)),
+  };
+  const requests = new WeakMap();
+  let stage = stages.initial;
+  const events = {
+    request(request) {
+      const url = new URL(request.url());
+      if (url.origin !== ownedApi) return;
+      const key = Object.keys(observedReads).find((key) => {
+        const [method, path] = observedReads[key];
+        return url.pathname === path && request.method() === method;
+      });
+      if (!key) return;
+      requests.set(request, stage[key]);
+      stage[key].sent++;
+    },
+    response(response) {
+      const counter = requests.get(response.request());
+      if (counter) counter[response.ok() ? "ok" : "other"]++;
+    },
+    requestfinished(request) {
+      const counter = requests.get(request);
+      if (counter) counter.finished++;
+      requests.delete(request);
+    },
+    requestfailed(request) {
+      const counter = requests.get(request);
+      if (counter) counter.failed++;
+      requests.delete(request);
+    },
+  };
+  for (const [event, handle] of Object.entries(events)) page.on(event, handle);
+  return {
+    beginSwitch: () => (stage = stages.switching),
+    snapshot: () => structuredClone(stages),
+    close() {
+      for (const [event, handle] of Object.entries(events)) page.off(event, handle);
+    },
+  };
+}
 function deferred() {
   let resolve;
   const promise = new Promise((r) => {

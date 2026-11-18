@@ -13,6 +13,7 @@ export async function acceptOwnedMealAccountStates({
   phase,
   pass,
   captureFailure = async () => {},
+  diagnostics = {},
 }) {
   validateBrowserFixture(fixture);
   validateBrowserFixture(peerFixture);
@@ -25,7 +26,8 @@ export async function acceptOwnedMealAccountStates({
   assert.equal(typeof pass, "function");
   const extraPages = [],
     roots = [];
-  let withheldPeerViews = 0;
+  let withheldPeerViews = 0,
+    activeProbe;
   async function peerView(current, emptyText) {
     const empty = current.getByText(emptyText, { exact: true });
     const withheld = current.getByText(
@@ -42,6 +44,7 @@ export async function acceptOwnedMealAccountStates({
   }
   try {
     return await withOwnedMealProbe({ page, context, fixture }, async (probe) => {
+      activeProbe = probe;
       phase("meals_installed_hold_profile_and_meal_for_account_switch");
       await page.goto(ownedApp + "/kitchen#family", { waitUntil: "domcontentloaded" });
       await page.getByRole("button", { name: "Ny profil", exact: true }).click();
@@ -149,6 +152,7 @@ export async function acceptOwnedMealAccountStates({
     if (extraPages[0]) await captureFailure(extraPages[0]).catch(() => {});
     throw error;
   } finally {
+    if (activeProbe) diagnostics.guard = activeProbe.snapshot();
     let failed = false;
     for (const root of roots)
       await root.dispose().catch(() => {

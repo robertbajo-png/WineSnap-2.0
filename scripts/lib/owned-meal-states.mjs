@@ -85,6 +85,10 @@ export function createOwnedMealProbe(context, fixture) {
     blockedSwitchWrites: 0,
     blockedStaleReads: 0,
     fixtureErrors: 0,
+    memoryKitchenAccessSeen: 0,
+    memoryKitchenAccessVerified: 0,
+    memoryKitchenAccessForwarded: 0,
+    memoryKitchenAccessGuardErrors: 0,
   };
   let mode = "",
     latch,
@@ -218,7 +222,8 @@ export function createOwnedMealProbe(context, fixture) {
     assert.ok(result.committedWrites <= 7);
   }
   const handler = async (route) => {
-    let held;
+    let held,
+      memoryKitchenAccess = false;
     try {
       assert.equal(failed, false);
       assert.equal(closed, false);
@@ -228,6 +233,12 @@ export function createOwnedMealProbe(context, fixture) {
       assert.equal(url.origin, ownedApi);
       assert.ok(url.pathname.startsWith("/rest/v1/"));
       if (request.method() === "OPTIONS") return await route.fallback();
+      memoryKitchenAccess =
+        !!peerFixture &&
+        request.method() === "POST" &&
+        table === "rpc/kitchen_access" &&
+        request.frame().page()?.url?.() === ownedApp + "/kitchen#memory";
+      if (memoryKitchenAccess) result.memoryKitchenAccessSeen++;
       if (peerFixture && request.method() !== "GET" && table !== "rpc/kitchen_access") {
         result.blockedSwitchWrites++;
         throw new Error("owned_meal_switch_write_blocked");
@@ -242,6 +253,7 @@ export function createOwnedMealProbe(context, fixture) {
         throw new Error("owned_meal_stale_read_blocked");
       }
       const reader = await verify(request);
+      if (memoryKitchenAccess) result.memoryKitchenAccessVerified++;
       assert.equal(closed, false);
       if (request.method() === "GET") {
         assert.ok(ownerTables.has(table) || familyTables.has(table));
@@ -278,7 +290,11 @@ export function createOwnedMealProbe(context, fixture) {
         return await route.fallback();
       }
       assert.equal(request.method(), "POST");
-      if (table === "rpc/kitchen_access") return await route.fallback();
+      if (table === "rpc/kitchen_access") {
+        await route.fallback();
+        if (memoryKitchenAccess) result.memoryKitchenAccessForwarded++;
+        return;
+      }
       assert.equal(peerFixture, null);
       assert.ok(["rpc/kitchen_family_change", "rpc/kitchen_meal_save"].includes(table));
       assert.equal(url.search, "");
@@ -319,6 +335,7 @@ export function createOwnedMealProbe(context, fixture) {
         assert.ok(held && request.failure());
       }
     } catch {
+      if (memoryKitchenAccess) result.memoryKitchenAccessGuardErrors++;
       failed = true;
       result.fixtureErrors++;
       await route.abort().catch(() => {});

@@ -53,6 +53,8 @@ function fakePage() {
     getByRole: vi.fn(() => node),
     getByLabel: vi.fn(() => node),
     getByText: vi.fn(() => node),
+    on: vi.fn(),
+    off: vi.fn(),
     locator: vi.fn(() => node),
     keyboard: { press: vi.fn() },
     evaluate: vi.fn(),
@@ -315,10 +317,14 @@ describe("owned memory account orchestration preparation", () => {
     },
   );
   it("cleans its own page and guard even when normal control-tab sign-in fails", async () => {
+    const diagnostics = {};
     switchAccount.mockRejectedValue(Error("synthetic_signin_failure"));
-    await expect(acceptOwnedMemoryAccountStates(accountArgs())).rejects.toThrow(
+    await expect(acceptOwnedMemoryAccountStates({ ...accountArgs(), diagnostics })).rejects.toThrow(
       "synthetic_signin_failure",
     );
+    expect(diagnostics.guard).toMatchObject({ commits: 1, releasedReplies: 0 });
+    expect(diagnostics.reads.switching.auth.sent).toBe(0);
+    expect(memoryPage.off).toHaveBeenCalledTimes(4);
     expect(probe.release).not.toHaveBeenCalled();
     expect(probe.close).toHaveBeenCalledOnce();
     expect(memoryPage.root.dispose).toHaveBeenCalledOnce();

@@ -1,12 +1,56 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { ownedApi, ownedApp } from "./owned-backend.mjs";
 import {
   boundedMemoryProbe,
   createOwnedMemoryProbe,
   ownedMemoryLabels as labels,
+  traceOwnedMemoryReads,
   withOwnedMemoryProbe,
 } from "./owned-memory-probe.mjs";
+
+describe("passive memory account read diagnostics", () => {
+  it("attributes late completions to their start phase and preserves only counters", () => {
+    const page = new EventEmitter();
+    const trace = traceOwnedMemoryReads(page);
+    const auth = { url: () => ownedApi + "/auth/v1/user", method: () => "GET" };
+    const read = {
+      url: () => ownedApi + "/rest/v1/food_signals?user_id=eq.synthetic-id",
+      method: () => "GET",
+    };
+    const state = { url: () => ownedApi + "/rest/v1/food_memory_state", method: () => "GET" };
+    const session = { url: () => ownedApi + "/rest/v1/cooking_sessions", method: () => "GET" };
+    const unrelated = [
+      { url: () => ownedApp + "/auth/v1/user", method: () => "GET" },
+      { url: () => ownedApi + "/rest/v1/food_signals", method: () => "OPTIONS" },
+      { url: () => ownedApi + "/rest/v1/rpc/food_memory_change", method: () => "POST" },
+    ];
+    page.emit("request", auth);
+    trace.beginSwitch();
+    for (const req of [read, state, session, ...unrelated]) page.emit("request", req);
+    page.emit("response", { request: () => auth, ok: () => true });
+    page.emit("requestfinished", auth);
+    page.emit("response", { request: () => read, ok: () => false });
+    page.emit("requestfinished", read);
+    page.emit("requestfailed", state);
+    const receipt = trace.snapshot();
+    expect(receipt.initial.auth).toEqual({ sent: 1, ok: 1, other: 0, finished: 1, failed: 0 });
+    expect(receipt.switching.auth.sent).toBe(0);
+    expect(receipt.switching.signals).toEqual({ sent: 1, ok: 0, other: 1, finished: 1, failed: 0 });
+    expect(receipt.switching.state).toEqual({ sent: 1, ok: 0, other: 0, finished: 0, failed: 1 });
+    expect(receipt.switching.sessions).toEqual({
+      sent: 1,
+      ok: 0,
+      other: 0,
+      finished: 0,
+      failed: 0,
+    });
+    expect(JSON.stringify(receipt)).not.toMatch(/synthetic-id|https?:|food_memory_change/);
+    trace.close();
+    expect(page.eventNames()).toEqual([]);
+  });
+});
 
 function manifest() {
   const run = randomUUID();

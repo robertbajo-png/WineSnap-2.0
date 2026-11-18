@@ -530,6 +530,7 @@ export async function acceptOwnedPilotUi(
       });
       peer = createdPeer.fixture;
       const { acceptOwnedMealAccountStates } = await import("./owned-meal-account-states.mjs");
+      report.mealAccountDiagnostics = {};
       report.mealAccountStates = await acceptOwnedMealAccountStates({
         page,
         context,
@@ -537,6 +538,7 @@ export async function acceptOwnedPilotUi(
         peerFixture: peer,
         phase,
         pass: (name) => report.passed.push(name),
+        diagnostics: report.mealAccountDiagnostics,
         captureFailure: (mealPage) =>
           mealPage.screenshot({
             path: join(artifactDirectory, "meal-account-failure.png"),
@@ -544,12 +546,14 @@ export async function acceptOwnedPilotUi(
           }),
         switchAccount: async (controlPage) => {
           const { acceptOwnedMemoryAccountStates } = await import("./owned-memory-states.mjs");
+          report.memoryAccountDiagnostics = {};
           report.memoryAccountStates = await acceptOwnedMemoryAccountStates({
             context,
             fixture,
             peerFixture: peer,
             phase,
             pass: (name) => report.passed.push(name),
+            diagnostics: report.memoryAccountDiagnostics,
             captureFailure: (memoryPage) =>
               memoryPage.screenshot({
                 path: join(artifactDirectory, "memory-account-failure.png"),

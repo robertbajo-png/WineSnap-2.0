@@ -31,7 +31,20 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff, November 18: DEV-05 is Pagar, installed app remains f9bb532.
+Current handoff, November 18 afternoon: DEV-05 is Pagar, app remains f9bb532.
+Passive request/response and guard counters narrowed two focused timeouts to
+the peer kitchen startup before memory reads. The final focused run passed all
+19 checks at 15:22:37 UTC under the same timeout and guards. Peer memory,
+family and meal panels rendered in the original mounted documents before
+held replies were released. No prior content or notices appeared afterwards;
+fixture table/cache isolation and exact cleanup passed. This is not a full
+browser sweep or proof that the intermittent cause was fixed. All 154
+focused script tests and scoped lint passed; app code/install unchanged. Real
+owner scan/review/save/reopen is the next acceptance pass. Do not repeat
+the broad suite to chase the earlier timeout. Production, hosted test, paused
+tunnel and the real owner account were untouched. Keep the audit enabled.
+
+Previous handoff, November 18 morning: DEV-05 is Pagar, installed app remains f9bb532.
 Five installed PilotDemoAccept checks (mocked AI, real fixture saves and a
 byte-identical reopened private image) and ten installed Offline checks passed.
 Full PilotAccept had 91 passing checks but timed out in the account-switch

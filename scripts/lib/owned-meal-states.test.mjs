@@ -201,6 +201,38 @@ describe("owned meal late writes across accounts", () => {
       await held.second;
     }
   });
+  it.each([true, false])(
+    "reports whether the memory tab access read was forwarded (%s)",
+    async (approved) => {
+      const held = await holdPair();
+      const peer = manifest();
+      try {
+        probe.beginAccountSwitch(peer, [{}, {}]);
+        await enterPeer(peer, []);
+        if (!approved) user = { ...user, id: randomUUID() };
+        const access = route(
+          "/rest/v1/rpc/kitchen_access",
+          {},
+          {
+            page: { url: () => ownedApp + "/kitchen#memory" },
+          },
+        );
+        await probe.handler(access);
+        expect(access.fallback).toHaveBeenCalledTimes(approved ? 1 : 0);
+        expect(access.abort).toHaveBeenCalledTimes(approved ? 0 : 1);
+        expect(probe.snapshot()).toMatchObject({
+          memoryKitchenAccessSeen: 1,
+          memoryKitchenAccessVerified: approved ? 1 : 0,
+          memoryKitchenAccessForwarded: approved ? 1 : 0,
+          memoryKitchenAccessGuardErrors: approved ? 0 : 1,
+        });
+      } finally {
+        await probe.close();
+        await held.first;
+        await held.second;
+      }
+    },
+  );
   it("rejects a third account and never forwards its read", async () => {
     const held = await holdPair();
     try {
