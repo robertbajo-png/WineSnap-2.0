@@ -163,6 +163,11 @@ export async function acceptCorePlanning({ page, base, artifacts, report, fixtur
   assert.equal(fixture.cooks.length, 0);
   report.passed.push("plan-explicit-save-pins-version-and-respects-active-cook");
   await layout(page, artifacts, report, "week-planner");
+  await page.setViewportSize({ width: 320, height: 844 });
+  const left = await button("Föregående vecka").boundingBox();
+  const right = await button("Nästa vecka").boundingBox();
+  assert.ok(left && right && Math.abs(left.y - right.y) < 1 && left.x < right.x);
+  report.passed.push("week-navigation-keeps-both-arrows-aligned-on-small-screen");
 
   report.phase = "plan-old-version-and-shopping-edits";
   fixture.advanceRecipe();

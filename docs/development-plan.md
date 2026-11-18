@@ -289,8 +289,9 @@ Mode. It captures plan/list layouts at 320, 390 and 1440 px with 125% text.
 For reproduction, use the documented synthetic Kitchen Docker artifact flags
 with output `dist/core-planning-runtime`, then run
 `node scripts/check-core-experience-browser.mjs --planning`.
-All 111 focused Kitchen/planning tests passed. This is not installed or
-live-provider evidence.
+All 111 focused Kitchen/planning tests passed. Quality and Database Safety
+passed on the `9973f77` PR build. This is not installed or live-provider
+evidence.
 
 Next: repeat the core flow with real PostgREST and temporary accounts against a
 separately migrated disposable owned stack. Verify account switching, missing

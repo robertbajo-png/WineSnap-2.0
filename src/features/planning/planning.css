@@ -29,7 +29,6 @@
   font-size: 1.0625rem;
   line-height: 1.35;
 }
-.k-plan-week,
 .k-plan-actions,
 .k-plan-segment {
   display: flex;
@@ -38,7 +37,12 @@
   gap: 0.375rem;
 }
 .k-plan-week {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  max-width: 100%;
   font-size: 0.875rem;
+  text-align: center;
 }
 .k-week-plan .k-icon {
   flex: 0 0 44px;
