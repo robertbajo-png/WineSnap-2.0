@@ -31,7 +31,17 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: the owner asked to skip the pending bottle test and continue.
+Current handoff: DEV-06 adds private week-plan persistence in source. Additive
+migration 20261118200000_kitchen_week_plans.sql, owner RLS, revisioned and
+idempotent save RPC, pinned-version client reads, export and erasure coverage
+are in place. The owned database backup already captures all relations; a
+new-schema restore is not verified on the owner's actual installation. All 33
+focused API/domain/privacy tests passed. No database update, install, old
+production or hosted test change. Next: Kitchen planner/list UI, conflict
+recovery and exact-version Cook Mode, then offline/browser acceptance. Bottle
+test remains deferred. See the current DEV-06 plan handoff.
+
+Previous handoff: the owner asked to skip the pending bottle test and continue.
 DEV-05 stays open, no actual usage pass or release is claimed. DEV-06 source
 work started with the pure week-plan and deterministic shopping model in
 src/features/planning/domain.ts. It reuses exact owned recipe versions, kitchen

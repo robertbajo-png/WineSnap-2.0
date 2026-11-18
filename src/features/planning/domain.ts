@@ -6,7 +6,10 @@ const id = z.uuid().transform((value) => value.toLowerCase());
 // Bound the calendar at whole weeks so all seven days have four-digit years.
 const day = z.iso.date().refine((value) => value >= "1900-01-01" && value <= "9999-12-26");
 const utcDay = (date: string) => new Date(date + "T00:00:00.000Z");
-const monday = day.refine((date) => utcDay(date).getUTCDay() === 1, "Week must start on Monday");
+export const weekStartSchema = day.refine(
+  (date) => utcDay(date).getUTCDay() === 1,
+  "Week must start on Monday",
+);
 const slot = z.enum(mealSlots);
 const name = z.string().trim().min(1).max(120);
 const plannedIngredientLimit = 7 * mealSlots.length * 80;
@@ -20,11 +23,11 @@ function dateOffset(date: string, days: number) {
 
 export function weekForDate(value: string) {
   const date = day.parse(value);
-  return monday.parse(dateOffset(date, -((utcDay(date).getUTCDay() + 6) % 7)));
+  return weekStartSchema.parse(dateOffset(date, -((utcDay(date).getUTCDay() + 6) % 7)));
 }
 
 export function weekDates(weekStart: string) {
-  const start = monday.parse(weekStart);
+  const start = weekStartSchema.parse(weekStart);
   return Array.from({ length: 7 }, (_, index) => dateOffset(start, index));
 }
 
@@ -71,7 +74,7 @@ const shoppingEdit = z
 
 export const weekPlanSchema = z
   .object({
-    weekStart: monday,
+    weekStart: weekStartSchema,
     meals: z.array(plannedMeal).max(7 * mealSlots.length),
     manualItems: z.array(manualItem).max(100),
     shoppingEdits: z.array(shoppingEdit).max(plannedIngredientLimit),

@@ -7,6 +7,7 @@ const ownedTables = [
   "ai_messages",
   "analytics_events",
   "collector_lots",
+  "kitchen_week_plans",
   "derived_preferences",
   "recommendation_events",
   "restaurant_scans",
@@ -85,6 +86,7 @@ export function createHandler(dependencies: PrivacyDependencies) {
             query = query.or(`user_id.eq.${owner},peer_user_id.eq.${owner}`);
           else query = query.eq(table === "profiles" ? "id" : "user_id", owner);
           if (table === "taste_profile") query = query.order("user_id");
+          else if (table === "kitchen_week_plans") query = query.order("week_start");
           else if (table === "user_taste_similarity")
             query = query.order("user_id").order("peer_user_id");
           else if (table === "ai_rate_limits")

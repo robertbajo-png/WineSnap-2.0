@@ -211,6 +211,15 @@ describe("actual owner export handler", () => {
     ).toBe(true);
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
+  it("exports private week plans by owner and week even without an active Kitchen UI", async () => {
+    const api = setup("privacy-export");
+    const response = await api.call({ userId: "stranger" });
+    expect(response.status).toBe(200);
+    expect((await response.json()).tables).toHaveProperty("kitchen_week_plans");
+    expect(api.admin.from).toHaveBeenCalledWith("kitchen_week_plans");
+    expect(api.chain.order).toHaveBeenCalledWith("week_start");
+    expect(api.chain.eq.mock.calls.every(([, id]) => id === owner)).toBe(true);
+  });
   it("refuses a partial export when any table fails", async () => {
     const api = setup("privacy-export");
     api.chain.range.mockResolvedValueOnce({ data: [], error: new Error("private error") });

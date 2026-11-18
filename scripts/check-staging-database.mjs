@@ -185,6 +185,7 @@ try {
     "supabase/tests/cooking_core.local.sql",
     "supabase/tests/chef_memory.local.sql",
     "supabase/tests/meals_households.local.sql",
+    "supabase/tests/week_plans.local.sql",
   ]) {
     stage = file;
     const source = await readFile(resolve(root, file), "utf8");
@@ -194,7 +195,7 @@ try {
       sha256: createHash("sha256").update(source).digest("hex"),
     });
   }
-  console.log("PASS private recipes, Cook sessions and Chef memory acceptance (synthetic only)");
+  console.log("PASS private kitchen and week-planning acceptance (synthetic only)");
   for (const file of [
     "supabase/operations/test-image-proxy-policy.sql",
     "supabase/tests/image_proxy.local.sql",
