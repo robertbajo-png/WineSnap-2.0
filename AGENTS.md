@@ -31,7 +31,16 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff, November 18 afternoon: DEV-05 is Pagar, app remains f9bb532.
+Current handoff: the owner asked to skip the pending bottle test and continue.
+DEV-05 stays open, no actual usage pass or release is claimed. DEV-06 source
+work started with the pure week-plan and deterministic shopping model in
+src/features/planning/domain.ts. It reuses exact owned recipe versions, kitchen
+serving/unit logic, unknown quantities and basis-scoped list edits. No planner
+database, UI, local install or public change. Next is owner-scoped revisioned
+persistence and associated export/deletion/backup scope, then Kitchen UI and
+exact-version Cook Mode. See the current DEV-06 plan handoff before continuing.
+
+Previous handoff, November 18 afternoon: DEV-05 is Pagar, app remains f9bb532.
 Passive request/response and guard counters narrowed two focused timeouts to
 the peer kitchen startup before memory reads. The final focused run passed all
 19 checks at 15:22:37 UTC under the same timeout and guards. Peer memory,
