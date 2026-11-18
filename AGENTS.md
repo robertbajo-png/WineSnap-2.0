@@ -41,6 +41,8 @@ held. No leakage was visible, but the late-reply proof did not complete. Both
 failed runs cleaned up their exact fixture accounts. Diagnose the observed
 peer read on the original document; do not relax/reload away the proof or
 rerun the broad suite merely to locate it. No new live AI or app install.
+Quality CI currently stops at the unchanged picomatch dependency advisory
+GHSA-fc5q-39xc-vjpf; no patched version was listed. Keep the audit enabled.
 Preserve the existing ready owner viewer. Owner scan/review/save/image is still
 the first unobserved usage pass; no human acceptance claimed. See the canonical
 handoff for evidence; old production, hosted test and paused tunnel untouched.

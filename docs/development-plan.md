@@ -317,10 +317,20 @@ mounted document, observing request arrival and completion separately before
 changing the guard, timeout or application. Do not reload away the held-reply
 proof or repeat the entire sweep for this diagnosis.
 
+The test-tool change `683b50d` passed 56 focused tests, scoped lint, format and
+PowerShell syntax checks. GitHub Quality stopped at the existing dependency
+audit on push and PR, before the remaining quality steps: the unchanged lock
+contains `picomatch@4.0.7`, affected by
+[GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf).
+The advisory listed no patched version on November 18. Do not force framework
+downgrades or weaken the audit. Confirm resolved dependency/runtime scope and
+adopt a compatible upstream fix when available; do not treat this as a green
+release gate or proof of runtime exploitability.
+
 The verified current-schema backup/isolated restore from November 17 still
 applies; no schema or installed version changed during these probes. DEV-05
 remains Pagar. The existing real viewer was still ready/authenticated at
-06:47:29 UTC, without restarting it. No actual owner usage pass is recorded;
+07:03:27 UTC, without restarting it. No actual owner usage pass is recorded;
 the first one is scan, review, save and reopen the picture. Do not move to
 DEV-06 on automated evidence alone. Old production, hosted test and the
 paused tunnel were untouched.
