@@ -291,6 +291,16 @@ versions, pinned older revisions, and owner-only erasure. CI result and local
 installation are separate; no migration was applied to an existing app or
 database in this work.
 
+The initial synthetic migration at `023e50f` failed with a PL/pgSQL syntax
+error in a nested numeric validation expression. The corrected `2869e67`
+passed Quality and Database Safety on push and PR. Synthetic PostgreSQL 17
+applied all 38 migrations, passed 14 existing invariant files and the new
+week-plan acceptance, and preserved the legacy image/share fixture. Quality
+passed main/AI-worker typecheck, lint, 178 test files (2,005 passed, one existing
+skip), the synthetic build/runtime, client budget and required audits. This
+does not verify installed PostgREST, real-user data, offline behavior or a new
+owner backup/restore.
+
 Next: the Kitchen planner and editable list, scoped draft/error state, explicit
 read/recovery on conflicts, and opening Cook Mode at the chosen version and
 servings without replacing a running session. Verify reload, offline/reconnect,

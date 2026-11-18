@@ -36,7 +36,9 @@ migration 20261118200000_kitchen_week_plans.sql, owner RLS, revisioned and
 idempotent save RPC, pinned-version client reads, export and erasure coverage
 are in place. The owned database backup already captures all relations; a
 new-schema restore is not verified on the owner's actual installation. All 33
-focused API/domain/privacy tests passed. No database update, install, old
+focused API/domain/privacy tests passed. Corrected 2869e67 has green Quality
+and Database Safety push/PR CI (2,005 tests, one existing skip; 38 synthetic
+migrations and owner/revision/erasure checks). No database update, install, old
 production or hosted test change. Next: Kitchen planner/list UI, conflict
 recovery and exact-version Cook Mode, then offline/browser acceptance. Bottle
 test remains deferred. See the current DEV-06 plan handoff.
