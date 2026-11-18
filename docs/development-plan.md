@@ -263,6 +263,32 @@ Never put real participant notes, health values, secrets or private exports here
 
 ### DEV-05 Installed Core Journeys (November 18, Current)
 
+#### Dependency Audit Scope
+
+The root lock resolves a single `picomatch@4.0.7` entry, not marked dev-only.
+Vite, TanStack Start's build plugin, tinyglobby and unplugin declare it;
+fdir declares it as a peer. Vitest also declares it in the development tree.
+The [upstream advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
+still listed no patched version on November 18.
+
+The exact running, loopback-only owned web container was inspected read-only,
+without reading its environment, storage or request data. The Docker runtime
+stage copies the generated artifact rather than source `node_modules`; the
+inventory covered 277 JavaScript files and three package manifests in the
+runtime directories. It found zero separate picomatch entries, manifest
+references, explicit code references or selected implementation markers.
+There were no source maps. This is evidence about the inspected artifact, not
+proof that transformed bundled code is absent or no runtime path is affected.
+Neither a local install change nor a release exception follows from the scan.
+
+Quality CI now runs its unchanged audits after normal code/build checks.
+Each audit runs when its own install succeeded and the job was not cancelled,
+including when a preceding check failed. Both commands and their high
+severity threshold remain required in the same Quality job; neither permits
+failure. This lets the other checks report independently without changing
+dependencies, branch protection or release policy. Unpatched dependency
+status still blocks a green Quality run.
+
 #### Same-Document Account Diagnosis (Afternoon)
 
 The focused installed probe now records fixed per-phase counts for browser

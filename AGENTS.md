@@ -43,6 +43,10 @@ focused script tests and scoped lint passed; app code/install unchanged. Real
 owner scan/review/save/reopen is the next acceptance pass. Do not repeat
 the broad suite to chase the earlier timeout. Production, hosted test, paused
 tunnel and the real owner account were untouched. Keep the audit enabled.
+The running owned artifact inventory found no separate picomatch package or
+recognizable references; it had no source maps, so this is not an absence
+guarantee. Quality runs both unchanged, required audits after code/build checks
+when the relevant installs succeeded. An audit failure still fails Quality.
 
 Previous handoff, November 18 morning: DEV-05 is Pagar, installed app remains f9bb532.
 Five installed PilotDemoAccept checks (mocked AI, real fixture saves and a

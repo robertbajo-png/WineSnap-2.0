@@ -14,10 +14,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm ci --prefix scripts/portable --ignore-scripts
-      - run: npm audit --prefix scripts/portable --omit=dev --audit-level=high
-      - run: npm run test:security
+      - id: install_app
+        run: npm ci
+      - id: install_portable
+        run: npm ci --prefix scripts/portable --ignore-scripts
       - run: npm run typecheck
       - run: node node_modules/typescript/bin/tsc --noEmit -p config/ai-quality-typecheck.json
       - run: npm run lint
@@ -49,3 +49,10 @@ jobs:
       - run: npm run test:independent
       - run: npm run test:bundle
       - run: npm run build:chef
+      # Report code/build results separately, without making either audit optional.
+      - name: Audit portable runtime dependencies
+        if: ${{ !cancelled() && steps.install_portable.outcome == 'success' }}
+        run: npm audit --prefix scripts/portable --omit=dev --audit-level=high
+      - name: Audit app dependencies
+        if: ${{ !cancelled() && steps.install_app.outcome == 'success' }}
+        run: npm run test:security
