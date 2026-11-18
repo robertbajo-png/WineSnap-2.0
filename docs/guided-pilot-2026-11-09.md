@@ -50,7 +50,7 @@ The original image remains a local fixture, not a newly redistributed Git asset.
 3. Start `PilotDemo` for one participant. It opens the actual app already signed
    into a new synthetic account. Keep the owner's normal browser/profile separate.
 4. Provide only the approved image, located at
-   `%USERPROFILE%\OneDrive\Desktop\Winesnap\54456874_400.webp`.
+   `%USERPROFILE%\Projects\New project\legacy-winesnap-assets\54456874_400.webp`.
    The participant can select it in the ordinary image file chooser. This does
    not test a physical phone camera or justify using a different photograph.
 5. Read the five task cards below without pointing out buttons. Let the person

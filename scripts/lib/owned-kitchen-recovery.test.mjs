@@ -49,6 +49,23 @@ describe("installed kitchen read probe boundary", () => {
   it("accepts only the exact synthetic owner read", () => {
     expect(() => assertKitchenRecoveryRead(url, "GET", fixture)).not.toThrow();
   });
+  it("keeps the account-only probe private, non-live and separate from full-run evidence", () => {
+    const read = (name) => readFileSync(new URL(name, import.meta.url), "utf8");
+    expect(read("../run-owned-windows.ps1")).toContain(
+      "if($AccountIsolationOnly -and ($Action -ne 'PilotAccept' -or $KitchenRecoveryOnly))",
+    );
+    expect(read("../manage-owned-backend.mjs")).toContain(
+      'accountIsolationOnly ? "../dist/owned-pilot-account" : "../dist/owned-pilot-ui"',
+    );
+    const browser = read("./owned-pilot-browser.mjs");
+    expect(browser).toContain(
+      "if (accountIsolationOnly) assert.ok(!liveJourneys && !kitchenRecoveryOnly)",
+    );
+    expect(browser).toContain('report.scope = "account-isolation-only"');
+    expect(browser).toMatch(
+      /if \(accountIsolationOnly\) \{\s+await mealStates\(\);\s+await accountIsolation\(\);/,
+    );
+  });
   it.each(["POST", "DELETE", "PUT", "PATCH"])("denies %s", (method) => {
     expect(() => assertKitchenRecoveryRead(url, method, fixture)).toThrow();
   });

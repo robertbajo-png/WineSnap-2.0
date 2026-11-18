@@ -155,12 +155,14 @@ export async function acceptOwnedMemoryAccountStates({
   switchAccount,
   phase,
   pass,
+  captureFailure = async () => {},
 }) {
   validateBrowserFixture(fixture);
   validateBrowserFixture(peerFixture);
   assert.notEqual(fixture.userId, peerFixture.userId);
   assert.notEqual(fixture.run, peerFixture.run);
   assert.equal(typeof switchAccount, "function");
+  assert.equal(typeof captureFailure, "function");
   let page,
     root,
     cleaned = false;
@@ -186,15 +188,18 @@ export async function acceptOwnedMemoryAccountStates({
   try {
     return await withOwnedMemoryProbe({ context, fixture }, async (probe) => {
       try {
-        phase("memory_installed_hold_reply_for_account_switch");
+        phase("memory_installed_account_open_view");
         page = await context.newPage();
         await page.goto(memoryUrl, { waitUntil: "domcontentloaded" });
+        phase("memory_installed_account_wait_for_input");
         await input(page).waitFor();
         await input(page).fill(labels.late);
         probe.arm("add-late");
         root = await page.locator("html").elementHandle();
         assert.ok(root);
+        phase("memory_installed_account_submit");
         await button(page, "L\u00e4gg till").click();
+        phase("memory_installed_account_wait_for_held_reply");
         await probe.waitHeld();
         probe.beginAccountSwitch(peerFixture, page);
         await switchAccount();
@@ -255,6 +260,10 @@ export async function acceptOwnedMemoryAccountStates({
           privateTablesDenied: 3,
           ...result,
         };
+      } catch (error) {
+        if (page && new URL(page.url()).href === memoryUrl)
+          await captureFailure(page).catch(() => {});
+        throw error;
       } finally {
         // Close the extra fixture document before removing its request guards.
         await cleanup();

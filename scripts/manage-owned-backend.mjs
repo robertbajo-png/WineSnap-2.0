@@ -816,12 +816,15 @@ try {
     if (["PilotAccept", "PilotJourneys"].includes(action)) {
       assert.equal(pilotUi.enabled, true, "Pilot acceptance requires the installed dark UI");
       const { acceptOwnedPilotUi } = await import("./lib/owned-pilot-browser.mjs");
+      const accountIsolationOnly =
+        action === "PilotAccept" && process.env.WINESNAP_OWNED_ACCOUNT_ISOLATION_ONLY === "1";
       report.pilotAcceptance = await acceptOwnedPilotUi(keys, {
         fixture,
         remember,
         liveJourneys: action === "PilotJourneys",
         kitchenRecoveryOnly:
           action === "PilotAccept" && process.env.WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY === "1",
+        accountIsolationOnly,
         replayApprovedImage: process.env.WINESNAP_OWNED_REPLAY_APPROVED_IMAGE === "1",
         peerFixture,
         rememberPeer: (value) =>
@@ -829,7 +832,12 @@ try {
             flag: peerFixture ? "w" : "wx",
             mode: 0o600,
           }),
-        artifactDirectory: fileURLToPath(new URL("../dist/owned-pilot-ui", import.meta.url)),
+        artifactDirectory: fileURLToPath(
+          new URL(
+            accountIsolationOnly ? "../dist/owned-pilot-account" : "../dist/owned-pilot-ui",
+            import.meta.url,
+          ),
+        ),
         progress(step) {
           assert.match(step, /^[a-z_]+$/);
           phase = `pilot_${step}`;

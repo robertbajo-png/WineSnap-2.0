@@ -31,7 +31,21 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff, November 17: DEV-04 technical scope is complete and DEV-05 is
+Current handoff, November 18: DEV-05 is Pagar, installed app remains f9bb532.
+Five installed PilotDemoAccept checks (mocked AI, real fixture saves and a
+byte-identical reopened private image) and ten installed Offline checks passed.
+Full PilotAccept had 91 passing checks but timed out in the account-switch
+sequence. The new non-live AccountIsolationOnly scope passed 15 checks before
+the original memory tab stayed loading during the peer read with an old reply
+held. No leakage was visible, but the late-reply proof did not complete. Both
+failed runs cleaned up their exact fixture accounts. Diagnose the observed
+peer read on the original document; do not relax/reload away the proof or
+rerun the broad suite merely to locate it. No new live AI or app install.
+Preserve the existing ready owner viewer. Owner scan/review/save/image is still
+the first unobserved usage pass; no human acceptance claimed. See the canonical
+handoff for evidence; old production, hosted test and paused tunnel untouched.
+
+Previous handoff, November 17 (historical): DEV-04 technical scope is complete and DEV-05 is
 Pagar. The owned local app was updated from clean f9bb532 at 21:39:49 UTC, after
 fresh owner Check, encrypted backup owned-20261117-212540616.dpapi and successful
 isolated same-PC restore/cleanup. Dark-v1/origin label retained, loopback only,

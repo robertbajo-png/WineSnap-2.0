@@ -20,6 +20,7 @@ export async function acceptOwnedPilotUi(
     rememberPeer,
     liveJourneys = false,
     kitchenRecoveryOnly = false,
+    accountIsolationOnly = false,
     replayApprovedImage = false,
     artifactDirectory,
     progress = () => {},
@@ -28,7 +29,9 @@ export async function acceptOwnedPilotUi(
   validateOwnedKeys(keys);
   assert.equal(typeof liveJourneys, "boolean");
   assert.equal(typeof kitchenRecoveryOnly, "boolean");
+  assert.equal(typeof accountIsolationOnly, "boolean");
   if (kitchenRecoveryOnly) assert.equal(liveJourneys, false);
+  if (accountIsolationOnly) assert.ok(!liveJourneys && !kitchenRecoveryOnly);
   assert.equal(typeof replayApprovedImage, "boolean");
   if (replayApprovedImage) assert.equal(liveJourneys, true);
   assert.equal(typeof rememberPeer, "function");
@@ -50,6 +53,7 @@ export async function acceptOwnedPilotUi(
     phase: "prepare",
     scope: kitchenRecoveryOnly ? "kitchen-recovery-only" : "full",
   };
+  if (accountIsolationOnly) report.scope = "account-isolation-only";
   let fixture, peer, browser, context, page, kitchenGate;
   const setKitchenGate = (value) => {
     assert.ok(!kitchenGate || value === null);
@@ -208,6 +212,15 @@ export async function acceptOwnedPilotUi(
     }
     if (kitchenRecoveryOnly) {
       await kitchenRecovery();
+      assert.equal(report.externalRequests, 0);
+      assert.equal(report.blockedAiRequests, 0);
+      assert.equal(report.pageErrors, 0);
+      report.completed = true;
+      return report;
+    }
+    if (accountIsolationOnly) {
+      await mealStates();
+      await accountIsolation();
       assert.equal(report.externalRequests, 0);
       assert.equal(report.blockedAiRequests, 0);
       assert.equal(report.pageErrors, 0);
@@ -488,7 +501,14 @@ export async function acceptOwnedPilotUi(
       });
       assert.equal(report.collectorStates.completed, true);
     }
-    {
+    await mealStates();
+    await accountIsolation();
+    assert.equal(report.externalRequests, 0);
+    assert.equal(report.blockedAiRequests, 0);
+    assert.equal(report.pageErrors, 0);
+    report.completed = true;
+
+    async function mealStates() {
       const { acceptOwnedMealStates } = await import("./owned-meal-states.mjs");
       report.mealStates = await acceptOwnedMealStates({
         page,
@@ -501,7 +521,8 @@ export async function acceptOwnedPilotUi(
       });
       assert.equal(report.mealStates.completed, true);
     }
-    {
+
+    async function accountIsolation() {
       const { cachedKitchenOwnerPresent } = await import("./owned-pilot-live.mjs");
       const createdPeer = await ownedBrowserFixture(keys, "prepare", undefined, async (value) => {
         peer = value;
@@ -529,6 +550,11 @@ export async function acceptOwnedPilotUi(
             peerFixture: peer,
             phase,
             pass: (name) => report.passed.push(name),
+            captureFailure: (memoryPage) =>
+              memoryPage.screenshot({
+                path: join(artifactDirectory, "memory-account-failure.png"),
+                fullPage: true,
+              }),
             switchAccount: async () => {
               phase("logout");
               await controlPage.goto(ownedApp + "/me", { waitUntil: "domcontentloaded" });
@@ -603,10 +629,6 @@ export async function acceptOwnedPilotUi(
       assert.equal(await cachedKitchenOwnerPresent(page, peer.userId), false);
       report.passed.push("peer_cannot_read_owner_memory_recipe_or_offline_copy");
     }
-    assert.equal(report.externalRequests, 0);
-    assert.equal(report.blockedAiRequests, 0);
-    assert.equal(report.pageErrors, 0);
-    report.completed = true;
   } catch (error) {
     report.failure = "owned_pilot_ui_acceptance_failed";
     if (page && new URL(page.url()).origin === ownedApp) {
