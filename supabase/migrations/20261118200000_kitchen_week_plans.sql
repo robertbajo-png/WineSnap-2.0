@@ -68,13 +68,13 @@ BEGIN
      basis - ARRAY['knownAmount','unknownAmounts','sources'] <> '{}'::jsonb OR
      jsonb_typeof(basis->'unknownAmounts')<>'number' OR
      basis->>'unknownAmounts' !~ '^[0-9]{1,4}$' OR
-     CASE WHEN jsonb_typeof(basis->'unknownAmounts')='number'
-      THEN (basis->>'unknownAmounts')::numeric>2240 ELSE true END OR
-     jsonb_typeof(basis->'sources')<>'array' OR
-     CASE WHEN basis->'knownAmount'='null'::jsonb THEN false
-          WHEN jsonb_typeof(basis->'knownAmount')='number' THEN
-           (basis->>'knownAmount')::numeric<=0 OR (basis->>'knownAmount')::numeric>5376000000000
-          ELSE true END THEN RETURN false; END IF;
+     jsonb_typeof(basis->'sources')<>'array' THEN RETURN false; END IF;
+  IF (basis->>'unknownAmounts')::numeric>2240 THEN RETURN false; END IF;
+  IF basis->'knownAmount'<>'null'::jsonb THEN
+   IF jsonb_typeof(basis->'knownAmount')<>'number' THEN RETURN false; END IF;
+   IF (basis->>'knownAmount')::numeric<=0 OR (basis->>'knownAmount')::numeric>5376000000000
+      THEN RETURN false; END IF;
+  END IF;
   IF jsonb_array_length(basis->'sources') NOT BETWEEN 1 AND 28 THEN RETURN false; END IF;
   FOR source IN SELECT value FROM jsonb_array_elements(basis->'sources') LOOP
    IF NOT public.kitchen_week_meal_valid(source,week_start) THEN RETURN false; END IF;
