@@ -6,6 +6,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { localIoFlags } from "./lib/database-checks.mjs";
 
 // No connection URL or archive is accepted. This always creates its own local
 // cluster, synthetic users and SQL snapshots; it cannot target production.
@@ -23,13 +24,14 @@ const port = listener.address().port;
 await new Promise((done) => listener.close(done));
 const password = randomUUID();
 const config = { host: "127.0.0.1", port, user: "postgres", password };
+const postgresFlags = ["-h", "127.0.0.1"];
 const cluster = new EmbeddedPostgres({
   databaseDir: join(directory, "data"),
   port,
   user: "postgres",
   password,
   persistent: true,
-  postgresFlags: ["-h", "127.0.0.1"],
+  postgresFlags,
   initdbFlags: ["--encoding=UTF8"],
   onLog: () => {},
   onError: () => {},
@@ -44,6 +46,8 @@ let restoredConnected = false;
 let stage = "initialise";
 try {
   await cluster.initialise();
+  const major = Number((await readFile(join(directory, "data/PG_VERSION"), "utf8")).trim());
+  postgresFlags.push(...localIoFlags(process.platform, major));
   await cluster.start();
   started = true;
   await admin.connect();

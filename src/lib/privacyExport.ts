@@ -4,7 +4,7 @@ const exportSchema = z.object({
   format: z.literal("WineSnap user export v2"),
   exported_at: z.string(),
   account: z.object({ id: z.string() }).passthrough(),
-  tables: z.record(z.array(z.record(z.unknown()))),
+  tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))),
   files: z.array(z.object({ bucket: z.string(), path: z.string(), signedUrl: z.string() })),
   excluded: z.array(z.string()),
 });

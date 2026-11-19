@@ -1,0 +1,8 @@
+{
+  "name": "winesnap-portable-backup-tools",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "age-encryption": "0.3.1"
+  }
+}

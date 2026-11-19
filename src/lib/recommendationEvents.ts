@@ -1,22 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { RecommendationCandidate } from "@/lib/recommendationEngine";
+import { accountWriteClient, type AccountWriteScope } from "./accountWriteScope";
 
 export type RecommendationEventType =
-  | "impression"
-  | "open"
-  | "save"
-  | "like"
-  | "dislike"
-  | "dismiss"
-  | "compare";
+  "impression" | "open" | "save" | "like" | "dislike" | "dismiss" | "compare";
 
 export type RecommendationSource =
-  | "for_you"
-  | "similar"
-  | "compare"
-  | "ask"
-  | "social"
-  | "restaurant";
+  "for_you" | "similar" | "compare" | "ask" | "social" | "restaurant";
 
 export function recommendationKey(candidate: RecommendationCandidate) {
   return [candidate.producer, candidate.wine_name, candidate.vintage]
@@ -35,17 +25,31 @@ export async function recordRecommendationEvent(
   source: RecommendationSource,
   candidate: RecommendationCandidate,
   metadata: Record<string, unknown> = {},
+  scope?: AccountWriteScope,
 ) {
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return false;
+  let client = supabase;
+  let owner: string;
+  if (scope) {
+    try {
+      client = await accountWriteClient(scope);
+      owner = scope.owner;
+    } catch {
+      return false;
+    }
+  } else {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return false;
+    owner = data.user.id;
+  }
+  if (scope && !scope.current()) return false;
   const candidateKey = recommendationKey(candidate);
   if (!candidateKey) return false;
 
   if (eventType === "like" || eventType === "dislike") {
-    const { error: replaceError } = await supabase
+    const { error: replaceError } = await client
       .from("recommendation_events")
       .delete()
-      .eq("user_id", data.user.id)
+      .eq("user_id", owner)
       .eq("source", source)
       .eq("candidate_key", candidateKey)
       .in("event_type", ["like", "dislike"]);
@@ -55,8 +59,9 @@ export async function recordRecommendationEvent(
     }
   }
 
-  const { error } = await supabase.from("recommendation_events").insert({
-    user_id: data.user.id,
+  if (scope && !scope.current()) return false;
+  const { error } = await client.from("recommendation_events").insert({
+    user_id: owner,
     wine_id: null,
     candidate_key: candidateKey,
     event_type: eventType,
@@ -68,5 +73,5 @@ export async function recordRecommendationEvent(
     console.error("Could not record recommendation feedback", error);
     return false;
   }
-  return true;
+  return !scope || scope.current();
 }

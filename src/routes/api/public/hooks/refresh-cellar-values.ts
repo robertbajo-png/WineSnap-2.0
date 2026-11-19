@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createRetailPriceHandler } from "@/lib/retailPriceService.server";
 import { lookupRetailCandidates } from "@/lib/retailCatalog.server";
 import type { RetailWine } from "@/lib/retailPrices";
+import { getOperationsAdmin } from "@/lib/localCredentials.server";
 
 const handler = createRetailPriceHandler({
   async authenticate(request) {
@@ -18,7 +19,7 @@ const handler = createRetailPriceHandler({
     return error ? null : ((data?.claims?.sub as string | undefined) ?? null);
   },
   async load(userId, ids) {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getOperationsAdmin();
     const { data, error } = await supabaseAdmin
       .from("wines")
       .select(
@@ -33,7 +34,7 @@ const handler = createRetailPriceHandler({
   },
   lookup: lookupRetailCandidates,
   async save(userId, wine, patch) {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getOperationsAdmin();
     // Do not overwrite an edit, consumption or another quote made during lookup.
     const { data, error } = await supabaseAdmin
       .from("wines")

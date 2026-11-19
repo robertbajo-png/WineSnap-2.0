@@ -37,6 +37,13 @@ const props: ScanResultProps = {
 };
 
 describe("scan result screen", () => {
+  it("retains the review but blocks edits during an uncertain save", () => {
+    const html = renderToStaticMarkup(<ScanResult {...props} saveError saveUncertain />);
+    expect(html).toContain("state.saveUncertain");
+    expect(html).toContain("state.checkSave");
+    expect(html).toMatch(/disabled=""[^>]*aria-label="scan.editDetails"/);
+    expect(html).toContain("Zehn Morgen");
+  });
   it("shows existing taste, serving and food estimates without tabs or saving first", () => {
     const html = renderToStaticMarkup(<ScanResult {...props} />);
     for (const text of [

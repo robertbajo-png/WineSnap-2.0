@@ -6,6 +6,17 @@ const answer = (content: string) =>
   renderToStaticMarkup(<ChatMessageContent role="assistant" content={content} />);
 
 describe("sommelier message formatting", () => {
+  it("can normalize arbitrary model headings under the Chef page without altering wine defaults", () => {
+    const html = renderToStaticMarkup(
+      <ChatMessageContent
+        role="assistant"
+        content={"# Förslag\n\n### Tillagning\n\n###### Servering"}
+        normalizeHeadings
+      />,
+    );
+    expect(html.match(/<h2>/g)).toHaveLength(3);
+    expect(html).not.toMatch(/<h[13456]>/);
+  });
   it("renders saved answers with emphasis, paragraphs and real bullet lists", () => {
     const html = answer(
       "Din smak är **frisk och mångsidig**.\n\n* **Balans:** Låg strävhet.\n* **Favoriter:** Merlot och *Shiraz*.\n\nKort sagt: fruktiga viner.",
