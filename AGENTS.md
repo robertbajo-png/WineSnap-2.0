@@ -31,7 +31,17 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06's `--planning-db` probe verified 38 migrations, real
+Current handoff: DEV-06 has a read-only owned Windows update preflight and
+`docs/owned-planning-local-update.md`. The installed ledger matched all 37
+previous migrations and had only the additive week-plan migration pending.
+The app answered on loopback and the previous running web image exists.
+No tag, backup, rollback activation or installed change was made. An exact
+pre-update backup and matched isolated restore, retained rollback image and
+rehearsed web-only replacement, and local delivery gates still apply. Do not
+return the owner to the old export code after real plans exist. DEV-05's
+bottle test stays deferred. See the canonical plan before continuation.
+
+Previous handoff: DEV-06's `--planning-db` probe verified 38 migrations, real
 GoTrue/PostgREST browser save and reload, pinned-version Cook Mode, revision
 conflicts, account isolation, private export, missing versions, and the
 pending-erasure/owner-only cascade. A separate networkless PostgreSQL cluster
