@@ -16,9 +16,10 @@ import { createCoreChatFixture, acceptCoreChat } from "./lib/core-chat-browser.m
 import { createCoreCollectorFixture, acceptCoreCollector } from "./lib/core-collector-browser.mjs";
 import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-browser.mjs";
 
-// Synthetic source UI only. No installed backend, real account or provider credentials.
+// Synthetic accounts/data only. No installed backend, real account or provider credentials.
 const kitchenTabsOnly = process.argv.length === 3 && process.argv[2] === "--kitchen-tabs";
-const planningOnly = process.argv.length === 3 && process.argv[2] === "--planning";
+const planningDb = process.argv.length === 3 && process.argv[2] === "--planning-db";
+const planningOnly = planningDb || (process.argv.length === 3 && process.argv[2] === "--planning");
 const kitchenOnly =
   planningOnly || kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
 const chatOnly = process.argv.length === 3 && process.argv[2] === "--chat";
@@ -43,19 +44,21 @@ const output = join(
 );
 const artifacts = join(
   root,
-  planningOnly
-    ? "dist/core-planning"
-    : pricesOnly
-      ? "dist/core-prices"
-      : kitchenTabsOnly
-        ? "dist/core-kitchen-tabs"
-        : kitchenOnly
-          ? "dist/core-kitchen"
-          : chatOnly
-            ? "dist/core-chat"
-            : collectorOnly
-              ? "dist/core-collector"
-              : "dist/core-experience",
+  planningDb
+    ? "dist/core-planning-database"
+    : planningOnly
+      ? "dist/core-planning"
+      : pricesOnly
+        ? "dist/core-prices"
+        : kitchenTabsOnly
+          ? "dist/core-kitchen-tabs"
+          : kitchenOnly
+            ? "dist/core-kitchen"
+            : chatOnly
+              ? "dist/core-chat"
+              : collectorOnly
+                ? "dist/core-collector"
+                : "dist/core-experience",
 );
 const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
@@ -125,18 +128,20 @@ const syntheticUsers = new Map([
 ]);
 const report = {
   synthetic: true,
-  fixtureDataMocked: true,
-  sourceViewScope: planningOnly
-    ? "core-planning"
-    : pricesOnly
-      ? "core-prices"
-      : kitchenOnly
-        ? "core-kitchen"
-        : chatOnly
-          ? "core-chat"
-          : collectorOnly
-            ? "core-collector"
-            : "wine-detail-scan",
+  fixtureDataMocked: !planningDb,
+  sourceViewScope: planningDb
+    ? "core-planning-database"
+    : planningOnly
+      ? "core-planning"
+      : pricesOnly
+        ? "core-prices"
+        : kitchenOnly
+          ? "core-kitchen"
+          : chatOnly
+            ? "core-chat"
+            : collectorOnly
+              ? "core-collector"
+              : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -156,6 +161,8 @@ let child,
   closed,
   browser,
   page,
+  backend,
+  planningDatabaseFixture,
   logs = "";
 async function fixtureArrival(promise) {
   let timer;
@@ -255,34 +262,52 @@ try {
     (lang) => localStorage.setItem("lang", lang),
     kitchenOnly ? "sv" : "en",
   );
-  if (ownedFixture) {
+  if (ownedFixture && !planningDb) {
     report.authenticationSimulated = true;
     await context.addInitScript(
       ({ key, session }) => localStorage.setItem(key, JSON.stringify(session)),
       { key: authKey, session: ownerSession },
     );
   }
-  const kitchenFixture = kitchenOnly
-    ? createCoreKitchenFixture({
-        origin: fixtureOrigin,
-        key: fixtureKey,
-        owner: fixtureOwner,
-        users: syntheticUsers,
-        report,
-        base,
-      })
-    : null;
-  const planningFixture = planningOnly
-    ? createCorePlanningFixture({
-        kitchen: kitchenFixture,
-        origin: fixtureOrigin,
-        owner: fixtureOwner,
-        users: syntheticUsers,
-        key: fixtureKey,
-        report,
-        base,
-      })
-    : null;
+  let acceptPlanningDatabase;
+  if (planningDb) {
+    const { isolatedPlanningBackend } = await import("./lib/isolated-planning-backend.mjs");
+    const suite = await import("./lib/planning-database-browser.mjs");
+    backend = isolatedPlanningBackend(report);
+    await backend.boot();
+    report.phase = "create_disposable_auth_fixtures";
+    planningDatabaseFixture = await suite.createPlanningDatabaseFixture({
+      backend,
+      base,
+      origin: fixtureOrigin,
+      key: fixtureKey,
+      report,
+    });
+    acceptPlanningDatabase = suite.acceptPlanningDatabase;
+  }
+  const kitchenFixture =
+    kitchenOnly && !planningDb
+      ? createCoreKitchenFixture({
+          origin: fixtureOrigin,
+          key: fixtureKey,
+          owner: fixtureOwner,
+          users: syntheticUsers,
+          report,
+          base,
+        })
+      : null;
+  const planningFixture =
+    planningOnly && !planningDb
+      ? createCorePlanningFixture({
+          kitchen: kitchenFixture,
+          origin: fixtureOrigin,
+          owner: fixtureOwner,
+          users: syntheticUsers,
+          key: fixtureKey,
+          report,
+          base,
+        })
+      : null;
   const chatFixture = chatOnly
     ? createCoreChatFixture({
         origin: fixtureOrigin,
@@ -333,6 +358,7 @@ try {
       body: JSON.stringify(data),
     });
   const routeFixture = async (route) => {
+    if (planningDatabaseFixture) return planningDatabaseFixture.route(route);
     if (planningFixture) return planningFixture.route(route);
     if (pricesFixture) return pricesFixture.route(route);
     if (kitchenFixture) return kitchenFixture.route(route);
@@ -490,6 +516,11 @@ try {
       await routeFixture(route);
     } catch {
       report.fixtureErrors++;
+      if (planningDb) {
+        const { pathname } = new URL(route.request().url());
+        if (/^\/(?:rest|auth)\/v1\/(?:rpc\/)?[a-z_]+$/.test(pathname))
+          report.lastIsolatedRouteFailure = route.request().method() + " " + pathname;
+      }
       await route.abort().catch(() => undefined);
     }
   });
@@ -506,7 +537,9 @@ try {
   page.setDefaultTimeout(30000);
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
-  if (planningFixture) {
+  if (planningDatabaseFixture) {
+    await acceptPlanningDatabase({ page, base, fixture: planningDatabaseFixture, backend, report });
+  } else if (planningFixture) {
     await acceptCorePlanning({ page, base, artifacts, report, fixture: planningFixture, context });
   } else if (pricesFixture) {
     await acceptCorePrices({
@@ -879,6 +912,9 @@ try {
   report.completed = true;
 } catch (error) {
   report.failure = "synthetic_core_experience_not_accepted";
+  if (planningDb && /^[0-9A-Z]{5}$/.test(error.code ?? "")) report.databaseErrorCode = error.code;
+  if (planningDb && Number.isInteger(error.actual) && Number.isInteger(error.expected))
+    report.numericAssertion = { actual: error.actual, expected: error.expected };
   report.errorType = ["AssertionError", "TimeoutError"].includes(error.name) ? error.name : "Error";
   report.waitAction =
     ["click", "fill", "waitFor", "selectOption"].find((action) =>
@@ -902,10 +938,15 @@ try {
       .catch(() => undefined);
   }
 } finally {
+  planningDatabaseFixture?.releaseLatePlan();
   await browser?.close().catch(() => undefined);
   if (child && child.exitCode === null) child.kill();
   if (closed) await closed;
   report.cleanupCompleted = !child || child.exitCode !== null || child.signalCode !== null;
+  if (backend) {
+    report.isolatedDatabaseCleanup = await backend.close();
+    report.cleanupCompleted &&= report.isolatedDatabaseCleanup;
+  }
 }
 await mkdir(artifacts, { recursive: true });
 await writeFile(join(artifacts, "status.json"), JSON.stringify(report));

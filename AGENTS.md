@@ -31,7 +31,17 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06 adds Veckoplan under Mer i koket in source. The UI
+Current handoff: DEV-06's `--planning-db` probe verified 38 migrations, real
+GoTrue/PostgREST browser save and reload, pinned-version Cook Mode, revision
+conflicts, account isolation, private export, missing versions, and the
+pending-erasure/owner-only cascade. A separate networkless PostgreSQL cluster
+restored the whole disposable database and roles with matching relations and
+catalog. All 60 focused Vitest tests and 11 mocked Chromium checks passed.
+No installed app or real data was changed, and DEV-05's owner bottle test is
+still deferred. Next: prepare additive local migration and rollback delivery
+without applying it before the local gates are met. See the canonical plan.
+
+Previous handoff: DEV-06 adds Veckoplan under Mer i koket in source. The UI
 plans exact recipe versions and servings, derives editable purchases, and
 keeps a draft in memory until explicit save. Revision conflict and uncertain
 save recovery require a read and never automatically replay a write.
