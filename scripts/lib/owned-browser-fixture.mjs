@@ -76,7 +76,7 @@ export async function ownedBrowserFixture(
   assert.equal(typeof planningOnly, "boolean");
   if (planningOnly) {
     assert.ok(!demo && !cleanupImages && !cleanupMeals && !cleanupMemory);
-    assert.ok(["prepare", "cleanup"].includes(action));
+    assert.ok(["prepare", "cleanup", "absent"].includes(action));
   }
   assert.ok(
     ["prepare", "inspect", "conflict", "memory", "meals", "cleanup", "absent"].includes(action),
@@ -156,6 +156,7 @@ export async function ownedBrowserFixture(
   if (action === "absent") {
     const found = await admin.auth.admin.getUserById(fixture.userId);
     assert.equal(found.error?.status, 404);
+    if (planningOnly) await assertDependentsAbsent();
     return { completed: true, alreadyClean: true };
   }
   if (action === "prepare") {

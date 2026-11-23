@@ -330,6 +330,18 @@ describe("owned meal fixture cascade verification", () => {
     ).rejects.toThrow();
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
+  it("verifies stale planning fixture rows before replacing its manifest, without deleting anyone", async () => {
+    admin.getUserById
+      .mockReset()
+      .mockResolvedValue({ data: { user: null }, error: { status: 404 } });
+    await expect(
+      ownedBrowserFixture(keys(), "absent", value, undefined, { planningOnly: true }),
+    ).resolves.toMatchObject({ alreadyClean: true });
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+    expect(queries.get("kitchen_week_plans").select).toHaveBeenCalledExactlyOnceWith("week_start");
+    for (const q of queries.values())
+      expect(q.eq).toHaveBeenCalledExactlyOnceWith("user_id", value.userId);
+  });
   it("checks memory cascades on a previously deleted fixture without deleting another account", async () => {
     admin.getUserById
       .mockReset()

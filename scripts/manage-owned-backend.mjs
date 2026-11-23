@@ -24,6 +24,7 @@ import { inspectOwnedContainers } from "./lib/owned-installed-state.mjs";
 import {
   assessPlanningLedger,
   planningLedgerQuery,
+  planningMigration,
   planningRollbackTag,
   requirePlanningUpdate,
 } from "./lib/owned-planning-preflight.mjs";
@@ -705,6 +706,20 @@ try {
       args: ["-g", "daemon off;"],
     });
     await wait(async () => assert.equal((await request("/auth/v1/health")).status, 200));
+    if (pending.length) {
+      phase = "rest_schema_reload";
+      // Update can keep the existing PostgREST service and its cached schema.
+      await sql("NOTIFY pgrst, 'reload schema';");
+      if (pending.some(({ name }) => name === planningMigration)) {
+        await wait(async () => {
+          const response = await request("/rest/v1/kitchen_week_plans?limit=0");
+          const result = await response.json();
+          assert.ok([401, 403].includes(response.status));
+          assert.equal(result.code, "42501");
+        });
+        report.planningRestSchemaVerified = true;
+      }
+    }
     phase = "web_build";
     let web = await existing("web");
     if (!web || action === "Update") {
@@ -855,8 +870,11 @@ try {
       fixture
     ) {
       // Refuse to overwrite a live fixture's cleanup manifest.
-      const existing = await ownedBrowserFixture(keys, "absent", fixture);
+      const existing = planningOnly
+        ? await ownedBrowserFixture(keys, "absent", fixture, undefined, { planningOnly })
+        : await ownedBrowserFixture(keys, "absent", fixture);
       assert.equal(existing.alreadyClean, true);
+      if (planningOnly) report.previousPlanningFixtureCleanupVerified = true;
     }
     const remember = async (created) => {
       // The private directory/operation lock belongs to the Windows wrapper.

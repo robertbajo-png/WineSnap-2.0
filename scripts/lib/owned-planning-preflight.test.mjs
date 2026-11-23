@@ -124,4 +124,11 @@ describe("owned planning update preflight", () => {
       /phase = "application_migrations";[\s\S]+?requirePlanningUpdate\(sources, ledger, keys.installationId\);[\s\S]+?for \(const item of pending\)/,
     );
   });
+
+  it("refreshes only after applied migrations and verifies the new table is private before web replacement", () => {
+    const backend = readFileSync(new URL("../manage-owned-backend.mjs", import.meta.url), "utf8");
+    expect(backend).toMatch(
+      /phase = "gateway";[\s\S]+?if \(pending\.length\) \{\s+phase = "rest_schema_reload";[\s\S]+?NOTIFY pgrst, 'reload schema';[\s\S]+?request\("\/rest\/v1\/kitchen_week_plans\?limit=0"\);[\s\S]+?assert\.equal\(result\.code, "42501"\);[\s\S]+?phase = "web_build";/,
+    );
+  });
 });
