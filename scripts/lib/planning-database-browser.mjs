@@ -37,14 +37,18 @@ export async function createPlanningDatabaseFixture({
   report,
   relayWeb,
   pantry = false,
+  preparedAccounts,
 }) {
   assert.equal(origin, "http://127.0.0.1:54323");
   assert.equal(key, "sb_publishable_runtime_check_not_a_real_key");
   const frontend = new URL(base);
   assert.equal(frontend.hostname, "127.0.0.1");
   assert.ok(!["", "5212", "54323", "8026"].includes(frontend.port));
-  const owner = await backend.createAccount("owner");
-  const peer = await backend.createAccount("peer");
+  assert.ok(preparedAccounts === undefined || (pantry && preparedAccounts.length === 2));
+  const [owner, peer] = preparedAccounts ?? [
+    await backend.createAccount("owner"),
+    await backend.createAccount("peer"),
+  ];
   const accounts = [owner, peer];
   const tokens = new Map();
   const writes = [];

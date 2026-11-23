@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
-import { checkOwnedContainer, ownedServices } from "./owned-backend.mjs";
+import { checkOwnedContainer, ownedApi, ownedProject, ownedServices } from "./owned-backend.mjs";
 import {
   ownedRestoreProbeImage,
   ownedRoleRestoreSql,
@@ -532,6 +532,35 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
   return {
     boot,
     request,
+    pantryFixtureTransport() {
+      assert.ok(meals && networkId);
+      const keys = {
+        version: 1,
+        project: ownedProject,
+        installationId: run + run,
+        dbPassword: password,
+        jwtSecret: sign,
+        cronSecret: randomBytes(32).toString("hex"),
+        privacyCronSecret: randomBytes(32).toString("hex"),
+        issuedAt: Math.floor(Date.now() / 1000),
+      };
+      return {
+        keys,
+        async relay(input, init) {
+          const next = new Request(input, init);
+          const url = new URL(next.url);
+          assert.equal(url.origin, ownedApi);
+          const path = url.pathname.match(/^\/(auth|rest)\/v1(\/[a-z0-9_/-]+)$/);
+          assert.ok(path);
+          const [, service, endpoint] = path;
+          return request(service, endpoint + url.search, {
+            method: next.method,
+            headers: Object.fromEntries(next.headers),
+            body: next.body ? await next.text() : undefined,
+          });
+        },
+      };
+    },
     replaceRehearsalWeb,
     requestWeb(path, method) {
       assert.ok(webRelay);

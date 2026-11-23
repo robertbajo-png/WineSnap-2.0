@@ -63,6 +63,8 @@ assert.ok(
     "Offline",
     "PilotAccept",
     "PlanningAccept",
+    "PantryAccept",
+    "PantryCleanup",
     "PilotJourneys",
     "PilotDemo",
     "PilotDemoAccept",
@@ -79,6 +81,7 @@ assert.equal(process.argv.length, 3);
 const planningUpdate = process.env.WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION === "1";
 const pantryBackup = process.env.WINESNAP_OWNED_PANTRY_BACKUP;
 const pantryUpdate = pantryBackup !== undefined;
+const pantryAcceptance = ["PantryAccept", "PantryCleanup"].includes(action);
 if (pantryUpdate) {
   assert.match(pantryBackup, pantryBackupPattern);
   assert.equal(planningUpdate, false);
@@ -163,7 +166,7 @@ async function installedServices() {
       (report.serviceInspectionMs ?? 0) + Math.round(performance.now() - started);
   }
 }
-async function pantryDeliveryChecks(priorImage) {
+async function readPausedPantryState() {
   const observation = await readOwnedOperations(join(homedir(), "WineSnapOwned"));
   const runningConnector = (
     await command(["ps", "--filter", `name=^/${ownedConnectorName}$`, "--format", "{{.Names}}"])
@@ -171,6 +174,10 @@ async function pantryDeliveryChecks(priorImage) {
     .toString()
     .trim();
   requirePantryPaused(observation, runningConnector);
+  return observation;
+}
+async function pantryDeliveryChecks(priorImage) {
+  const observation = await readPausedPantryState();
   requirePantryRecovery(observation, pantryBackup);
   assert.equal(
     (await command(["image", "inspect", pantryRollbackTag(priorImage), "--format", "{{.Id}}"]))
@@ -434,7 +441,7 @@ async function installWebKeys() {
     JSON.stringify(deviceBinding),
   );
 }
-async function verify() {
+async function verify({ syncWebKeys = true } = {}) {
   for (const value of (await installedServices()).values()) {
     assert.ok(value?.State.Running);
   }
@@ -451,7 +458,7 @@ async function verify() {
     ).status,
     200,
   );
-  await installWebKeys();
+  if (syncWebKeys) await installWebKeys();
   report.database = true;
   report.auth = true;
   report.storage = true;
@@ -897,7 +904,73 @@ try {
     );
   }
   phase = "verification";
-  await verify();
+  await verify({ syncWebKeys: !pantryAcceptance });
+  if (pantryAcceptance) {
+    phase = "pantry_acceptance_ledger";
+    await readPausedPantryState();
+    if (action === "PantryAccept") assert.equal(installedPantry, pantryWebLabel);
+    const ledger = assessPantryLedger(
+      await readMigrationSources(),
+      JSON.parse(await sql(pantryLedgerQuery)),
+      keys.installationId,
+    );
+    assert.equal(ledger.scope, "already_applied");
+    report.pantryLedger = ledger;
+    const { ownedBrowserFixture, validateBrowserFixture } =
+      await import("./lib/owned-browser-fixture.mjs");
+    const readManifest = async (name) => {
+      const path = join(homedir(), "WineSnapOwned", `pantry-browser-${name}-fixture.json`);
+      let fixture;
+      try {
+        const info = await lstat(path);
+        assert.ok(info.isFile() && !info.isSymbolicLink() && info.size < 16384);
+        fixture = validateBrowserFixture(JSON.parse(await readFile(path, "utf8")));
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+      return {
+        fixture,
+        remember: (value) =>
+          writeFile(path, JSON.stringify(validateBrowserFixture(value)), {
+            flag: fixture ? "w" : "wx",
+            mode: 0o600,
+          }),
+      };
+    };
+    phase = "pantry_acceptance_manifests";
+    const own = await readManifest("owner"),
+      peer = await readManifest("peer");
+    if (own.fixture && peer.fixture) assert.notEqual(own.fixture.userId, peer.fixture.userId);
+    if (action === "PantryCleanup") {
+      phase = "pantry_cleanup";
+      for (const { fixture } of [peer, own])
+        if (fixture) {
+          const result = await ownedBrowserFixture(keys, "cleanup", fixture, undefined, {
+            pantryOnly: true,
+          });
+          assert.ok(result.cleanupCompleted || result.alreadyClean);
+        }
+      report.pantryCleanupVerified = true;
+    } else {
+      const { acceptInstalledPantry } = await import("./lib/owned-pantry-accept.mjs");
+      phase = "pantry_prepare";
+      report.pantryAcceptance = await acceptInstalledPantry(keys, {
+        previous: own.fixture,
+        previousPeer: peer.fixture,
+        remember: own.remember,
+        rememberPeer: peer.remember,
+        artifactDirectory: fileURLToPath(new URL("../dist/owned-pantry-accept", import.meta.url)),
+        progress(step) {
+          assert.match(step, /^pantry_[a-z_]+$/);
+          phase = step;
+        },
+      });
+      assert.equal(report.pantryAcceptance.completed, true);
+      assert.equal(report.pantryAcceptance.cleanupCompleted, true);
+    }
+    await readPausedPantryState();
+    report.publicTunnelPausedVerified = true;
+  }
   if (action === "RestartApp") {
     phase = "restart_owned_application";
     await existing("web");

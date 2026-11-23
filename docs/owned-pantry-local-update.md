@@ -62,10 +62,29 @@ image work.
    ordered backup and restore pair. It does not create a backup itself.
 4. Only after installation approval, use
    `./scripts/run-owned-windows.ps1 -Action Update -RequirePantryMigration -VerifiedPantryBackup <exact-filename>`.
-   Verify the 38-to-40 transition, local service health, the unchanged public
-   pause and the complete plan-to-shopping-to-Cook Mode journey with a
-   disposable local account. Cleanup is required. The owner's actual use is
-   recorded separately from automated acceptance.
+   Verify the 38-to-40 transition, local service health and the unchanged
+   public pause. Run `./scripts/run-owned-windows.ps1 -Action PantryAccept`
+   against the installed loopback app in the same approved window. It requires
+   the DEV-07 web label and complete ledger, and runs with two disposable
+   accounts in a fresh browser. It checks the 600/400/200 g calculation,
+   exclusion of an unrelated diner, persistence, unconfirmed stock, and the
+   exact completed session and once-only manual deduction. Require a success
+   report and cleanup of both synthetic accounts and their dependent rows.
+   The owner's actual use is recorded separately from automated acceptance.
+
+Rehearse the fixture lifecycle and exact browser journey without the installed
+app by running `node scripts/check-core-experience-browser.mjs --pantry-db-smoke`
+using the synthetic pantry runtime extracted to `dist/core-pantry-runtime`.
+This rehearses the owner/peer account preparation, expected REST responses and
+deletion against disposable Postgres/Auth/REST. It is not a test of the running
+installation. Its report lives in `dist/core-pantry-database-smoke`; the
+installed report lives in `dist/owned-pantry-accept`.
+
+If the installed runner stops before cleanup, `PantryCleanup` verifies and
+cleans only the two recorded, tagged test accounts. It checks the paused
+tunnel and applied ledger before acting. It does not delete an unverified
+account or claim the smoke passed. Private fixture manifests contain IDs and
+synthetic addresses, not passwords or sessions; do not copy them into Git.
 
 Keep database and image volumes intact for a web-only fallback. Never undo
 these additive migrations, replay them blindly or restore over newer data;

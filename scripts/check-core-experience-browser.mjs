@@ -19,7 +19,9 @@ import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-bro
 // Synthetic accounts/data only. No installed backend, real account or provider credentials.
 const kitchenTabsOnly = process.argv.length === 3 && process.argv[2] === "--kitchen-tabs";
 const planningSmoke = process.argv.length === 3 && process.argv[2] === "--planning-db-smoke";
-const pantryDb = process.argv.length === 3 && process.argv[2] === "--pantry-db";
+const pantryInstalledSmoke = process.argv.length === 3 && process.argv[2] === "--pantry-db-smoke";
+const pantryDb =
+  pantryInstalledSmoke || (process.argv.length === 3 && process.argv[2] === "--pantry-db");
 const planningDb =
   pantryDb || planningSmoke || (process.argv.length === 3 && process.argv[2] === "--planning-db");
 const planningOnly = planningDb || (process.argv.length === 3 && process.argv[2] === "--planning");
@@ -50,7 +52,9 @@ const output = join(
 const artifacts = join(
   root,
   pantryDb
-    ? "dist/core-pantry-database"
+    ? pantryInstalledSmoke
+      ? "dist/core-pantry-database-smoke"
+      : "dist/core-pantry-database"
     : planningDb
       ? planningSmoke
         ? "dist/core-planning-database-smoke"
@@ -139,7 +143,9 @@ const report = {
   synthetic: true,
   fixtureDataMocked: !planningDb,
   sourceViewScope: pantryDb
-    ? "core-pantry-database"
+    ? pantryInstalledSmoke
+      ? "core-pantry-database-smoke"
+      : "core-pantry-database"
     : planningDb
       ? planningSmoke
         ? "core-planning-database-smoke"
@@ -175,6 +181,7 @@ let child,
   browser,
   page,
   backend,
+  pantryLease,
   planningDatabaseFixture,
   logs = "";
 async function fixtureArrival(promise) {
@@ -282,13 +289,28 @@ try {
       { key: authKey, session: ownerSession },
     );
   }
-  let acceptPlanningDatabase;
+  let acceptPlanningDatabase, pantryAcceptance, preparedPantry;
   if (planningDb) {
     const { isolatedPlanningBackend } = await import("./lib/isolated-planning-backend.mjs");
     const suite = await import("./lib/planning-database-browser.mjs");
     backend = isolatedPlanningBackend(report, { meals: pantryDb });
     await backend.boot();
     report.phase = "create_disposable_auth_fixtures";
+    if (pantryInstalledSmoke) {
+      pantryAcceptance = await import("./lib/owned-pantry-accept.mjs");
+      const { keys, relay } = backend.pantryFixtureTransport();
+      let saved = 0;
+      const remember = async () => {
+        saved++;
+      };
+      pantryLease = pantryAcceptance.pantryAcceptanceFixtures(keys, {
+        relay,
+        remember,
+        rememberPeer: remember,
+      });
+      preparedPantry = await pantryLease.prepare();
+      assert.equal(saved, 2);
+    }
     planningDatabaseFixture = await suite.createPlanningDatabaseFixture({
       backend,
       base,
@@ -296,6 +318,7 @@ try {
       key: fixtureKey,
       report,
       pantry: pantryDb,
+      preparedAccounts: preparedPantry?.accounts,
     });
     acceptPlanningDatabase = suite.acceptPlanningDatabase;
   }
@@ -372,6 +395,12 @@ try {
       body: JSON.stringify(data),
     });
   const routeFixture = async (route) => {
+    if (pantryAcceptance && new URL(route.request().url()).origin === fixtureOrigin) {
+      assert.notEqual(
+        pantryAcceptance.pantryBrowserRequest(route.request().url(), route.request().method()),
+        "blocked",
+      );
+    }
     if (planningDatabaseFixture) return planningDatabaseFixture.route(route);
     if (planningFixture) return planningFixture.route(route);
     if (pricesFixture) return pricesFixture.route(route);
@@ -552,23 +581,34 @@ try {
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
   if (planningDatabaseFixture) {
-    await acceptPlanningDatabase({
-      page,
-      base,
-      fixture: planningDatabaseFixture,
-      backend,
-      report,
-      smoke: planningSmoke,
-      pantry: pantryDb,
-      capture: async (screen, width) => {
-        await page.setViewportSize({ width, height: 844 });
-        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-        await page.screenshot({
-          path: join(artifacts, `${screen}-${width}.png`),
-          animations: "disabled",
-        });
-      },
-    });
+    const capture = async (screen, width) => {
+      await page.setViewportSize({ width, height: 844 });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await page.screenshot({
+        path: join(artifacts, `${screen}-${width}.png`),
+        animations: "disabled",
+      });
+    };
+    if (preparedPantry) {
+      await pantryAcceptance.runPreparedPantryAcceptance({
+        page,
+        base,
+        prepared: preparedPantry,
+        report,
+        capture,
+      });
+    } else {
+      await acceptPlanningDatabase({
+        page,
+        base,
+        fixture: planningDatabaseFixture,
+        backend,
+        report,
+        smoke: planningSmoke,
+        pantry: pantryDb,
+        capture,
+      });
+    }
   } else if (planningFixture) {
     await acceptCorePlanning({ page, base, artifacts, report, fixture: planningFixture, context });
   } else if (pricesFixture) {
@@ -973,6 +1013,10 @@ try {
   if (child && child.exitCode === null) child.kill();
   if (closed) await closed;
   report.cleanupCompleted = !child || child.exitCode !== null || child.signalCode !== null;
+  if (pantryLease) {
+    report.pantryFixturesCleanupVerified = await pantryLease.cleanup();
+    report.cleanupCompleted &&= report.pantryFixturesCleanupVerified;
+  }
   if (backend) {
     report.isolatedDatabaseCleanup = await backend.close();
     report.cleanupCompleted &&= report.isolatedDatabaseCleanup;

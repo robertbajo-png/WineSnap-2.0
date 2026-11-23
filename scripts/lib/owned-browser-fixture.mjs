@@ -11,6 +11,12 @@ import {
 } from "./owned-backend.mjs";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+export function ownedBrowserPassword(keys, run) {
+  assert.match(run, uuid);
+  return createHmac("sha256", keys.jwtSecret)
+    .update(`owned-browser-fixture-password-v1:${run}`)
+    .digest("hex");
+}
 export function validateBrowserFixture(value) {
   assert.equal(value?.project, ownedProject);
   for (const key of ["run", "userId", "wineId", "noteId", "shareId", "versionId", "sessionId"])
@@ -66,6 +72,9 @@ export async function ownedBrowserFixture(
     cleanupMeals = false,
     cleanupMemory = false,
     planningOnly = false,
+    pantryOnly = false,
+    pantryPeer = false,
+    relay,
   } = {},
 ) {
   validateOwnedKeys(keys);
@@ -74,7 +83,13 @@ export async function ownedBrowserFixture(
   assert.equal(typeof cleanupMeals, "boolean");
   assert.equal(typeof cleanupMemory, "boolean");
   assert.equal(typeof planningOnly, "boolean");
-  if (planningOnly) {
+  assert.equal(typeof pantryOnly, "boolean");
+  assert.equal(typeof pantryPeer, "boolean");
+  assert.ok(!pantryOnly || !planningOnly);
+  assert.ok(!pantryPeer || (pantryOnly && action === "prepare"));
+  assert.ok(relay === undefined || (pantryOnly && typeof relay === "function"));
+  const kitchenOnly = planningOnly || pantryOnly;
+  if (kitchenOnly) {
     assert.ok(!demo && !cleanupImages && !cleanupMeals && !cleanupMemory);
     assert.ok(["prepare", "cleanup", "absent"].includes(action));
   }
@@ -89,7 +104,7 @@ export async function ownedBrowserFixture(
       global: {
         fetch(url, init) {
           assert.equal(new URL(url instanceof Request ? url.url : String(url)).origin, ownedApi);
-          return fetch(url, {
+          return (relay ?? fetch)(url, {
             ...init,
             redirect: "error",
             cache: "no-store",
@@ -104,10 +119,7 @@ export async function ownedBrowserFixture(
     if (result.error) throw new Error("owned_browser_fixture_failed");
     return result.data;
   };
-  const password = (run) =>
-    createHmac("sha256", keys.jwtSecret)
-      .update(`owned-browser-fixture-password-v1:${run}`)
-      .digest("hex");
+  const password = (run) => ownedBrowserPassword(keys, run);
   async function owner() {
     const user = ok(await admin.auth.admin.getUserById(fixture.userId)).user;
     assertFixtureOwner(user, fixture);
@@ -117,12 +129,19 @@ export async function ownedBrowserFixture(
   }
   async function assertDependentsAbsent() {
     for (const [table, column = "id"] of [
-      ...(planningOnly
+      ...(kitchenOnly
         ? [
             ["kitchen_week_plans", "week_start"],
             ["kitchen_recipes"],
             ["kitchen_recipe_versions"],
             ["cooking_sessions"],
+          ]
+        : []),
+      ...(pantryOnly
+        ? [
+            ["kitchen_pantry", "user_id"],
+            ["kitchen_pantry_consumption", "session_id"],
+            ["kitchen_diners"],
           ]
         : []),
       ...(cleanupMeals
@@ -156,7 +175,7 @@ export async function ownedBrowserFixture(
   if (action === "absent") {
     const found = await admin.auth.admin.getUserById(fixture.userId);
     assert.equal(found.error?.status, 404);
-    if (planningOnly) await assertDependentsAbsent();
+    if (kitchenOnly) await assertDependentsAbsent();
     return { completed: true, alreadyClean: true };
   }
   if (action === "prepare") {
@@ -191,7 +210,7 @@ export async function ownedBrowserFixture(
           .update({ onboarded_at: new Date().toISOString() })
           .eq("id", fixture.userId),
       );
-      if (!planningOnly) {
+      if (!kitchenOnly) {
         ok(
           await app.from("wines").insert({
             id: fixture.wineId,
@@ -221,6 +240,77 @@ export async function ownedBrowserFixture(
             rating: null,
           }),
         );
+      }
+      if (pantryOnly) {
+        const dinerId = randomUUID();
+        ok(
+          await app.rpc("kitchen_family_change", {
+            _action: "save_diner",
+            _id: dinerId,
+            _revision: 0,
+            _data: {
+              shared: false,
+              document: pantryPeer
+                ? {
+                    name: "Annan profil",
+                    kind: "adult",
+                    preferences: [],
+                  }
+                : {
+                    name: "Syntetisk matgäst",
+                    kind: "child",
+                    preferences: [{ attribute: "ingredient", value: "tomater", direction: -1 }],
+                  },
+            },
+          }),
+        );
+        if (!pantryPeer) {
+          ok(
+            await app.rpc("kitchen_save_recipe", {
+              _recipe_id: randomUUID(),
+              _version_id: fixture.versionId,
+              _expected_revision: 0,
+              _document: {
+                title: "Syntetisk tomatsoppa",
+                description: "Syntetiskt funktionsprov.",
+                servings: 2,
+                totalMinutes: 10,
+                image: "none",
+                sourceNote: "Local synthetic QA",
+                notes: "",
+                ingredients: [{ id: randomUUID(), name: "Tomater", amount: 400, unit: "g" }],
+                steps: [
+                  {
+                    id: randomUUID(),
+                    title: "Teststeg",
+                    text: "Syntetiskt matlagningssteg.",
+                    timerSeconds: null,
+                  },
+                ],
+              },
+            }),
+          );
+        }
+        return {
+          completed: true,
+          fixture: validateBrowserFixture(fixture),
+          dinerId,
+          async read(table) {
+            assert.ok(
+              [
+                "kitchen_pantry",
+                "kitchen_pantry_consumption",
+                "kitchen_week_plans",
+                "cooking_sessions",
+              ].includes(table),
+            );
+            const rows = ok(
+              await app.from(table).select("*").eq("user_id", fixture.userId).limit(2),
+            );
+            assert.ok(Array.isArray(rows) && rows.every((row) => row.user_id === fixture.userId));
+            return rows;
+          },
+        };
       }
       const document = demo
         ? ownedDemoRecipe()
@@ -298,6 +388,7 @@ export async function ownedBrowserFixture(
     } catch {
       assertFixtureOwner(ok(await admin.auth.admin.getUserById(user.id)).user, fixture);
       ok(await admin.auth.admin.deleteUser(user.id));
+      if (pantryOnly) await assertDependentsAbsent();
       throw new Error("owned_browser_prepare_failed");
     }
   }
