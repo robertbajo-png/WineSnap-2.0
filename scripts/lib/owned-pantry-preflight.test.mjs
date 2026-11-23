@@ -1,11 +1,16 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { planningMigration } from "./owned-planning-preflight.mjs";
 import {
   assessPantryLedger,
+  guardOwnedPantryBatch,
   pantryLedgerQuery,
   pantryMigrationBatch,
+  pantryMigrationTransaction,
   pantryRollbackTag,
+  requirePantryPaused,
+  requirePantryRecovery,
   requirePantryUpdate,
 } from "./owned-pantry-preflight.mjs";
 
@@ -40,6 +45,53 @@ const before = {
   ...markerState(false),
 };
 const after = { ...before, applied: sources.map(applied), ...markerState(true) };
+const archive = "owned-20261123-190000000.dpapi";
+const now = Date.parse("2026-11-23T20:00:00Z");
+function observedRecovery() {
+  const common = {
+    project: "winesnap-owned-local",
+    checkedAt: "2026-11-23T19:00:01Z",
+    completed: true,
+    productionTouched: false,
+    hostedTestTouched: false,
+  };
+  return {
+    archives: { application: [archive] },
+    reports: {
+      "ingress-control": { ...common, enabled: true },
+      "tunnel-control": { ...common, enabled: false },
+      backup: {
+        ...common,
+        backupFile: archive,
+        encryptedRoundtripVerified: true,
+        backupIncludesAuthHashes: true,
+        backupIncludesImageBytes: true,
+      },
+      restore: {
+        ...common,
+        checkedAt: "2026-11-23T19:04:09Z",
+        backupFile: archive,
+        archiveVersion: 2,
+        cleanupCompleted: true,
+        isolatedOwnedRestoreVerified: true,
+        runningInstallationStopped: false,
+        sourceDatabaseConnected: false,
+        providerCredentialsLoaded: false,
+        publicPorts: 0,
+        permanentVolumesCreated: 0,
+        originalUserPasswordsEnteredOrReset: false,
+        authHashesAndIdentitiesMatched: true,
+        grantsPoliciesAndFunctionsMatched: true,
+        allTableRowsAndShareIdsMatched: true,
+        syntheticCloneLoginAndWrongPassword: true,
+        restoredOwnerIsolationWithRealJwt: true,
+        tablesVerified: 82,
+        storageFilesVerified: 1,
+        restoredObjectsDownloaded: 1,
+      },
+    },
+  };
+}
 
 describe("owned DEV-07 update preflight", () => {
   it("requires exactly the hashed 38-to-40 transition regardless of input order", () => {
@@ -112,5 +164,73 @@ describe("owned DEV-07 update preflight", () => {
       "winesnap-owned:pantry-rollback-" + "a".repeat(12),
     );
     expect(() => pantryRollbackTag("winesnap-owned:local")).toThrow();
+  });
+
+  it("requires both exact checksummed scripts in order and writes both ledger entries atomically", () => {
+    const batch = sources.slice(-2).map((item) => ({ ...item, ...applied(item) }));
+    const sql = pantryMigrationTransaction(batch);
+    expect(sql.match(/^BEGIN;$/gm)).toEqual(["BEGIN;"]);
+    expect(sql.match(/^COMMIT;$/gm)).toEqual(["COMMIT;"]);
+    expect(sql.match(/INSERT INTO winesnap_local\.migrations/g)).toHaveLength(2);
+    expect(sql.indexOf(batch[0].source)).toBeLessThan(sql.indexOf(batch[1].source));
+    expect(sql.trimEnd()).toMatch(/COMMIT;$/);
+    expect(() => pantryMigrationTransaction(batch.slice(1))).toThrow();
+    expect(() => pantryMigrationTransaction([...batch].reverse())).toThrow();
+    expect(() =>
+      pantryMigrationTransaction([{ ...batch[0], source: "SELECT 2;" }, batch[1]]),
+    ).toThrow();
+  });
+
+  it("requires a fresh exact encrypted archive and a later successful isolated restore", () => {
+    const input = observedRecovery();
+    expect(() => requirePantryRecovery(input, archive, now)).not.toThrow();
+    expect(() => requirePantryRecovery(input, "owned-20261123-171500000.dpapi", now)).toThrow();
+    expect(() => requirePantryRecovery(input, archive, now + 3_601_000)).toThrow("Fresh");
+    input.reports.restore.checkedAt = "2026-11-23T19:00:00Z";
+    expect(() => requirePantryRecovery(input, archive, now)).toThrow("ordered");
+    input.reports.restore.checkedAt = "2026-11-23T20:01:00Z";
+    expect(() => requirePantryRecovery(input, archive, now)).toThrow("non-future");
+    input.reports.restore.cleanupCompleted = false;
+    expect(() => requirePantryRecovery(input, archive, now)).toThrow("must be current");
+  });
+
+  it("fails unless both the private status and live connector state show the public tunnel paused", () => {
+    const input = observedRecovery();
+    expect(() => requirePantryPaused(input, "", now)).not.toThrow();
+    expect(() => requirePantryPaused(input, "winesnap-owned-tunnel", now)).toThrow();
+    input.reports["tunnel-control"].enabled = true;
+    expect(() => requirePantryPaused(input, "", now)).toThrow();
+    delete input.reports["tunnel-control"];
+    expect(() => requirePantryPaused(input, "", now)).toThrow();
+  });
+
+  it("stops ordinary updates of an existing installation without blocking new provisioning", () => {
+    const pending = sources.slice(-2);
+    expect(() => guardOwnedPantryBatch(pending, 38, false)).toThrow("dedicated DEV-07");
+    expect(() => guardOwnedPantryBatch(pending.slice(1), 39, false)).toThrow();
+    expect(() => guardOwnedPantryBatch(pending, 0, false)).not.toThrow();
+    expect(() => guardOwnedPantryBatch([], 40, false)).not.toThrow();
+    expect(() => guardOwnedPantryBatch(pending, 38, true)).not.toThrow();
+  });
+
+  it("places the exact update and archive requirements before migrations and web replacement", () => {
+    const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+    const wrapper = read("../run-owned-windows.ps1");
+    const node = read("../manage-owned-backend.mjs");
+    expect(wrapper).toMatch(
+      /\$RequirePantryMigration -and \(\$Action -ne 'Update'[\s\S]+?-not \$VerifiedPantryBackup\)/,
+    );
+    expect(wrapper.indexOf("Open-OwnedRuntimeLock -Name operation")).toBeLessThan(
+      wrapper.indexOf("WINESNAP_OWNED_PANTRY_BACKUP"),
+    );
+    expect(node).toMatch(
+      /phase = "pantry_update_guard";[\s\S]+?pantryDeliveryChecks\(previousPantryImage\);[\s\S]+?requirePantryUpdate\([\s\S]+?phase = "owned_networks_and_volumes";/,
+    );
+    expect(node).toMatch(
+      /phase = "application_migrations";[\s\S]+?guardOwnedPantryBatch\([\s\S]+?requirePantryUpdate\(sources, ledger, keys.installationId\);[\s\S]+?pantryMigrationTransaction\(pending\)/,
+    );
+    expect(node).toMatch(
+      /report\.pantryRestSchemaVerified = true;[\s\S]+?VITE_PANTRY_ENABLED: pantryEnabled \? "true" : "false"[\s\S]+?phase = "pantry_pre_replacement_guard";[\s\S]+?pantryDeliveryChecks\(previousPantryImage\);[\s\S]+?\["rm", "--force", name\("web"\)\]/,
+    );
   });
 });

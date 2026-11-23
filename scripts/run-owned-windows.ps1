@@ -7,7 +7,9 @@ param(
   [switch]$KitchenRecoveryOnly,
   [switch]$AccountIsolationOnly,
   [switch]$WaitForBackupLock,
-  [switch]$RequirePlanningMigration
+  [switch]$RequirePlanningMigration,
+  [switch]$RequirePantryMigration,
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedPantryBackup
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
@@ -19,6 +21,8 @@ if($KitchenRecoveryOnly -and $Action -ne 'PilotAccept'){throw 'Focused kitchen a
 if($AccountIsolationOnly -and ($Action -ne 'PilotAccept' -or $KitchenRecoveryOnly)){throw 'Focused account acceptance requires PilotAccept without another scope.'}
 if($WaitForBackupLock -and $Action -ne 'Backup'){throw 'Backup lock waiting is only for an explicitly requested Backup.'}
 if($RequirePlanningMigration -and ($Action -ne 'Update' -or $PublicOrigin -or $LocalOnly -or $PilotUi)){throw 'DEV-06 requires an explicit Update without origin or UI changes.'}
+if($RequirePantryMigration -and ($Action -ne 'Update' -or $PublicOrigin -or $LocalOnly -or $PilotUi -or $RequirePlanningMigration -or -not $VerifiedPantryBackup)){throw 'DEV-07 requires its own explicit Update and the exact freshly restored backup, without origin or UI changes.'}
+if($VerifiedPantryBackup -and -not $RequirePantryMigration){throw 'The archive is only used for the guarded DEV-07 Update.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 . (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
@@ -71,6 +75,7 @@ try {
   if(-not $engine){throw 'Local Docker Desktop Linux engine required.'}
   if(-not (Test-Path -LiteralPath $store -PathType Leaf)) {
     if($RequirePlanningMigration){throw 'DEV-06 requires the existing owned installation.'}
+    if($RequirePantryMigration){throw 'DEV-07 requires the existing owned installation.'}
     if($Action -notin @('Start','Update')){throw 'Local backend has not been provisioned.'}
     $existing=& $docker --host npipe:////./pipe/dockerDesktopLinuxEngine volume ls --filter 'name=^winesnap-owned-' --format '{{.Name}}'
     if($LASTEXITCODE -ne 0 -or $existing){throw 'Existing data volumes require their original encrypted credentials.'}
@@ -123,6 +128,7 @@ try {
   if($KitchenRecoveryOnly){$start.Environment['WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY']='1'}
   if($AccountIsolationOnly){$start.Environment['WINESNAP_OWNED_ACCOUNT_ISOLATION_ONLY']='1'}
   if($RequirePlanningMigration){$start.Environment['WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION']='1'}
+  if($RequirePantryMigration){$start.Environment['WINESNAP_OWNED_PANTRY_BACKUP']=$VerifiedPantryBackup}
   $start.ArgumentList.Add((Join-Path $PSScriptRoot 'manage-owned-backend.mjs'));$start.ArgumentList.Add($Action)
   $phase='owned_backend_operation'
   $process=[Diagnostics.Process]::Start($start)

@@ -11,6 +11,7 @@ import {
 import { finishOwnedInput } from "./owned-process-input.mjs";
 import { recoveryToken } from "./platform-recovery.mjs";
 import { ownedContainerProjection } from "./owned-planning-preflight.mjs";
+import { pantryRollbackTag } from "./owned-pantry-preflight.mjs";
 import { openPlanningWebRelay } from "./planning-web-relay.mjs";
 
 const scope = "planning-database-check";
@@ -40,7 +41,7 @@ console.log(JSON.stringify({ status: response.status,
     ["content-type", "content-range", "range-unit"].includes(key))),
   bytes: bytes.toString("base64") }));`;
 
-export function isolatedPlanningBackend(report, { meals = false } = {}) {
+export function isolatedPlanningBackend(report, { meals = false, throughMigration } = {}) {
   const run = randomBytes(8).toString("hex");
   const names = Object.fromEntries(
     [...services, "restore", "web", "network"].map((s) => [s, `${prefix}-${run}-${s}`]),
@@ -315,11 +316,16 @@ export function isolatedPlanningBackend(report, { meals = false } = {}) {
       ),
     );
     report.phase = "apply_repository_migrations";
-    const files = (await readdir(new URL("../../supabase/migrations/", import.meta.url)))
+    let files = (await readdir(new URL("../../supabase/migrations/", import.meta.url)))
       .filter((file) => file.endsWith(".sql"))
       .sort();
     assert.ok(files.every((file) => /^\d{14}_[a-z0-9_-]+\.sql$/i.test(file)));
     assert.ok(files.includes("20261118200000_kitchen_week_plans.sql"));
+    if (throughMigration) {
+      const last = files.indexOf(throughMigration);
+      assert.ok(last >= 0);
+      files = files.slice(0, last + 1);
+    }
     let schema = await source("config/owned-windows/auth-helpers.sql");
     for (const file of files) {
       const migration = await source("supabase/migrations/" + file);
@@ -531,7 +537,7 @@ export function isolatedPlanningBackend(report, { meals = false } = {}) {
       assert.ok(webRelay);
       return webRelay.request(path, method);
     },
-    async inspectPreviousOwnedWeb() {
+    async inspectPreviousOwnedWeb({ pantry = false } = {}) {
       const name = "winesnap-owned-web";
       const value = JSON.parse(
         await output([
@@ -550,16 +556,27 @@ export function isolatedPlanningBackend(report, { meals = false } = {}) {
       assert.match(value.Id, idPattern);
       assert.match(value.Image, /^sha256:[a-f0-9]{64}$/);
       assert.equal(
-        await output(["image", "inspect", "--format", "{{.Id}}", value.Image]),
+        await output([
+          "image",
+          "inspect",
+          "--format",
+          "{{.Id}}",
+          pantry ? pantryRollbackTag(value.Image) : value.Image,
+        ]),
         value.Image,
       );
       return { container: value.Id, image: value.Image };
     },
-    candidateImage(tag) {
-      assert.match(tag, /^winesnap-planning-rehearsal:dev06-[a-f0-9]{7,40}$/);
+    candidateImage(tag, { pantry = false } = {}) {
+      assert.match(
+        tag,
+        pantry
+          ? /^winesnap-planning-rehearsal:dev07-[a-f0-9]{7,40}$/
+          : /^winesnap-planning-rehearsal:dev06-[a-f0-9]{7,40}$/,
+      );
       return output(["image", "inspect", "--format", "{{.Id}}", tag]);
     },
-    async planSnapshot() {
+    async planSnapshot({ pantry = false } = {}) {
       const query = await source("config/owned-windows/backup-manifest.sql");
       const manifest = validateOwnedManifest(JSON.parse(await sql(query)));
       const interesting = new Set([
@@ -567,6 +584,14 @@ export function isolatedPlanningBackend(report, { meals = false } = {}) {
         "public.kitchen_recipes",
         "public.kitchen_recipe_versions",
         "winesnap_local.migrations",
+        ...(pantry
+          ? [
+              "public.kitchen_pantry",
+              "public.kitchen_pantry_consumption",
+              "public.kitchen_diners",
+              "public.cooking_sessions",
+            ]
+          : []),
       ]);
       const relations = manifest.relations.filter(({ schema, table }) =>
         interesting.has(schema + "." + table),

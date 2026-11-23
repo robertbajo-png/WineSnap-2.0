@@ -39,8 +39,11 @@ canonical plan and `docs/owned-pantry-local-update.md`. The read-only
 `check-owned-planning-update.mjs --pantry` checks the exact 38-to-40
 transition. The clean preflight verified the healthy supervisor and paused
 tunnel; the exact running former web image was retained and its ID verified.
-Next: guard the actual installer, rehearse the retained image with the
-40-migration schema, and prepare the installed smoke journey.
+The installer guard and the isolated 40-migration exact-image web rehearsal
+passed their source/disposable checks. The previous image preserves data but
+cannot read plans with diner selections; it is an emergency fallback only
+before real use of DEV-07. Next: prepare the installed smoke runner and
+rehearse it on disposable data, then seek backup and installation approval.
 DEV-06 is still installed. Do not run Update or quiesce real writes to make
 a backup without approval; keep the public tunnel paused.
 

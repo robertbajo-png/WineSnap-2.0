@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile, readdir, lstat, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -21,6 +22,8 @@ import { selectOwnedPublicOrigin } from "./lib/owned-public-origin.mjs";
 import { selectOwnedPilotUi } from "./lib/owned-pilot-ui.mjs";
 import { finishOwnedInput } from "./lib/owned-process-input.mjs";
 import { inspectOwnedContainers } from "./lib/owned-installed-state.mjs";
+import { readOwnedOperations } from "./lib/owned-operations.mjs";
+import { ownedConnectorName } from "./lib/owned-tunnel.mjs";
 import {
   assessPlanningLedger,
   planningLedgerQuery,
@@ -28,6 +31,19 @@ import {
   planningRollbackTag,
   requirePlanningUpdate,
 } from "./lib/owned-planning-preflight.mjs";
+import {
+  assessPantryLedger,
+  guardOwnedPantryBatch,
+  pantryBackupPattern,
+  pantryLedgerQuery,
+  pantryMigrationBatch,
+  pantryMigrationTransaction,
+  pantryRollbackTag,
+  pantryWebLabel,
+  requirePantryPaused,
+  requirePantryRecovery,
+  requirePantryUpdate,
+} from "./lib/owned-pantry-preflight.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -61,7 +77,13 @@ assert.ok(
 );
 assert.equal(process.argv.length, 3);
 const planningUpdate = process.env.WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION === "1";
-if (planningUpdate) {
+const pantryBackup = process.env.WINESNAP_OWNED_PANTRY_BACKUP;
+const pantryUpdate = pantryBackup !== undefined;
+if (pantryUpdate) {
+  assert.match(pantryBackup, pantryBackupPattern);
+  assert.equal(planningUpdate, false);
+}
+if (planningUpdate || pantryUpdate) {
   assert.equal(action, "Update");
   assert.ok(
     !process.env.WINESNAP_OWNED_PUBLIC_ORIGIN &&
@@ -140,6 +162,23 @@ async function installedServices() {
     report.serviceInspectionMs =
       (report.serviceInspectionMs ?? 0) + Math.round(performance.now() - started);
   }
+}
+async function pantryDeliveryChecks(priorImage) {
+  const observation = await readOwnedOperations(join(homedir(), "WineSnapOwned"));
+  const runningConnector = (
+    await command(["ps", "--filter", `name=^/${ownedConnectorName}$`, "--format", "{{.Names}}"])
+  )
+    .toString()
+    .trim();
+  requirePantryPaused(observation, runningConnector);
+  requirePantryRecovery(observation, pantryBackup);
+  assert.equal(
+    (await command(["image", "inspect", pantryRollbackTag(priorImage), "--format", "{{.Id}}"]))
+      .toString()
+      .trim(),
+    priorImage,
+    "The exact previous web image must be retained",
+  );
 }
 const name = (service) => `winesnap-owned-${service}`;
 const labelArgs = () => [
@@ -272,6 +311,7 @@ async function start(
     configHash,
     publicOrigin,
     pilotUiLabel,
+    pantryLabel,
   } = {},
 ) {
   let found = await existing(service);
@@ -292,6 +332,7 @@ async function start(
     ...(configHash ? ["--label", `winesnap.config=${configHash}`] : []),
     ...(publicOrigin ? ["--label", `winesnap.public-origin=${publicOrigin}`] : []),
     ...(pilotUiLabel ? ["--label", `winesnap.pilot-ui=${pilotUiLabel}`] : []),
+    ...(pantryLabel ? ["--label", `winesnap.pantry=${pantryLabel}`] : []),
     "--network",
     ownedNetwork,
     "--restart",
@@ -443,6 +484,8 @@ try {
     assert.match(images[service], /^sha256:[a-f0-9]{64}$/);
   }
   const installedWeb = await existing("web");
+  const installedPantry = installedWeb?.Config.Labels["winesnap.pantry"];
+  assert.ok(installedPantry === undefined || installedPantry === pantryWebLabel);
   const pilotUi = selectOwnedPilotUi({
     requested: process.env.WINESNAP_OWNED_PILOT_UI,
     installed: installedWeb?.Config.Labels["winesnap.pilot-ui"] ?? "",
@@ -470,7 +513,8 @@ try {
     report.resumedExistingInstallation = true;
   }
   if (action === "Start" || action === "Update") {
-    let planningSources;
+    let planningSources, unguardedSources;
+    let guardedPantrySources, previousPantryImage;
     if (planningUpdate) {
       phase = "planning_update_guard";
       const services = await installedServices();
@@ -496,6 +540,34 @@ try {
         planningSources,
         JSON.parse(await sql(planningLedgerQuery)),
         keys.installationId,
+      );
+    }
+    if (pantryUpdate) {
+      phase = "pantry_update_guard";
+      const services = await installedServices();
+      assert.ok(ownedResumeOrder.every((service) => services.get(name(service))?.State.Running));
+      const web = services.get(name("web"));
+      assert.equal(web.Id, installedWeb?.Id);
+      assert.equal(installedPantry, undefined);
+      previousPantryImage = web.Image;
+      await pantryDeliveryChecks(previousPantryImage);
+      guardedPantrySources = await readMigrationSources();
+      requirePantryUpdate(
+        guardedPantrySources,
+        JSON.parse(await sql(pantryLedgerQuery)),
+        keys.installationId,
+      );
+    }
+    if (action === "Update" && installedWeb && !planningUpdate && !pantryUpdate) {
+      phase = "refuse_unguarded_pantry_update";
+      assert.ok((await existing("db"))?.State.Running);
+      unguardedSources = await readMigrationSources();
+      const ledger = JSON.parse(await sql(pantryLedgerQuery));
+      assert.equal(ledger.installation, keys.installationId);
+      guardOwnedPantryBatch(
+        planOwnedMigrations(unguardedSources, ledger.applied),
+        ledger.applied.length,
+        false,
       );
     }
     phase = "owned_networks_and_volumes";
@@ -647,8 +719,12 @@ try {
       await readFile(new URL("../config/owned-windows/auth-helpers.sql", import.meta.url), "utf8"),
     );
     phase = "application_migrations";
-    const sources = planningSources ?? (await readMigrationSources());
-    const ledger = planningUpdate ? JSON.parse(await sql(planningLedgerQuery)) : undefined;
+    const sources =
+      planningSources ?? guardedPantrySources ?? unguardedSources ?? (await readMigrationSources());
+    const ledger =
+      planningUpdate || pantryUpdate
+        ? JSON.parse(await sql(pantryUpdate ? pantryLedgerQuery : planningLedgerQuery))
+        : undefined;
     if (planningUpdate) requirePlanningUpdate(sources, ledger, keys.installationId);
     const applied =
       ledger?.applied ??
@@ -658,14 +734,28 @@ try {
         ),
       );
     const pending = planOwnedMigrations(sources, applied);
-    for (const item of pending) {
-      phase = `migration:${item.name}`;
-      await sql(
-        `BEGIN;\n${item.source}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES(${literal(item.name)},'${item.sha256}'); COMMIT;`,
+    guardOwnedPantryBatch(pending, applied.length, pantryUpdate);
+    if (pantryUpdate) {
+      requirePantryUpdate(sources, ledger, keys.installationId);
+      await pantryDeliveryChecks(previousPantryImage);
+      phase = "atomic_pantry_migration_batch";
+      await sql(pantryMigrationTransaction(pending));
+      assert.equal(
+        assessPantryLedger(sources, JSON.parse(await sql(pantryLedgerQuery)), keys.installationId)
+          .scope,
+        "already_applied",
       );
+    } else {
+      for (const item of pending) {
+        phase = `migration:${item.name}`;
+        await sql(
+          `BEGIN;\n${item.source}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES(${literal(item.name)},'${item.sha256}'); COMMIT;`,
+        );
+      }
     }
     report.migrations = { previouslyApplied: applied.length, newlyApplied: pending.length };
     if (planningUpdate) report.migrations.appliedPlanningMigration = pending[0].name;
+    if (pantryUpdate) report.migrations.appliedPantryMigrations = [...pantryMigrationBatch];
     phase = "owned_access_gates";
     const policy = "Wine labels use revocable image proxy";
     const exists = await sql(
@@ -719,9 +809,21 @@ try {
         });
         report.planningRestSchemaVerified = true;
       }
+      if (pantryUpdate) {
+        for (const table of ["kitchen_pantry", "kitchen_pantry_consumption"]) {
+          await wait(async () => {
+            const response = await request(`/rest/v1/${table}?limit=0`);
+            const result = await response.json();
+            assert.ok([401, 403].includes(response.status));
+            assert.equal(result.code, "42501");
+          });
+        }
+        report.pantryRestSchemaVerified = true;
+      }
     }
     phase = "web_build";
     let web = await existing("web");
+    const pantryEnabled = pantryUpdate || installedPantry === pantryWebLabel;
     if (!web || action === "Update") {
       const flags = {
         ...originSettings.build,
@@ -733,6 +835,7 @@ try {
         VITE_COOKING_CORE_ENABLED: "true",
         VITE_AI_CHEF_ENABLED: "true",
         VITE_MEALS_ENABLED: "true",
+        VITE_PANTRY_ENABLED: pantryEnabled ? "true" : "false",
         VITE_RECIPE_NUTRITION_ENABLED: "true",
         VITE_PILOT_UI_ENABLED: pilotUi.enabled ? "true" : "false",
         VITE_PRIVACY_CONTROLS_ENABLED: "true",
@@ -753,6 +856,11 @@ try {
         {},
         600000,
       );
+      if (pantryUpdate) {
+        phase = "pantry_pre_replacement_guard";
+        assert.equal((await existing("web"))?.Image, previousPantryImage);
+        await pantryDeliveryChecks(previousPantryImage);
+      }
       if (web) await command(["rm", "--force", name("web")]);
     }
     const webImage = (
@@ -765,6 +873,7 @@ try {
       user: "node",
       publicOrigin: originSettings.origin,
       pilotUiLabel: pilotUi.label,
+      pantryLabel: pantryEnabled ? pantryWebLabel : undefined,
       memory: "768m",
       port: "5212:3000",
       env: {

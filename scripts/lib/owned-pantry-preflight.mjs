@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { planOwnedMigrations } from "./owned-lifecycle.mjs";
+import { assessOwnedOperations } from "./owned-operations.mjs";
 import { planningMigration } from "./owned-planning-preflight.mjs";
 
 export const pantryMigrationBatch = Object.freeze([
@@ -7,6 +9,8 @@ export const pantryMigrationBatch = Object.freeze([
   "20261123150000_week_plan_diners.sql",
 ]);
 export const pantryMigrationBaseline = 38;
+export const pantryBackupPattern = /^owned-\d{8}-\d{9}\.dpapi$/;
+export const pantryWebLabel = "dev07";
 
 // The probe checks only the installer ledger and catalog, never owner rows.
 export const pantryLedgerQuery = `
@@ -74,4 +78,54 @@ export function requirePantryUpdate(sources, ledger, installation) {
 export function pantryRollbackTag(imageId) {
   assert.match(imageId, /^sha256:[a-f0-9]{64}$/);
   return "winesnap-owned:pantry-rollback-" + imageId.slice(7, 19);
+}
+
+export function pantryMigrationTransaction(pending) {
+  assert.deepEqual(
+    pending.map(({ name }) => name),
+    pantryMigrationBatch,
+  );
+  const statements = pending.map(({ name, source, sha256 }) => {
+    assert.equal(sha256, createHash("sha256").update(source).digest("hex"));
+    return `${source}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES('${name}','${sha256}');`;
+  });
+  return `BEGIN;\n${statements.join("\n")}\nCOMMIT;`;
+}
+
+export function requirePantryRecovery(observation, file, now = Date.now()) {
+  assert.match(file, pantryBackupPattern);
+  const status = assessOwnedOperations(observation, now);
+  assert.ok(status.applicationRecoveryCurrent, "Exact archive and restore must be current");
+  assert.equal(status.applicationBackup, file, "Wrong restored archive");
+  const { backup, restore } = observation.reports;
+  const times = [backup, restore].map((report) => Date.parse(report.checkedAt));
+  const archiveTime = Date.parse(
+    file.replace(
+      /^owned-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})(\d{3})\.dpapi$/,
+      "$1-$2-$3T$4:$5:$6.$7Z",
+    ),
+  );
+  assert.ok(
+    now - archiveTime >= 0 && now - archiveTime <= 2 * 60 * 60 * 1000,
+    "Fresh pre-update archive required",
+  );
+  assert.ok(
+    times[0] >= archiveTime && times[1] >= times[0] && times[1] <= now,
+    "Backup and restore evidence must be ordered and non-future",
+  );
+}
+
+export function requirePantryPaused(observation, connector, now = Date.now()) {
+  assert.ok(assessOwnedOperations(observation, now).internetControlsVerified);
+  assert.equal(observation.reports["tunnel-control"].enabled, false);
+  assert.equal(connector, "", "Public tunnel must remain paused");
+}
+
+export function guardOwnedPantryBatch(pending, appliedCount, guarded) {
+  if (!guarded && appliedCount > 0) {
+    assert.ok(
+      !pending.some(({ name }) => pantryMigrationBatch.includes(name)),
+      "Existing installations require the dedicated DEV-07 update",
+    );
+  }
 }

@@ -20,31 +20,57 @@ healthy owned runtime, the paused public connector and an available exact old
 web image. The report's retention tag must resolve to that same full image ID;
 a completed inspection is not evidence that the image was retained.
 
+## Rehearse The Previous Web Image
+
+Build the [synthetic Kitchen runtime](core-experience-2026-11-13.md) with
+`--target runtime`, `VITE_PANTRY_ENABLED=true` and the documented dummy key.
+Use the local tag `winesnap-planning-rehearsal:dev07-<candidate-short-sha>`
+instead of an artifact output. Never tag it `winesnap-owned:local`.
+Then run `node scripts/check-owned-planning-web-rollback.mjs` with that tag.
+The check runs both images in a separate networkless web container and the
+database in an internal disposable network. Chromium's deny proxy is tested
+before connecting the browser to the fixtures.
+
+The old web app's strict plan reader does not know the new `dinerIds` field.
+Require a refusal to edit a plan that contains it, byte-preserving data and
+catalog digests, and a successful edit only on a compatible legacy plan.
+Even with a successful rehearsal, use the old image as an emergency fallback
+only before real use of DEV-07. It cannot render all new plans or export the
+new pantry records. After real DEV-07 data exists, use a forward repair that
+keeps and can export those records. Do not remove them to make the old
+image work.
+
 ## Remaining Delivery Gates
 
-1. Rehearse the exact previous web image against the 40-migration schema with
-   synthetic accounts. Prove it leaves stock, receipts and plans alone and
-   can still read and edit compatible plans. A rollback image that omits
-   pantry data from export is only an emergency web fallback before actual
-   usage; use a forward repair with the current export once such data exists.
-2. Use a dedicated guarded update path. It must recheck the exact reviewed
-   batch under the owned operation lock before services change and before
-   migrations. Build the feature enabled only for this owned installation,
-   retain its existing UI/origin, and prove PostgREST recognizes but denies
-   anonymous reads of the private tables before replacing the old web image.
+1. Rehearse the exact previous web image against the 40-migration schema as
+   described above. Verify the exact running image still matches the retained
+   rollback tag before any local maintenance. Retention alone is not proof.
+2. The dedicated guarded update rechecks the exact reviewed batch under the
+   owned operation lock before services change and before migrations. It
+   applies both migrations and ledger entries in one transaction. It retains
+   the UI/origin, enables the feature for the owned build, and requires that
+   PostgREST recognizes but denies anonymous reads of the private tables
+   before replacing the old web image.
    **Do not use the DEV-06 switch or a plain Update for DEV-07.**
 3. In an approved window, preserve the exact previous image and create a fresh
    encrypted archive while owned writers are quiesced. Restore that exact
    archive into an isolated stack and prove database and storage integrity
    and cleanup. Pending maintenance approval cannot be replaced by an older
    backup or a synthetic fixture. Follow the archive and recovery handling in
-   [the DEV-06 runbook](owned-planning-local-update.md).
-4. Only after installation approval, apply the guarded update and verify the
-   38-to-40 transition, local service health, the unchanged public pause and
-   the complete plan-to-shopping-to-Cook Mode journey with a disposable
-   local account. Cleanup is required. The owner's actual use is recorded
-   separately from automated acceptance.
+   [the DEV-06 runbook](owned-planning-local-update.md). The guarded update
+   requires the exact restored archive, no more than two hours old, and an
+   ordered backup and restore pair. It does not create a backup itself.
+4. Only after installation approval, use
+   `./scripts/run-owned-windows.ps1 -Action Update -RequirePantryMigration -VerifiedPantryBackup <exact-filename>`.
+   Verify the 38-to-40 transition, local service health, the unchanged public
+   pause and the complete plan-to-shopping-to-Cook Mode journey with a
+   disposable local account. Cleanup is required. The owner's actual use is
+   recorded separately from automated acceptance.
 
 Keep database and image volumes intact for a web-only fallback. Never undo
 these additive migrations, replay them blindly or restore over newer data;
 any real restore requires its own approved recovery decision.
+If the batch commits but the web replacement fails, verify which exact image
+is still serving and the actual ledger; the guarded update is not a retry
+command. Prefer a separately reviewed forward repair. Do not edit the ledger
+or erase new data to try the same update again.

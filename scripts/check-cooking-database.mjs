@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
+import { pantryMigrationBatch, pantryMigrationTransaction } from "./lib/owned-pantry-preflight.mjs";
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
 const name = `winesnap-cooking-check-${randomUUID().slice(0, 8)}`;
 const scope = "local-cooking-check";
@@ -88,14 +89,55 @@ try {
   await execute(
     await readFile(new URL("../supabase/tests/bootstrap.local.sql", import.meta.url), "utf8"),
   );
-  for (const file of (await readdir(new URL("../supabase/migrations/", import.meta.url)))
+  const migrations = (await readdir(new URL("../supabase/migrations/", import.meta.url)))
     .filter((file) => file.endsWith(".sql"))
-    .sort()) {
+    .sort();
+  const pantryStart = migrations.indexOf(pantryMigrationBatch[0]);
+  const pantryEnd = pantryStart + pantryMigrationBatch.length;
+  assert.ok(pantryStart > 0);
+  assert.deepEqual(migrations.slice(pantryStart, pantryEnd), pantryMigrationBatch);
+  async function applyMigration(file) {
     phase = file;
     await execute(
       await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"),
     );
   }
+  for (const file of migrations.slice(0, pantryStart)) await applyMigration(file);
+  phase = "atomic_owned_pantry_migration_batch";
+  await execute(`CREATE SCHEMA winesnap_local;
+    CREATE TABLE winesnap_local.migrations(name text PRIMARY KEY, sha256 text NOT NULL);`);
+  const migration = (name, source) => ({
+    name,
+    source,
+    sha256: createHash("sha256").update(source).digest("hex"),
+  });
+  const batch = await Promise.all(
+    pantryMigrationBatch.map(async (file) =>
+      migration(
+        file,
+        await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"),
+      ),
+    ),
+  );
+  const broken = [batch[0], migration(batch[1].name, batch[1].source + "\nSELECT 1 / 0;")];
+  await assert.rejects(execute(pantryMigrationTransaction(broken)), /division by zero/);
+  assert.equal(
+    (
+      await execute(`SELECT to_regclass('public.kitchen_pantry') IS NULL
+    AND to_regprocedure('public.kitchen_week_diner_ids_valid(jsonb)') IS NULL
+    AND NOT EXISTS(SELECT 1 FROM winesnap_local.migrations);`)
+    ).trim(),
+    "t",
+  );
+  await execute(pantryMigrationTransaction(batch));
+  assert.equal(
+    (
+      await execute(`SELECT string_agg(name, ',' ORDER BY name)
+    FROM winesnap_local.migrations;`)
+    ).trim(),
+    pantryMigrationBatch.join(","),
+  );
+  for (const file of migrations.slice(pantryEnd)) await applyMigration(file);
   phase = "invariants";
   await execute(
     await readFile(new URL("../supabase/tests/step12_cooking_core.sql", import.meta.url), "utf8"),
@@ -157,6 +199,7 @@ try {
     JSON.stringify({
       passed: true,
       synthetic: true,
+      atomicOwnedPantryBatch: true,
       productionTouched: false,
       hostedJwtTested: false,
     }),

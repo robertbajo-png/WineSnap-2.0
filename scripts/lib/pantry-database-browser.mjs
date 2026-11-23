@@ -59,9 +59,11 @@ export async function acceptPantryStock({ page, base, fixture, backend, report, 
   assert.equal(confirmed.items[0].amount, 400);
   assert.equal(confirmed.items[0].unit, "g");
   assert.ok(Number.isFinite(Date.parse(confirmed.items[0].confirmedAt)));
-  await capture("pantry-stock", 320);
-  await capture("pantry-stock", 1440);
-  report.passed.push("real_pantry_confirmation_and_responsive_stock");
+  await capture?.("pantry-stock", 320);
+  await capture?.("pantry-stock", 1440);
+  report.passed.push(
+    capture ? "real_pantry_confirmation_and_responsive_stock" : "real_pantry_confirmation",
+  );
 
   report.phase = "pantry_shop";
   await button("Veckoplan").click();
@@ -76,8 +78,8 @@ export async function acceptPantryStock({ page, base, fixture, backend, report, 
   assert.equal(await meal.getByRole("checkbox", { name: "Annan profil", exact: true }).count(), 0);
   await meal.getByText("Syntetisk matgäst: undviker tomater", { exact: true }).waitFor();
   assert.equal(await meal.getByLabel("Portioner", { exact: true }).inputValue(), "3");
-  await capture("pantry-diners", 390);
-  await capture("pantry-diners", 1440);
+  await capture?.("pantry-diners", 390);
+  await capture?.("pantry-diners", 1440);
   await button("Klar").click();
   await button("Spara vecka").click();
   await text("Veckoplanen sparades.").waitFor();
@@ -99,8 +101,8 @@ export async function acceptPantryStock({ page, base, fixture, backend, report, 
   await text("Från skafferiet: 400 g").waitFor();
   await text("Att köpa: 200 g").waitFor();
   assert.deepEqual(await pantry(), confirmed);
-  await capture("pantry-shopping", 390);
-  await capture("pantry-shopping", 1440);
+  await capture?.("pantry-shopping", 390);
+  await capture?.("pantry-shopping", 1440);
   report.passed.push("real_plan_reload_shows_200g_without_changing_stock");
 
   report.phase = "pantry_uncertain";
@@ -153,8 +155,8 @@ export async function acceptPantryStock({ page, base, fixture, backend, report, 
   await button("Granska förbrukning").click();
   await tomato.check();
   await review.getByLabel("Använd mängd (g)", { exact: true }).fill("250");
-  await capture("pantry-consumption", 390);
-  await capture("pantry-consumption", 1440);
+  await capture?.("pantry-consumption", 390);
+  await capture?.("pantry-consumption", 1440);
   await button("Bekräfta förbrukning").click();
   await text("Förbrukningen är registrerad.").waitFor();
   await text("Tomater: 250 g").waitFor();
@@ -173,4 +175,5 @@ export async function acceptPantryStock({ page, base, fixture, backend, report, 
   assert.deepEqual(await receipts(), [receipt]);
   assert.deepEqual(await pantry(), afterCook);
   report.passed.push("completed_and_cancelled_cook_leave_stock_until_actual_confirmation_once");
+  return version;
 }
