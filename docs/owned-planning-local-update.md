@@ -73,6 +73,13 @@ Keep the backup protected. The installer records the migration in a transaction
 transition, and verify app/Auth/REST/Storage and unchanged loopback exposure.
 No manual execution or editing of the migration ledger.
 
+After applying new migrations, the installer refreshes the owned PostgREST
+schema cache. With DEV-06 in the batch it also checks that the REST table is
+recognized but anonymous reads receive the expected database permission denial
+before changing the web container. If a migrated table returns `PGRST205`,
+compare the ledger and refresh the local cache; never replay the migration to
+repair a stale REST schema.
+
 Before handing the app back, run
 `./scripts/run-owned-windows.ps1 -Action PlanningAccept` in the approved
 window. It checks the exact applied ledger before creating a tagged disposable

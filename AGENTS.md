@@ -31,18 +31,16 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06's approved fresh backup
-`owned-20261123-095116903.dpapi` was restored in isolation on November 23.
-75 tables, Auth hashes and identities, grants/policies/functions, share IDs
-and one stored object matched; disposable cleanup passed. The existing app
-returned HTTP 200 and the exact rollback image is still pinned under
-`winesnap-owned:planning-rollback-159aea19e2ed`. This is not cross-device
-recovery or authorization to install. Next: await separate approval for the
-owned Update; recheck candidate CI, held backup, rollback and pending migration
-before executing the runbook's `Update -RequirePlanningMigration`. This guard
-checks the exact scope and rollback again under the operation lock. DEV-06
-remains uninstalled, old production untouched,
-public tunnel paused and owner bottle test deferred.
+Current handoff: DEV-06 is installed and technically accepted on the owned
+Windows app. The approved guarded Update applied only
+`20261118200000_kitchen_week_plans.sql` (37 to 38), then the exact installed
+web image `0a4614b5d8d6` passed planning, shopping and Cook Mode in Chromium.
+Reloading only PostgREST's local schema cache repaired its first failed read;
+both synthetic accounts and their rows were verified absent. See the canonical
+plan for the exact backup and isolated rollback evidence. The retained original
+image is `winesnap-owned:planning-rollback-159aea19e2ed`. Old production and
+hosted test remain untouched, the public tunnel is paused, human use is not
+claimed, and the DEV-05 owner bottle test remains deferred.
 
 Previous handoff: DEV-06's isolated exact-image web rollback passed. The
 candidate saved a plan in the real disposable backend; replacing just that
