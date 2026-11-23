@@ -54,8 +54,8 @@ describe("installed kitchen read probe boundary", () => {
     expect(read("../run-owned-windows.ps1")).toContain(
       "if($AccountIsolationOnly -and ($Action -ne 'PilotAccept' -or $KitchenRecoveryOnly))",
     );
-    expect(read("../manage-owned-backend.mjs")).toContain(
-      'accountIsolationOnly ? "../dist/owned-pilot-account" : "../dist/owned-pilot-ui"',
+    expect(read("../manage-owned-backend.mjs")).toMatch(
+      /accountIsolationOnly\s*\?\s*"\.\.\/dist\/owned-pilot-account"\s*:\s*"\.\.\/dist\/owned-pilot-ui"/,
     );
     const browser = read("./owned-pilot-browser.mjs");
     expect(browser).toContain(

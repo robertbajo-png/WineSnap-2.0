@@ -267,7 +267,15 @@ export async function createPlanningDatabaseFixture({
   };
 }
 
-export async function acceptPlanningDatabase({ page, base, fixture, backend, report }) {
+export async function acceptPlanningDatabase({
+  page,
+  base,
+  fixture,
+  backend,
+  report,
+  smoke,
+  capture,
+}) {
   const { owner, peer, rest, recipe, writes } = fixture;
   const status = (text) => page.getByText(text, { exact: true }).waitFor();
   const button = (name) => page.getByRole("button", { name, exact: typeof name === "string" });
@@ -321,6 +329,20 @@ export async function acceptPlanningDatabase({ page, base, fixture, backend, rep
   await login(owner);
   report.phase = "browser_owner_first_save";
   const version = await recipe(owner, "Syntetiskt första recept");
+  if (smoke) {
+    const { acceptPlanningSmoke } = await import("./owned-planning-smoke.mjs");
+    await acceptPlanningSmoke({
+      page,
+      base,
+      fixture: { userId: owner.id, versionId: version.id, ingredientGrams: 200, steps: 1 },
+      phase: (name) => {
+        report.phase = name;
+      },
+      pass: (name) => report.passed.push(name),
+      capture,
+    });
+    return;
+  }
   await open();
   await meal(version, 3);
   await manual(ownerItem);

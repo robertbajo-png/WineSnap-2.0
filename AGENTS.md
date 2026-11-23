@@ -31,16 +31,16 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06's exact rollback image is now retained under
-`winesnap-owned:planning-rollback-159aea19e2ed`. Fresh preflight verified
-37 migrations, one pending, healthy owned supervisor and paused public
-tunnel. The approved Backup invocation was skipped before it acquired the
-lock, so no service paused and no new archive or restore was made. No retry
-was started. A later approved invocation may use `-WaitForBackupLock` to wait
-for a single pre-backup lock acquisition. The isolated lock handoff and all
-38 focused tests passed. Next: obtain renewed approval for that one backup,
-restore that exact new archive in isolation, then await update approval.
-The actual app and old production are unmodified; the bottle test stays deferred.
+Current handoff: DEV-06's approved fresh backup
+`owned-20261123-095116903.dpapi` was restored in isolation on November 23.
+75 tables, Auth hashes and identities, grants/policies/functions, share IDs
+and one stored object matched; disposable cleanup passed. The existing app
+returned HTTP 200 and the exact rollback image is still pinned under
+`winesnap-owned:planning-rollback-159aea19e2ed`. This is not cross-device
+recovery or authorization to install. Next: await separate approval for the
+owned Update; recheck candidate CI, held backup, rollback and pending migration
+before executing it. DEV-06 remains uninstalled, old production untouched,
+public tunnel paused and owner bottle test deferred.
 
 Previous handoff: DEV-06's isolated exact-image web rollback passed. The
 candidate saved a plan in the real disposable backend; replacing just that

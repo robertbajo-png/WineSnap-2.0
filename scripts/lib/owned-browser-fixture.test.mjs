@@ -300,6 +300,36 @@ describe("owned meal fixture cascade verification", () => {
       expect(q.limit).toHaveBeenCalledExactlyOnceWith(1);
     }
   });
+  it("verifies only the exact planning fixture's plan, recipes and session after deletion", async () => {
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, { planningOnly: true }),
+    ).resolves.toMatchObject({ cleanupCompleted: true });
+    expect(admin.deleteUser).toHaveBeenCalledExactlyOnceWith(value.userId);
+    expect(from.mock.calls.map(([table]) => table)).toEqual([
+      "kitchen_week_plans",
+      "kitchen_recipes",
+      "kitchen_recipe_versions",
+      "cooking_sessions",
+    ]);
+    for (const [table, q] of queries) {
+      expect(q.select).toHaveBeenCalledExactlyOnceWith(
+        table === "kitchen_week_plans" ? "week_start" : "id",
+      );
+      expect(q.eq).toHaveBeenCalledExactlyOnceWith("user_id", value.userId);
+      expect(q.select.mock.invocationCallOrder[0]).toBeGreaterThan(
+        admin.getUserById.mock.invocationCallOrder[1],
+      );
+    }
+  });
+  it("rejects mixed planning and other fixture scopes before creating a client", async () => {
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, {
+        planningOnly: true,
+        cleanupMeals: true,
+      }),
+    ).rejects.toThrow();
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
   it("checks memory cascades on a previously deleted fixture without deleting another account", async () => {
     admin.getUserById
       .mockReset()

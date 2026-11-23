@@ -39,6 +39,7 @@ assert.ok(
     "FeaturesAi",
     "Offline",
     "PilotAccept",
+    "PlanningAccept",
     "PilotJourneys",
     "PilotDemo",
     "PilotDemoAccept",
@@ -775,8 +776,25 @@ try {
   }
   if (
     action.startsWith("Browser") ||
-    ["Offline", "PilotAccept", "PilotJourneys"].includes(action)
+    ["Offline", "PilotAccept", "PlanningAccept", "PilotJourneys"].includes(action)
   ) {
+    const planningOnly = action === "PlanningAccept";
+    if (planningOnly) {
+      phase = "planning_acceptance_ledger";
+      const { assessPlanningLedger, planningLedgerQuery } =
+        await import("./lib/owned-planning-preflight.mjs");
+      const directory = new URL("../supabase/migrations/", import.meta.url);
+      const sources = [];
+      for (const name of (await readdir(directory)).filter((item) => item.endsWith(".sql")))
+        sources.push({ name, source: await readFile(new URL(name, directory), "utf8") });
+      const ledger = assessPlanningLedger(
+        sources,
+        JSON.parse(await sql(planningLedgerQuery)),
+        keys.installationId,
+      );
+      assert.equal(ledger.scope, "already_applied");
+      report.planningLedger = ledger;
+    }
     const { ownedBrowserFixture, validateBrowserFixture } =
       await import("./lib/owned-browser-fixture.mjs");
     const manifestPath = join(process.env.USERPROFILE, "WineSnapOwned", "browser-fixture.json");
@@ -789,7 +807,12 @@ try {
       if (error.code !== "ENOENT") throw error;
     }
     phase = `browser_${action.slice(7).toLowerCase()}`;
-    if (["BrowserPrepare", "Offline", "PilotAccept", "PilotJourneys"].includes(action) && fixture) {
+    if (
+      ["BrowserPrepare", "Offline", "PilotAccept", "PlanningAccept", "PilotJourneys"].includes(
+        action,
+      ) &&
+      fixture
+    ) {
       // Refuse to overwrite a live fixture's cleanup manifest.
       const existing = await ownedBrowserFixture(keys, "absent", fixture);
       assert.equal(existing.alreadyClean, true);
@@ -813,11 +836,14 @@ try {
         if (error.code !== "ENOENT") throw error;
       }
     }
-    if (["PilotAccept", "PilotJourneys"].includes(action)) {
+    if (["PilotAccept", "PlanningAccept", "PilotJourneys"].includes(action)) {
       assert.equal(pilotUi.enabled, true, "Pilot acceptance requires the installed dark UI");
       const { acceptOwnedPilotUi } = await import("./lib/owned-pilot-browser.mjs");
       const accountIsolationOnly =
         action === "PilotAccept" && process.env.WINESNAP_OWNED_ACCOUNT_ISOLATION_ONLY === "1";
+      const pilotArtifacts = accountIsolationOnly
+        ? "../dist/owned-pilot-account"
+        : "../dist/owned-pilot-ui";
       report.pilotAcceptance = await acceptOwnedPilotUi(keys, {
         fixture,
         remember,
@@ -825,6 +851,7 @@ try {
         kitchenRecoveryOnly:
           action === "PilotAccept" && process.env.WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY === "1",
         accountIsolationOnly,
+        planningOnly,
         replayApprovedImage: process.env.WINESNAP_OWNED_REPLAY_APPROVED_IMAGE === "1",
         peerFixture,
         rememberPeer: (value) =>
@@ -833,10 +860,7 @@ try {
             mode: 0o600,
           }),
         artifactDirectory: fileURLToPath(
-          new URL(
-            accountIsolationOnly ? "../dist/owned-pilot-account" : "../dist/owned-pilot-ui",
-            import.meta.url,
-          ),
+          new URL(planningOnly ? "../dist/owned-planning-accept" : pilotArtifacts, import.meta.url),
         ),
         progress(step) {
           assert.match(step, /^[a-z_]+$/);
@@ -844,6 +868,7 @@ try {
         },
       });
       assert.equal(report.pilotAcceptance.completed, true);
+      if (planningOnly) assert.equal(report.pilotAcceptance.cleanupCompleted, true);
     } else if (action === "Offline") {
       const { acceptOwnedOffline } = await import("./lib/owned-offline.mjs");
       report.offline = await acceptOwnedOffline(keys, {

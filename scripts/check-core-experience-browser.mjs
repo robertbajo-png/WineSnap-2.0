@@ -18,7 +18,9 @@ import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-bro
 
 // Synthetic accounts/data only. No installed backend, real account or provider credentials.
 const kitchenTabsOnly = process.argv.length === 3 && process.argv[2] === "--kitchen-tabs";
-const planningDb = process.argv.length === 3 && process.argv[2] === "--planning-db";
+const planningSmoke = process.argv.length === 3 && process.argv[2] === "--planning-db-smoke";
+const planningDb =
+  planningSmoke || (process.argv.length === 3 && process.argv[2] === "--planning-db");
 const planningOnly = planningDb || (process.argv.length === 3 && process.argv[2] === "--planning");
 const kitchenOnly =
   planningOnly || kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
@@ -45,7 +47,9 @@ const output = join(
 const artifacts = join(
   root,
   planningDb
-    ? "dist/core-planning-database"
+    ? planningSmoke
+      ? "dist/core-planning-database-smoke"
+      : "dist/core-planning-database"
     : planningOnly
       ? "dist/core-planning"
       : pricesOnly
@@ -130,7 +134,9 @@ const report = {
   synthetic: true,
   fixtureDataMocked: !planningDb,
   sourceViewScope: planningDb
-    ? "core-planning-database"
+    ? planningSmoke
+      ? "core-planning-database-smoke"
+      : "core-planning-database"
     : planningOnly
       ? "core-planning"
       : pricesOnly
@@ -538,7 +544,22 @@ try {
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
   if (planningDatabaseFixture) {
-    await acceptPlanningDatabase({ page, base, fixture: planningDatabaseFixture, backend, report });
+    await acceptPlanningDatabase({
+      page,
+      base,
+      fixture: planningDatabaseFixture,
+      backend,
+      report,
+      smoke: planningSmoke,
+      capture: async (screen, width) => {
+        await page.setViewportSize({ width, height: 844 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await page.screenshot({
+          path: join(artifacts, `${screen}-${width}.png`),
+          animations: "disabled",
+        });
+      },
+    });
   } else if (planningFixture) {
     await acceptCorePlanning({ page, base, artifacts, report, fixture: planningFixture, context });
   } else if (pricesFixture) {

@@ -60,13 +60,24 @@ export async function ownedBrowserFixture(
   action,
   fixture,
   remember = async () => {},
-  { demo = false, cleanupImages = false, cleanupMeals = false, cleanupMemory = false } = {},
+  {
+    demo = false,
+    cleanupImages = false,
+    cleanupMeals = false,
+    cleanupMemory = false,
+    planningOnly = false,
+  } = {},
 ) {
   validateOwnedKeys(keys);
   assert.equal(typeof demo, "boolean");
   assert.equal(typeof cleanupImages, "boolean");
   assert.equal(typeof cleanupMeals, "boolean");
   assert.equal(typeof cleanupMemory, "boolean");
+  assert.equal(typeof planningOnly, "boolean");
+  if (planningOnly) {
+    assert.ok(!demo && !cleanupImages && !cleanupMeals && !cleanupMemory);
+    assert.ok(["prepare", "cleanup"].includes(action));
+  }
   assert.ok(
     ["prepare", "inspect", "conflict", "memory", "meals", "cleanup", "absent"].includes(action),
   );
@@ -105,29 +116,39 @@ export async function ownedBrowserFixture(
     ).session;
   }
   async function assertDependentsAbsent() {
-    for (const table of [
+    for (const [table, column = "id"] of [
+      ...(planningOnly
+        ? [
+            ["kitchen_week_plans", "week_start"],
+            ["kitchen_recipes"],
+            ["kitchen_recipe_versions"],
+            ["cooking_sessions"],
+          ]
+        : []),
       ...(cleanupMeals
         ? [
-            "kitchen_households",
-            "kitchen_household_members",
-            "kitchen_household_invites",
-            "kitchen_diners",
-            "meal_wine_links",
-            "cooking_sessions",
+            ["kitchen_households"],
+            ["kitchen_household_members"],
+            ["kitchen_household_invites"],
+            ["kitchen_diners"],
+            ["meal_wine_links"],
+            ["cooking_sessions"],
           ]
         : []),
       ...(cleanupMemory
         ? [
-            "food_signals",
-            "food_memory_state",
-            "food_memory_tombstones",
-            "chef_conversations",
-            "chef_messages",
-            "chef_requests",
+            ["food_signals"],
+            ["food_memory_state"],
+            ["food_memory_tombstones"],
+            ["chef_conversations"],
+            ["chef_messages"],
+            ["chef_requests"],
           ]
         : []),
     ]) {
-      const rows = ok(await admin.from(table).select("id").eq("user_id", fixture.userId).limit(1));
+      const rows = ok(
+        await admin.from(table).select(column).eq("user_id", fixture.userId).limit(1),
+      );
       assert.ok(Array.isArray(rows));
       assert.equal(rows.length, 0);
     }
@@ -169,35 +190,37 @@ export async function ownedBrowserFixture(
           .update({ onboarded_at: new Date().toISOString() })
           .eq("id", fixture.userId),
       );
-      ok(
-        await app.from("wines").insert({
-          id: fixture.wineId,
-          user_id: user.id,
-          wine_name: demo ? "Nahe Chardonnay (demo)" : "Local browser QA Chardonnay",
-          producer: demo ? "Exempelproducent" : "Synthetic fixture",
-          vintage: 2023,
-          wine_type: "white",
-          quantity: 2,
-          country: "Germany",
-          acidity: 8,
-          body: 5,
-          tannin: 1,
-          sweetness: 0,
-          fruit: 6,
-          oak: 2,
-          is_public: !demo,
-          share_id: fixture.shareId,
-        }),
-      );
-      ok(
-        await app.from("tasting_notes").insert({
-          id: fixture.noteId,
-          user_id: user.id,
-          wine_id: fixture.wineId,
-          notes: "Jag gillar frisk syra. Jag ogillar ekfat.",
-          rating: null,
-        }),
-      );
+      if (!planningOnly) {
+        ok(
+          await app.from("wines").insert({
+            id: fixture.wineId,
+            user_id: user.id,
+            wine_name: demo ? "Nahe Chardonnay (demo)" : "Local browser QA Chardonnay",
+            producer: demo ? "Exempelproducent" : "Synthetic fixture",
+            vintage: 2023,
+            wine_type: "white",
+            quantity: 2,
+            country: "Germany",
+            acidity: 8,
+            body: 5,
+            tannin: 1,
+            sweetness: 0,
+            fruit: 6,
+            oak: 2,
+            is_public: !demo,
+            share_id: fixture.shareId,
+          }),
+        );
+        ok(
+          await app.from("tasting_notes").insert({
+            id: fixture.noteId,
+            user_id: user.id,
+            wine_id: fixture.wineId,
+            notes: "Jag gillar frisk syra. Jag ogillar ekfat.",
+            rating: null,
+          }),
+        );
+      }
       const document = demo
         ? ownedDemoRecipe()
         : {
@@ -238,6 +261,12 @@ export async function ownedBrowserFixture(
           _document: document,
         }),
       );
+      if (planningOnly)
+        return {
+          completed: true,
+          fixture: validateBrowserFixture(fixture),
+          login: "synthetic-only",
+        };
       ok(
         await app.rpc("kitchen_save_session", {
           _id: fixture.sessionId,

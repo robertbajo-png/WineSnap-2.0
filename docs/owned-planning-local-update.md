@@ -68,11 +68,19 @@ transaction **before** rebuilding/replacing the web service. Verify a
 app/Auth/REST/Storage health and unchanged loopback-only exposure. No manual
 execution or editing of the migration ledger.
 
-Before setting the owner loose on new writes, smoke-test the existing
-kitchen and the planner using isolated or exactly scoped synthetic accounts:
-save/reload, derived shopping amounts, explicit conflict recovery and exact
-recipe-version Cook Mode. Verify cleanup and the owner's normal local login
-separately. Opening the view is not proof of actual use.
+Before handing the app back, run
+`./scripts/run-owned-windows.ps1 -Action PlanningAccept` in the approved
+window. It checks the exact applied ledger before creating a tagged disposable
+account, uses only the owned loopback app and API, and verifies the real save,
+reload, shopping check and quantities, and exact recipe version and servings
+in Cook Mode. Require successful cleanup of accounts and dependent rows.
+Retain the separate synthetic reports for conflict recovery and rollback;
+the installed smoke does not repeat every disposable check. The owner's actual
+local use remains separate. Opening the view is not proof of actual use.
+The exact shared browser journey can be rehearsed without the installation
+using `node scripts/check-core-experience-browser.mjs --planning-db-smoke`
+with the isolated planning runtime artifact. Its report is distinct from
+`dist/owned-planning-accept`.
 
 ## Recovery Decision
 

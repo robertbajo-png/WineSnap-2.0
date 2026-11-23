@@ -21,6 +21,7 @@ export async function acceptOwnedPilotUi(
     liveJourneys = false,
     kitchenRecoveryOnly = false,
     accountIsolationOnly = false,
+    planningOnly = false,
     replayApprovedImage = false,
     artifactDirectory,
     progress = () => {},
@@ -32,6 +33,8 @@ export async function acceptOwnedPilotUi(
   assert.equal(typeof accountIsolationOnly, "boolean");
   if (kitchenRecoveryOnly) assert.equal(liveJourneys, false);
   if (accountIsolationOnly) assert.ok(!liveJourneys && !kitchenRecoveryOnly);
+  assert.equal(typeof planningOnly, "boolean");
+  if (planningOnly) assert.ok(!liveJourneys && !kitchenRecoveryOnly && !accountIsolationOnly);
   assert.equal(typeof replayApprovedImage, "boolean");
   if (replayApprovedImage) assert.equal(liveJourneys, true);
   assert.equal(typeof rememberPeer, "function");
@@ -54,6 +57,7 @@ export async function acceptOwnedPilotUi(
     scope: kitchenRecoveryOnly ? "kitchen-recovery-only" : "full",
   };
   if (accountIsolationOnly) report.scope = "account-isolation-only";
+  if (planningOnly) report.scope = "planning-only";
   let fixture, peer, browser, context, page, kitchenGate;
   const setKitchenGate = (value) => {
     assert.ok(!kitchenGate || value === null);
@@ -68,10 +72,16 @@ export async function acceptOwnedPilotUi(
     progress(name);
   };
   try {
-    const created = await ownedBrowserFixture(keys, "prepare", undefined, async (value) => {
-      fixture = validateBrowserFixture(value);
-      await remember(fixture);
-    });
+    const created = await ownedBrowserFixture(
+      keys,
+      "prepare",
+      undefined,
+      async (value) => {
+        fixture = validateBrowserFixture(value);
+        await remember(fixture);
+      },
+      { planningOnly },
+    );
     fixture = created.fixture;
     const playwright = await import(
       pathToFileURL(
@@ -209,6 +219,22 @@ export async function acceptOwnedPilotUi(
         report: report.kitchenRecovery,
         setGate: setKitchenGate,
       });
+    }
+    if (planningOnly) {
+      const { acceptPlanningSmoke } = await import("./owned-planning-smoke.mjs");
+      await acceptPlanningSmoke({
+        page,
+        base: ownedApp,
+        fixture: { ...fixture, ingredientGrams: 400, steps: 3 },
+        phase,
+        capture,
+        pass: (name) => report.passed.push(name),
+      });
+      assert.equal(report.externalRequests, 0);
+      assert.equal(report.blockedAiRequests, 0);
+      assert.equal(report.pageErrors, 0);
+      report.completed = true;
+      return report;
     }
     if (kitchenRecoveryOnly) {
       await kitchenRecovery();
@@ -674,8 +700,9 @@ export async function acceptOwnedPilotUi(
       try {
         const cleaned = await ownedBrowserFixture(keys, "cleanup", fixture, undefined, {
           cleanupImages: liveJourneys,
-          cleanupMeals: true,
-          cleanupMemory: true,
+          cleanupMeals: !planningOnly,
+          cleanupMemory: !planningOnly,
+          planningOnly,
         });
         report.cleanupCompleted =
           !report.peerCleanupFailed && Boolean(cleaned.cleanupCompleted || cleaned.alreadyClean);
