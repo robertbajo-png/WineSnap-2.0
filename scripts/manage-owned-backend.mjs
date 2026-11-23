@@ -21,6 +21,12 @@ import { selectOwnedPublicOrigin } from "./lib/owned-public-origin.mjs";
 import { selectOwnedPilotUi } from "./lib/owned-pilot-ui.mjs";
 import { finishOwnedInput } from "./lib/owned-process-input.mjs";
 import { inspectOwnedContainers } from "./lib/owned-installed-state.mjs";
+import {
+  assessPlanningLedger,
+  planningLedgerQuery,
+  planningRollbackTag,
+  requirePlanningUpdate,
+} from "./lib/owned-planning-preflight.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -53,6 +59,15 @@ assert.ok(
   ].includes(action),
 );
 assert.equal(process.argv.length, 3);
+const planningUpdate = process.env.WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION === "1";
+if (planningUpdate) {
+  assert.equal(action, "Update");
+  assert.ok(
+    !process.env.WINESNAP_OWNED_PUBLIC_ORIGIN &&
+      !process.env.WINESNAP_OWNED_ORIGIN_RESET &&
+      !process.env.WINESNAP_OWNED_PILOT_UI,
+  );
+}
 const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
 const baseEnv = Object.fromEntries(
   [
@@ -108,6 +123,13 @@ const command = (args, input, extraEnv = {}, timeout = 180000) =>
     finishOwnedInput(child.stdin, input);
   });
 const json = async (args) => JSON.parse((await command(args)).toString());
+async function readMigrationSources() {
+  const directory = new URL("../supabase/migrations/", import.meta.url);
+  const sources = [];
+  for (const name of (await readdir(directory)).filter((file) => file.endsWith(".sql")).sort())
+    sources.push({ name, source: await readFile(new URL(name, directory), "utf8") });
+  return sources;
+}
 async function installedServices() {
   const started = performance.now();
   report.serviceInspectionBatches = (report.serviceInspectionBatches ?? 0) + 1;
@@ -447,6 +469,34 @@ try {
     report.resumedExistingInstallation = true;
   }
   if (action === "Start" || action === "Update") {
+    let planningSources;
+    if (planningUpdate) {
+      phase = "planning_update_guard";
+      const services = await installedServices();
+      assert.ok(ownedResumeOrder.every((service) => services.get(name(service))?.State.Running));
+      const priorImage = services.get(name("web")).Image;
+      assert.equal(
+        (
+          await command([
+            "image",
+            "inspect",
+            planningRollbackTag(priorImage),
+            "--format",
+            "{{.Id}}",
+          ])
+        )
+          .toString()
+          .trim(),
+        priorImage,
+        "The exact rollback image must be retained",
+      );
+      planningSources = await readMigrationSources();
+      requirePlanningUpdate(
+        planningSources,
+        JSON.parse(await sql(planningLedgerQuery)),
+        keys.installationId,
+      );
+    }
     phase = "owned_networks_and_volumes";
     await ensureNetwork(ownedNetwork, true);
     await ensureNetwork(ownedEgress, false);
@@ -596,20 +646,16 @@ try {
       await readFile(new URL("../config/owned-windows/auth-helpers.sql", import.meta.url), "utf8"),
     );
     phase = "application_migrations";
-    const migrations = (await readdir(new URL("../supabase/migrations/", import.meta.url)))
-      .filter((file) => file.endsWith(".sql"))
-      .sort();
-    const sources = [];
-    for (const file of migrations)
-      sources.push({
-        name: file,
-        source: await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"),
-      });
-    const applied = JSON.parse(
-      await sql(
-        "SELECT COALESCE(json_agg(json_build_object('name',name,'sha256',sha256) ORDER BY name),'[]'::json) FROM winesnap_local.migrations",
-      ),
-    );
+    const sources = planningSources ?? (await readMigrationSources());
+    const ledger = planningUpdate ? JSON.parse(await sql(planningLedgerQuery)) : undefined;
+    if (planningUpdate) requirePlanningUpdate(sources, ledger, keys.installationId);
+    const applied =
+      ledger?.applied ??
+      JSON.parse(
+        await sql(
+          "SELECT COALESCE(json_agg(json_build_object('name',name,'sha256',sha256) ORDER BY name),'[]'::json) FROM winesnap_local.migrations",
+        ),
+      );
     const pending = planOwnedMigrations(sources, applied);
     for (const item of pending) {
       phase = `migration:${item.name}`;
@@ -618,6 +664,7 @@ try {
       );
     }
     report.migrations = { previouslyApplied: applied.length, newlyApplied: pending.length };
+    if (planningUpdate) report.migrations.appliedPlanningMigration = pending[0].name;
     phase = "owned_access_gates";
     const policy = "Wine labels use revocable image proxy";
     const exists = await sql(
@@ -781,14 +828,8 @@ try {
     const planningOnly = action === "PlanningAccept";
     if (planningOnly) {
       phase = "planning_acceptance_ledger";
-      const { assessPlanningLedger, planningLedgerQuery } =
-        await import("./lib/owned-planning-preflight.mjs");
-      const directory = new URL("../supabase/migrations/", import.meta.url);
-      const sources = [];
-      for (const name of (await readdir(directory)).filter((item) => item.endsWith(".sql")))
-        sources.push({ name, source: await readFile(new URL(name, directory), "utf8") });
       const ledger = assessPlanningLedger(
-        sources,
+        await readMigrationSources(),
         JSON.parse(await sql(planningLedgerQuery)),
         keys.installationId,
       );

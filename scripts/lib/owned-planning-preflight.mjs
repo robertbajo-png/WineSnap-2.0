@@ -67,3 +67,10 @@ export function planningRollbackTag(imageId) {
   assert.match(imageId, /^sha256:[a-f0-9]{64}$/);
   return "winesnap-owned:planning-rollback-" + imageId.slice(7, 19);
 }
+
+export function requirePlanningUpdate(sources, ledger, installation) {
+  const inspected = assessPlanningLedger(sources, ledger, installation);
+  assert.equal(inspected.scope, "expected_additive_migration", "DEV-06 is not a retry");
+  assert.equal(inspected.applied, 37, "Unexpected DEV-06 baseline");
+  return inspected;
+}

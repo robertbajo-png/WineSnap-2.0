@@ -39,7 +39,9 @@ returned HTTP 200 and the exact rollback image is still pinned under
 `winesnap-owned:planning-rollback-159aea19e2ed`. This is not cross-device
 recovery or authorization to install. Next: await separate approval for the
 owned Update; recheck candidate CI, held backup, rollback and pending migration
-before executing it. DEV-06 remains uninstalled, old production untouched,
+before executing the runbook's `Update -RequirePlanningMigration`. This guard
+checks the exact scope and rollback again under the operation lock. DEV-06
+remains uninstalled, old production untouched,
 public tunnel paused and owner bottle test deferred.
 
 Previous handoff: DEV-06's isolated exact-image web rollback passed. The

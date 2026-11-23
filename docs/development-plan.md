@@ -291,6 +291,13 @@ clean candidate's CI, exact rollback image, verified archive and current
 37-to-38 ledger plan again. No old production, hosted test or public tunnel
 operation; the owner bottle test stays deferred.
 
+Use the opt-in `Update -RequirePlanningMigration` in the runbook once approved.
+It now rechecks the running owned installation and exact rollback tag under
+the operation lock, requires 37 validated migrations and only the plan pending,
+and checks the same history again just before SQL. It records the applied
+migration by name, rejects provisioning or overrides and refuses an already
+applied migration. The guard is prepared, not run on the installed app.
+
 ### DEV-06 First Approved Backup Attempt (Earlier)
 
 The November 23 approved backup-and-rehearsal window did not authorize

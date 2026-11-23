@@ -60,13 +60,18 @@ Recheck the current installed image against this evidence at delivery time.
 
 ## Install And Verify Only After Approval
 
-Use `./scripts/run-owned-windows.ps1 -Action Update` from the reviewed
-candidate, without origin/UI overrides. Keep the rollback image and backup
-protected. The installer applies and records the additive migration in a
-transaction **before** rebuilding/replacing the web service. Verify a
-37-to-38 ledger transition for this baseline, a single new migration, correct
-app/Auth/REST/Storage health and unchanged loopback-only exposure. No manual
-execution or editing of the migration ledger.
+Use `./scripts/run-owned-windows.ps1 -Action Update -RequirePlanningMigration`
+from the reviewed candidate. The switch does not imply owner approval. Under
+the operation lock it checks the existing running owned services, the exact
+rollback image tag and the 37-migration history before any service or schema
+changes. It snapshots the migration sources and rechecks the history immediately
+before applying the one pending migration; an already applied plan is a stop
+condition, not a retry. Origin/UI overrides and provisioning are not allowed.
+Keep the backup protected. The installer records the migration in a transaction
+**before** rebuilding/replacing the web service. Require the reported
+`appliedPlanningMigration` name, independently confirm the 37-to-38 ledger
+transition, and verify app/Auth/REST/Storage and unchanged loopback exposure.
+No manual execution or editing of the migration ledger.
 
 Before handing the app back, run
 `./scripts/run-owned-windows.ps1 -Action PlanningAccept` in the approved

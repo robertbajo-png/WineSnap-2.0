@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   assessPlanningLedger,
   planningLedgerQuery,
   planningMigration,
   planningRollbackTag,
+  requirePlanningUpdate,
 } from "./owned-planning-preflight.mjs";
 
 const installation = "a".repeat(32);
@@ -72,5 +74,54 @@ describe("owned planning update preflight", () => {
     );
     for (const value of ["winesnap-owned:local", "sha256:" + "A".repeat(64), "a".repeat(64)])
       expect(() => planningRollbackTag(value)).toThrow();
+  });
+
+  it("requires precisely the existing 37-to-38 transition and refuses a retry", () => {
+    const prior = [
+      ...Array.from({ length: 36 }, (_, n) => ({
+        name: "202610010000" + String(n).padStart(2, "0") + "_prior.sql",
+        source: "SELECT 1;",
+      })),
+      previous,
+    ];
+    const actualSource = [...prior, plan];
+    const ready = { ...before, applied: prior.map(applied) };
+    expect(requirePlanningUpdate(actualSource, ready, installation)).toMatchObject({
+      applied: 37,
+      pending: [planningMigration],
+    });
+    expect(() => requirePlanningUpdate(source, before, installation)).toThrow("baseline");
+    expect(() =>
+      requirePlanningUpdate(
+        actualSource,
+        {
+          ...after,
+          applied: actualSource.map(applied),
+        },
+        installation,
+      ),
+    ).toThrow("not a retry");
+    expect(() => requirePlanningUpdate([...actualSource, later], ready, installation)).toThrow();
+    expect(() =>
+      requirePlanningUpdate(actualSource, { ...ready, saveExists: true }, installation),
+    ).toThrow();
+  });
+
+  it("keeps the optional guard locked, ahead of service changes, and repeats it before SQL", () => {
+    const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+    const wrapper = read("../run-owned-windows.ps1");
+    expect(wrapper).toContain(
+      "if($RequirePlanningMigration -and ($Action -ne 'Update' -or $PublicOrigin -or $LocalOnly -or $PilotUi))",
+    );
+    expect(wrapper.indexOf("Open-OwnedRuntimeLock -Name operation")).toBeLessThan(
+      wrapper.indexOf("WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION"),
+    );
+    const backend = read("../manage-owned-backend.mjs");
+    expect(backend).toMatch(
+      /phase = "planning_update_guard";[\s\S]+?planningRollbackTag\(priorImage\)[\s\S]+?requirePlanningUpdate\([\s\S]+?phase = "owned_networks_and_volumes";/,
+    );
+    expect(backend).toMatch(
+      /phase = "application_migrations";[\s\S]+?requirePlanningUpdate\(sources, ledger, keys.installationId\);[\s\S]+?for \(const item of pending\)/,
+    );
   });
 });
