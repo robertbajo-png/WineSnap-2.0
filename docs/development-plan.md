@@ -298,8 +298,11 @@ pending migrations, a healthy HTTP loopback response and paused public
 connector. The old image exists, but its DEV-07 retention tag did not verify.
 The combined inspection did not verify the supervisor; the direct read-only
 Windows status check subsequently reported a fresh, healthy supervisor with
-all flags verified. Recheck both in the delivery window. The 36 DEV-06/07
-guard tests passed. No legacy schema change was made.
+all flags verified. The rerun from clean `33d0fb8` also verified the supervisor
+and tunnel. The old exact image was then retained under the reported local
+rollback tag; full image equality and the unchanged running container were
+verified. Retention is not a rollback rehearsal. The 36 DEV-06/07 guard tests
+passed. No legacy schema change was made.
 
 Next: implement the guarded installer, rehearse the previous exact web image
 with the new schema, and verify an installed smoke journey. No application

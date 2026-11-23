@@ -37,8 +37,10 @@ the 600/400/200 g shopping calculation, saved owner-only diner preferences,
 and the separate manual consumption receipt after Cook Mode. See the
 canonical plan and `docs/owned-pantry-local-update.md`. The read-only
 `check-owned-planning-update.mjs --pantry` checks the exact 38-to-40
-transition. Next: guard the actual installer, rehearse the exact previous web
-image with the 40-migration schema, and prepare the installed smoke journey.
+transition. The clean preflight verified the healthy supervisor and paused
+tunnel; the exact running former web image was retained and its ID verified.
+Next: guard the actual installer, rehearse the retained image with the
+40-migration schema, and prepare the installed smoke journey.
 DEV-06 is still installed. Do not run Update or quiesce real writes to make
 a backup without approval; keep the public tunnel paused.
 
