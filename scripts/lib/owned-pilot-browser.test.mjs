@@ -16,7 +16,8 @@ describe("owned pilot browser acceptance boundary", () => {
     expect(source).toContain("offlineRequestPolicy(route.request().url())");
     expect(source).toContain("return route.abort()");
     expect(source).toContain("assert.equal(report.blockedAiRequests, 0)");
-    expect(source).toContain('ownedBrowserFixture(keys, "cleanup", fixture, undefined, {');
+    expect(source).toContain('ownedBrowserFixture(keys, "cleanup", fixture, undefined, cleanup)');
+    expect(source).toMatch(/planningOnly\s*\?\s*\{ planningOnly: true \}/);
     expect(source).toContain("cleanupImages: liveJourneys");
     expect(source).not.toContain("storageState(");
     expect(source).not.toContain("launchPersistentContext");
