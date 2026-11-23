@@ -178,7 +178,8 @@ describe("owned installed service snapshot", () => {
     );
     expect(resume).toContain('command(["start", value.Id])');
     expect(resume).not.toMatch(/volume\(|ensureNetwork|ALTER ROLE|CREATE|build/);
-    const verify = manager.split("async function verify() {")[1]?.split("\ntry {")[0];
+    const verify = manager.match(/async function verify\([^\r\n]*\) \{([\s\S]+?)\r?\n\}/)?.[1];
+    expect(verify).toBeDefined();
     expect(verify).toContain("await installedServices()");
     expect(verify).toContain("assert.ok(value?.State.Running)");
     expect(verify).toContain("winesnap_local.installation");
