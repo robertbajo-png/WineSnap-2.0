@@ -19,8 +19,9 @@ import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-bro
 // Synthetic accounts/data only. No installed backend, real account or provider credentials.
 const kitchenTabsOnly = process.argv.length === 3 && process.argv[2] === "--kitchen-tabs";
 const planningSmoke = process.argv.length === 3 && process.argv[2] === "--planning-db-smoke";
+const pantryDb = process.argv.length === 3 && process.argv[2] === "--pantry-db";
 const planningDb =
-  planningSmoke || (process.argv.length === 3 && process.argv[2] === "--planning-db");
+  pantryDb || planningSmoke || (process.argv.length === 3 && process.argv[2] === "--planning-db");
 const planningOnly = planningDb || (process.argv.length === 3 && process.argv[2] === "--planning");
 const kitchenOnly =
   planningOnly || kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
@@ -32,37 +33,41 @@ const ownedFixture = kitchenOnly || chatOnly || collectorOnly || pricesOnly;
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = join(
   root,
-  planningOnly
-    ? "dist/core-planning-runtime"
-    : pricesOnly
-      ? "dist/core-prices-runtime"
-      : kitchenOnly
-        ? "dist/core-kitchen-runtime"
-        : chatOnly
-          ? "dist/core-chat-runtime"
-          : collectorOnly
-            ? "dist/core-collector-runtime"
-            : "dist/independent-runtime",
+  pantryDb
+    ? "dist/core-pantry-runtime"
+    : planningOnly
+      ? "dist/core-planning-runtime"
+      : pricesOnly
+        ? "dist/core-prices-runtime"
+        : kitchenOnly
+          ? "dist/core-kitchen-runtime"
+          : chatOnly
+            ? "dist/core-chat-runtime"
+            : collectorOnly
+              ? "dist/core-collector-runtime"
+              : "dist/independent-runtime",
 );
 const artifacts = join(
   root,
-  planningDb
-    ? planningSmoke
-      ? "dist/core-planning-database-smoke"
-      : "dist/core-planning-database"
-    : planningOnly
-      ? "dist/core-planning"
-      : pricesOnly
-        ? "dist/core-prices"
-        : kitchenTabsOnly
-          ? "dist/core-kitchen-tabs"
-          : kitchenOnly
-            ? "dist/core-kitchen"
-            : chatOnly
-              ? "dist/core-chat"
-              : collectorOnly
-                ? "dist/core-collector"
-                : "dist/core-experience",
+  pantryDb
+    ? "dist/core-pantry-database"
+    : planningDb
+      ? planningSmoke
+        ? "dist/core-planning-database-smoke"
+        : "dist/core-planning-database"
+      : planningOnly
+        ? "dist/core-planning"
+        : pricesOnly
+          ? "dist/core-prices"
+          : kitchenTabsOnly
+            ? "dist/core-kitchen-tabs"
+            : kitchenOnly
+              ? "dist/core-kitchen"
+              : chatOnly
+                ? "dist/core-chat"
+                : collectorOnly
+                  ? "dist/core-collector"
+                  : "dist/core-experience",
 );
 const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
@@ -133,21 +138,23 @@ const syntheticUsers = new Map([
 const report = {
   synthetic: true,
   fixtureDataMocked: !planningDb,
-  sourceViewScope: planningDb
-    ? planningSmoke
-      ? "core-planning-database-smoke"
-      : "core-planning-database"
-    : planningOnly
-      ? "core-planning"
-      : pricesOnly
-        ? "core-prices"
-        : kitchenOnly
-          ? "core-kitchen"
-          : chatOnly
-            ? "core-chat"
-            : collectorOnly
-              ? "core-collector"
-              : "wine-detail-scan",
+  sourceViewScope: pantryDb
+    ? "core-pantry-database"
+    : planningDb
+      ? planningSmoke
+        ? "core-planning-database-smoke"
+        : "core-planning-database"
+      : planningOnly
+        ? "core-planning"
+        : pricesOnly
+          ? "core-prices"
+          : kitchenOnly
+            ? "core-kitchen"
+            : chatOnly
+              ? "core-chat"
+              : collectorOnly
+                ? "core-collector"
+                : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -288,6 +295,7 @@ try {
       origin: fixtureOrigin,
       key: fixtureKey,
       report,
+      pantry: pantryDb,
     });
     acceptPlanningDatabase = suite.acceptPlanningDatabase;
   }
@@ -551,6 +559,7 @@ try {
       backend,
       report,
       smoke: planningSmoke,
+      pantry: pantryDb,
       capture: async (screen, width) => {
         await page.setViewportSize({ width, height: 844 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

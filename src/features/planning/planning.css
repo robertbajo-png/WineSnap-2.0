@@ -12,6 +12,10 @@
 .k-plan-info > span {
   color: var(--k-muted);
 }
+
+.k-plan-buy {
+  font-size: 0.875rem;
+}
 .k-plan-heading,
 .k-plan-toolbar,
 .k-plan-row {

@@ -36,6 +36,7 @@ export async function createPlanningDatabaseFixture({
   key,
   report,
   relayWeb,
+  pantry = false,
 }) {
   assert.equal(origin, "http://127.0.0.1:54323");
   assert.equal(key, "sb_publishable_runtime_check_not_a_real_key");
@@ -62,7 +63,7 @@ export async function createPlanningDatabaseFixture({
       headers: headers(account?.token ?? backend.anon),
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  async function recipe(account, title, record) {
+  async function recipe(account, title, record, ingredient = { name: "Testtomat", amount: 200 }) {
     const version = randomUUID();
     const r = await rest(account, "/rpc/kitchen_save_recipe", {
       _recipe_id: record?.recipeId ?? randomUUID(),
@@ -76,7 +77,9 @@ export async function createPlanningDatabaseFixture({
         image: "none",
         notes: "",
         sourceNote: "",
-        ingredients: [{ id: randomUUID(), name: "Testtomat", amount: 200, unit: "g" }],
+        ingredients: [
+          { id: randomUUID(), name: ingredient.name, amount: ingredient.amount, unit: "g" },
+        ],
         steps: [
           { id: randomUUID(), title: "Teststeg", text: "Syntetisk data", timerSeconds: null },
         ],
@@ -193,8 +196,10 @@ export async function createPlanningDatabaseFixture({
           ? authPaths.has(path) &&
               (login || token !== key) &&
               (path === "/user" ? method === "GET" : method === "POST")
-          : (method === "GET" && tables.has(path)) ||
-              (method === "POST" && rpcs.has(path) && token !== key),
+          : (method === "GET" && (tables.has(path) || (pantry && path === "/kitchen_pantry"))) ||
+              (method === "POST" &&
+                token !== key &&
+                (rpcs.has(path) || (pantry && path === "/rpc/kitchen_save_pantry_item"))),
       );
       let account;
       if (login) {
@@ -274,6 +279,7 @@ export async function acceptPlanningDatabase({
   backend,
   report,
   smoke,
+  pantry,
   capture,
 }) {
   const { owner, peer, rest, recipe, writes } = fixture;
@@ -327,6 +333,11 @@ export async function acceptPlanningDatabase({
   const peerItem = "Syntetisk annan inköpsrad";
   report.phase = "browser_owner_login_and_week";
   await login(owner);
+  if (pantry) {
+    const { acceptPantryStock } = await import("./pantry-database-browser.mjs");
+    await acceptPantryStock({ page, base, fixture, report, capture });
+    return;
+  }
   report.phase = "browser_owner_first_save";
   const version = await recipe(owner, "Syntetiskt första recept");
   if (smoke) {

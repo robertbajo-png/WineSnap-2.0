@@ -79,6 +79,8 @@ import { FoodMemoryPanel } from "../chef/FoodMemoryPanel";
 import { emptyChefContext } from "../chef/domain";
 import { mealsEnabled } from "../meals/feature";
 import { nutritionEnabled } from "../nutrition/feature";
+import { pantryEnabled } from "../pantry/feature";
+import { usePantry } from "../pantry/usePantry";
 import {
   kitchenJourneyHash,
   readKitchenJourney,
@@ -99,6 +101,9 @@ const MealHistoryPanel = lazy(() =>
 );
 const WeekPlanner = lazy(() =>
   import("../planning/WeekPlanner").then((m) => ({ default: m.WeekPlanner })),
+);
+const PantryPanel = lazy(() =>
+  import("../pantry/PantryPanel").then((m) => ({ default: m.PantryPanel })),
 );
 
 const unitLabel: Record<(typeof units)[number], string> = {
@@ -578,6 +583,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
   const kitchen = useKitchen(owner);
   const { cache, busy, ready, offline, error, conflict, localConflict } = kitchen;
   const [tab, setTab] = useState("library");
+  const pantryOpen = pantryEnabled && (tab === "plan" || tab === "pantry");
+  const pantry = usePantry(owner, !offline, pantryOpen);
   const [plannerVisited, setPlannerVisited] = useState(false);
   const workspace = useRef(false);
   useEffect(() => {
@@ -686,6 +693,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       setTab(
         hash === "cook" ||
           hash === "plan" ||
+          (pantryEnabled && hash === "pantry") ||
           (chefEnabled && ["chef", "memory"].includes(hash)) ||
           (mealsEnabled && ["pairings", "family", "meals"].includes(hash)) ||
           (nutritionEnabled && hash === "nutrition")
@@ -723,6 +731,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       "meals",
       "nutrition",
       "plan",
+      "pantry",
     ].includes(next)
       ? next
       : "recipes";
@@ -876,7 +885,11 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           <label>
             <span className="sr-only">Fler vyer i köket</span>
             <select
-              value={["pairings", "family", "meals", "nutrition", "plan"].includes(tab) ? tab : ""}
+              value={
+                ["pairings", "family", "meals", "nutrition", "plan", "pantry"].includes(tab)
+                  ? tab
+                  : ""
+              }
               onChange={(e) => {
                 if (e.target.value) {
                   setPairingRecipe(undefined);
@@ -889,6 +902,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             >
               <option value="">Mer i köket…</option>
               <option value="plan">Veckoplan</option>
+              {pantryEnabled && <option value="pantry">Skafferi</option>}
               {mealsEnabled && (
                 <>
                   <option value="pairings">Mat & vin</option>
@@ -900,7 +914,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             </select>
           </label>
         </div>
-        {tab !== "plan" && (
+        {tab !== "plan" && tab !== "pantry" && (
           <div className="k-status" role="status">
             {offline ? (
               <CloudOff size={16} />
@@ -984,11 +998,31 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                 recipes={cache?.versions ?? []}
                 canCook={canPlanCook}
                 onCook={startPlanned}
+                pantry={
+                  pantryEnabled
+                    ? {
+                        snapshot: pantry.snapshot,
+                        unavailable: offline || pantry.error,
+                        now: Math.ceil(now / 1000) * 1000,
+                        open: () => navigate("pantry"),
+                      }
+                    : undefined
+                }
               />
             </Suspense>
           </div>
         )}
-        {tab === "plan" ? null : !ready ? (
+        {pantryEnabled && tab === "pantry" && (
+          <Suspense fallback={<p aria-busy="true">Öppnar skafferiet…</p>}>
+            <PantryPanel
+              pantry={pantry}
+              now={now}
+              online={!offline}
+              onPlan={() => navigate("plan")}
+            />
+          </Suspense>
+        )}
+        {tab === "plan" || tab === "pantry" ? null : !ready ? (
           <p aria-busy="true">Hämtar din kokbok…</p>
         ) : !cache ? (
           <section className="k-empty">

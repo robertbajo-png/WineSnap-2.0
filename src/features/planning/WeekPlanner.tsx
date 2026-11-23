@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  PackageOpen,
   Pencil,
   Play,
   Plus,
@@ -30,6 +31,7 @@ import {
   type Purchase,
 } from "./domain";
 import { useWeekPlan } from "./useWeekPlan";
+import { suggestPantryShopping, type PantrySnapshot } from "../pantry/domain";
 import "./planning.css";
 
 const meals = { breakfast: "Frukost", lunch: "Lunch", dinner: "Middag", snack: "Mellanmål" };
@@ -301,6 +303,12 @@ type PlannerProps = {
   recipes: RecipeVersion[];
   canCook: boolean;
   onCook: (version: RecipeVersion, servings: number) => Promise<boolean>;
+  pantry?: {
+    snapshot: PantrySnapshot | null | undefined;
+    now: number;
+    unavailable: boolean;
+    open: () => void;
+  };
 };
 type RecipeLine = Extract<
   ReturnType<typeof buildShoppingList>,
@@ -326,6 +334,7 @@ function WeekWorkspace({
   recipes,
   canCook,
   onCook,
+  pantry,
   weekStart,
   setWeek,
 }: PlannerProps & {
@@ -354,6 +363,15 @@ function WeekWorkspace({
   const shopping = useMemo(
     () => draft && buildShoppingList(owner, draft, versions),
     [draft, owner, versions],
+  );
+  const stock = pantry?.snapshot;
+  const stockTime = pantry?.now;
+  const pantrySuggestions = useMemo(
+    () =>
+      shopping && stock && stockTime !== undefined
+        ? suggestPantryShopping(owner, shopping, stock, stockTime)
+        : undefined,
+    [owner, shopping, stock, stockTime],
   );
   const locked = !!(busy || recovery || starting);
   const weekLocked = locked || dirty || !!mealEditor || !!lineEditor;
@@ -621,7 +639,17 @@ function WeekWorkspace({
           ) : (
             <>
               <section className="k-plan-shopping">
-                <h2>Från veckoplanen</h2>
+                <div className="k-plan-row">
+                  <h2>Från veckoplanen</h2>
+                  {pantry && (
+                    <button type="button" className="k-secondary" onClick={pantry.open}>
+                      <PackageOpen size={16} aria-hidden /> Skafferi
+                    </button>
+                  )}
+                </div>
+                {pantry?.unavailable && (
+                  <p role="status">Skafferiet kunde inte läsas. Visar hela behovet.</p>
+                )}
                 {shopping?.status === "missing_recipes" ? (
                   <p role="status">
                     Inköpen kan inte räknas ut förrän alla planerade receptversioner är
@@ -638,6 +666,7 @@ function WeekWorkspace({
                       amount: line.basis.knownAmount,
                       unit: line.unit,
                     };
+                    const suggestion = pantrySuggestions?.get(line.key);
                     return (
                       <div className="k-plan-line k-plan-row" key={line.key}>
                         <label className="k-plan-check">
@@ -652,6 +681,7 @@ function WeekWorkspace({
                           <span className="k-plan-info">
                             <strong>{item.name}</strong>
                             <span>
+                              {suggestion ? "Behövs: " : ""}
                               {amountText(item)}
                               {line.adjustment
                                 ? " · Justerad"
@@ -659,6 +689,20 @@ function WeekWorkspace({
                                   ? " + okänd mängd"
                                   : ""}
                             </span>
+                            {suggestion && (
+                              <>
+                                <span>
+                                  Från skafferiet:{" "}
+                                  {amountText({ amount: suggestion.covered, unit: line.unit })}
+                                </span>
+                                <strong className="k-plan-buy">
+                                  {suggestion.toBuy > 0
+                                    ? "Att köpa: " +
+                                      amountText({ amount: suggestion.toBuy, unit: line.unit })
+                                    : "Finns hemma"}
+                                </strong>
+                              </>
+                            )}
                           </span>
                         </label>
                         <div className="k-plan-actions">

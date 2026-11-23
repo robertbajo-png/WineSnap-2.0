@@ -8,6 +8,24 @@ const input = {
 };
 
 describe("independent build configuration", () => {
+  it("only enables the pantry in the explicitly configured owned cooking build", () => {
+    const pantry = { ...input, VITE_PANTRY_ENABLED: "true" };
+    expect(independentEnvironment("runtime-check", pantry).VITE_PANTRY_ENABLED).toBe("false");
+    expect(independentEnvironment("production", input)).not.toHaveProperty("VITE_PANTRY_ENABLED");
+    expect(() => independentEnvironment("production", pantry)).toThrow("owned Windows");
+    const owned = {
+      ...pantry,
+      VITE_SUPABASE_URL: "http://127.0.0.1:54323",
+      VITE_OWNED_BACKEND_ENABLED: "true",
+      VITE_COOKING_CORE_ENABLED: "true",
+      VITE_PRIVACY_CONTROLS_ENABLED: "true",
+      VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
+    };
+    expect(independentEnvironment("production", owned).VITE_PANTRY_ENABLED).toBe("true");
+    expect(() =>
+      independentEnvironment("production", { ...owned, VITE_COOKING_CORE_ENABLED: "false" }),
+    ).toThrow("owned Windows");
+  });
   it("keeps the pilot disabled in synthetic checks and rejects non-owned opt-ins", () => {
     expect(
       independentEnvironment("runtime-check", { VITE_PILOT_UI_ENABLED: "true" })
