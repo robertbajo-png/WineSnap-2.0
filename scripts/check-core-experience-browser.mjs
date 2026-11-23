@@ -286,7 +286,7 @@ try {
   if (planningDb) {
     const { isolatedPlanningBackend } = await import("./lib/isolated-planning-backend.mjs");
     const suite = await import("./lib/planning-database-browser.mjs");
-    backend = isolatedPlanningBackend(report);
+    backend = isolatedPlanningBackend(report, { meals: pantryDb });
     await backend.boot();
     report.phase = "create_disposable_auth_fixtures";
     planningDatabaseFixture = await suite.createPlanningDatabaseFixture({

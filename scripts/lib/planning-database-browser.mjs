@@ -196,10 +196,21 @@ export async function createPlanningDatabaseFixture({
           ? authPaths.has(path) &&
               (login || token !== key) &&
               (path === "/user" ? method === "GET" : method === "POST")
-          : (method === "GET" && (tables.has(path) || (pantry && path === "/kitchen_pantry"))) ||
+          : (method === "GET" &&
+              (tables.has(path) ||
+                (pantry &&
+                  ["/kitchen_pantry", "/kitchen_diners", "/kitchen_pantry_consumption"].includes(
+                    path,
+                  )))) ||
               (method === "POST" &&
                 token !== key &&
-                (rpcs.has(path) || (pantry && path === "/rpc/kitchen_save_pantry_item"))),
+                (rpcs.has(path) ||
+                  (pantry &&
+                    [
+                      "/rpc/kitchen_save_pantry_item",
+                      "/rpc/meals_access",
+                      "/rpc/kitchen_confirm_pantry_consumption",
+                    ].includes(path)))),
       );
       let account;
       if (login) {
@@ -335,7 +346,7 @@ export async function acceptPlanningDatabase({
   await login(owner);
   if (pantry) {
     const { acceptPantryStock } = await import("./pantry-database-browser.mjs");
-    await acceptPantryStock({ page, base, fixture, report, capture });
+    await acceptPantryStock({ page, base, fixture, backend, report, capture });
     return;
   }
   report.phase = "browser_owner_first_save";

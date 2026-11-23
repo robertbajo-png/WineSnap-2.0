@@ -187,6 +187,7 @@ try {
     "supabase/tests/meals_households.local.sql",
     "supabase/tests/week_plans.local.sql",
     "supabase/tests/kitchen_pantry.local.sql",
+    "supabase/tests/week_plan_diners.local.sql",
   ]) {
     stage = file;
     const source = await readFile(resolve(root, file), "utf8");

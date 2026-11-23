@@ -106,6 +106,26 @@ describe("weekly planning calendar and validation", () => {
 });
 
 describe("deterministic shopping derivation", () => {
+  it("keeps diner selection in the meal without changing recipe amounts or shopping edits", () => {
+    const {
+      recipeItems: [line],
+    } = ready(week([first]), [flour]);
+    const plan = {
+      ...week([{ ...first, dinerIds: [uuid(28)] }]),
+      shoppingEdits: [
+        { key: line.key, basis: line.basis, checked: true, excluded: false, adjustment: null },
+      ],
+    };
+    expect(weekPlanSchema.parse(plan).meals[0].dinerIds).toEqual([uuid(28)]);
+    expect(ready(plan, [flour]).recipeItems[0]).toEqual({ ...line, checked: true });
+    for (const dinerIds of [
+      [],
+      [uuid(28), uuid(28).toUpperCase()],
+      Array.from({ length: 25 }, (_, index) => uuid(index)),
+    ])
+      expect(weekPlanSchema.safeParse(week([{ ...first, dinerIds }])).success).toBe(false);
+  });
+
   it("scales servings, merges compatible units and never guesses density", () => {
     const result = ready(week([second, first]), [secondFlour, flour]);
     expect(

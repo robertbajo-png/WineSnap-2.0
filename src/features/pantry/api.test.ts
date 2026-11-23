@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { confirmPantryConsumption, loadPantry, loadPantryReceipt, savePantryItem } from "./api";
+import {
+  confirmPantryConsumption,
+  loadConsumptionReview,
+  loadPantry,
+  loadPantryReceipt,
+  savePantryItem,
+} from "./api";
 
 const mocks = vi.hoisted(() => ({ scoped: vi.fn(), from: vi.fn(), rpc: vi.fn() }));
 vi.mock("@/lib/accountWriteScope", () => ({ accountWriteClient: mocks.scoped }));
@@ -36,19 +42,43 @@ const ok = (data: unknown) => ({ data, error: null });
 let query: {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  abortSignal: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
 };
 
 beforeEach(() => {
   vi.resetAllMocks();
-  query = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() };
+  query = { select: vi.fn(), eq: vi.fn(), abortSignal: vi.fn(), maybeSingle: vi.fn() };
   query.select.mockReturnValue(query);
   query.eq.mockReturnValue(query);
+  query.abortSignal.mockReturnValue(query);
   mocks.from.mockReturnValue(query);
   mocks.scoped.mockResolvedValue({ from: mocks.from, rpc: mocks.rpc });
 });
 
 describe("account-scoped pantry data", () => {
+  it("requires a persisted completed session before requesting stock and a receipt", async () => {
+    const session = {
+      id: sessionId,
+      user_id: owner,
+      recipe_version_id: uuid(8),
+      revision: 2,
+      state: {
+        status: "running",
+        activeStep: 0,
+        servings: 3,
+        checkedIngredientIds: [],
+        timers: [],
+      },
+      last_request_id: requestId,
+      updated_at: stamp,
+    };
+    query.maybeSingle.mockResolvedValueOnce(ok(session));
+    await expect(
+      loadConsumptionReview(scope(), sessionId, new AbortController().signal),
+    ).rejects.toMatchObject({ kind: "unavailable" });
+    expect(mocks.from.mock.calls).toEqual([["cooking_sessions"]]);
+  });
   it("pins all reads to the active owner and the receipt to its exact session", async () => {
     query.maybeSingle.mockResolvedValueOnce(ok(saved)).mockResolvedValueOnce(ok(receipt));
     const current = scope();

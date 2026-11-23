@@ -40,7 +40,7 @@ console.log(JSON.stringify({ status: response.status,
     ["content-type", "content-range", "range-unit"].includes(key))),
   bytes: bytes.toString("base64") }));`;
 
-export function isolatedPlanningBackend(report) {
+export function isolatedPlanningBackend(report, { meals = false } = {}) {
   const run = randomBytes(8).toString("hex");
   const names = Object.fromEntries(
     [...services, "restore", "web", "network"].map((s) => [s, `${prefix}-${run}-${s}`]),
@@ -326,7 +326,12 @@ export function isolatedPlanningBackend(report) {
       const hash = createHash("sha256").update(migration).digest("hex");
       schema += `\nBEGIN;\n${migration}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES('${file}','${hash}'); COMMIT;\n`;
     }
-    await sql(schema + "\nUPDATE public.kitchen_config SET enabled=true WHERE id=true;");
+    await sql(
+      schema +
+        "\nUPDATE public.kitchen_config SET enabled=true" +
+        (meals ? ",chef_enabled=true,meals_enabled=true" : "") +
+        " WHERE id=true;",
+    );
     assert.equal(Number(await sql("SELECT count(*) FROM winesnap_local.migrations")), files.length);
     report.isolatedMigrationsApplied = files.length;
     report.phase = "postgrest_and_relay";

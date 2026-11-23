@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { accountWriteClient, type AccountWriteScope } from "@/lib/accountWriteScope";
+import { savedSessionSchema, versionSchema } from "../kitchen/domain";
 import {
   consumptionItemsSchema,
   consumptionReceiptSchema,
@@ -64,6 +65,15 @@ function mutationError(code?: string): never {
 
 export async function loadPantry(scope: AccountWriteScope, signal?: AbortSignal) {
   const { client, owner } = await scoped(scope, signal);
+  return readPantry(client, owner, scope, signal);
+}
+
+async function readPantry(
+  client: SupabaseClient,
+  owner: string,
+  scope: AccountWriteScope,
+  signal?: AbortSignal,
+) {
   const query = client.from("kitchen_pantry").select(pantryColumns).eq("user_id", owner);
   const { data, error } = await (signal ? query.abortSignal(signal) : query).maybeSingle();
   requireCurrent(scope, signal);
@@ -82,19 +92,76 @@ export async function loadPantryReceipt(
   const session = id.safeParse(sessionId);
   if (!session.success) throw new PantryError("invalid");
   const { client, owner } = await scoped(scope, signal);
+  return readReceipt(client, owner, session.data, scope, signal);
+}
+
+async function readReceipt(
+  client: SupabaseClient,
+  owner: string,
+  sessionId: string,
+  scope: AccountWriteScope,
+  signal?: AbortSignal,
+) {
   const query = client
     .from("kitchen_pantry_consumption")
     .select(receiptColumns)
     .eq("user_id", owner)
-    .eq("session_id", session.data);
+    .eq("session_id", sessionId);
   const { data, error } = await (signal ? query.abortSignal(signal) : query).maybeSingle();
   requireCurrent(scope, signal);
   if (error) throw new PantryError("unavailable");
   if (data === null) return null;
   const result = consumptionReceiptSchema.safeParse(data);
-  if (!result.success || result.data.user_id !== owner || result.data.session_id !== session.data)
+  if (!result.success || result.data.user_id !== owner || result.data.session_id !== sessionId)
     throw new PantryError("unavailable");
   return result.data;
+}
+
+export async function loadConsumptionReview(
+  scope: AccountWriteScope,
+  sessionId: string,
+  signal: AbortSignal,
+) {
+  const expected = id.safeParse(sessionId);
+  if (!expected.success) throw new PantryError("invalid");
+  const { client, owner } = await scoped(scope, signal);
+  const query = client
+    .from("cooking_sessions")
+    .select("id,user_id,recipe_version_id,revision,state,last_request_id,updated_at")
+    .eq("user_id", owner)
+    .eq("id", expected.data);
+  const { data, error } = await query.abortSignal(signal).maybeSingle();
+  requireCurrent(scope, signal);
+  const session = savedSessionSchema.safeParse(data);
+  if (
+    error ||
+    !session.success ||
+    session.data.user_id !== owner ||
+    session.data.id !== expected.data ||
+    session.data.state.status !== "completed"
+  )
+    throw new PantryError("unavailable");
+  const [pantry, receipt, recipe] = await Promise.all([
+    readPantry(client, owner, scope, signal),
+    readReceipt(client, owner, expected.data, scope, signal),
+    client
+      .from("kitchen_recipe_versions")
+      .select("id,user_id,recipe_id,revision,document,created_at")
+      .eq("user_id", owner)
+      .eq("id", session.data.recipe_version_id)
+      .abortSignal(signal)
+      .maybeSingle(),
+  ]);
+  requireCurrent(scope, signal);
+  const version = versionSchema.safeParse(recipe.data);
+  if (
+    recipe.error ||
+    !version.success ||
+    version.data.user_id !== owner ||
+    version.data.id !== session.data.recipe_version_id
+  )
+    throw new PantryError("unavailable");
+  return { pantry, receipt, session: session.data, version: version.data };
 }
 
 export async function savePantryItem(

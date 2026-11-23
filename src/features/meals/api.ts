@@ -96,6 +96,28 @@ export async function familyData(owner: string, signal?: AbortSignal) {
   };
 }
 export type FamilyData = Awaited<ReturnType<typeof familyData>>;
+
+export async function ownedPlanDiners(owner: string, signal: AbortSignal) {
+  const client = await scoped(owner, signal);
+  const diners: z.infer<typeof dinerSchema>[] = [];
+  for (let from = 0; from < 1500; from += 500) {
+    const response = await client
+      .from("kitchen_diners")
+      .select("id,user_id,household_id,shared,document,revision,created_at,updated_at")
+      .eq("user_id", owner)
+      .order("id")
+      .range(from, from + 499)
+      .abortSignal(signal);
+    if (response.error || signal.aborted) throw new MealsError();
+    const page = z.array(dinerSchema).max(500).safeParse(response.data);
+    if (!page.success || page.data.some((diner) => diner.user_id !== owner)) throw new MealsError();
+    diners.push(...page.data);
+    if (page.data.length < 500) break;
+  }
+  if (diners.length > 1464 || new Set(diners.map((diner) => diner.id)).size !== diners.length)
+    throw new MealsError();
+  return diners;
+}
 export async function cellarWines(owner: string, signal?: AbortSignal) {
   const result = await (
     await scoped(owner, signal)

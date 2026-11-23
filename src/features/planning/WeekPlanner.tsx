@@ -21,6 +21,7 @@ import {
 import { units, type RecipeVersion } from "../kitchen/domain";
 import {
   buildShoppingList,
+  maxPlanDiners,
   mealSlots,
   neighboringWeek,
   purchaseSchema,
@@ -32,6 +33,9 @@ import {
 } from "./domain";
 import { useWeekPlan } from "./useWeekPlan";
 import { suggestPantryShopping, type PantrySnapshot } from "../pantry/domain";
+import { ownedPlanDiners } from "../meals/api";
+import { familyFit, type Diner } from "../meals/domain";
+import { useFreshData } from "../meals/useFreshData";
 import "./planning.css";
 
 const meals = { breakfast: "Frukost", lunch: "Lunch", dinner: "Middag", snack: "Mellanmål" };
@@ -126,12 +130,14 @@ function EditMeal({
   editor,
   versions,
   dayMeals,
+  audience,
   commit,
   close,
 }: {
   editor: MealEditor;
   versions: RecipeVersion[];
   dayMeals: PlannedMeal[];
+  audience?: ReturnType<typeof useFreshData<Diner[]>>;
   commit: (meal: PlannedMeal) => boolean;
   close: () => void;
 }) {
@@ -148,12 +154,27 @@ function EditMeal({
     String(editor.original?.servings ?? versions[0]?.document.servings ?? 2),
   );
   const [failed, setFailed] = useState(false);
+  const [chosen, setChosen] = useState(editor.original?.dinerIds ?? []);
+  const selectedVersion = versions.find((version) => version.id === recipeVersionId);
+  const available = audience?.data;
+  const selectedDiners = available?.filter((diner) => chosen.includes(diner.id)) ?? [];
+  const missingDiners = available ? chosen.length - selectedDiners.length : 0;
+  const fit = selectedVersion && familyFit(selectedVersion.document, selectedDiners);
+  const preferences = fit ? [...fit.conflicts, ...fit.likes, ...fit.unknown] : [];
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!commit({ date: editor.date, meal, recipeVersionId, servings: Number(servings) }))
+    if (
+      !commit({
+        date: editor.date,
+        meal,
+        recipeVersionId,
+        servings: Number(servings),
+        ...(chosen.length ? { dinerIds: chosen.slice().sort() } : {}),
+      })
+    )
       setFailed(true);
   }
-  const versionAvailable = versions.some((version) => version.id === recipeVersionId);
+  const versionAvailable = !!selectedVersion;
   return (
     <PlanDialog
       title={editor.original ? "Redigera måltid" : "Lägg till måltid"}
@@ -207,6 +228,73 @@ function EditMeal({
             onChange={(event) => setServings(event.target.value)}
           />
         </label>
+        {audience && (
+          <fieldset className="k-plan-audience">
+            <legend>Vilka äter?</legend>
+            {available === null || available === undefined ? (
+              audience.error ? (
+                <div className="k-plan-row">
+                  <p>Familjeprofilerna kunde inte hämtas.</p>
+                  <button
+                    type="button"
+                    className="k-secondary"
+                    onClick={() => void audience.refresh()}
+                  >
+                    Försök igen
+                  </button>
+                </div>
+              ) : (
+                <p aria-busy="true">Hämtar familjeprofiler…</p>
+              )
+            ) : available.length === 0 ? (
+              <p>Inga egna familjeprofiler.</p>
+            ) : (
+              <div className="k-plan-diners">
+                {available.map((diner) => {
+                  const checked = chosen.includes(diner.id);
+                  return (
+                    <label key={diner.id} className="k-plan-diner">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={!checked && chosen.length >= maxPlanDiners}
+                        onChange={(event) => {
+                          const pick = event.target.checked;
+                          setChosen((current) =>
+                            pick ? [...current, diner.id] : current.filter((id) => id !== diner.id),
+                          );
+                        }}
+                      />
+                      <span>{diner.document.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            {missingDiners > 0 && (
+              <div className="k-plan-row">
+                <p>Valda profiler saknas: {missingDiners}</p>
+                <button
+                  type="button"
+                  className="k-secondary"
+                  onClick={() => setChosen(selectedDiners.map((diner) => diner.id))}
+                >
+                  Ta bort val som saknas
+                </button>
+              </div>
+            )}
+            {preferences.length > 0 && (
+              <div className="k-plan-diner-notes">
+                <strong>Matpreferenser</strong>
+                <ul>
+                  {preferences.map((entry, index) => (
+                    <li key={index}>{entry}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </fieldset>
+        )}
         {failed && <p role="alert">Måltiden kunde inte läggas till i utkastet.</p>}
         <button type="submit" className="k-primary" disabled={!versionAvailable}>
           Klar
@@ -303,6 +391,8 @@ type PlannerProps = {
   recipes: RecipeVersion[];
   canCook: boolean;
   onCook: (version: RecipeVersion, servings: number) => Promise<boolean>;
+  dinersEnabled?: boolean;
+  active?: boolean;
   pantry?: {
     snapshot: PantrySnapshot | null | undefined;
     now: number;
@@ -335,6 +425,8 @@ function WeekWorkspace({
   canCook,
   onCook,
   pantry,
+  dinersEnabled,
+  active,
   weekStart,
   setWeek,
 }: PlannerProps & {
@@ -342,6 +434,10 @@ function WeekWorkspace({
   setWeek: (date: string) => void;
 }) {
   const planner = useWeekPlan(owner, weekStart, online);
+  const audience = useFreshData(
+    (signal) => ownedPlanDiners(owner, signal),
+    !!(dinersEnabled && active && online),
+  );
   const { draft, dirty, busy, recovery, notice } = planner;
   const [view, setView] = useState<"meals" | "shopping">("meals");
   const [mealEditor, setMealEditor] = useState<MealEditor>();
@@ -360,6 +456,10 @@ function WeekWorkspace({
     [recipes, planner.versions, owner],
   );
   const byId = useMemo(() => new Map(versions.map((v) => [v.id, v])), [versions]);
+  const dinersById = useMemo(
+    () => new Map(audience.data?.map((diner) => [diner.id, diner.document.name])),
+    [audience.data],
+  );
   const shopping = useMemo(
     () => draft && buildShoppingList(owner, draft, versions),
     [draft, owner, versions],
@@ -605,6 +705,16 @@ function WeekWorkspace({
                               {meals[meal.meal]} · {portionText(meal.servings)}
                             </span>
                             <strong>{version?.document.title ?? "Receptversionen saknas"}</strong>
+                            {dinersEnabled && meal.dinerIds?.length && (
+                              <span>
+                                Matgäster:{" "}
+                                {audience.data
+                                  ? meal.dinerIds
+                                      .map((id) => dinersById.get(id) ?? "profil saknas")
+                                      .join(", ")
+                                  : meal.dinerIds.length + " valda"}
+                              </span>
+                            )}
                           </div>
                           <div className="k-plan-actions">
                             <IconAction
@@ -807,6 +917,7 @@ function WeekWorkspace({
               editor={mealEditor}
               versions={versions}
               dayMeals={draft.meals.filter((meal) => meal.date === mealEditor.date)}
+              audience={dinersEnabled && online ? audience : undefined}
               close={() => setMealEditor(undefined)}
               commit={(meal) => {
                 const changed = editMeal([

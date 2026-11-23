@@ -105,6 +105,9 @@ const WeekPlanner = lazy(() =>
 const PantryPanel = lazy(() =>
   import("../pantry/PantryPanel").then((m) => ({ default: m.PantryPanel })),
 );
+const ConsumptionReview = lazy(() =>
+  import("../pantry/ConsumptionReview").then((m) => ({ default: m.ConsumptionReview })),
+);
 
 const unitLabel: Record<(typeof units)[number], string> = {
   g: "g",
@@ -998,6 +1001,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                 recipes={cache?.versions ?? []}
                 canCook={canPlanCook}
                 onCook={startPlanned}
+                dinersEnabled={pantryEnabled && mealsEnabled}
+                active={tab === "plan"}
                 pantry={
                   pantryEnabled
                     ? {
@@ -1568,6 +1573,17 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                         </h2>
                         {local.feedback?.rating && <p>Betyg: {local.feedback.rating} av 5</p>}
                         {local.feedback?.note && <p>{local.feedback.note}</p>}
+                        {pantryEnabled && state.status === "completed" && (
+                          <Suspense fallback={null}>
+                            <ConsumptionReview
+                              key={local.id}
+                              owner={owner}
+                              sessionId={local.id}
+                              online={!offline}
+                              canReview={!local.dirty && local.baseRevision > 0}
+                            />
+                          </Suspense>
+                        )}
                         {mealsEnabled && state.status === "completed" && (
                           <button
                             className="k-secondary"

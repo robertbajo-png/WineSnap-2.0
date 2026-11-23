@@ -1,7 +1,29 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 
-export async function acceptPantryStock({ page, base, fixture, report, capture }) {
-  const { owner, rest, recipe } = fixture;
+export async function acceptPantryStock({ page, base, fixture, backend, report, capture }) {
+  const { owner, peer, rest, recipe } = fixture;
+  const dinerId = randomUUID();
+  const seed = await backend.admin("/kitchen_diners", {
+    method: "POST",
+    body: JSON.stringify([
+      {
+        id: dinerId,
+        user_id: owner.id,
+        document: {
+          name: "Syntetisk matgäst",
+          kind: "child",
+          preferences: [{ attribute: "ingredient", value: "tomater", direction: -1 }],
+        },
+      },
+      {
+        id: randomUUID(),
+        user_id: peer.id,
+        document: { name: "Annan profil", kind: "adult", preferences: [] },
+      },
+    ]),
+  });
+  assert.equal(seed.status, 201);
   const version = await recipe(owner, "Syntetisk tomatsoppa", undefined, {
     name: "Tomater",
     amount: 400,
@@ -49,10 +71,27 @@ export async function acceptPantryStock({ page, base, fixture, report, capture }
   const meal = page.getByRole("dialog", { name: "Lägg till måltid", exact: true });
   await meal.getByRole("combobox").nth(1).selectOption(version.id);
   await meal.getByLabel("Portioner", { exact: true }).fill("3");
+  report.phase = "pantry_choose_existing_diner";
+  await meal.getByRole("checkbox", { name: "Syntetisk matgäst", exact: true }).check();
+  assert.equal(await meal.getByRole("checkbox", { name: "Annan profil", exact: true }).count(), 0);
+  await meal.getByText("Syntetisk matgäst: undviker tomater", { exact: true }).waitFor();
+  assert.equal(await meal.getByLabel("Portioner", { exact: true }).inputValue(), "3");
+  await capture("pantry-diners", 390);
+  await capture("pantry-diners", 1440);
   await button("Klar").click();
   await button("Spara vecka").click();
   await text("Veckoplanen sparades.").waitFor();
   await page.reload({ waitUntil: "domcontentloaded" });
+  await text("Matgäster: Syntetisk matgäst").waitFor();
+  const savedPlan = await rest(owner, "/kitchen_week_plans?select=document");
+  assert.equal(savedPlan.status, 200);
+  const rows = await savedPlan.json();
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].document.meals[0].dinerIds, [dinerId]);
+  assert.equal(rows[0].document.meals[0].servings, 3);
+  assert.ok(!JSON.stringify(rows[0].document).includes("Syntetisk matgäst"));
+  report.passed.push("existing_owner_diner_preferences_and_private_selection_survive_reload");
+  report.phase = "pantry_shop";
   await button("Inköpslista").click();
   await text("Behövs: 600 g").waitFor();
   await text("Från skafferiet: 400 g").waitFor();
@@ -76,4 +115,60 @@ export async function acceptPantryStock({ page, base, fixture, report, capture }
   await text("600 g").waitFor();
   assert.equal(await text("Att köpa: 200 g").count(), 0);
   report.passed.push("uncertain_stock_restores_full_shopping_quantity");
+
+  report.phase = "pantry_cook_completion";
+  await button("Skafferi").click();
+  await button("Redigera Tomater").click();
+  await dialog.getByRole("checkbox", { name: "Bekräfta mängden nu" }).check();
+  await button("Spara lagerpost").click();
+  await text("Lagerposten sparades.").waitFor();
+  const beforeCook = await pantry();
+  await button("Veckoplan").click();
+  await button("Måltider").click();
+  await button("Starta planerad matlagning").click();
+  await text("Steg 1 av 1").waitFor();
+  await button("Avsluta").click();
+  await button("Avsluta matlagningen").click();
+  await text("Matlagningen är avslutad").waitFor();
+  assert.deepEqual(await pantry(), beforeCook);
+  const receipts = async () => {
+    const response = await rest(owner, "/kitchen_pantry_consumption?select=*");
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  assert.deepEqual(await receipts(), []);
+  report.phase = "pantry_explicit_review";
+  await button("Granska förbrukning").click();
+  const review = page.getByRole("dialog", { name: "Granska förbrukning", exact: true });
+  const tomato = review.getByRole("checkbox", { name: /Tomater/ });
+  await tomato.waitFor();
+  assert.equal(await tomato.isChecked(), false);
+  assert.equal(await button("Bekräfta förbrukning").isDisabled(), true);
+  await tomato.check();
+  await button("Avbryt").click();
+  assert.deepEqual(await pantry(), beforeCook);
+  assert.deepEqual(await receipts(), []);
+  await button("Granska förbrukning").click();
+  await tomato.check();
+  await review.getByLabel("Använd mängd (g)", { exact: true }).fill("250");
+  await capture("pantry-consumption", 390);
+  await capture("pantry-consumption", 1440);
+  await button("Bekräfta förbrukning").click();
+  await text("Förbrukningen är registrerad.").waitFor();
+  await text("Tomater: 250 g").waitFor();
+  const [receipt] = await receipts();
+  assert.equal(receipt.items.length, 1);
+  assert.equal(receipt.items[0].amount, 250);
+  assert.equal(receipt.items[0].itemId, beforeCook.items[0].id);
+  const afterCook = await pantry();
+  assert.equal(afterCook.items[0].amount, 150);
+  assert.equal(afterCook.revision, beforeCook.revision + 1);
+  assert.equal(afterCook.items[0].confirmedAt, beforeCook.items[0].confirmedAt);
+  await button("Stäng").click();
+  await button("Granska förbrukning").click();
+  await text("Förbrukningen är registrerad.").waitFor();
+  assert.equal(await button("Bekräfta förbrukning").count(), 0);
+  assert.deepEqual(await receipts(), [receipt]);
+  assert.deepEqual(await pantry(), afterCook);
+  report.passed.push("completed_and_cancelled_cook_leave_stock_until_actual_confirmation_once");
 }

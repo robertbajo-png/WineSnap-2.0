@@ -2,18 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ capture: vi.fn() }));
 vi.mock("@/lib/accountWriteScope", () => ({ accountWriteClient: mocks.capture }));
 vi.mock("./feature", () => ({ mealsEnabled: true }));
-import { familyData, cellarWines, mealHistory, MealsError } from "./api";
+import { familyData, cellarWines, mealHistory, MealsError, ownedPlanDiners } from "./api";
 const owner = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
-let reads: { table: string; signal?: AbortSignal }[],
+let reads: { table: string; signal?: AbortSignal; owner?: string }[],
   gateAllowed: boolean,
   duringGate: (() => void) | undefined;
-let gateSignals: AbortSignal[], failTable: string | undefined;
+let gateSignals: AbortSignal[], failTable: string | undefined, dinerRows: unknown[];
 function query(table: string) {
-  const read: { table: string; signal?: AbortSignal } = { table };
+  const read: (typeof reads)[number] = { table };
   reads.push(read);
   const chain = {
     select: () => chain,
-    eq: () => chain,
+    eq: (column: string, value: string) => {
+      if (column === "user_id") read.owner = value;
+      return chain;
+    },
     order: () => chain,
     limit: () => chain,
     range: () => chain,
@@ -27,7 +30,7 @@ function query(table: string) {
     then: (resolve: (result: unknown) => unknown) =>
       Promise.resolve(
         resolve({
-          data: [],
+          data: table === "kitchen_diners" ? dinerRows : [],
           error:
             failTable === table || read.signal?.aborted ? { code: "synthetic_read_failure" } : null,
         }),
@@ -42,6 +45,7 @@ beforeEach(() => {
   gateAllowed = true;
   duringGate = undefined;
   failTable = undefined;
+  dinerRows = [];
   mocks.capture.mockResolvedValue({
     from: query,
     rpc: (name: string) => {
@@ -57,6 +61,24 @@ beforeEach(() => {
   });
 });
 describe("bounded shared meal reads", () => {
+  it("requests only the planner owner's diners and rejects an unexpected foreign profile", async () => {
+    const signal = new AbortController().signal;
+    await expect(ownedPlanDiners(owner, signal)).resolves.toEqual([]);
+    expect(reads).toEqual([{ table: "kitchen_diners", signal, owner }]);
+    dinerRows = [
+      {
+        id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee1",
+        user_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee2",
+        household_id: null,
+        shared: true,
+        revision: 1,
+        document: { name: "Synthetic diner", kind: "adult", preferences: [] },
+        created_at: "2026-11-23T10:00:00Z",
+        updated_at: "2026-11-23T10:00:00Z",
+      },
+    ];
+    await expect(ownedPlanDiners(owner, signal)).rejects.toBeInstanceOf(MealsError);
+  });
   it("uses the ordinary verified account client and forwards one cancellation scope to every family read", async () => {
     const controller = new AbortController();
     const result = await familyData(owner, controller.signal);

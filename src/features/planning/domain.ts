@@ -43,7 +43,7 @@ export function neighboringWeek(weekStart: string, direction: -1 | 1) {
   return result.success ? result.data : null;
 }
 
-const plannedMeal = z
+const ingredientSource = z
   .object({
     date: day,
     meal: slot,
@@ -51,6 +51,15 @@ const plannedMeal = z
     servings: z.number().int().min(1).max(24),
   })
   .strict();
+export const maxPlanDiners = 24;
+const plannedMeal = ingredientSource.extend({
+  dinerIds: z
+    .array(id)
+    .min(1)
+    .max(maxPlanDiners)
+    .refine((ids) => new Set(ids).size === ids.length)
+    .optional(),
+});
 export type PlannedMeal = z.infer<typeof plannedMeal>;
 const mealKey = (meal: Pick<PlannedMeal, "date" | "meal">) =>
   meal.date + ":" + mealSlots.indexOf(meal.meal);
@@ -70,7 +79,7 @@ const basis = z
     knownAmount: z.number().positive().max(largestScaledTotal).nullable(),
     unknownAmounts: z.number().int().min(0).max(plannedIngredientLimit),
     sources: z
-      .array(plannedMeal)
+      .array(ingredientSource)
       .min(1)
       .max(7 * mealSlots.length),
   })
@@ -173,6 +182,12 @@ export function buildShoppingList(
   const groups = new Map<string, RecipeLine>();
   for (const { meal, version } of resolved) {
     if (!version) throw new Error("Planned recipe not available");
+    const source = {
+      date: meal.date,
+      meal: meal.meal,
+      recipeVersionId: meal.recipeVersionId,
+      servings: meal.servings,
+    };
     for (const ingredient of version.document.ingredients) {
       const unit = ingredientBaseUnits[ingredient.unit];
       const key = ingredientIdentity(ingredient.name, ingredient.unit);
@@ -186,7 +201,7 @@ export function buildShoppingList(
         };
         groups.set(key, line);
       }
-      if (line.basis.sources.at(-1) !== meal) line.basis.sources.push(meal);
+      if (line.basis.sources.at(-1) !== source) line.basis.sources.push(source);
       // Existing recipes use zero to mean an unspecified quantity.
       if (ingredient.amount === 0) line.basis.unknownAmounts++;
       else {

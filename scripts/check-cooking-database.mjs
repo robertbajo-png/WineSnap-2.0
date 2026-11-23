@@ -142,6 +142,17 @@ try {
       )
     ).includes("kitchen_pantry_acceptance_passed"),
   );
+  phase = "week_plan_existing_owner_diners";
+  assert.ok(
+    (
+      await execute(
+        await readFile(
+          new URL("../supabase/tests/week_plan_diners.local.sql", import.meta.url),
+          "utf8",
+        ),
+      )
+    ).includes("week_plan_diners_acceptance_passed"),
+  );
   console.log(
     JSON.stringify({
       passed: true,

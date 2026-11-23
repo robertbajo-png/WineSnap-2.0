@@ -16,6 +16,46 @@
 .k-plan-buy {
   font-size: 0.875rem;
 }
+
+.k-plan-audience {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem 0;
+  border: 0;
+  border-block: 1px solid var(--k-line);
+}
+
+.k-plan-audience legend {
+  padding: 0 0.35rem 0 0;
+  font-weight: 650;
+}
+
+.k-plan-diners {
+  max-block-size: 11rem;
+  overflow-y: auto;
+}
+
+.k-plan-dialog .k-plan-diner {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-block-size: 44px;
+  overflow-wrap: anywhere;
+}
+
+.k-plan-dialog .k-plan-diner input {
+  inline-size: 18px;
+  block-size: 18px;
+  min-height: 0;
+  accent-color: var(--k-green);
+}
+
+.k-plan-diner-notes ul {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  overflow-wrap: anywhere;
+}
 .k-plan-heading,
 .k-plan-toolbar,
 .k-plan-row {

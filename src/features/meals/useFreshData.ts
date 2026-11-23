@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Shared preferences are never cached offline; a failed/revoked fetch clears the visible copy.
-export function useFreshData<T>(load: (signal: AbortSignal) => Promise<T>) {
+export function useFreshData<T>(load: (signal: AbortSignal) => Promise<T>, enabled = true) {
   const [data, setData] = useState<T | null>(null),
     [error, setError] = useState("");
   const sequence = useRef(0),
@@ -52,6 +52,11 @@ export function useFreshData<T>(load: (signal: AbortSignal) => Promise<T>) {
     return false;
   }, []);
   useEffect(() => {
+    if (!enabled) {
+      setData(null);
+      setError("");
+      return;
+    }
     alive.current = true;
     const reload = () => {
       if (document.visibilityState !== "hidden") void refresh(true);
@@ -82,6 +87,6 @@ export function useFreshData<T>(load: (signal: AbortSignal) => Promise<T>) {
       window.removeEventListener("focus", reload);
       document.removeEventListener("visibilitychange", reload);
     };
-  }, [refresh]);
-  return { data, error, refresh };
+  }, [enabled, refresh]);
+  return { data: enabled ? data : null, error: enabled ? error : "", refresh };
 }
