@@ -5,7 +5,8 @@ param(
   [switch]$LocalOnly,
   [switch]$ReplayApprovedImage,
   [switch]$KitchenRecoveryOnly,
-  [switch]$AccountIsolationOnly
+  [switch]$AccountIsolationOnly,
+  [switch]$WaitForBackupLock
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
@@ -15,6 +16,7 @@ if($PilotUi -and $Action -ne 'Update'){throw 'Changing the pilot UI requires an 
 if($ReplayApprovedImage -and $Action -ne 'PilotJourneys'){throw 'Image replay is only for manual pilot acceptance.'}
 if($KitchenRecoveryOnly -and $Action -ne 'PilotAccept'){throw 'Focused kitchen acceptance requires PilotAccept.'}
 if($AccountIsolationOnly -and ($Action -ne 'PilotAccept' -or $KitchenRecoveryOnly)){throw 'Focused account acceptance requires PilotAccept without another scope.'}
+if($WaitForBackupLock -and $Action -ne 'Backup'){throw 'Backup lock waiting is only for an explicitly requested Backup.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 . (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
@@ -57,7 +59,8 @@ try {
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
-  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $(if($Action -in @('Accept','Offline','PilotAccept','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -eq 'Update'){120000}else{0})
+  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
+  $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $waitMs
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
   $phase='local_engine'

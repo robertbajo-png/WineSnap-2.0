@@ -31,7 +31,18 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06's isolated exact-image web rollback passed. The
+Current handoff: DEV-06's exact rollback image is now retained under
+`winesnap-owned:planning-rollback-159aea19e2ed`. Fresh preflight verified
+37 migrations, one pending, healthy owned supervisor and paused public
+tunnel. The approved Backup invocation was skipped before it acquired the
+lock, so no service paused and no new archive or restore was made. No retry
+was started. A later approved invocation may use `-WaitForBackupLock` to wait
+for a single pre-backup lock acquisition. The isolated lock handoff and all
+38 focused tests passed. Next: obtain renewed approval for that one backup,
+restore that exact new archive in isolation, then await update approval.
+The actual app and old production are unmodified; the bottle test stays deferred.
+
+Previous handoff: DEV-06's isolated exact-image web rollback passed. The
 candidate saved a plan in the real disposable backend; replacing just that
 web container with the current installed image left both fixture plans,
 recipes, ledger and schema unchanged. The old image signed in and started

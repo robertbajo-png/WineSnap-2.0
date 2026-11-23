@@ -25,8 +25,11 @@ paused. No hosted test, old production, supplier, mail or DNS change is involved
    from an older source tree is a rollback.
 3. Save/close the local viewer normally when the owner is ready. Confirm that
    its window and job are released and no other owned operation is active.
-   Run `./scripts/run-owned-windows.ps1 -Action Backup` in the approved
-   maintenance window. Backup briefly pauses owned writers and returns the
+   Run `./scripts/run-owned-windows.ps1 -Action Backup -WaitForBackupLock` in
+   the approved maintenance window. The switch waits up to two minutes for
+   the existing operation lock; no backup starts on a timeout, and the command
+   never retries an actual backup. Scheduled Backup calls do not use this switch.
+   Backup briefly pauses owned writers and returns the
    exact DPAPI archive filename. Require an encrypted roundtrip, Auth hashes,
    Storage bytes and successful resume. Run
    `./scripts/rehearse-owned-recovery.ps1 -BackupFile <exact-filename>` and
