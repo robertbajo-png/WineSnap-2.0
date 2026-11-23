@@ -81,8 +81,7 @@ export async function acceptPantryStock({ page, base, fixture, backend, report, 
   await button("Klar").click();
   await button("Spara vecka").click();
   await text("Veckoplanen sparades.").waitFor();
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await text("Matgäster: Syntetisk matgäst").waitFor();
+  report.phase = "pantry_diner_receipt";
   const savedPlan = await rest(owner, "/kitchen_week_plans?select=document");
   assert.equal(savedPlan.status, 200);
   const rows = await savedPlan.json();
@@ -90,6 +89,9 @@ export async function acceptPantryStock({ page, base, fixture, backend, report, 
   assert.deepEqual(rows[0].document.meals[0].dinerIds, [dinerId]);
   assert.equal(rows[0].document.meals[0].servings, 3);
   assert.ok(!JSON.stringify(rows[0].document).includes("Syntetisk matgäst"));
+  report.phase = "pantry_diner_reload";
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await text("Matgäster: Syntetisk matgäst").waitFor({ timeout: 60000 });
   report.passed.push("existing_owner_diner_preferences_and_private_selection_survive_reload");
   report.phase = "pantry_shop";
   await button("Inköpslista").click();

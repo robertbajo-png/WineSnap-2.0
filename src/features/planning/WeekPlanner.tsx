@@ -436,7 +436,7 @@ function WeekWorkspace({
   const planner = useWeekPlan(owner, weekStart, online);
   const audience = useFreshData(
     (signal) => ownedPlanDiners(owner, signal),
-    !!(dinersEnabled && active && online),
+    !!(dinersEnabled && active && online && planner.draft),
   );
   const { draft, dirty, busy, recovery, notice } = planner;
   const [view, setView] = useState<"meals" | "shopping">("meals");

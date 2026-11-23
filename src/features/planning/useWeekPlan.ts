@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RecipeVersion } from "../kitchen/domain";
-import {
-  loadPlannedRecipeVersions,
-  loadWeekPlan,
-  saveWeekPlan,
-  WeekPlanError,
-  type SavedWeekPlan,
-} from "./api";
+import { loadWeekPlanSnapshot, saveWeekPlan, WeekPlanError, type SavedWeekPlan } from "./api";
 import { weekPlanSchema, type WeekPlan } from "./domain";
 
 type Snapshot = { saved: SavedWeekPlan | null; plan: WeekPlan; versions: RecipeVersion[] };
@@ -67,9 +61,8 @@ export function useWeekPlan(owner: string, weekStart: string, online: boolean) {
     const work = start("read");
     if (!work) return;
     try {
-      const saved = await loadWeekPlan(work.scope, weekStart, work.signal);
+      const { saved, versions } = await loadWeekPlanSnapshot(work.scope, weekStart, work.signal);
       const plan = saved?.document ?? emptyWeek(weekStart);
-      const versions = await loadPlannedRecipeVersions(work.scope, plan, work.signal);
       if (!work.current()) return;
       const remote = { saved, plan, versions };
       if (recovery) {

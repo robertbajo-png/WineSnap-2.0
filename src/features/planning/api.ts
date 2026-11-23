@@ -64,6 +64,15 @@ export async function loadWeekPlan(
 ): Promise<SavedWeekPlan | null> {
   if (!weekStartSchema.safeParse(weekStart).success) throw new WeekPlanError("invalid");
   const client = await scoped(scope, signal);
+  return readWeekPlan(client, scope, weekStart, signal);
+}
+
+async function readWeekPlan(
+  client: SupabaseClient,
+  scope: AccountWriteScope,
+  weekStart: string,
+  signal?: AbortSignal,
+) {
   requireCurrent(scope, signal);
   const query = client
     .from("kitchen_week_plans")
@@ -121,6 +130,15 @@ export async function loadPlannedRecipeVersions(
   const ids = [...new Set(parsed.data.meals.map((meal) => meal.recipeVersionId))];
   if (!ids.length) return [];
   const client = await scoped(scope, signal);
+  return readPlannedVersions(client, scope, ids, signal);
+}
+
+async function readPlannedVersions(
+  client: SupabaseClient,
+  scope: AccountWriteScope,
+  ids: string[],
+  signal?: AbortSignal,
+) {
   requireCurrent(scope, signal);
   const query = client
     .from("kitchen_recipe_versions")
@@ -142,4 +160,17 @@ export async function loadPlannedRecipeVersions(
   )
     throw new WeekPlanError("unknown");
   return versions.data;
+}
+
+export async function loadWeekPlanSnapshot(
+  scope: AccountWriteScope,
+  weekStart: string,
+  signal?: AbortSignal,
+) {
+  if (!weekStartSchema.safeParse(weekStart).success) throw new WeekPlanError("invalid");
+  const client = await scoped(scope, signal);
+  const saved = await readWeekPlan(client, scope, weekStart, signal);
+  const ids = [...new Set(saved?.document.meals.map((meal) => meal.recipeVersionId) ?? [])];
+  const versions = ids.length ? await readPlannedVersions(client, scope, ids, signal) : [];
+  return { saved, versions };
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPlannedRecipeVersions, loadWeekPlan, saveWeekPlan } from "./api";
+import { loadPlannedRecipeVersions, loadWeekPlan, loadWeekPlanSnapshot, saveWeekPlan } from "./api";
 import type { WeekPlan } from "./domain";
 
 const mocks = vi.hoisted(() => ({ scopedClient: vi.fn(), from: vi.fn(), rpc: vi.fn() }));
@@ -45,6 +45,22 @@ beforeEach(() => {
 });
 
 describe("private revisioned week plans", () => {
+  it("uses one verified account client for the week and its pinned recipe reads", async () => {
+    const meal = { date: monday, meal: "dinner", recipeVersionId: version, servings: 3 } as const;
+    const row = { ...stored, document: { ...document, meals: [meal] } };
+    const plan = readChain(row);
+    const recipes = readChain([]);
+    mocks.from.mockReturnValueOnce(plan).mockReturnValueOnce(recipes);
+    const signal = new AbortController().signal;
+    await expect(loadWeekPlanSnapshot(scope, monday, signal)).resolves.toEqual({
+      saved: row,
+      versions: [],
+    });
+    expect(mocks.scopedClient).toHaveBeenCalledExactlyOnceWith(scope, 15000, signal);
+    expect(recipes.eq).toHaveBeenCalledExactlyOnceWith("user_id", owner);
+    expect(recipes.in).toHaveBeenCalledExactlyOnceWith("id", [version]);
+    expect(recipes.abortSignal).toHaveBeenCalledWith(signal);
+  });
   it("loads the exact owner and week, without inventing an empty saved revision", async () => {
     const query = readChain(stored);
     const signal = new AbortController().signal;
