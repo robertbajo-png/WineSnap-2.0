@@ -31,7 +31,18 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-07's stock editor and shopping suggestions passed
+Current handoff: DEV-07's isolated full browser journey passed with 40
+migrations and real disposable Auth/REST. It covered stock confirmation,
+the 600/400/200 g shopping calculation, saved owner-only diner preferences,
+and the separate manual consumption receipt after Cook Mode. See the
+canonical plan and `docs/owned-pantry-local-update.md`. The read-only
+`check-owned-planning-update.mjs --pantry` checks the exact 38-to-40
+transition. Next: guard the actual installer, rehearse the exact previous web
+image with the 40-migration schema, and prepare the installed smoke journey.
+DEV-06 is still installed. Do not run Update or quiesce real writes to make
+a backup without approval; keep the public tunnel paused.
+
+Previous handoff: DEV-07's stock editor and shopping suggestions passed
 `--pantry-db` in isolated Chromium with real disposable Auth/REST and 39
 migrations. Confirmed 400 g for a 600 g plan yielded 200 g to buy after reload
 without modifying stock; unconfirmed stock restored the full need. The

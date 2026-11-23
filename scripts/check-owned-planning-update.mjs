@@ -14,6 +14,11 @@ import {
   planningLedgerQuery,
   planningRollbackTag,
 } from "./lib/owned-planning-preflight.mjs";
+import {
+  assessPantryLedger,
+  pantryLedgerQuery,
+  pantryRollbackTag,
+} from "./lib/owned-pantry-preflight.mjs";
 import { readOwnedRuntimeStatus } from "./lib/owned-runtime-status.mjs";
 import { ownedConnectorName } from "./lib/owned-tunnel.mjs";
 
@@ -34,6 +39,7 @@ const systemEnv = Object.fromEntries(
   ].flatMap((name) => (process.env[name] ? [[name, process.env[name]]] : [])),
 );
 const names = ownedResumeOrder.map((name) => "winesnap-owned-" + name);
+const pantry = process.argv[2] === "--pantry";
 
 function command(binary, args) {
   return new Promise((resolve, reject) => {
@@ -49,7 +55,7 @@ function command(binary, args) {
 
 const report = {
   project: ownedProject,
-  scope: "dev06_owned_planning_preflight",
+  scope: pantry ? "dev07_owned_pantry_preflight" : "dev06_owned_planning_preflight",
   readOnly: true,
   productionTouched: false,
   hostedTestTouched: false,
@@ -59,7 +65,7 @@ const report = {
 let phase = "platform";
 try {
   assert.equal(process.platform, "win32");
-  assert.equal(process.argv.length, 2);
+  assert.equal(process.argv.length, pantry ? 3 : 2);
   const binary = join(process.env.LOCALAPPDATA, "Programs/DockerDesktop/resources/bin/docker.exe");
   const docker = (...args) =>
     command(binary, ["--host", "npipe:////./pipe/dockerDesktopLinuxEngine", ...args]);
@@ -114,13 +120,17 @@ try {
       "-v",
       "ON_ERROR_STOP=1",
       "-c",
-      planningLedgerQuery,
+      pantry ? pantryLedgerQuery : planningLedgerQuery,
     ),
   );
-  report.migration = assessPlanningLedger(sources, ledger, installation);
+  report.migration = (pantry ? assessPantryLedger : assessPlanningLedger)(
+    sources,
+    ledger,
+    installation,
+  );
 
   phase = "rollback_and_health";
-  report.rollbackImageTag = planningRollbackTag(web.Image);
+  report.rollbackImageTag = (pantry ? pantryRollbackTag : planningRollbackTag)(web.Image);
   assert.equal(await docker("image", "inspect", "--format", "{{.Id}}", web.Image), web.Image);
   report.rollbackImageAvailable = true;
   report.rollbackTagMatches = await docker(
@@ -162,8 +172,9 @@ try {
     ...(!report.loopbackHealth || !report.supervisorVerified ? ["verify_healthy_runtime"] : []),
     ...(!report.publicTunnelPausedVerified ? ["verify_paused_public_tunnel"] : []),
     ...(!report.rollbackTagMatches ? ["pin_exact_previous_web_image"] : []),
-    "verify_exact_new_preupdate_backup_and_isolated_restore",
+    ...(pantry ? ["verify_guarded_pantry_update_path"] : []),
     "rehearse_web_only_rollback_with_candidate_schema",
+    "verify_exact_new_preupdate_backup_and_isolated_restore",
     "local_delivery_approval_and_owner_acceptance",
   ];
 } catch {
