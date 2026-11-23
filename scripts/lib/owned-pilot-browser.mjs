@@ -698,12 +698,10 @@ export async function acceptOwnedPilotUi(
     }
     if (fixture) {
       try {
-        const cleaned = await ownedBrowserFixture(keys, "cleanup", fixture, undefined, {
-          cleanupImages: liveJourneys,
-          cleanupMeals: !planningOnly,
-          cleanupMemory: !planningOnly,
-          planningOnly,
-        });
+        const cleanup = planningOnly
+          ? { planningOnly: true }
+          : { cleanupImages: liveJourneys, cleanupMeals: true, cleanupMemory: true };
+        const cleaned = await ownedBrowserFixture(keys, "cleanup", fixture, undefined, cleanup);
         report.cleanupCompleted =
           !report.peerCleanupFailed && Boolean(cleaned.cleanupCompleted || cleaned.alreadyClean);
       } catch {
