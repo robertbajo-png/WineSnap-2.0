@@ -20,12 +20,14 @@ export async function acceptPantryStock({ page, base, fixture, report, capture }
   await page.goto(base + "/kitchen#pantry", { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Skafferi", exact: true }).waitFor();
   await text("Inga råvaror i skafferiet.").waitFor();
+  report.phase = "pantry_enter_item";
   await button("Lägg till råvara").click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Råvara", { exact: true }).fill("Tomater");
   await dialog.getByLabel("Mängd", { exact: true }).fill("400");
   await dialog.getByLabel("Enhet", { exact: true }).selectOption("g");
   await dialog.getByRole("checkbox", { name: "Bekräfta mängden nu" }).check();
+  report.phase = "pantry_save_item";
   await button("Spara lagerpost").click();
   await text("Lagerposten sparades.").waitFor();
   await page.getByText(/^Bekräftad /).waitFor();

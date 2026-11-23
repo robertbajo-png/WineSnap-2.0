@@ -64,7 +64,7 @@
 }
 
 .k-pantry-dialog fieldset,
-.k-pantry-dialog :is(form, label) {
+.k-pantry-dialog :is(form, label, .k-pantry-field) {
   display: grid;
   gap: 0.4rem;
   min-width: 0;

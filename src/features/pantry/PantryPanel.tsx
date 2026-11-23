@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { ArrowLeft, Check, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -45,6 +45,7 @@ function StockEditor({
   close: () => void;
   done: (message: string) => void;
 }) {
+  const unitId = useId();
   const [name, setName] = useState(editor.item?.name ?? "");
   const [amount, setAmount] = useState(editor.item?.amount?.toString() ?? "");
   const [unit, setUnit] = useState<StockItem["unit"]>(editor.item?.unit ?? "g");
@@ -168,9 +169,10 @@ function StockEditor({
                     }}
                   />
                 </label>
-                <label>
-                  Enhet
+                <div className="k-pantry-field">
+                  <label htmlFor={unitId}>Enhet</label>
                   <select
+                    id={unitId}
                     value={unit}
                     onChange={(event) => setUnit(event.target.value as StockItem["unit"])}
                   >
@@ -180,7 +182,7 @@ function StockEditor({
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
               </div>
               <label className="k-pantry-confirm">
                 <input
