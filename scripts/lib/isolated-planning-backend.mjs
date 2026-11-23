@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
-import { ownedServices } from "./owned-backend.mjs";
+import { checkOwnedContainer, ownedServices } from "./owned-backend.mjs";
 import {
   ownedRestoreProbeImage,
   ownedRoleRestoreSql,
@@ -10,6 +10,8 @@ import {
 } from "./owned-recovery.mjs";
 import { finishOwnedInput } from "./owned-process-input.mjs";
 import { recoveryToken } from "./platform-recovery.mjs";
+import { ownedContainerProjection } from "./owned-planning-preflight.mjs";
+import { openPlanningWebRelay } from "./planning-web-relay.mjs";
 
 const scope = "planning-database-check";
 const prefix = "winesnap-planning-check";
@@ -41,7 +43,7 @@ console.log(JSON.stringify({ status: response.status,
 export function isolatedPlanningBackend(report) {
   const run = randomBytes(8).toString("hex");
   const names = Object.fromEntries(
-    [...services, "restore", "network"].map((s) => [s, `${prefix}-${run}-${s}`]),
+    [...services, "restore", "web", "network"].map((s) => [s, `${prefix}-${run}-${s}`]),
   );
   const sign = randomBytes(32).toString("hex");
   const password = randomBytes(32).toString("hex");
@@ -68,12 +70,14 @@ export function isolatedPlanningBackend(report) {
     ].flatMap((key) => (process.env[key] ? [[key, process.env[key]]] : [])),
   );
   let networkId, databaseImage;
+  const engine = "npipe:////./pipe/dockerDesktopLinuxEngine";
+  let webRelay;
   const containers = [];
   function command(args, input, timeout = 120000) {
     return new Promise((resolve, reject) => {
       const proc = execFile(
         docker,
-        ["--host", "npipe:////./pipe/dockerDesktopLinuxEngine", ...args],
+        ["--host", engine, ...args],
         { env, timeout, maxBuffer: 32 * 1024 * 1024, windowsHide: true, encoding: "buffer" },
         (error, stdout, stderr) => {
           if (!error) return resolve(stdout);
@@ -156,6 +160,7 @@ export function isolatedPlanningBackend(report) {
     containers.push({ id, service });
     const record = await inspect(["inspect", id]);
     assert.equal(record.Name, "/" + names[service]);
+    assert.equal(record.Image, image);
     assert.ok(sameLabels(record.Config.Labels));
     assert.equal(record.HostConfig.NetworkMode, networkMode);
     assert.equal(record.HostConfig.ReadonlyRootfs, true);
@@ -164,6 +169,7 @@ export function isolatedPlanningBackend(report) {
     assert.equal(Object.keys(record.HostConfig.PortBindings ?? {}).length, 0);
     assert.notEqual(record.HostConfig.PublishAllPorts, true);
     await command(["start", id]);
+    return id;
   }
   async function ready(action) {
     for (let attempt = 0; ; attempt++) {
@@ -227,7 +233,7 @@ export function isolatedPlanningBackend(report) {
     report.phase = "check_local_images";
     assert.equal(
       (await inspect(["context", "inspect", "desktop-linux"])).Endpoints.docker.Host,
-      "npipe:////./pipe/dockerDesktopLinuxEngine",
+      engine,
     );
     const images = {};
     for (const service of services) {
@@ -457,14 +463,43 @@ export function isolatedPlanningBackend(report) {
     await ready(async () => assert.equal((await request("rest", "/")).status, 200));
     return report.restoredRelationsVerified;
   }
+  async function removeFixture({ id, service }) {
+    const record = await inspect(["inspect", id]);
+    assert.equal(record.Name, "/" + names[service]);
+    assert.ok(sameLabels(record.Config.Labels));
+    await command(["rm", "--force", id]);
+    containers.splice(
+      containers.findIndex((item) => item.id === id),
+      1,
+    );
+  }
+  async function replaceRehearsalWeb(image) {
+    assert.match(image, /^sha256:[a-f0-9]{64}$/);
+    const previous = containers.find(({ service }) => service === "web");
+    if (previous) {
+      await webRelay?.close();
+      webRelay = undefined;
+      await removeFixture(previous);
+    }
+    const id = await start("web", image, "node", {
+      networkMode: "none",
+      vars: {
+        SUPABASE_URL: "http://127.0.0.1:54323",
+        SUPABASE_PUBLISHABLE_KEY: tokens.anon,
+        WINESNAP_OWNED_BACKEND_ENABLED: "true",
+        WINESNAP_COOKING_CORE_ENABLED: "true",
+      },
+    });
+    webRelay = openPlanningWebRelay(docker, engine, env, id);
+    await ready(async () => assert.equal((await webRelay.request("/api/health")).status, 200));
+    return id;
+  }
   async function close() {
     let clean = true;
+    await webRelay?.close();
     for (const { id, service } of containers.slice().reverse()) {
       try {
-        const record = await inspect(["inspect", id]);
-        assert.equal(record.Name, "/" + names[service]);
-        assert.ok(sameLabels(record.Config.Labels));
-        await command(["rm", "--force", id]);
+        await removeFixture({ id, service });
       } catch {
         clean = false;
       }
@@ -486,6 +521,59 @@ export function isolatedPlanningBackend(report) {
   return {
     boot,
     request,
+    replaceRehearsalWeb,
+    requestWeb(path, method) {
+      assert.ok(webRelay);
+      return webRelay.request(path, method);
+    },
+    async inspectPreviousOwnedWeb() {
+      const name = "winesnap-owned-web";
+      const value = JSON.parse(
+        await output([
+          "inspect",
+          "--type",
+          "container",
+          "--format",
+          ownedContainerProjection,
+          name,
+        ]),
+      );
+      const identity = value.Config.Labels["winesnap.installation"];
+      assert.match(identity, /^[a-f0-9]{32}$/);
+      checkOwnedContainer(value, name, identity);
+      assert.equal(value.State.Running, true);
+      assert.match(value.Id, idPattern);
+      assert.match(value.Image, /^sha256:[a-f0-9]{64}$/);
+      assert.equal(
+        await output(["image", "inspect", "--format", "{{.Id}}", value.Image]),
+        value.Image,
+      );
+      return { container: value.Id, image: value.Image };
+    },
+    candidateImage(tag) {
+      assert.match(tag, /^winesnap-planning-rehearsal:dev06-[a-f0-9]{7,40}$/);
+      return output(["image", "inspect", "--format", "{{.Id}}", tag]);
+    },
+    async planSnapshot() {
+      const query = await source("config/owned-windows/backup-manifest.sql");
+      const manifest = validateOwnedManifest(JSON.parse(await sql(query)));
+      const interesting = new Set([
+        "public.kitchen_week_plans",
+        "public.kitchen_recipes",
+        "public.kitchen_recipe_versions",
+        "winesnap_local.migrations",
+      ]);
+      const relations = manifest.relations.filter(({ schema, table }) =>
+        interesting.has(schema + "." + table),
+      );
+      assert.equal(relations.length, interesting.size);
+      const sequenceDefinitions = JSON.parse(
+        await sql(`
+        SELECT coalesce(jsonb_agg(to_jsonb(s) - 'last_value' ORDER BY schemaname, sequencename), '[]')
+        FROM pg_sequences s WHERE schemaname IN ('public','auth','storage','extensions','winesnap_local');`),
+      );
+      return { relations, catalog: manifest.catalog, sequenceDefinitions };
+    },
     createAccount,
     recover,
     close,

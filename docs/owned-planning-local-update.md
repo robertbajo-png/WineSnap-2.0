@@ -40,6 +40,21 @@ paused. No hosted test, old production, supplier, mail or DNS change is involved
    advisory report from the read-only check is not a fresh backup rehearsal
    or human acceptance. DEV-05's deferred owner bottle test stays deferred.
 
+## Repeat the Isolated Web Rehearsal
+
+Use the [synthetic Kitchen build flags](core-experience-2026-11-13.md) with
+the `runtime` Docker target and a distinct local tag
+`winesnap-planning-rehearsal:dev06-<candidate-short-sha>` instead of the artifact
+output. Do not tag it `winesnap-owned:local` or use real build keys. Run
+`node scripts/check-owned-planning-web-rollback.mjs <candidate-tag>` before
+changing the installed web image. It uses read-only metadata to select the
+exact currently installed image, then creates and replaces only a separate
+networkless web container. The new database and accounts are disposable.
+The browser must pass an independent deny-proxy check before using the old
+web build's expected localhost address. All test content comes from the
+disposable services; no request is sent to the installed app or its API.
+Recheck the current installed image against this evidence at delivery time.
+
 ## Install And Verify Only After Approval
 
 Use `./scripts/run-owned-windows.ps1 -Action Update` from the reviewed

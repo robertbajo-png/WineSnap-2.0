@@ -3,6 +3,25 @@ import { planOwnedMigrations } from "./owned-lifecycle.mjs";
 
 export const planningMigration = "20261118200000_kitchen_week_plans.sql";
 
+// Never inspect an installed container's environment or command line.
+export const ownedContainerProjection =
+  `{"Id":{{json .Id}},"Name":{{json .Name}},"Image":{{json .Image}},
+ "State":{"Running":{{json .State.Running}}},
+ "Config":{"User":{{json .Config.User}},"Labels":{
+  "winesnap.scope":{{json (index .Config.Labels "winesnap.scope")}},
+  "winesnap.installation":{{json (index .Config.Labels "winesnap.installation")}},
+  "winesnap.pilot-ui":{{json (index .Config.Labels "winesnap.pilot-ui")}},
+  "winesnap.public-origin":{{json (index .Config.Labels "winesnap.public-origin")}}}},
+ "HostConfig":{"ReadonlyRootfs":{{json .HostConfig.ReadonlyRootfs}},
+  "CapDrop":{{json .HostConfig.CapDrop}},"SecurityOpt":{{json .HostConfig.SecurityOpt}},
+  "LogConfig":{"Type":{{json .HostConfig.LogConfig.Type}}},
+  "PublishAllPorts":{{json .HostConfig.PublishAllPorts}},
+  "PortBindings":{{json .HostConfig.PortBindings}}},
+ "Mounts":{{json .Mounts}},"NetworkSettings":{"Networks":{{json .NetworkSettings.Networks}}}}`.replaceAll(
+    "\n",
+    "",
+  );
+
 // Probe only schema markers and installer metadata, in a read-only transaction.
 export const planningLedgerQuery = `
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;

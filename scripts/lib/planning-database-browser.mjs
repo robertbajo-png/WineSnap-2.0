@@ -29,7 +29,14 @@ const headers = (token) => ({
   "content-type": "application/json",
 });
 
-export async function createPlanningDatabaseFixture({ backend, base, origin, key, report }) {
+export async function createPlanningDatabaseFixture({
+  backend,
+  base,
+  origin,
+  key,
+  report,
+  relayWeb,
+}) {
   assert.equal(origin, "http://127.0.0.1:54323");
   assert.equal(key, "sb_publishable_runtime_check_not_a_real_key");
   const frontend = new URL(base);
@@ -129,22 +136,34 @@ export async function createPlanningDatabaseFixture({ backend, base, origin, key
     releaseLatePlan() {
       latePlan?.release.resolve();
     },
-    async route(route) {
+    async route(route, useLegacyBrowserKey = false) {
       const request = route.request();
       const url = new URL(request.url());
       const method = request.method();
+      assert.ok(!useLegacyBrowserKey || relayWeb);
+      const pageOrigin = useLegacyBrowserKey ? "http://localhost:5212" : base;
       if (
-        url.origin === base &&
+        url.origin === pageOrigin &&
         ["GET", "HEAD"].includes(method) &&
         !url.pathname.startsWith("/api/")
-      )
+      ) {
+        if (relayWeb) {
+          const response = await relayWeb(url.pathname + url.search, method);
+          // Never send a server redirect out of the fixture origin.
+          if (response.headers.location) {
+            const next = new URL(response.headers.location, pageOrigin);
+            assert.equal(next.origin, pageOrigin);
+          }
+          return route.fulfill(response);
+        }
         return route.continue();
+      }
       if (url.origin !== origin) {
-        if (url.origin === base) report.mutations++;
+        if (url.origin === pageOrigin) report.mutations++;
         else report.externalRequests++;
         return route.abort();
       }
-      const cors = { "access-control-allow-origin": base };
+      const cors = { "access-control-allow-origin": pageOrigin };
       if (method === "OPTIONS")
         return route.fulfill({
           status: 204,
@@ -155,12 +174,19 @@ export async function createPlanningDatabaseFixture({ backend, base, origin, key
           },
         });
       const incoming = request.headers();
-      assert.equal(incoming.apikey, key);
+      const browserKey = incoming.apikey;
+      assert.ok(
+        browserKey === key ||
+          (relayWeb &&
+            useLegacyBrowserKey &&
+            /^eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/.test(browserKey ?? "")),
+      );
       const match = url.pathname.match(/^\/(auth|rest)\/v1(\/.*)$/);
       assert.ok(match);
       const [, service, path] = match;
       const login = service === "auth" && method === "POST" && path === "/token";
-      const token = incoming.authorization?.slice("Bearer ".length);
+      const bearer = incoming.authorization?.slice("Bearer ".length);
+      const token = bearer === browserKey ? key : bearer;
       assert.ok(token === key || tokens.has(token));
       assert.ok(
         service === "auth"

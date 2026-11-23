@@ -31,7 +31,17 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06 has a read-only owned Windows update preflight and
+Current handoff: DEV-06's isolated exact-image web rollback passed. The
+candidate saved a plan in the real disposable backend; replacing just that
+web container with the current installed image left both fixture plans,
+recipes, ledger and schema unchanged. The old image signed in and started
+Cook Mode. Browser backstop and cleanup passed; no live application, data,
+backup or tunnel changed. Next: obtain the approved maintenance window and
+verify a fresh encrypted backup by restoring that exact archive in isolation.
+The actual update requires approval and a fresh preflight. DEV-05's owner
+bottle test stays deferred. See the canonical plan and local update runbook.
+
+Previous handoff: DEV-06 has a read-only owned Windows update preflight and
 `docs/owned-planning-local-update.md`. The installed ledger matched all 37
 previous migrations and had only the additive week-plan migration pending.
 The app answered on loopback and the previous running web image exists.

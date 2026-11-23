@@ -10,6 +10,7 @@ import { ownedResumeOrder } from "./lib/owned-lifecycle.mjs";
 import { assessOwnedOperations, readOwnedOperations } from "./lib/owned-operations.mjs";
 import {
   assessPlanningLedger,
+  ownedContainerProjection,
   planningLedgerQuery,
   planningRollbackTag,
 } from "./lib/owned-planning-preflight.mjs";
@@ -31,24 +32,6 @@ const systemEnv = Object.fromEntries(
     "TEMP",
     "TMP",
   ].flatMap((name) => (process.env[name] ? [[name, process.env[name]]] : [])),
-);
-// Never request the Docker environment or command. Only the fields needed by the
-// existing owned-container check and the current image identity leave Docker.
-const format = `{"Id":{{json .Id}},"Name":{{json .Name}},"Image":{{json .Image}},
- "State":{"Running":{{json .State.Running}}},
- "Config":{"User":{{json .Config.User}},"Labels":{
-  "winesnap.scope":{{json (index .Config.Labels "winesnap.scope")}},
-  "winesnap.installation":{{json (index .Config.Labels "winesnap.installation")}},
-  "winesnap.pilot-ui":{{json (index .Config.Labels "winesnap.pilot-ui")}},
-  "winesnap.public-origin":{{json (index .Config.Labels "winesnap.public-origin")}}}},
- "HostConfig":{"ReadonlyRootfs":{{json .HostConfig.ReadonlyRootfs}},
-  "CapDrop":{{json .HostConfig.CapDrop}},"SecurityOpt":{{json .HostConfig.SecurityOpt}},
-  "LogConfig":{"Type":{{json .HostConfig.LogConfig.Type}}},
-  "PublishAllPorts":{{json .HostConfig.PublishAllPorts}},
-  "PortBindings":{{json .HostConfig.PortBindings}}},
- "Mounts":{{json .Mounts}},"NetworkSettings":{"Networks":{{json .NetworkSettings.Networks}}}}`.replaceAll(
-  "\n",
-  "",
 );
 const names = ownedResumeOrder.map((name) => "winesnap-owned-" + name);
 
@@ -93,7 +76,9 @@ try {
 
   phase = "owned_container_identity";
   assert.equal(await docker("version", "--format", "{{.Server.Os}}"), "linux");
-  const entries = (await docker("inspect", "--type", "container", "--format", format, ...names))
+  const entries = (
+    await docker("inspect", "--type", "container", "--format", ownedContainerProjection, ...names)
+  )
     .split(/\r?\n/)
     .map((line) => JSON.parse(line));
   const installation = entries.find((item) => item.Name === "/winesnap-owned-db")?.Config.Labels[
