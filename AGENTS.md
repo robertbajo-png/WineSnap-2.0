@@ -31,7 +31,17 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-07 has source-only pantry calculations, owner-private
+Current handoff: DEV-07's stock editor and shopping suggestions passed
+`--pantry-db` in isolated Chromium with real disposable Auth/REST and 39
+migrations. Confirmed 400 g for a 600 g plan yielded 200 g to buy after reload
+without modifying stock; unconfirmed stock restored the full need. The
+320/390/1440 px captures passed and were inspected. The owned-only build
+flag is off by default. Next: persist existing owner diner selections with
+the meal, then wire explicit post-Cook Mode review against a saved completed
+session. Rehearse the entire flow before seeking approval. DEV-06 is still
+installed; no real account, production, hosted test or tunnel was changed.
+
+Previous handoff: DEV-07 has source-only pantry calculations, owner-private
 stock and consumption SQL, and an account-scoped API. Shopping suggestions
 only use exact ingredient names and compatible units from a confirmed
 observation at most seven days old. Only a separate reviewed confirmation
