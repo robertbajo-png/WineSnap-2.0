@@ -298,6 +298,13 @@ and checks the same history again just before SQL. It records the applied
 migration by name, rejects provisioning or overrides and refuses an already
 applied migration. The guard is prepared, not run on the installed app.
 
+The direct Windows supervisor check was healthy, but the advisory preflight's
+20-second subprocess deadline could expire before it returned. The read-only
+supervisor check now has a bounded 45-second deadline and still fails closed
+on missing or invalid results. All 59 focused tests passed, and the combined
+local preflight then confirmed the supervisor, retained backup and rollback
+image, paused tunnel, and exactly one pending migration without installing it.
+
 ### DEV-06 First Approved Backup Attempt (Earlier)
 
 The November 23 approved backup-and-rehearsal window did not authorize

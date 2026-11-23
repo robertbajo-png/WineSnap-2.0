@@ -20,7 +20,8 @@ export function readOwnedRuntimeStatus(root) {
         {
           cwd: root,
           windowsHide: true,
-          timeout: 20000,
+          // Slow Windows CIM/ScheduledTasks startup can exceed 20 seconds.
+          timeout: 45000,
           maxBuffer: 65536,
           env: Object.fromEntries(
             [
