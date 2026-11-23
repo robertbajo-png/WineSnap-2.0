@@ -220,6 +220,16 @@ describe("actual owner export handler", () => {
     expect(api.chain.order).toHaveBeenCalledWith("week_start");
     expect(api.chain.eq.mock.calls.every(([, id]) => id === owner)).toBe(true);
   });
+  it("includes the owner's confirmed stock and consumption receipts in the private export", async () => {
+    const api = setup("privacy-export");
+    const response = await api.call({ userId: "stranger" });
+    expect(response.status).toBe(200);
+    const { tables } = await response.json();
+    expect(tables).toHaveProperty("kitchen_pantry");
+    expect(tables).toHaveProperty("kitchen_pantry_consumption");
+    expect(api.chain.order).toHaveBeenCalledWith("session_id");
+    expect(api.chain.eq.mock.calls.every(([, id]) => id === owner)).toBe(true);
+  });
   it("refuses a partial export when any table fails", async () => {
     const api = setup("privacy-export");
     api.chain.range.mockResolvedValueOnce({ data: [], error: new Error("private error") });

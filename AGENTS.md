@@ -31,7 +31,18 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-06 is installed and technically accepted on the owned
+Current handoff: DEV-07 has source-only pantry calculations, owner-private
+stock and consumption SQL, and an account-scoped API. Shopping suggestions
+only use exact ingredient names and compatible units from a confirmed
+observation at most seven days old. Only a separate reviewed confirmation
+against a completed cooking session can deduct stock. The anonymous/peer,
+stale-stock, atomicity, once-only receipt and erasure checks passed in a
+disposable PostgreSQL instance. Next: connect the pantry editor and hints to
+Kitchen, add the existing owner diner choices in the planner, and wire the
+explicit Cook Mode review before full browser acceptance. Do not run Update
+or load real data without the owner's local installation approval.
+
+Previous handoff: DEV-06 is installed and technically accepted on the owned
 Windows app. The approved guarded Update applied only
 `20261118200000_kitchen_week_plans.sql` (37 to 38), then the exact installed
 web image `0a4614b5d8d6` passed planning, shopping and Cook Mode in Chromium.

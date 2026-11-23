@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { convertAmount, scaledAmount, units, versionSchema } from "../kitchen/domain";
+import {
+  ingredientBaseUnits,
+  ingredientIdentity,
+  normalizeIngredientName,
+} from "../kitchen/ingredientIdentity";
 
 export const mealSlots = ["breakfast", "lunch", "dinner", "snack"] as const;
 const id = z.uuid().transform((value) => value.toLowerCase());
@@ -110,25 +115,12 @@ export const weekPlanSchema = z
   });
 export type WeekPlan = z.infer<typeof weekPlanSchema>;
 
-const baseUnits = {
-  g: "g",
-  kg: "g",
-  ml: "ml",
-  dl: "ml",
-  l: "ml",
-  tsp: "ml",
-  tbsp: "ml",
-  pcs: "pcs",
-  pinch: "pinch",
-} as const satisfies Record<(typeof units)[number], (typeof units)[number]>;
-const ingredientKey = (value: string) =>
-  value.trim().replace(/\s+/g, " ").normalize("NFC").toLowerCase();
 const compare = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
 type Basis = z.infer<typeof basis>;
 type RecipeLine = {
   key: string;
   name: string;
-  unit: (typeof baseUnits)[keyof typeof baseUnits];
+  unit: (typeof ingredientBaseUnits)[keyof typeof ingredientBaseUnits];
   basis: Basis;
 };
 
@@ -182,8 +174,8 @@ export function buildShoppingList(
   for (const { meal, version } of resolved) {
     if (!version) throw new Error("Planned recipe not available");
     for (const ingredient of version.document.ingredients) {
-      const unit = baseUnits[ingredient.unit];
-      const key = unit + ":" + ingredientKey(ingredient.name);
+      const unit = ingredientBaseUnits[ingredient.unit];
+      const key = ingredientIdentity(ingredient.name, ingredient.unit);
       let line = groups.get(key);
       if (!line) {
         line = {
@@ -211,7 +203,9 @@ export function buildShoppingList(
   const edits = new Map(plan.shoppingEdits.map((edit) => [edit.key, edit]));
   const recipeItems = Array.from(groups.values())
     .sort(
-      (a, b) => compare(ingredientKey(a.name), ingredientKey(b.name)) || compare(a.unit, b.unit),
+      (a, b) =>
+        compare(normalizeIngredientName(a.name), normalizeIngredientName(b.name)) ||
+        compare(a.unit, b.unit),
     )
     .map((line) => {
       if (line.basis.knownAmount !== null)

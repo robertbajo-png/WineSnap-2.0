@@ -131,6 +131,17 @@ try {
       )
     ).includes("chef_memory_acceptance_passed"),
   );
+  phase = "pantry_ownership_confirmation_and_consumption";
+  assert.ok(
+    (
+      await execute(
+        await readFile(
+          new URL("../supabase/tests/kitchen_pantry.local.sql", import.meta.url),
+          "utf8",
+        ),
+      )
+    ).includes("kitchen_pantry_acceptance_passed"),
+  );
   console.log(
     JSON.stringify({
       passed: true,
