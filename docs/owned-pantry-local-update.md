@@ -1,8 +1,10 @@
 # DEV-07 Local Delivery
 
-Preparation only for `winesnap-owned-local`. Keep the Cloudflare connector
-paused and leave the private ingress, old production and hosted test alone.
-This document does not authorize maintenance, backup or installation.
+This runbook applies only to `winesnap-owned-local`. Keep the Cloudflare
+connector paused and leave the private ingress, old production and hosted
+test alone. The November 24 approved installation and its acceptance evidence
+are recorded in the [development plan](development-plan.md#dev-07-installed-and-verified-current).
+This document does not authorize another maintenance, backup or installation.
 
 ## Read-Only Check
 

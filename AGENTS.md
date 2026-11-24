@@ -31,7 +31,18 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-07's isolated full browser journey passed with 40
+Current handoff: DEV-07 is installed and technically accepted on the owned
+Windows app. The approved maintenance passed the fresh encrypted archive and
+exact isolated restore, guarded 38-to-40 schema update and all five
+`PantryAccept` checks, with both tagged test accounts verified cleaned up.
+The installed source is `64400d1`, web image `60b9e422a8a4`. Loopback returned
+HTTP 200, and the public connector stayed paused. Old production, the hosted
+test project and the owner's account were not used. The owner's actual use
+is separate; DEV-08 is next in the canonical plan, not part of this delivery.
+The retained DEV-06 image is only an emergency fallback before real DEV-07
+use; prefer a forward repair once new data exists.
+
+Previous handoff: DEV-07's isolated full browser journey passed with 40
 migrations and real disposable Auth/REST. It covered stock confirmation,
 the 600/400/200 g shopping calculation, saved owner-only diner preferences,
 and the separate manual consumption receipt after Cook Mode. See the
