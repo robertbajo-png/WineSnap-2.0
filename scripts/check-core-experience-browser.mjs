@@ -22,8 +22,12 @@ const planningSmoke = process.argv.length === 3 && process.argv[2] === "--planni
 const pantryInstalledSmoke = process.argv.length === 3 && process.argv[2] === "--pantry-db-smoke";
 const pantryDb =
   pantryInstalledSmoke || (process.argv.length === 3 && process.argv[2] === "--pantry-db");
+const nutritionDb = process.argv.length === 3 && process.argv[2] === "--nutrition-db";
 const planningDb =
-  pantryDb || planningSmoke || (process.argv.length === 3 && process.argv[2] === "--planning-db");
+  nutritionDb ||
+  pantryDb ||
+  planningSmoke ||
+  (process.argv.length === 3 && process.argv[2] === "--planning-db");
 const planningOnly = planningDb || (process.argv.length === 3 && process.argv[2] === "--planning");
 const kitchenOnly =
   planningOnly || kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
@@ -35,43 +39,47 @@ const ownedFixture = kitchenOnly || chatOnly || collectorOnly || pricesOnly;
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = join(
   root,
-  pantryDb
-    ? "dist/core-pantry-runtime"
-    : planningOnly
-      ? "dist/core-planning-runtime"
-      : pricesOnly
-        ? "dist/core-prices-runtime"
-        : kitchenOnly
-          ? "dist/core-kitchen-runtime"
-          : chatOnly
-            ? "dist/core-chat-runtime"
-            : collectorOnly
-              ? "dist/core-collector-runtime"
-              : "dist/independent-runtime",
+  nutritionDb
+    ? "dist/core-nutrition-runtime"
+    : pantryDb
+      ? "dist/core-pantry-runtime"
+      : planningOnly
+        ? "dist/core-planning-runtime"
+        : pricesOnly
+          ? "dist/core-prices-runtime"
+          : kitchenOnly
+            ? "dist/core-kitchen-runtime"
+            : chatOnly
+              ? "dist/core-chat-runtime"
+              : collectorOnly
+                ? "dist/core-collector-runtime"
+                : "dist/independent-runtime",
 );
 const artifacts = join(
   root,
-  pantryDb
-    ? pantryInstalledSmoke
-      ? "dist/core-pantry-database-smoke"
-      : "dist/core-pantry-database"
-    : planningDb
-      ? planningSmoke
-        ? "dist/core-planning-database-smoke"
-        : "dist/core-planning-database"
-      : planningOnly
-        ? "dist/core-planning"
-        : pricesOnly
-          ? "dist/core-prices"
-          : kitchenTabsOnly
-            ? "dist/core-kitchen-tabs"
-            : kitchenOnly
-              ? "dist/core-kitchen"
-              : chatOnly
-                ? "dist/core-chat"
-                : collectorOnly
-                  ? "dist/core-collector"
-                  : "dist/core-experience",
+  nutritionDb
+    ? "dist/core-nutrition-database"
+    : pantryDb
+      ? pantryInstalledSmoke
+        ? "dist/core-pantry-database-smoke"
+        : "dist/core-pantry-database"
+      : planningDb
+        ? planningSmoke
+          ? "dist/core-planning-database-smoke"
+          : "dist/core-planning-database"
+        : planningOnly
+          ? "dist/core-planning"
+          : pricesOnly
+            ? "dist/core-prices"
+            : kitchenTabsOnly
+              ? "dist/core-kitchen-tabs"
+              : kitchenOnly
+                ? "dist/core-kitchen"
+                : chatOnly
+                  ? "dist/core-chat"
+                  : collectorOnly
+                    ? "dist/core-collector"
+                    : "dist/core-experience",
 );
 const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
@@ -142,25 +150,27 @@ const syntheticUsers = new Map([
 const report = {
   synthetic: true,
   fixtureDataMocked: !planningDb,
-  sourceViewScope: pantryDb
-    ? pantryInstalledSmoke
-      ? "core-pantry-database-smoke"
-      : "core-pantry-database"
-    : planningDb
-      ? planningSmoke
-        ? "core-planning-database-smoke"
-        : "core-planning-database"
-      : planningOnly
-        ? "core-planning"
-        : pricesOnly
-          ? "core-prices"
-          : kitchenOnly
-            ? "core-kitchen"
-            : chatOnly
-              ? "core-chat"
-              : collectorOnly
-                ? "core-collector"
-                : "wine-detail-scan",
+  sourceViewScope: nutritionDb
+    ? "core-nutrition-database"
+    : pantryDb
+      ? pantryInstalledSmoke
+        ? "core-pantry-database-smoke"
+        : "core-pantry-database"
+      : planningDb
+        ? planningSmoke
+          ? "core-planning-database-smoke"
+          : "core-planning-database"
+        : planningOnly
+          ? "core-planning"
+          : pricesOnly
+            ? "core-prices"
+            : kitchenOnly
+              ? "core-kitchen"
+              : chatOnly
+                ? "core-chat"
+                : collectorOnly
+                  ? "core-collector"
+                  : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -606,6 +616,7 @@ try {
         report,
         smoke: planningSmoke,
         pantry: pantryDb,
+        nutrition: nutritionDb,
         capture,
       });
     }

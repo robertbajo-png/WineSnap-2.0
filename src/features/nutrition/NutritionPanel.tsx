@@ -1,37 +1,47 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, ChefHat, RotateCcw, Scale } from "lucide-react";
+import { ArrowRight, ChefHat, ClipboardCheck, RotateCcw, Scale, X } from "lucide-react";
 import type { RecipeDocument, RecipeVersion } from "../kitchen/domain";
 import { recipeImages } from "../kitchen/catalog";
-import { referenceAttribution, referenceFoods, referenceLicense } from "./catalog";
+import { referenceAttribution, referenceFoods, referenceLicense, suggestedSwap } from "./catalog";
 import {
   compareLimit,
+  energyMaxKcal,
   emptyBinding,
   estimateRecipe,
   formLabels,
   forms,
-  resolveBinding,
+  nutrientKeys,
+  recipeSubstitutionDraft,
   substitutionPrompt,
   type Binding,
   type Bindings,
   type FoodReference,
+  type NutrientValues,
 } from "./domain";
 import "./nutrition.css";
 
 const format = (n: number | null) =>
-  n === null ? "Okänt" : new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }).format(n);
+  n === null ? "Saknas" : new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }).format(n);
+const metric = {
+  energyKcal: { label: "Energi", unit: "kcal", max: energyMaxKcal },
+  protein: { label: "Protein", unit: "g", max: 100 },
+  fat: { label: "Fett", unit: "g", max: 100 },
+  carbs: { label: "Kolhydrater", unit: "g", max: 100 },
+  fiber: { label: "Fiber", unit: "g", max: 100 },
+} as const;
+const quantity = (value: number | null, unit: string) =>
+  value === null ? format(value) : `${format(value)} ${unit}`;
 const numeric = (value: string) =>
   value.trim() === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
-export function NutritionPage({
-  versions,
-  initial,
-  initialServings,
-  onAdapt,
-}: {
-  versions: RecipeVersion[];
-  initial?: RecipeVersion;
-  initialServings?: number;
-  onAdapt?: (version: RecipeVersion, prompt: string) => void;
-}) {
+type Mode = "standard" | "low-carb" | "keto";
+const emptyReplacement = (): Binding => ({
+  reference: null,
+  grams: null,
+  weighedForm: "unknown",
+  confirmed: false,
+});
+
+function useResetEpoch() {
   const [epoch, reset] = useState(0);
   useEffect(() => {
     // A restored browser page can retain React state even without browser storage.
@@ -46,134 +56,135 @@ export function NutritionPage({
       window.removeEventListener("pageshow", restore);
     };
   }, []);
-  return (
-    <NutritionView
-      key={epoch}
-      versions={versions}
-      initial={initial}
-      initialServings={initialServings}
-      onAdapt={onAdapt}
-    />
-  );
+  return epoch;
+}
+type NutritionPageProps = {
+  versions: RecipeVersion[];
+  initial?: RecipeVersion;
+  initialServings?: number;
+  onAdapt?: (version: RecipeVersion, prompt: string) => void;
+  onDraft?: (version: RecipeVersion, draft: RecipeDocument) => void;
+};
+export function NutritionPage(props: NutritionPageProps) {
+  const epoch = useResetEpoch();
+  return <NutritionView key={epoch} {...props} />;
 }
 function NutritionView({
   versions,
   initial,
   initialServings,
   onAdapt,
-}: {
-  versions: RecipeVersion[];
-  initial?: RecipeVersion;
-  initialServings?: number;
-  onAdapt?: (version: RecipeVersion, prompt: string) => void;
-}) {
-  const [chosen, setChosen] = useState(initial?.id ?? ""),
-    [mode, setMode] = useState("standard");
+  onDraft,
+}: NutritionPageProps) {
+  const [chosen, setChosen] = useState(initial?.id ?? "");
   const choices =
     initial && !versions.some((v) => v.id === initial.id) ? [initial, ...versions] : versions;
   const selected = choices.find((v) => v.id === chosen) ?? choices[0];
   return (
     <section className="nutrition-panel">
-      <p className="k-eyebrow">Receptets underlag</p>
-      <h1>Kolhydrater & ingrediensbyten</h1>
-      <fieldset className="nutrition-mode">
-        <legend>Frivilligt läge för vuxna</legend>
-        {[
-          ["standard", "Standard"],
-          ["low-carb", "Lågkolhydrat"],
-          ["keto", "Keto"],
-        ].map(([value, label]) => (
-          <label key={value}>
-            <input
-              type="radio"
-              name="nutrition-mode"
-              value={value}
-              checked={mode === value}
-              onChange={() => setMode(value)}
-            />
-            {label}
-          </label>
-        ))}
-      </fieldset>
-      {mode === "standard" ? (
-        <p>
-          Inget kostläge är valt. Valet sparas inte och förs inte över till familjens matprofiler.
-        </p>
+      <h1>Receptens näring</h1>
+      {!selected ? (
+        <p>Inga sparade recept i kokboken.</p>
       ) : (
         <>
-          <p>
-            Receptuppskattning för vuxna, inte en medicinsk kostplan eller ett besked om ketos. Inte
-            till för barns kost, läkemedelsdosering eller behandling. Vid medicinska behov behöver
-            du råd från vården.
-          </p>
-          {!selected ? (
-            <p>Spara ett recept i kokboken först.</p>
-          ) : (
-            <>
-              <label className="nutrition-field">
-                Recept
-                <select
-                  aria-label="Recept för kolhydratberäkning"
-                  value={selected.id}
-                  onChange={(e) => setChosen(e.target.value)}
-                >
-                  {choices.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.document.title} · version {v.revision}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <NutritionCalculation
-                key={`${selected.id}:${mode}:${JSON.stringify(selected.document)}`}
-                document={selected.document}
-                initialServings={initial?.id === selected.id ? initialServings : undefined}
-                onAdapt={onAdapt ? (prompt) => onAdapt(selected, prompt) : undefined}
-              />
-            </>
-          )}
+          <label className="nutrition-field">
+            Recept
+            <select value={selected.id} onChange={(e) => setChosen(e.target.value)}>
+              {choices.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.document.title} · version {v.revision}
+                </option>
+              ))}
+            </select>
+          </label>
+          <NutritionCalculation
+            key={`${selected.id}:${selected.revision}`}
+            document={selected.document}
+            initialServings={initial?.id === selected.id ? initialServings : undefined}
+            onAdapt={onAdapt ? (prompt) => onAdapt(selected, prompt) : undefined}
+            onDraft={onDraft ? (draft) => onDraft(selected, draft) : undefined}
+          />
         </>
       )}
     </section>
   );
 }
-export function NutritionCalculation({
-  document,
-  initialServings,
-  onAdapt,
-}: {
+type CalculationProps = {
   document: RecipeDocument;
   initialServings?: number;
+  recipeServings?: number;
   onAdapt?: (prompt: string) => void;
-}) {
+  onDraft?: (draft: RecipeDocument) => void;
+};
+
+export function RecipeNutrition(props: CalculationProps & { recipeServings: number }) {
+  const epoch = useResetEpoch();
+  return (
+    <section className="nutrition-panel nutrition-inline" aria-label="Näring i receptet">
+      <NutritionCalculation key={epoch} {...props} />
+    </section>
+  );
+}
+
+function NutritionMetrics({ values }: { values: NutrientValues }) {
+  return (
+    <dl className="nutrition-metrics">
+      {nutrientKeys.map((key) => (
+        <div key={key} data-missing={values[key] === null || undefined}>
+          <dt>{metric[key].label}</dt>
+          <dd>{quantity(values[key], metric[key].unit)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function NutritionCalculation({
+  document,
+  initialServings,
+  recipeServings,
+  onAdapt,
+  onDraft,
+}: CalculationProps) {
   const [bindings, setBindings] = useState<Bindings>({}),
-    [servings, setServings] = useState(initialServings ?? document.servings),
+    [selectedServings, setServings] = useState(initialServings ?? document.servings),
+    [adult, setAdult] = useState(false),
+    [mode, setMode] = useState<Mode>("standard"),
     [limit, setLimit] = useState<number | null>(null),
-    [replacement, setReplacement] = useState<Binding>({
-      reference: null,
-      grams: null,
-      weighedForm: "unknown",
-      confirmed: false,
-    }),
+    [replacement, setReplacement] = useState(emptyReplacement),
     [swapId, setSwap] = useState("");
+  const servings = recipeServings ?? selectedServings;
+  const compare = adult && mode !== "standard";
+  const clearSwap = () => {
+    setSwap("");
+    setReplacement(emptyReplacement());
+  };
+  const switchMode = (value: Mode) => {
+    setMode(value);
+    setLimit(null);
+    clearSwap();
+  };
   const result = estimateRecipe(document, bindings, servings),
     target = compareLimit(result.perServing.carbs, limit);
-  const ingredient = document.ingredients.find((i) => i.id === swapId);
-  const proposed = ingredient
-    ? estimateRecipe(document, { ...bindings, [ingredient.id]: replacement }, servings)
-    : null;
-  const canAdapt =
-    ingredient && replacement.reference && resolveBinding(replacement).macros !== null;
+  const ingredient = compare ? document.ingredients.find((i) => i.id === swapId) : undefined;
+  const draft = ingredient && recipeSubstitutionDraft(document, ingredient.id, replacement);
+  const proposed =
+    ingredient && draft
+      ? estimateRecipe(draft, { ...bindings, [ingredient.id]: replacement }, servings)
+      : null;
+  const suggestion = ingredient ? suggestedSwap(bindings[ingredient.id]?.reference) : null;
   return (
     <>
-      <div className="nutrition-recipe">
-        {recipeImages[document.image] && <img src={recipeImages[document.image]} alt="" />}
-        <div>
-          <h2>{document.title}</h2>
-          <p>Grundrecept: {document.servings} portioner</p>
+      {recipeServings === undefined && (
+        <div className="nutrition-recipe">
+          {recipeImages[document.image] && <img src={recipeImages[document.image]} alt="" />}
+          <div>
+            <h2>{document.title}</h2>
+            <p>Grundrecept: {document.servings} portioner</p>
+          </div>
         </div>
-      </div>
-      <div className="nutrition-controls">
+      )}
+      {recipeServings === undefined && (
         <label className="nutrition-field">
           Visa antal portioner
           <input
@@ -189,68 +200,87 @@ export function NutritionCalculation({
             }}
           />
         </label>
-        <label className="nutrition-field">
-          Egen gräns, g per portion (valfri)
-          <input
-            type="number"
-            min={0.1}
-            max={250}
-            step="any"
-            value={limit ?? ""}
-            onChange={(e) => setLimit(numeric(e.target.value))}
-          />
-        </label>
-      </div>
+      )}
       <section className="nutrition-summary" aria-label="Beräkningsresultat" aria-live="polite">
-        <div>
-          <Scale size={25} />
-          <div>
-            <h2>Kolhydrater per portion</h2>
-            <strong>
-              {result.complete ? `${format(result.perServing.carbs)} g` : "Ofullständigt underlag"}
-            </strong>
-          </div>
+        <div className="nutrition-title">
+          <Scale size={20} aria-hidden />
+          <h2>Näring per portion</h2>
         </div>
-        <p>
-          {result.known} av {result.rows.length} ingredienser har kolhydratunderlag.
+        <p className="nutrition-status">
+          {nutrientKeys.every((key) => result.perServing[key] === null)
+            ? "Underlag saknas"
+            : "Uppskattade värden"}
         </p>
-        {target === "within" && (
-          <p>
-            Beräkningen ligger inom din valda gräns. Det är inte en bedömning av kostens lämplighet.
-          </p>
-        )}
-        {target === "above" && <p>Beräkningen ligger över din valda gräns.</p>}
-        {result.complete && (
-          <dl>
-            <dt>Hela receptet, {servings} portioner</dt>
-            <dd>{format(result.total.carbs)} g</dd>
-            <dt>Fiber per portion</dt>
-            <dd>{format(result.perServing.fiber)} g</dd>
-            <dt>Protein per portion</dt>
-            <dd>{format(result.perServing.protein)} g</dd>
-            <dt>Fett per portion</dt>
-            <dd>{format(result.perServing.fat)} g</dd>
-          </dl>
-        )}
-        <p>
-          Beräknat från referensvärden och dina bekräftade vikter, inte analyserat i den lagade
-          rätten. Tillagningsförluster, spill och kvarlämnad sås är inte beräknade.
-        </p>
+        <NutritionMetrics values={result.perServing} />
+        <details className="nutrition-fold">
+          <summary>Hela receptet · {servings} portioner</summary>
+          <NutritionMetrics values={result.total} />
+        </details>
       </section>
-      <section className="nutrition-band">
+      <details className="nutrition-fold">
+        <summary>Kostläge{compare && ` · ${mode === "keto" ? "Keto" : "Lågkolhydrat"}`}</summary>
+        <label className="nutrition-check">
+          <input
+            type="checkbox"
+            checked={adult}
+            onChange={(e) => {
+              setAdult(e.target.checked);
+              if (!e.target.checked) switchMode("standard");
+            }}
+          />
+          Jag är vuxen
+        </label>
+        <fieldset className="nutrition-mode">
+          <legend>Frivilligt läge för detta recept</legend>
+          {(
+            [
+              ["standard", "Standard"],
+              ["low-carb", "Lågkolhydrat"],
+              ["keto", "Keto"],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value}>
+              <input
+                type="radio"
+                name="nutrition-mode"
+                value={value}
+                checked={mode === value}
+                disabled={value !== "standard" && !adult}
+                onChange={() => switchMode(value)}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+        {compare && (
+          <>
+            <p>
+              Receptuppskattning för vuxna, inte medicinsk rådgivning eller ett besked om ketos.
+            </p>
+            <label className="nutrition-field">
+              Egen gräns för kolhydrater, g per portion (valfri)
+              <input
+                type="number"
+                min={0.1}
+                max={250}
+                step="any"
+                value={limit ?? ""}
+                onChange={(e) => setLimit(numeric(e.target.value))}
+              />
+            </label>
+            {target === "within" && <p>Beräkningen ligger inom din valda gräns.</p>}
+            {target === "above" && <p>Beräkningen ligger över din valda gräns.</p>}
+          </>
+        )}
+      </details>
+      <details className="nutrition-fold nutrition-band">
+        <summary>Ingrediensunderlag</summary>
         <div className="k-section-title">
-          <h2>Ingrediensunderlag</h2>
           <button
             className="k-text"
             onClick={() => {
               setBindings({});
-              setReplacement({
-                reference: null,
-                grams: null,
-                weighedForm: "unknown",
-                confirmed: false,
-              });
-              setSwap("");
+              clearSwap();
               setLimit(null);
             }}
           >
@@ -263,7 +293,7 @@ export function NutritionCalculation({
           ätliga delen. Portionsvalet skalar alla mängder lika.
         </p>
         <ol className="nutrition-ingredients">
-          {result.rows.map(({ ingredient, reason, macros }, index) => (
+          {result.rows.map(({ ingredient, reason, nutrients }, index) => (
             <li key={ingredient.id}>
               <h3>{ingredient.name}</h3>
               <p>
@@ -276,7 +306,9 @@ export function NutritionCalculation({
                   <BindingEditor
                     prefix={`ingredient-${index}`}
                     binding={bindings[ingredient.id] ?? emptyBinding(ingredient)}
-                    onChange={(b) => setBindings({ ...bindings, [ingredient.id]: b })}
+                    onChange={(b) =>
+                      setBindings((previous) => ({ ...previous, [ingredient.id]: b }))
+                    }
                   />
                   {reason ? (
                     <p className="nutrition-unknown" role="status">
@@ -284,80 +316,122 @@ export function NutritionCalculation({
                     </p>
                   ) : (
                     <p>
-                      Beräknat bidrag: {format(macros?.carbs ?? null)} g kolhydrater i
+                      Beräknat bidrag: {quantity(nutrients?.carbs ?? null, "g")} kolhydrater i
                       grundreceptet.
                     </p>
                   )}
-                  <button
-                    className="k-text"
-                    onClick={() => {
-                      setSwap(ingredient.id);
-                      setReplacement({
-                        reference: null,
-                        grams: null,
-                        weighedForm: "unknown",
-                        confirmed: false,
-                      });
-                    }}
-                  >
-                    Jämför ett byte
-                    <ArrowRight size={17} />
-                  </button>
+                  {compare && (
+                    <button
+                      className="k-text"
+                      aria-expanded={swapId === ingredient.id}
+                      onClick={() => {
+                        clearSwap();
+                        if (swapId !== ingredient.id) setSwap(ingredient.id);
+                      }}
+                    >
+                      Jämför ett byte
+                      <ArrowRight size={17} />
+                    </button>
+                  )}
+                  {swapId === ingredient.id && compare && (
+                    <section className="nutrition-band" aria-label="Ingrediensjämförelse">
+                      <h3>Byta {ingredient.name}?</h3>
+                      {suggestion && (
+                        <button
+                          className="k-secondary"
+                          onClick={() =>
+                            setReplacement({ ...emptyReplacement(), reference: suggestion })
+                          }
+                        >
+                          <ArrowRight size={18} />
+                          Förslag: {suggestion.name}
+                        </button>
+                      )}
+                      <BindingEditor
+                        prefix="replacement"
+                        binding={replacement}
+                        onChange={setReplacement}
+                      />
+                      <table className="nutrition-comparison">
+                        <caption>Näring per portion</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Näringsvärde</th>
+                            <th scope="col">Original</th>
+                            <th scope="col">Med bytet</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {nutrientKeys.map((key) => (
+                            <tr key={key}>
+                              <th scope="row">{metric[key].label}</th>
+                              <td>{quantity(result.perServing[key], metric[key].unit)}</td>
+                              <td>
+                                {quantity(proposed?.perServing[key] ?? null, metric[key].unit)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {draft && (
+                        <p>
+                          Tillagningsstegen är oförändrade i utkastet och behöver granskas. Bytet
+                          kan påverka allergener och tillagning.
+                        </p>
+                      )}
+                      <div className="nutrition-actions">
+                        <button
+                          className="k-secondary"
+                          disabled={!draft || !onDraft}
+                          onClick={() => {
+                            if (draft) onDraft?.(draft);
+                          }}
+                        >
+                          <ClipboardCheck size={18} /> Granska receptutkast
+                        </button>
+                        {onAdapt && (
+                          <button
+                            className="k-text"
+                            disabled={!draft}
+                            onClick={() => {
+                              if (draft && replacement.reference && replacement.grams !== null)
+                                onAdapt(
+                                  substitutionPrompt(
+                                    ingredient.name,
+                                    replacement.reference.name,
+                                    replacement.grams,
+                                    document.servings,
+                                  ),
+                                );
+                            }}
+                          >
+                            <ChefHat size={18} /> Granska bytet med AI-kocken
+                          </button>
+                        )}
+                        <button className="k-text" onClick={clearSwap}>
+                          <X size={18} /> Avbryt jämförelsen
+                        </button>
+                      </div>
+                    </section>
+                  )}
                 </>
               )}
             </li>
           ))}
         </ol>
-      </section>
-      {ingredient && (
-        <section className="nutrition-band" aria-label="Ingrediensjämförelse">
-          <h2>Byta {ingredient.name}?</h2>
-          <p>
-            Räkneexempel, inte ett färdigt recept. Välj en ersättare och dess gramvikt. Ett byte kan
-            ändra smak, konsistens, allergener och tillagning.
-          </p>
-          <BindingEditor prefix="replacement" binding={replacement} onChange={setReplacement} />
-          <dl className="nutrition-comparison">
-            <dt>Original, g kolhydrater per portion</dt>
-            <dd>{format(result.perServing.carbs)}</dd>
-            <dt>Med bytet, g kolhydrater per portion</dt>
-            <dd>{format(proposed?.perServing.carbs ?? null)}</dd>
-          </dl>
-          {!proposed?.complete && (
-            <p>Komplett jämförelse kräver underlag för samtliga ingredienser.</p>
-          )}
-          <button
-            className="k-secondary"
-            disabled={!canAdapt || !onAdapt}
-            onClick={() => {
-              if (onAdapt && canAdapt && replacement.reference && replacement.grams !== null)
-                onAdapt(
-                  substitutionPrompt(
-                    ingredient.name,
-                    replacement.reference.name,
-                    replacement.grams,
-                    document.servings,
-                  ),
-                );
-            }}
-          >
-            <ChefHat size={18} />
-            Granska bytet med AI-kocken
-          </button>
-          <p>
-            Öppnar en redigerbar receptfråga. Ingen AI-fråga skickas och inget recept ändras innan
-            du själv väljer det. AI-kocken kräver anslutning.
-          </p>
-        </section>
-      )}
-      <section className="nutrition-band">
-        <h2>Källa & beräkning</h2>
+      </details>
+      <details className="nutrition-fold">
+        <summary>Källor och beräkning</summary>
         <p>
           {referenceAttribution}. Urval av generiska referenser, inte en fullständig produktdatabas.
         </p>
         <p>
           EU-kolhydrater används som angivet. För US Total Carbohydrate dras registrerad fiber av en
           gång. Sockeralkoholer dras inte av. Saknade värden är okända, inte noll.
+        </p>
+        <p>
+          Referensvärden och bekräftade ätliga vikter ger uppskattningar, inte uppmätta värden för
+          den lagade rätten.
         </p>
         <p>
           <a
@@ -376,7 +450,7 @@ export function NutritionCalculation({
           Underlaget och läget finns bara i denna öppna vy. Det sparas inte i webbläsarlagring,
           konto, matminne eller familjeprofiler.
         </p>
-      </section>
+      </details>
     </>
   );
 }
@@ -412,6 +486,7 @@ function BindingEditor({
                     name: "",
                     form: "as_sold",
                     convention: "EU",
+                    energyKcal: null,
                     carbs: null,
                     fiber: null,
                     protein: null,
@@ -438,12 +513,15 @@ function BindingEditor({
             {r.name} · {formLabels[r.form]}
           </p>
           <p>
-            Per 100 g: kolhydrater {format(r.carbs)} g, fiber {format(r.fiber)} g, protein{" "}
-            {format(r.protein)} g, fett {format(r.fat)} g.
+            Per 100 g:{" "}
+            {nutrientKeys
+              .map((key) => `${metric[key].label} ${quantity(r[key], metric[key].unit)}`)
+              .join(" · ")}
+            .
           </p>
           <p>
-            Livsmedelsnummer {r.source.recordId}. Postversion {r.source.recordVersion}. Hämtad{" "}
-            {r.source.retrievedAt.slice(0, 10)}.
+            Livsmedelsnummer {r.source.recordId}. Databas {r.source.datasetVersion}. Postversion{" "}
+            {r.source.recordVersion}. Hämtad {r.source.retrievedAt.slice(0, 10)}.
           </p>
           <a href={r.source.url} target="_blank" rel="noreferrer">
             Originalpost (JSON)
@@ -496,21 +574,14 @@ function BindingEditor({
             </select>
           </label>
           <div className="nutrition-label-values">
-            {(
-              [
-                ["carbs", "Kolhydrater"],
-                ["fiber", "Fiber"],
-                ["protein", "Protein"],
-                ["fat", "Fett"],
-              ] as const
-            ).map(([key, label]) => (
+            {nutrientKeys.map((key) => (
               <label key={key} className="nutrition-field">
-                {label}, g per 100 g
+                {metric[key].label}, {metric[key].unit} per 100 g
                 <input
-                  aria-label={`${label} per 100 g ${prefix}`}
+                  aria-label={`${metric[key].label} per 100 g ${prefix}`}
                   type="number"
                   min={0}
-                  max={100}
+                  max={metric[key].max}
                   step="any"
                   value={r[key] ?? ""}
                   onChange={(e) => manual({ [key]: numeric(e.target.value) })}

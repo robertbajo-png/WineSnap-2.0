@@ -295,6 +295,7 @@ export async function acceptPlanningDatabase({
   report,
   smoke,
   pantry,
+  nutrition,
   capture,
 }) {
   const { owner, peer, rest, recipe, writes } = fixture;
@@ -348,6 +349,11 @@ export async function acceptPlanningDatabase({
   const peerItem = "Syntetisk annan inköpsrad";
   report.phase = "browser_owner_login_and_week";
   await login(owner);
+  if (nutrition) {
+    const { acceptRecipeNutrition } = await import("./recipe-nutrition-browser.mjs");
+    await acceptRecipeNutrition({ page, base, fixture, report, capture });
+    return;
+  }
   if (pantry) {
     const { acceptPantryStock } = await import("./pantry-database-browser.mjs");
     await acceptPantryStock({ page, base, fixture, backend, report, capture });

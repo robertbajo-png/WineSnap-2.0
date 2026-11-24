@@ -23,7 +23,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 24px 0;
+  margin: 12px 0;
   min-width: 0;
 }
 .nutrition-mode legend {
@@ -38,6 +38,9 @@
   padding: 8px 12px;
   border: 1px solid #8c9d92;
   border-radius: 6px;
+}
+.nutrition-mode label:has(input:disabled) {
+  opacity: 0.65;
 }
 .nutrition-panel input[type="radio"],
 .nutrition-panel input[type="checkbox"] {
@@ -78,44 +81,92 @@
   border-radius: 6px;
   flex-shrink: 0;
 }
-.nutrition-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
 .nutrition-summary {
-  border-block: 2px solid #3d6a55;
-  padding: 20px 0;
-  margin: 24px 0;
+  padding-block: 12px 4px;
 }
-.nutrition-summary > div {
+.nutrition-title {
   display: flex;
-  gap: 14px;
+  gap: 8px;
   align-items: center;
 }
-.nutrition-summary strong {
-  display: block;
-  font-size: 1.5rem;
-  color: #245e49;
-  line-height: 1.4;
-  margin-top: 6px;
+.nutrition-title svg {
+  flex-shrink: 0;
 }
-.nutrition-summary dl,
-.nutrition-comparison {
+.nutrition-panel .nutrition-status {
+  font-size: 0.9rem;
+  margin: 6px 0 12px;
+}
+.nutrition-metrics {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px 16px;
-  margin: 20px 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: 10px 14px;
+  margin: 12px 0 16px;
 }
-.nutrition-summary dd,
-.nutrition-comparison dd {
+.nutrition-metrics > div {
+  min-width: 0;
+  border-block-start: 1px solid #becac1;
+  padding-block: 6px;
+}
+.nutrition-metrics dt {
+  font-size: 0.875rem;
+}
+.nutrition-metrics dd {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  margin: 3px 0 0;
+}
+.nutrition-metrics [data-missing] dd {
+  font-weight: 400;
+}
+.nutrition-fold {
+  min-width: 0;
+  border-block-start: 1px solid #becac1;
+}
+.nutrition-fold > summary {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding-block: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nutrition-comparison {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 14px 0;
+}
+.nutrition-comparison caption {
+  text-align: start;
+  font-weight: 600;
+  padding-block: 8px;
+}
+.nutrition-comparison th,
+.nutrition-comparison td {
+  padding: 8px 4px;
+  border-bottom: 1px solid #becac1;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.nutrition-comparison th:first-child {
+  width: 40%;
+  text-align: start;
+}
+.nutrition-comparison :is(th:not(:first-child), td) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.nutrition-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.nutrition-actions button {
+  max-width: 100%;
+  white-space: normal;
+}
 .nutrition-band {
   border-top: 1px solid #becac1;
-  padding: 24px 0;
-  margin-top: 20px;
+  padding-block: 8px;
 }
 .nutrition-ingredients {
   padding: 0;
@@ -164,15 +215,8 @@
   opacity: 0.55;
 }
 @media (max-width: 600px) {
-  .nutrition-controls {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
   .nutrition-panel h1 {
     font-size: 1.5rem;
-  }
-  .nutrition-summary strong {
-    font-size: 1.25rem;
   }
   .nutrition-recipe {
     gap: 12px;
@@ -181,4 +225,18 @@
     width: 72px;
     height: 72px;
   }
+}
+.pilot-ui
+  .nutrition-panel
+  :is(
+    .nutrition-fold,
+    .nutrition-metrics > div,
+    .nutrition-band,
+    .nutrition-ingredients > li,
+    .nutrition-comparison :is(th, td)
+  ) {
+  border-color: var(--border);
+}
+.pilot-ui .nutrition-panel .nutrition-source {
+  color: var(--muted-foreground);
 }

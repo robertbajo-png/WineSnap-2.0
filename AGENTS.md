@@ -31,7 +31,16 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-07 is installed and technically accepted on the owned
+Current handoff: DEV-08 source has 41 versioned nutrition references and
+inline per-serving estimates. Optional adult recipe comparisons can produce
+a normal local draft, never an automatic save. The isolated `--nutrition-db`
+run passed known/missing values, weighed changes, portion scaling, cancellation
+and explicit version save with the original week plan intact. See the canonical
+plan. Next: prepare and verify the web-only Windows delivery before seeking
+approval. DEV-07 remains installed; keep the public connector paused and do
+not touch the old production or abandoned hosted test.
+
+Previous handoff: DEV-07 is installed and technically accepted on the owned
 Windows app. The approved maintenance passed the fresh encrypted archive and
 exact isolated restore, guarded 38-to-40 schema update and all five
 `PantryAccept` checks, with both tagged test accounts verified cleaned up.

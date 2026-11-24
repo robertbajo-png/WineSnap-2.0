@@ -5,11 +5,13 @@ Retrieved through the [official public API](https://dataportal.livsmedelsverket.
 License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.sv),
 as specified by that API's OpenAPI document.
 
-`slv-reference.json` contains a curated subset of 19 public food records and
-their original CHO, FIBT, PROT and FAT nutrient records. Numeric values and their
-metadata are retained without alteration. Other nutrients are omitted, not set
-to zero. Each food includes the original record version, publisher metadata,
-retrieval timestamp and a SHA-256 integrity hash over `{food,nutrients}`.
+`slv-reference.json` contains a curated subset of 41 public food records and
+their original CHO, FIBT, PROT and FAT records in grams and ENERC records in
+kcal, per 100 g edible food. The source also uses ENERC for kJ; that row is
+not used as kcal. Numeric values and their metadata are retained without
+alteration. Other nutrients are omitted, not set to zero. Each food includes
+the original record version, publisher metadata, retrieval timestamp and a
+SHA-256 integrity hash over `{food,nutrients}`.
 The raw/cooked/dry/as-sold classification is a WineSnap curation field, not a
 new publisher measurement. Users must check it against what they weighed.
 
@@ -24,9 +26,10 @@ The importer is a maintainer action, never a runtime lookup with user ingredient
 node scripts/refresh-nutrition-reference.mjs --update
 ```
 
-The dataset version is deliberately pinned. Newer source records require manual
-dataset-version review before importing; the script must not silently relabel
-new data with an old version. Attribution remains visible in the recipe panel.
+The dataset version is deliberately pinned. The importer checks the version
+displayed by the publisher and rejects newer source-record dates. Review the
+source and update the pinned version deliberately when a new edition appears.
+Attribution and links to the original nutrient rows are visible in the panel.
 
 Concepts for EU/US carbohydrate treatment and gram-based portions were reviewed
 in the adjacent, user-owned KetoLens source. WineSnap deliberately differs by

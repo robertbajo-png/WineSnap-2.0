@@ -5,6 +5,9 @@ import { writeFile } from "node:fs/promises";
 // Maintainer-only public data import, never called by the app or with user ingredients.
 assert.deepEqual(process.argv.slice(2), ["--update"]);
 const base = "https://dataportal.livsmedelsverket.se/livsmedel";
+const publication = "https://soknaringsinnehall.livsmedelsverket.se/";
+const datasetVersion = "2026-07-01";
+const nutrientUnits = { CHO: "g", FIBT: "g", PROT: "g", FAT: "g", ENERC: "kcal" };
 const selections = [
   [35, "as_sold"],
   [103, "as_sold"],
@@ -25,7 +28,42 @@ const selections = [
   [1975, "as_sold"],
   [559, "raw"],
   [880, "cooked"],
+  [2189, "as_sold"], // Rapsolja
+  [289, "raw"], // Morot
+  [305, "cooked"],
+  [4457, "raw"], // Potatis
+  [5153, "cooked"],
+  [352, "raw"], // Persilja
+  [379, "raw"], // Basilika
+  [339, "raw"], // Gurka
+  [340, "raw"], // Isbergssallat
+  [2559, "raw"], // Romansallat
+  [422, "as_sold"], // Krossad tomat med lag
+  [846, "cooked"], // Pasta
+  [2515, "cooked"], // Ris
+  [3815, "as_sold"], // Kikarter utan lag
+  [3762, "cooked"],
+  [1255, "raw"], // Lax
+  [1317, "cooked"],
+  [1173, "raw"], // Kycklingbrost
+  [3594, "cooked"],
+  [2205, "cooked"], // Agg
+  [434, "cooked"], // Blomkal
+  [905, "as_sold"], // Fast tofu
 ];
+assert.equal(new Set(selections.map(([id]) => id)).size, selections.length);
+const publisherPage = await fetch(publication, {
+  redirect: "error",
+  signal: AbortSignal.timeout(30000),
+});
+assert.ok(publisherPage.ok, "public_dataset_version_unavailable");
+const page = await publisherPage.text();
+assert.ok(page.length < 2_000_000);
+const published = new Set(
+  [...page.matchAll(/Livsmedelsdatabas version\s+(\d{4}-\d{2}-\d{2})/g)].map((match) => match[1]),
+);
+assert.deepEqual([...published], [datasetVersion], "review_dataset_version_before_refresh");
+
 async function get(path) {
   const url = new URL(base + path);
   assert.equal(url.origin, "https://dataportal.livsmedelsverket.se");
@@ -45,24 +83,29 @@ for (const [id, form] of selections) {
     nutrients = await get(`/api/v1/livsmedel/${id}/naringsvarden?sprak=1`);
   assert.equal(food.nummer, id);
   assert.ok(food.namn && food.version && Array.isArray(nutrients));
-  for (const code of ["CHO", "FIBT", "PROT", "FAT"]) {
-    const found = nutrients.filter((n) => n.euroFIRkod === code);
+  const selected = nutrients.filter(
+    (n) => Object.hasOwn(nutrientUnits, n.euroFIRkod) && nutrientUnits[n.euroFIRkod] === n.enhet,
+  );
+  for (const [code, unit] of Object.entries(nutrientUnits)) {
+    const found = selected.filter((n) => n.euroFIRkod === code);
     assert.ok(found.length <= 1);
     if (found[0]) {
-      assert.equal(found[0].enhet, "g");
       assert.equal(found[0].viktGram, 100);
       assert.equal(found[0].matrisenhetkod, "W");
       assert.ok(
         found[0].varde === null ||
-          (Number.isFinite(found[0].varde) && found[0].varde >= 0 && found[0].varde <= 100),
+          (Number.isFinite(found[0].varde) &&
+            found[0].varde >= 0 &&
+            found[0].varde <= (unit === "kcal" ? 1000 : 100)),
       );
     }
   }
   assert.ok(
-    Date.parse(food.version) <= Date.parse("2026-07-02T00:00:00Z"),
+    /^\d{4}-\d{2}-\d{2}T/.test(food.version) &&
+      Number.isFinite(Date.parse(food.version)) &&
+      food.version.slice(0, 10) <= datasetVersion,
     "review_dataset_version_before_refresh",
   );
-  const selected = nutrients.filter((n) => ["CHO", "FIBT", "PROT", "FAT"].includes(n.euroFIRkod));
   const record = { id, form, food, nutrients: selected };
   record.sha256 = createHash("sha256")
     .update(JSON.stringify({ food, nutrients: selected }))
@@ -73,9 +116,9 @@ await writeFile(
   new URL("../src/features/nutrition/slv-reference.json", import.meta.url),
   JSON.stringify(
     {
-      datasetVersion: "2026-07-01",
+      datasetVersion,
       retrievedAt: new Date().toISOString(),
-      attribution: "Livsmedelsverkets Livsmedelsdatabas version 2026-07-01",
+      attribution: `Livsmedelsverkets Livsmedelsdatabas version ${datasetVersion}`,
       license: swagger.info.license,
       api,
       records,

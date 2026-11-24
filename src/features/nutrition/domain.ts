@@ -10,12 +10,17 @@ export const formLabels: Record<FoodForm, string> = {
   as_sold: "Som såld, ätlig del",
 };
 const nutrient = z.number().finite().min(0).max(100).nullable();
+export const energyMaxKcal = 1000;
+export const nutrientKeys = ["energyKcal", "protein", "fat", "carbs", "fiber"] as const;
+export type NutrientKey = (typeof nutrientKeys)[number];
+export type NutrientValues = Record<NutrientKey, number | null>;
 export const referenceSchema = z
   .object({
     id: z.string().min(1).max(100),
     name: z.string().trim().min(1).max(180),
     form: z.enum(forms),
     convention: z.enum(["EU", "US"]),
+    energyKcal: z.number().finite().min(0).max(energyMaxKcal).nullable(),
     carbs: nutrient,
     fiber: nutrient,
     protein: nutrient,
@@ -26,7 +31,7 @@ export const referenceSchema = z
           kind: z.literal("slv"),
           recordId: z.number().int().positive(),
           recordVersion: z.string().min(1),
-          datasetVersion: z.string().min(1),
+          datasetVersion: z.iso.date(),
           retrievedAt: z.string().datetime(),
           url: z
             .string()
@@ -68,39 +73,35 @@ export function availableCarbs(reference: FoodReference): number | null {
   if (r.carbs === null || (r.convention === "US" && r.fiber === null)) return null;
   return r.carbs - (r.convention === "US" ? r.fiber! : 0);
 }
-type Macros = {
-  carbs: number | null;
-  fiber: number | null;
-  protein: number | null;
-  fat: number | null;
-};
 export function resolveBinding(binding: Binding | undefined): {
-  macros: Macros | null;
+  nutrients: NutrientValues | null;
   reason: string | null;
 } {
   if (!binding?.reference)
-    return { macros: null, reason: "Välj en referens eller ange en etikett." };
+    return { nutrients: null, reason: "Välj en referens eller ange en etikett." };
   const parsed = referenceSchema.safeParse(binding.reference);
   if (!parsed.success)
-    return { macros: null, reason: "Referensens värden eller källa behöver kontrolleras." };
+    return { nutrients: null, reason: "Referensens värden eller källa behöver kontrolleras." };
   if (
     binding.grams === null ||
     !Number.isFinite(binding.grams) ||
     binding.grams <= 0 ||
     binding.grams > 100000
   )
-    return { macros: null, reason: "Ange en vägd mängd i gram för hela grundreceptet." };
+    return { nutrients: null, reason: "Ange en vägd mängd i gram för hela grundreceptet." };
   if (binding.weighedForm !== parsed.data.form)
     return {
-      macros: null,
+      nutrients: null,
       reason: "Referensen och gramvikten måste avse samma råa, torra eller tillagade form.",
     };
-  if (!binding.confirmed) return { macros: null, reason: "Bekräfta referens och ätlig gramvikt." };
+  if (!binding.confirmed)
+    return { nutrients: null, reason: "Bekräfta referens och ätlig gramvikt." };
   const r = parsed.data,
     scale = binding.grams / 100;
   const carbs = availableCarbs(r);
   return {
-    macros: {
+    nutrients: {
+      energyKcal: r.energyKcal === null ? null : r.energyKcal * scale,
       carbs: carbs === null ? null : carbs * scale,
       fiber: r.fiber === null ? null : r.fiber * scale,
       protein: r.protein === null ? null : r.protein * scale,
@@ -110,6 +111,7 @@ export function resolveBinding(binding: Binding | undefined): {
       carbs === null ? "Kolhydratunderlaget är ofullständigt; US total kräver även fiber." : null,
   };
 }
+const zeroNutrients = () => ({ energyKcal: 0, carbs: 0, fiber: 0, protein: 0, fat: 0 });
 // Aggregate at full precision; only the presentation layer rounds.
 export function estimateRecipe(document: RecipeDocument, bindings: Bindings, servings: number) {
   const recipe = recipeSchema.parse(document);
@@ -117,28 +119,59 @@ export function estimateRecipe(document: RecipeDocument, bindings: Bindings, ser
   const rows = recipe.ingredients.map((ingredient) => ({
     ingredient,
     ...(ingredient.amount === 0
-      ? { macros: { carbs: 0, fiber: 0, protein: 0, fat: 0 }, reason: null }
+      ? { nutrients: zeroNutrients(), reason: null }
       : resolveBinding(bindings[ingredient.id])),
   }));
-  const total: Macros = { carbs: 0, fiber: 0, protein: 0, fat: 0 },
-    perServing: Macros = { carbs: 0, fiber: 0, protein: 0, fat: 0 };
-  for (const key of ["carbs", "fiber", "protein", "fat"] as const) {
-    if (rows.some((row) => row.macros?.[key] === null || row.macros?.[key] === undefined)) {
-      total[key] = null;
-      perServing[key] = null;
-    } else {
-      const base = rows.reduce((sum, row) => sum + row.macros![key]!, 0);
+  const total: NutrientValues = zeroNutrients(),
+    perServing: NutrientValues = zeroNutrients();
+  for (const key of nutrientKeys) {
+    const values = rows.map((row) => row.nutrients?.[key] ?? null);
+    if (values.every((value) => value !== null)) {
+      const base = values.reduce((sum, value) => sum + value, 0);
       total[key] = (base * servings) / recipe.servings;
       perServing[key] = base / recipe.servings;
+    } else {
+      total[key] = null;
+      perServing[key] = null;
     }
   }
   return {
     rows,
     total,
     perServing,
-    known: rows.filter((r) => r.macros?.carbs !== null && r.macros?.carbs !== undefined).length,
+    known: rows.filter((r) => r.nutrients?.carbs != null).length,
     complete: perServing.carbs !== null,
   };
+}
+export function recipeSubstitutionDraft(
+  document: RecipeDocument,
+  ingredientId: string,
+  replacement: Binding,
+) {
+  const ingredient = document.ingredients.find((item) => item.id === ingredientId);
+  const { reference, grams } = replacement;
+  if (
+    !ingredient ||
+    ingredient.amount === 0 ||
+    resolveBinding(replacement).nutrients === null ||
+    !reference ||
+    grams === null
+  )
+    return null;
+  const result = recipeSchema.safeParse({
+    ...document,
+    ingredients: document.ingredients.map((item) =>
+      item.id === ingredientId
+        ? {
+            ...item,
+            name: reference.name,
+            amount: grams,
+            unit: "g",
+          }
+        : item,
+    ),
+  });
+  return result.success ? result.data : null;
 }
 export function compareLimit(
   carbs: number | null,

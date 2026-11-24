@@ -90,6 +90,9 @@ import {
 const NutritionPage = lazy(() =>
   import("../nutrition/NutritionPanel").then((m) => ({ default: m.NutritionPage })),
 );
+const RecipeNutrition = lazy(() =>
+  import("../nutrition/NutritionPanel").then((m) => ({ default: m.RecipeNutrition })),
+);
 const PairingPanel = lazy(() =>
   import("../meals/PairingPanel").then((m) => ({ default: m.PairingPanel })),
 );
@@ -795,6 +798,28 @@ function KitchenWorkspace({ owner }: { owner: string }) {
     setChefEpoch((epoch) => epoch + 1);
     navigate("chef");
   };
+  const reviewNutritionSwap =
+    chefEnabled && !offline
+      ? (version: RecipeVersion, prompt: string) =>
+          openChef(
+            {
+              mode: "adapt",
+              context: { ...emptyChefContext, recipeVersionId: version.id },
+              title: version.document.title,
+              initialPrompt: prompt,
+              initialServings: version.document.servings,
+            },
+            version,
+          )
+      : undefined;
+  const reviewNutritionDraft =
+    !offline && !busy
+      ? (version: RecipeVersion, draft: RecipeDocument) =>
+          edit(
+            draft,
+            cache?.versions.find((item) => item.recipe_id === version.recipe_id) ?? version,
+          )
+      : undefined;
   const change = (patch: Partial<CookingState>) => {
     if (state) void kitchen.change({ ...state, ...patch });
   };
@@ -913,7 +938,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                   <option value="meals">Måltider & vin</option>
                 </>
               )}
-              {nutritionEnabled && <option value="nutrition">Receptens kolhydrater</option>}
+              {nutritionEnabled && <option value="nutrition">Receptens näring</option>}
             </select>
           </label>
         </div>
@@ -1062,21 +1087,8 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                       versions={cache.versions}
                       initial={nutritionVersion}
                       initialServings={nutritionServings}
-                      onAdapt={
-                        chefEnabled && !offline
-                          ? (version, prompt) =>
-                              openChef(
-                                {
-                                  mode: "adapt",
-                                  context: { ...emptyChefContext, recipeVersionId: version.id },
-                                  title: version.document.title,
-                                  initialPrompt: prompt,
-                                  initialServings: version.document.servings,
-                                },
-                                version,
-                              )
-                          : undefined
-                      }
+                      onAdapt={reviewNutritionSwap}
+                      onDraft={reviewNutritionDraft}
                     />
                   )}
                   {mealsEnabled && tab === "pairings" && (
@@ -1313,19 +1325,6 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                     </p>
                     <h1>{selected.document.title}</h1>
                     <p className="k-description">{selected.document.description}</p>
-                    {nutritionEnabled && (
-                      <button
-                        className="k-text"
-                        onClick={() => {
-                          setNutritionVersion(selected);
-                          setNutritionServings(servings);
-                          navigate("nutrition");
-                        }}
-                      >
-                        <Scale size={18} />
-                        Kolhydrater & ingrediensbyten
-                      </button>
-                    )}
                     {mealsEnabled && (
                       <button
                         className="k-text"
@@ -1431,6 +1430,25 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                       </div>
                       <Ingredients document={selected.document} servings={servings} />
                     </section>
+                    {nutritionEnabled && (
+                      <Suspense fallback={<p role="status">{t("common.loading")}</p>}>
+                        <RecipeNutrition
+                          key={`${owner}:${selected.id}:${selected.revision}`}
+                          document={selected.document}
+                          recipeServings={servings}
+                          onAdapt={
+                            reviewNutritionSwap
+                              ? (prompt) => reviewNutritionSwap(selected, prompt)
+                              : undefined
+                          }
+                          onDraft={
+                            reviewNutritionDraft
+                              ? (draft) => reviewNutritionDraft(selected, draft)
+                              : undefined
+                          }
+                        />
+                      </Suspense>
+                    )}
                     <section>
                       <h2>Tillagning</h2>
                       <ol className="k-method">
@@ -1549,7 +1567,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                         }}
                       >
                         <Scale size={18} />
-                        Se receptets kolhydratunderlag
+                        Se receptets näring
                       </button>
                     )}
                     {clockChanged && (

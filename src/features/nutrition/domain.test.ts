@@ -6,13 +6,14 @@ import {
   compareLimit,
   emptyBinding,
   estimateRecipe,
+  recipeSubstitutionDraft,
   referenceSchema,
   resolveBinding,
   substitutionPrompt,
   type Binding,
   type FoodReference,
 } from "./domain";
-import { parseSlvRecord, referenceFoods } from "./catalog";
+import { parseSlvRecord, referenceFoods, suggestedSwap } from "./catalog";
 import snapshot from "./slv-reference.json";
 import { startingRecipes } from "../kitchen/catalog";
 import { independentEnvironment } from "../../../config/independent/environment";
@@ -21,6 +22,7 @@ const reference: FoodReference = {
   name: "Testetikett",
   form: "raw",
   convention: "EU",
+  energyKcal: 112,
   carbs: 10,
   fiber: 4,
   protein: 2,
@@ -50,7 +52,7 @@ describe("nutrition conventions and missing data", () => {
   it("EU carbohydrate remains usable when fiber is unknown", () => {
     expect(availableCarbs({ ...reference, fiber: null })).toBe(10);
     expect(
-      resolveBinding(binding({ reference: { ...reference, fiber: null } })).macros?.fiber,
+      resolveBinding(binding({ reference: { ...reference, fiber: null } })).nutrients?.fiber,
     ).toBeNull();
   });
   it("distinguishes explicit zero from missing", () => {
@@ -88,11 +90,11 @@ describe("portion, quantity and precision", () => {
     ).toBe(1250);
   });
   it.each([null, NaN, Infinity, 0, -1, 100001])("rejects invalid edible grams %s", (grams) =>
-    expect(resolveBinding(binding({ grams })).macros).toBeNull(),
+    expect(resolveBinding(binding({ grams })).nutrients).toBeNull(),
   );
   it("requires actual matching food state and confirmation", () => {
-    expect(resolveBinding(binding({ weighedForm: "cooked" })).macros).toBeNull();
-    expect(resolveBinding(binding({ confirmed: false })).macros).toBeNull();
+    expect(resolveBinding(binding({ weighedForm: "cooked" })).nutrients).toBeNull();
+    expect(resolveBinding(binding({ confirmed: false })).nutrients).toBeNull();
   });
   it("does not round each ingredient before summing", () => {
     const r = recipe();
@@ -109,6 +111,29 @@ describe("portion, quantity and precision", () => {
     expect(two.perServing.carbs).toBe(7.5);
     expect(six.total.carbs).toBe(45);
     expect(six.perServing.carbs).toBe(two.perServing.carbs);
+    expect(two.perServing.energyKcal).toBe(84);
+    expect(six.total.energyKcal).toBe(504);
+    expect(six.perServing.energyKcal).toBe(84);
+  });
+  it("keeps unknown energy separate from available nutrition without deriving it from macros", () => {
+    const r = recipe();
+    const b = Object.fromEntries(
+      r.ingredients.map((i) => [
+        i.id,
+        binding({ grams: i.amount, reference: { ...reference, energyKcal: null } }),
+      ]),
+    );
+    expect(estimateRecipe(r, b, 2).perServing).toMatchObject({ energyKcal: null, carbs: 7.5 });
+  });
+  it("can show complete energy even if a separate label value is unavailable", () => {
+    const r = recipe();
+    const b = Object.fromEntries(
+      r.ingredients.map((i) => [
+        i.id,
+        binding({ grams: i.amount, reference: { ...reference, carbs: null } }),
+      ]),
+    );
+    expect(estimateRecipe(r, b, 2).perServing).toMatchObject({ energyKcal: 84, carbs: null });
   });
   it("does not publish a total or a successful goal with unknown ingredients", () => {
     const r = recipe(),
@@ -137,7 +162,7 @@ describe("portion, quantity and precision", () => {
     const r = recipe();
     r.ingredients = r.ingredients.slice(0, 1);
     r.ingredients[0].amount = 0;
-    expect(estimateRecipe(r, {}, 2).total.carbs).toBe(0);
+    expect(estimateRecipe(r, {}, 2).total).toMatchObject({ carbs: 0, energyKcal: 0 });
   });
   it("uses full precision at the user's voluntary recipe threshold", () => {
     expect(compareLimit(10.001, 10)).toBe("above");
@@ -155,6 +180,34 @@ describe("portion, quantity and precision", () => {
     expect(estimateRecipe(r, b, 2).total.carbs).toBe(15);
     expect(estimateRecipe(r, alt, 2).total.carbs).toBe(11);
     expect(JSON.stringify(r)).toBe(before);
+  });
+  it("creates a separate valid local draft with only the selected ingredient changed", () => {
+    const r = recipe(),
+      original = structuredClone(r),
+      id = r.ingredients[0].id;
+    const substitute = binding({
+      grams: 300,
+      reference: { ...reference, name: "Syntetisk ersattare" },
+    });
+    const draft = recipeSubstitutionDraft(r, id, substitute)!;
+    expect(draft.ingredients[0]).toEqual({
+      id,
+      name: "Syntetisk ersattare",
+      amount: 300,
+      unit: "g",
+    });
+    expect(draft.ingredients[1]).toEqual(original.ingredients[1]);
+    expect(draft.steps).toEqual(original.steps);
+    draft.steps[0].text = "Only in the unsaved draft";
+    expect(r).toEqual(original);
+    for (const invalid of [
+      { grams: null },
+      { confirmed: false },
+      { weighedForm: "cooked" as const },
+    ]) {
+      expect(recipeSubstitutionDraft(r, id, { ...substitute, ...invalid })).toBeNull();
+    }
+    expect(recipeSubstitutionDraft(r, crypto.randomUUID(), substitute)).toBeNull();
   });
   it("hands Chef a culinary request, not a health profile, goal or numeric nutrition claim", () => {
     const prompt = substitutionPrompt("pasta", "squash", 300, 2);
@@ -184,12 +237,15 @@ describe("audited public source contract", () => {
     );
   });
   it("preserves source values and record provenance without an external request", () => {
-    expect(referenceFoods).toHaveLength(19);
+    expect(referenceFoods).toHaveLength(41);
     const tomato = referenceFoods.find((r) => r.id === "slv:364")!;
+    expect(tomato.energyKcal).toBe(18);
     expect(tomato.carbs).toBe(2.6);
     expect(tomato.fiber).toBe(1.3);
     expect(tomato.convention).toBe("EU");
     expect(tomato.source.kind).toBe("slv");
+    expect(referenceFoods.find((r) => r.id === "slv:846")?.form).toBe("cooked");
+    expect(referenceFoods.find((r) => r.id === "slv:845")?.form).toBe("dry");
   });
   it("verifies all imported record hashes and per-100g edible units", () => {
     for (const record of snapshot.records) {
@@ -201,10 +257,35 @@ describe("audited public source contract", () => {
       expect(() => parseSlvRecord(record, snapshot)).not.toThrow();
     }
   });
+  it("suggests a sourced alternative only for curated records with known carb values", () => {
+    const pasta = referenceFoods.find((r) => r.id === "slv:845")!;
+    expect(suggestedSwap(pasta)?.id).toBe("slv:362");
+    expect(suggestedSwap({ ...pasta, carbs: null })).toBeNull();
+    expect(suggestedSwap({ ...reference, id: pasta.id })).toBeNull();
+    expect(suggestedSwap(referenceFoods.find((r) => r.id === "slv:364"))).toBeNull();
+  });
   it("does not turn a missing source nutrient into zero", () => {
     const original = snapshot.records[0];
-    const r = { ...original, nutrients: original.nutrients.filter((n) => n.euroFIRkod !== "CHO") };
-    expect(parseSlvRecord(r, snapshot).carbs).toBeNull();
+    const r = {
+      ...original,
+      nutrients: original.nutrients.filter((n) => !["CHO", "ENERC"].includes(n.euroFIRkod)),
+    };
+    expect(parseSlvRecord(r, snapshot)).toMatchObject({ carbs: null, energyKcal: null });
+  });
+  it("rejects an energy record in kJ and inconsistent portion basis or duplicates", () => {
+    const original = snapshot.records.find((r) => r.id === 364)!;
+    const energy = original.nutrients.find((n) => n.euroFIRkod === "ENERC")!;
+    expect(energy?.enhet).toBe("kcal");
+    const others = original.nutrients.filter((n) => n !== energy);
+    for (const alternative of [{ enhet: "kJ" }, { viktGram: 50 }, { matrisenhetkod: "UNKNOWN" }]) {
+      expect(() =>
+        parseSlvRecord(
+          { ...original, nutrients: [...others, { ...energy, ...alternative }] },
+          snapshot,
+        ),
+      ).toThrow();
+    }
+    expect(() => parseSlvRecord({ ...original, nutrients: [energy, energy] }, snapshot)).toThrow();
   });
   it("has no persistence, provider call, household or tracking integration", () => {
     const s = readFileSync("src/features/nutrition/NutritionPanel.tsx", "utf8");
