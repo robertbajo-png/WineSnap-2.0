@@ -42,10 +42,10 @@ export function nutritionBrowserRequest(value, method) {
   return pantryBrowserRequest(value, method);
 }
 
-function nutritionFixture(session, anon) {
+function nutritionFixture(session, anon, relay = fetch) {
   const current = session.user.id;
   const request = (path, { method = "GET", body } = {}) =>
-    fetch(ownedApi + path, {
+    relay(ownedApi + path, {
       method,
       headers: {
         apikey: anon,
@@ -106,14 +106,30 @@ function nutritionFixture(session, anon) {
   };
 }
 
-export async function acceptInstalledNutrition(
-  keys,
-  { previous, remember, artifactDirectory, progress },
-) {
+export function acceptInstalledNutrition(keys, options) {
+  return runAcceptance(keys, options);
+}
+
+const rehearsalApi = "http://127.0.0.1:54323";
+
+export function rehearseNutritionAcceptance(keys, options, rehearsal) {
+  const base = new URL(rehearsal.base);
+  assert.match(base.origin, /^http:\/\/127\.0\.0\.1:\d{4,5}$/);
+  assert.equal(base.href, base.origin + "/");
+  assert.ok(![ownedApp, ownedApi, rehearsalApi, "http://127.0.0.1:8026"].includes(base.origin));
+  assert.equal(typeof rehearsal.relay, "function");
+  assert.equal(typeof rehearsal.relayWeb, "function");
+  assert.equal(typeof rehearsal.browser?.newContext, "function");
+  return runAcceptance(keys, options, rehearsal);
+}
+
+async function runAcceptance(keys, { previous, remember, artifactDirectory, progress }, rehearsal) {
   validateOwnedKeys(keys);
   assert.equal(typeof remember, "function");
   assert.equal(typeof progress, "function");
-  const options = { planningOnly: true };
+  const options = { planningOnly: true, relay: rehearsal?.relay };
+  const base = rehearsal?.base ?? ownedApp;
+  const anon = ownedToken(keys, "anon");
   const report = {
     completed: false,
     cleanupCompleted: false,
@@ -128,7 +144,7 @@ export async function acceptInstalledNutrition(
   await mkdir(artifactDirectory, { recursive: true });
   const directory = await lstat(artifactDirectory);
   assert.ok(directory.isDirectory() && !directory.isSymbolicLink());
-  let created, session, browser;
+  let created, session, browser, context;
   try {
     if (previous) await ownedBrowserFixture(keys, "absent", previous, undefined, options);
     await ownedBrowserFixture(
@@ -142,45 +158,110 @@ export async function acceptInstalledNutrition(
       options,
     );
     const password = ownedBrowserPassword(keys, created.run);
-    const { chromium } = await import(
-      pathToFileURL(
-        join(
-          process.env.USERPROFILE,
-          ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs",
-        ),
-      ).href
-    );
-    browser = await chromium.launch({ headless: true, args: ["--disable-background-networking"] });
-    const context = await browser.newContext({
+    if (!rehearsal) {
+      const { chromium } = await import(
+        pathToFileURL(
+          join(
+            process.env.USERPROFILE,
+            ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs",
+          ),
+        ).href
+      );
+      browser = await chromium.launch({
+        headless: true,
+        args: ["--disable-background-networking"],
+      });
+    }
+    context = await (rehearsal?.browser ?? browser).newContext({
       viewport: { width: 390, height: 844 },
       serviceWorkers: "block",
     });
     await context.addInitScript(() => localStorage.setItem("lang", "sv"));
     await context.route("**/*", async (route) => {
       const request = route.request();
-      const decision = nutritionBrowserRequest(request.url(), request.method());
-      if (decision === "web" || decision === "preflight") return route.continue();
       try {
+        const url = new URL(request.url());
+        const path = url.pathname + url.search;
+        const method = request.method();
+        const mapped =
+          !rehearsal || url.username || url.password
+            ? url.href
+            : url.origin === base
+              ? ownedApp + path
+              : url.origin === rehearsalApi
+                ? ownedApi + path
+                : "invalid";
+        const decision = nutritionBrowserRequest(mapped, method);
+        if (decision === "web") {
+          if (!rehearsal) return route.continue();
+          const response = await rehearsal.relayWeb(path, method);
+          if (response.headers.location)
+            assert.equal(new URL(response.headers.location, base).origin, base);
+          return await route.fulfill(response);
+        }
+        const cors = { "access-control-allow-origin": base };
+        if (decision === "preflight") {
+          if (!rehearsal) return route.continue();
+          return await route.fulfill({
+            status: 204,
+            headers: {
+              ...cors,
+              "access-control-allow-headers": "*",
+              "access-control-allow-methods": "GET,POST,OPTIONS",
+            },
+          });
+        }
+        async function forward(incoming, token = anon) {
+          if (!rehearsal) {
+            const response = await route.fetch({ maxRedirects: 0 });
+            return {
+              status: response.status(),
+              json: () => response.json(),
+              reply: () => route.fulfill({ response }),
+            };
+          }
+          assert.equal(url.origin, rehearsalApi);
+          assert.equal(incoming.apikey, "sb_publishable_runtime_check_not_a_real_key");
+          const headers = Object.fromEntries(
+            Object.entries(incoming).filter(([name]) =>
+              ["accept", "prefer", "range", "range-unit", "content-type"].includes(name),
+            ),
+          );
+          const response = await rehearsal.relay(ownedApi + path, {
+            method,
+            headers: { ...headers, apikey: anon, authorization: `Bearer ${token}` },
+            body: request.postData() ?? undefined,
+          });
+          report.isolatedBrowserRequests = (report.isolatedBrowserRequests ?? 0) + 1;
+          return {
+            status: response.status,
+            json: () => response.clone().json(),
+            reply: async () =>
+              route.fulfill({
+                status: response.status,
+                headers: { ...Object.fromEntries(response.headers), ...cors },
+                body: Buffer.from(await response.arrayBuffer()),
+              }),
+          };
+        }
         if (decision === "login" && !session) {
           const body = request.postDataJSON();
           if (body?.email === created.email && body?.password === password) {
-            const response = await route.fetch({ maxRedirects: 0 });
-            if (response.status() === 200) {
+            const response = await forward(await request.allHeaders());
+            if (response.status === 200) {
               const result = await response.json();
               assertFixtureOwner(result.user, created);
               assert.match(result.access_token, /^[A-Za-z0-9_.-]+$/);
               session = { user: result.user, access_token: result.access_token };
-              return await route.fulfill({ response });
+              return await response.reply();
             }
           }
-        } else if (
-          decision === "api" &&
-          session &&
-          (await request.allHeaders()).authorization === `Bearer ${session.access_token}`
-        ) {
-          const response = await route.fetch({ maxRedirects: 0 });
-          if (response.status() < 300 || response.status() >= 400)
-            return await route.fulfill({ response });
+        } else if (decision === "api" && session) {
+          const incoming = await request.allHeaders();
+          if (incoming.authorization === `Bearer ${session.access_token}`) {
+            const response = await forward(incoming, session.access_token);
+            if (response.status < 300 || response.status >= 400) return await response.reply();
+          }
         }
       } catch {
         /* Never report request headers or authentication bodies. */
@@ -193,17 +274,17 @@ export async function acceptInstalledNutrition(
     page.on("pageerror", () => report.pageErrors++);
     report.phase = "nutrition_fixture_login";
     progress(report.phase);
-    await page.goto(ownedApp + "/login", { waitUntil: "networkidle" });
+    await page.goto(base + "/login", { waitUntil: "networkidle" });
     await page.locator("#email").fill(created.email);
     await page.locator("#password").fill(password);
     await page.getByRole("button", { name: "Logga in", exact: true }).click();
-    await page.waitForURL(ownedApp + "/");
+    await page.waitForURL(base + "/");
     assert.ok(session);
     report.fixtureBrowserLoginVerified = true;
     await acceptRecipeNutrition({
       page,
-      base: ownedApp,
-      fixture: nutritionFixture(session, ownedToken(keys, "anon")),
+      base,
+      fixture: nutritionFixture(session, anon, rehearsal?.relay),
       report,
       progress,
       async capture(name, width) {
@@ -225,6 +306,7 @@ export async function acceptInstalledNutrition(
       ? error.name
       : "Error";
   } finally {
+    await context?.close().catch(() => undefined);
     await browser?.close().catch(() => undefined);
     if (created) {
       try {

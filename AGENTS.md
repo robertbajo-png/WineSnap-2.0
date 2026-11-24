@@ -38,7 +38,9 @@ run passed known/missing values, weighed changes, portion scaling, cancellation
 and explicit version save with the original week plan intact. The exact-image
 DEV-07 rollback passed 11 isolated browser checks; all 831 script tests passed.
 The guarded `NutritionUpdate` and installed synthetic `NutritionAccept` are
-prepared, not executed. Next: await approval, then follow
+prepared, not executed against the installation. The `NutritionAccept`
+workflow itself passed its isolated synthetic login, five browser cases and
+verified cleanup. Next: await approval, then follow
 `docs/owned-nutrition-local-update.md` for fresh backup/restore, web-only update
 and installed acceptance. DEV-07 remains installed. Keep the public connector
 paused and do not touch old production or the abandoned hosted test.

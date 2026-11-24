@@ -323,6 +323,17 @@ only the web container, preserves the installed UI/origin and checks the other
 service IDs and start times. It reverts to the previous web image on a failed
 replacement check, without replaying SQL or restoring over live data.
 
+The actual `NutritionAccept` fixture and browser code was then rehearsed
+with the networkless DEV-08 candidate and an isolated GoTrue/PostgREST
+database. One tagged test account signed in; all five recipe cases passed
+over 40 relayed browser requests with no blocked requests or page errors.
+Auth deletion and absence of dependent recipe, version, plan and cook rows
+were verified before the temporary database was removed. The follow-up
+102 focused script tests also passed, including rejection of the installed
+and public URLs for the rehearsal. The synthetic report is in
+`dist/owned-nutrition-accept-rehearsal/status.json`; it is not installed
+acceptance.
+
 Next: **await explicit local installation approval**. Then run the fresh
 archive, isolated restore, web-only update and installed synthetic browser
 acceptance in the order in the [DEV-08 delivery runbook](owned-nutrition-local-update.md).

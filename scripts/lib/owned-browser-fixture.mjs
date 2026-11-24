@@ -87,7 +87,7 @@ export async function ownedBrowserFixture(
   assert.equal(typeof pantryPeer, "boolean");
   assert.ok(!pantryOnly || !planningOnly);
   assert.ok(!pantryPeer || (pantryOnly && action === "prepare"));
-  assert.ok(relay === undefined || (pantryOnly && typeof relay === "function"));
+  assert.ok(relay === undefined || ((pantryOnly || planningOnly) && typeof relay === "function"));
   const kitchenOnly = planningOnly || pantryOnly;
   if (kitchenOnly) {
     assert.ok(!demo && !cleanupImages && !cleanupMeals && !cleanupMemory);

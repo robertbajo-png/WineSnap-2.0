@@ -16,6 +16,12 @@ recipe revisions and existing pinned plans, stock and diners. It did not stop
 or change the running installation. See the [development plan](development-plan.md)
 for the feature and regression evidence.
 
+The DEV-08 rehearsal also runs the `NutritionAccept` browser journey and
+fixture lifecycle against disposable GoTrue/REST. The separate report in
+`dist/owned-nutrition-accept-rehearsal/status.json` must show the synthetic
+login, five successful checks and verified deletion of the account and its
+dependent rows. This is preparation for, not a substitute for, step 4 below.
+
 Confirm the candidate is a clean reviewed revision and current quality checks
 pass. Recheck the running app, the exact retained DEV-07 image and paused
 tunnel locally. The DEV-07 ledger and catalog must already have all 40

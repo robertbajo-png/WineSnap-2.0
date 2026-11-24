@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ownedApi, ownedApp } from "./owned-backend.mjs";
-import { nutritionBrowserRequest } from "./owned-nutrition-accept.mjs";
+import { nutritionBrowserRequest, rehearseNutritionAcceptance } from "./owned-nutrition-accept.mjs";
 
 describe("installed DEV-08 acceptance boundaries", () => {
   it.each([
@@ -24,6 +24,29 @@ describe("installed DEV-08 acceptance boundaries", () => {
     ["not a URL", "GET", "blocked"],
   ])("restricts %s %s to %s", (value, method, result) => {
     expect(nutritionBrowserRequest(value, method)).toBe(result);
+  });
+
+  it.each([
+    ownedApp,
+    ownedApi,
+    "http://127.0.0.1:54323",
+    "http://127.0.0.1:8026",
+    "http://localhost:46119",
+    "https://winesnap.boleoai.se",
+    "http://127.0.0.1:46119/path",
+  ])("refuses to run the rehearsal on %s before creating a fixture", (base) => {
+    expect(() =>
+      rehearseNutritionAcceptance(
+        null,
+        {},
+        {
+          base,
+          relay() {},
+          relayWeb() {},
+          browser: { newContext() {} },
+        },
+      ),
+    ).toThrow();
   });
 
   it("requires a paused tunnel, marked image and complete ledger before creating fixtures", () => {

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { isolatedPlanningBackend } from "./lib/isolated-planning-backend.mjs";
 import { acceptPantryStock } from "./lib/pantry-database-browser.mjs";
 import { createPlanningDatabaseFixture } from "./lib/planning-database-browser.mjs";
@@ -116,6 +116,35 @@ try {
   const deniedBeforeRehearsal = deniedLoopback;
   await backend.boot();
   assert.equal(report.isolatedMigrationsApplied, stage === "dev06" ? 38 : 40);
+  report.phase = "start_disposable_candidate";
+  const nextContainer = await backend.replaceRehearsalWeb(nextImage);
+  if (nutrition) {
+    const { rehearseNutritionAcceptance } = await import("./lib/owned-nutrition-accept.mjs");
+    const { keys, relay } = backend.pantryFixtureTransport();
+    let remembered = 0;
+    report.nutritionAcceptanceRehearsal = await rehearseNutritionAcceptance(
+      keys,
+      {
+        async remember() {
+          remembered++;
+        },
+        artifactDirectory: fileURLToPath(
+          new URL("../dist/owned-nutrition-accept-rehearsal", import.meta.url),
+        ),
+        progress(phase) {
+          report.phase = `acceptance_rehearsal_${phase}`;
+        },
+      },
+      { browser, base, relay, relayWeb: backend.requestWeb },
+    );
+    const verified = report.nutritionAcceptanceRehearsal;
+    assert.equal(remembered, 1);
+    assert.ok(
+      verified.completed && verified.fixtureBrowserLoginVerified && verified.cleanupCompleted,
+    );
+    assert.equal(verified.passed.length, 5);
+    report.passed.push("installed_acceptance_code_verified_synthetic_login_save_and_cleanup");
+  }
   const fixture = await createPlanningDatabaseFixture({
     backend,
     base,
@@ -161,7 +190,6 @@ try {
   }
   const title = "Syntetiskt recept för återgångsprov";
   report.phase = "candidate_web_save";
-  const nextContainer = await backend.replaceRehearsalWeb(nextImage);
   const candidate = await pageForImage(false);
   const { page } = candidate;
   const buttons = (screen) => (name) =>
