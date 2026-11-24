@@ -8,14 +8,17 @@ import { isolatedPlanningBackend } from "./lib/isolated-planning-backend.mjs";
 import { acceptPantryStock } from "./lib/pantry-database-browser.mjs";
 import { createPlanningDatabaseFixture } from "./lib/planning-database-browser.mjs";
 import { planningMigration } from "./lib/owned-planning-preflight.mjs";
+import { acceptRecipeNutrition } from "./lib/recipe-nutrition-browser.mjs";
 
 const tag = process.argv[2];
 assert.ok(process.platform === "win32" && process.argv.length === 3);
-assert.match(tag, /^winesnap-planning-rehearsal:dev0[67]-[a-f0-9]{7,40}$/);
-const pantry = tag.startsWith("winesnap-planning-rehearsal:dev07-");
-const scope = { pantry };
+const stage = tag?.match(/^winesnap-planning-rehearsal:(dev0[678])-[a-f0-9]{7,40}$/)?.[1];
+assert.ok(stage);
+const pantry = stage === "dev07";
+const nutrition = stage === "dev08";
+const scope = { pantry, nutrition };
 const report = {
-  scope: pantry ? "dev07_isolated_web_rollback" : "dev06_isolated_web_rollback",
+  scope: `${stage}_isolated_web_rollback`,
   syntheticAccountsOnly: true,
   installedAppTouched: false,
   productionTouched: false,
@@ -30,8 +33,8 @@ const report = {
   passed: [],
 };
 const backend = isolatedPlanningBackend(report, {
-  meals: pantry,
-  throughMigration: pantry ? undefined : planningMigration,
+  meals: pantry || nutrition,
+  throughMigration: stage === "dev06" ? planningMigration : undefined,
 });
 let browser, denyProxy;
 const closeServer = (server) =>
@@ -112,7 +115,7 @@ try {
   report.browserBackstopVerified = true;
   const deniedBeforeRehearsal = deniedLoopback;
   await backend.boot();
-  assert.equal(report.isolatedMigrationsApplied, pantry ? 40 : 38);
+  assert.equal(report.isolatedMigrationsApplied, stage === "dev06" ? 38 : 40);
   const fixture = await createPlanningDatabaseFixture({
     backend,
     base,
@@ -120,7 +123,7 @@ try {
     key: "sb_publishable_runtime_check_not_a_real_key",
     relayWeb: backend.requestWeb,
     report,
-    pantry,
+    pantry: pantry || nutrition,
   });
   async function pageForImage(legacy, account = fixture.owner) {
     const stage = legacy ? "previous_web" : "candidate_web";
@@ -179,8 +182,11 @@ try {
     await button("Spara vecka").click();
     await screen.getByText("Veckoplanen sparades.", { exact: true }).waitFor();
   }
-  let recipe;
-  if (pantry) {
+  let recipe, nutritionReceipt;
+  if (nutrition) {
+    nutritionReceipt = await acceptRecipeNutrition({ page, base, fixture, report });
+    recipe = nutritionReceipt.originalVersion;
+  } else if (pantry) {
     recipe = await acceptPantryStock({
       page,
       base,
@@ -208,6 +214,7 @@ try {
   assert.equal(plan.document.meals[0].recipeVersionId, recipe.id);
   assert.equal(plan.document.meals[0].servings, 3);
   if (pantry) assert.equal(plan.document.meals[0].dinerIds.length, 1);
+  else if (nutrition) assert.deepEqual(plan, nutritionReceipt.plan);
   else assert.equal(plan.document.manualItems[0].item.name, "Syntetisk inköpsrad");
   report.passed.push("candidate_image_saved_week_plan_through_browser");
   await candidate.context.close();
@@ -215,6 +222,26 @@ try {
   report.phase = "capture_before_web_replacement";
   await fixture.refreshFixtureLogin(fixture.peer);
   const peerRecipe = await fixture.recipe(fixture.peer, "Syntetiskt recept för annat konto");
+  let peerDiner;
+  if (nutrition) {
+    peerDiner = randomUUID();
+    const inserted = await backend.admin("/kitchen_diners", {
+      method: "POST",
+      body: JSON.stringify({
+        id: peerDiner,
+        user_id: fixture.peer.id,
+        document: { name: "Syntetisk matgäst", kind: "adult", preferences: [] },
+      }),
+    });
+    assert.equal(inserted.status, 201);
+    const item = await fixture.rest(fixture.owner, "/rpc/kitchen_save_pantry_item", {
+      _item_id: randomUUID(),
+      _expected_revision: 0,
+      _request_id: randomUUID(),
+      _item: { name: "Tomater", unit: "g", amount: 400, confirmed: true },
+    });
+    assert.equal(item.status, 200);
+  }
   const peerSave = await fixture.rest(fixture.peer, "/rpc/kitchen_save_week_plan", {
     _week_start: plan.week_start,
     _expected_revision: 0,
@@ -222,7 +249,13 @@ try {
     _document: {
       weekStart: plan.week_start,
       meals: [
-        { date: plan.week_start, meal: "dinner", recipeVersionId: peerRecipe.id, servings: 2 },
+        {
+          date: plan.week_start,
+          meal: "dinner",
+          recipeVersionId: peerRecipe.id,
+          servings: 2,
+          ...(peerDiner ? { dinerIds: [peerDiner] } : {}),
+        },
       ],
       manualItems: [],
       shoppingEdits: [],
@@ -236,6 +269,12 @@ try {
     for (const table of ["kitchen_pantry", "kitchen_pantry_consumption", "cooking_sessions"]) {
       assert.equal(before.relations.find((relation) => relation.table === table)?.rows, 1);
     }
+  }
+  if (nutrition) {
+    const rows = (table) => before.relations.find((relation) => relation.table === table)?.rows;
+    assert.equal(rows("kitchen_recipe_versions"), 3);
+    assert.equal(rows("kitchen_diners"), 1);
+    assert.equal(rows("kitchen_pantry"), 1);
   }
   function verifySnapshot(after, { afterNormalUse = false, editedPlan = false } = {}) {
     const key = ({ schema, table }) => schema + "." + table;
@@ -276,7 +315,32 @@ try {
   verifySnapshot(await backend.planSnapshot(scope));
   report.passed.push("web_image_replacement_did_not_change_plans_or_schema");
   const fallback = await pageForImage(true);
-  if (pantry) {
+  if (nutrition) {
+    report.phase = "previous_web_reads_new_recipe_and_pinned_plan";
+    await fallback.page.goto(previousBase + "/kitchen", { waitUntil: "domcontentloaded" });
+    await buttons(fallback.page)(new RegExp(nutritionReceipt.title)).click();
+    await fallback.page
+      .getByRole("heading", { name: nutritionReceipt.title, exact: true })
+      .waitFor();
+    await fallback.page.getByText("Squash", { exact: true }).waitFor();
+    const versionsResponse = await fixture.rest(
+      fixture.owner,
+      `/kitchen_recipe_versions?select=*&recipe_id=eq.${recipe.recipeId}&order=revision.asc`,
+    );
+    assert.equal(versionsResponse.status, 200);
+    const versions = await versionsResponse.json();
+    assert.equal(versions.length, 2);
+    assert.deepEqual(versions[1], nutritionReceipt.savedVersion);
+    await fallback.page.goto(previousBase + "/kitchen#plan", { waitUntil: "domcontentloaded" });
+    await buttons(fallback.page)("Inköpslista").click();
+    await fallback.page.getByText("Pasta", { exact: true }).waitFor();
+    await fallback.page.getByText("300 g", { exact: true }).waitFor();
+    assert.equal(await fallback.page.getByText("Squash", { exact: true }).count(), 0);
+    assert.deepEqual(await planFor(fixture.owner), plan);
+    await fallback.page.goto(previousBase + "/kitchen#pantry", { waitUntil: "domcontentloaded" });
+    await fallback.page.getByText("Tomater", { exact: true }).waitFor();
+    report.passed.push("exact_previous_image_read_new_version_pinned_shopping_and_stock");
+  } else if (pantry) {
     report.phase = "previous_web_refuses_incompatible_diner_plan";
     await fallback.page.goto(previousBase + "/kitchen#plan", { waitUntil: "domcontentloaded" });
     // DEV-06's strict meal schema cannot decode DEV-07's dinerIds field.
@@ -328,13 +392,25 @@ try {
     verifySnapshot(await backend.planSnapshot(scope), { afterNormalUse: true, editedPlan: true });
     report.passed.push("previous_image_edit_of_compatible_plan_preserved_diners_stock_and_receipt");
   }
+  if (nutrition) {
+    const legacyPeer = await pageForImage(true, fixture.peer);
+    report.phase = "previous_web_reads_existing_diner_plan";
+    await legacyPeer.page.goto(previousBase + "/kitchen#plan", { waitUntil: "domcontentloaded" });
+    await legacyPeer.page
+      .getByText("Matgäster: Syntetisk matgäst", { exact: true })
+      .waitFor({ timeout: 60000 });
+    assert.deepEqual(await planFor(fixture.peer), peerPlan);
+    await legacyPeer.context.close();
+    verifySnapshot(await backend.planSnapshot(scope), { afterNormalUse: true });
+    report.passed.push("previous_image_read_diner_plan_without_changing_rows_or_catalog");
+  }
   report.phase = "verify_installed_image_and_network_untouched";
   assert.deepEqual(await backend.inspectPreviousOwnedWeb(scope), previous);
   assert.equal(report.externalRequests, 0);
   assert.equal(report.mutations, 0);
   assert.equal(report.fixtureErrors, 0);
   assert.equal(report.pageErrors, 0);
-  assert.equal(report.realFixtureLogins, pantry ? 3 : 2);
+  assert.equal(report.realFixtureLogins, pantry || nutrition ? 3 : 2);
   assert.equal(deniedLoopback, deniedBeforeRehearsal);
   report.passed.push("installed_web_untouched_and_no_browser_traffic_escaped_fixture");
   report.plansVerified = 2;

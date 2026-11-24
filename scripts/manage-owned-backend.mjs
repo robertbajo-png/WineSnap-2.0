@@ -44,6 +44,12 @@ import {
   requirePantryRecovery,
   requirePantryUpdate,
 } from "./lib/owned-pantry-preflight.mjs";
+import {
+  nutritionRollbackTag,
+  nutritionWebLabel,
+  replaceNutritionWeb,
+  requireNutritionLedger,
+} from "./lib/owned-nutrition-delivery.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -56,6 +62,9 @@ assert.ok(
     "Verify",
     "Backup",
     "Update",
+    "NutritionUpdate",
+    "NutritionAccept",
+    "NutritionCleanup",
     "Accept",
     "ScanAccept",
     "Features",
@@ -82,6 +91,11 @@ const planningUpdate = process.env.WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION ===
 const pantryBackup = process.env.WINESNAP_OWNED_PANTRY_BACKUP;
 const pantryUpdate = pantryBackup !== undefined;
 const pantryAcceptance = ["PantryAccept", "PantryCleanup"].includes(action);
+const nutritionUpdate = action === "NutritionUpdate";
+const nutritionAcceptance = ["NutritionAccept", "NutritionCleanup"].includes(action);
+const nutritionBackup = process.env.WINESNAP_OWNED_NUTRITION_BACKUP;
+assert.equal(nutritionBackup !== undefined, nutritionUpdate);
+if (nutritionUpdate) assert.match(nutritionBackup, pantryBackupPattern);
 if (pantryUpdate) {
   assert.match(pantryBackup, pantryBackupPattern);
   assert.equal(planningUpdate, false);
@@ -319,6 +333,7 @@ async function start(
     publicOrigin,
     pilotUiLabel,
     pantryLabel,
+    nutritionLabel,
   } = {},
 ) {
   let found = await existing(service);
@@ -340,6 +355,7 @@ async function start(
     ...(publicOrigin ? ["--label", `winesnap.public-origin=${publicOrigin}`] : []),
     ...(pilotUiLabel ? ["--label", `winesnap.pilot-ui=${pilotUiLabel}`] : []),
     ...(pantryLabel ? ["--label", `winesnap.pantry=${pantryLabel}`] : []),
+    ...(nutritionLabel ? ["--label", `winesnap.recipe-nutrition=${nutritionLabel}`] : []),
     "--network",
     ownedNetwork,
     "--restart",
@@ -466,6 +482,170 @@ async function verify({ syncWebKeys = true } = {}) {
   report.emailDelivery = "local-inbox-only";
 }
 
+async function buildOwnedWeb({ originSettings, pilotUi, pantryEnabled, tag, webOnly = false }) {
+  const flags = {
+    ...originSettings.build,
+    VITE_OWNED_BACKEND_ENABLED: "true",
+    VITE_SUPABASE_URL: ownedApi,
+    VITE_SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
+    VITE_WINE_IMAGE_PROXY_ENABLED: "true",
+    VITE_LOCAL_AI_ENABLED: "true",
+    VITE_COOKING_CORE_ENABLED: "true",
+    VITE_AI_CHEF_ENABLED: "true",
+    VITE_MEALS_ENABLED: "true",
+    VITE_PANTRY_ENABLED: pantryEnabled ? "true" : "false",
+    VITE_RECIPE_NUTRITION_ENABLED: "true",
+    VITE_PILOT_UI_ENABLED: pilotUi.enabled ? "true" : "false",
+    VITE_PRIVACY_CONTROLS_ENABLED: "true",
+    VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
+    VITE_PRIVACY_SUPPLIERS_VERIFIED: "false",
+  };
+  await command(
+    [
+      "build",
+      ...(webOnly ? ["--pull=false", "--target", "runtime"] : []),
+      "--tag",
+      tag,
+      ...Object.entries(flags).flatMap(([key, value]) => ["--build-arg", `${key}=${value}`]),
+      "--file",
+      "Dockerfile",
+      ".",
+    ],
+    undefined,
+    {},
+    600000,
+  );
+}
+
+async function startOwnedWeb(image, { originSettings, pilotUi, pantryEnabled, nutritionLabel }) {
+  await start("web", image, {
+    user: "node",
+    publicOrigin: originSettings.origin,
+    pilotUiLabel: pilotUi.label,
+    pantryLabel: pantryEnabled ? pantryWebLabel : undefined,
+    nutritionLabel,
+    memory: "768m",
+    port: "5212:3000",
+    env: {
+      SUPABASE_URL: "http://winesnap-owned-gateway:8080",
+      SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
+      WINESNAP_OWNED_BACKEND_ENABLED: "true",
+      WINESNAP_LOCAL_AI_ENABLED: "true",
+      WINESNAP_LOCAL_OPERATIONS_ENABLED: "true",
+      WINESNAP_COOKING_CORE_ENABLED: "true",
+      WINESNAP_AI_CHEF_ENABLED: "true",
+      WINESNAP_MEALS_ENABLED: "true",
+      WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED: "true",
+      NODE_OPTIONS: "--max-old-space-size=384",
+    },
+  });
+  await wait(async () =>
+    assert.equal(
+      (await fetch(ownedApp + "/api/health", { signal: AbortSignal.timeout(3000) })).status,
+      200,
+    ),
+  );
+}
+
+async function updateNutritionWeb(previous, { originSettings, pilotUi }) {
+  assert.equal(previous?.Config.Labels["winesnap.pantry"], pantryWebLabel);
+  assert.equal(previous.Config.Labels["winesnap.recipe-nutrition"], undefined);
+  assert.ok(previous.State.Running);
+  const sources = await readMigrationSources();
+  async function verifyLedger() {
+    report.nutritionLedger = requireNutritionLedger(
+      sources,
+      JSON.parse(await sql(pantryLedgerQuery)),
+      keys.installationId,
+    );
+  }
+  async function backendSnapshot() {
+    return [...(await installedServices())]
+      .filter(([service]) => service !== name("web"))
+      .map(([service, container]) => {
+        assert.ok(container.State.Running);
+        return [service, container.Id, container.Image, container.State.StartedAt];
+      });
+  }
+  const imageId = async (tag) =>
+    (await command(["image", "inspect", tag, "--format", "{{.Id}}"])).toString().trim();
+  const backend = await backendSnapshot();
+  const guard = async () => {
+    requirePantryRecovery(await readPausedPantryState(), nutritionBackup);
+    assert.equal(await imageId(nutritionRollbackTag(previous.Image)), previous.Image);
+    assert.equal(await imageId("winesnap-owned:local"), previous.Image);
+    assert.deepEqual(await backendSnapshot(), backend);
+    await verifyLedger();
+  };
+  await guard();
+  phase = "nutrition_build";
+  const candidateTag = "winesnap-owned:nutrition-candidate";
+  await buildOwnedWeb({
+    originSettings,
+    pilotUi,
+    pantryEnabled: true,
+    tag: candidateTag,
+    webOnly: true,
+  });
+  const candidate = await imageId(candidateTag);
+  phase = "nutrition_pre_replacement_guard";
+  await replaceNutritionWeb({
+    previous,
+    candidate,
+    guard,
+    readWeb: () => existing("web"),
+    removeWeb: async (id) => {
+      if (!recovering) phase = "nutrition_web_replacement";
+      await command(["rm", "--force", id]);
+    },
+    startWeb: (image, nutritionLabel) =>
+      startOwnedWeb(image, { originSettings, pilotUi, pantryEnabled: true, nutritionLabel }),
+    verifyWeb: async (image, nutritionLabel) => {
+      if (!recovering) phase = "nutrition_web_verification";
+      const web = await existing("web");
+      assert.equal(web?.Image, image);
+      assert.ok(web.State.Running);
+      assert.equal(web.Config.Labels["winesnap.recipe-nutrition"], nutritionLabel);
+      assert.equal(web.Config.Labels["winesnap.pantry"], pantryWebLabel);
+      await verify();
+      assert.deepEqual(await backendSnapshot(), backend);
+      await verifyLedger();
+      await readPausedPantryState();
+    },
+    tagWeb: (image) => command(["image", "tag", image, "winesnap-owned:local"]),
+    recovery(verified) {
+      recovering = true;
+      phase = "nutrition_web_rollback";
+      report.nutritionRollbackVerified = verified;
+    },
+  });
+  report.nutritionWebUpdated = true;
+  report.nutritionServicesUnchanged = true;
+  report.publicTunnelPausedVerified = true;
+}
+
+async function openOwnedKitchenManifest(file) {
+  assert.match(file, /^(?:pantry-browser-(?:owner|peer)|nutrition-browser-owner)-fixture\.json$/);
+  const path = join(homedir(), "WineSnapOwned", file);
+  const { validateBrowserFixture } = await import("./lib/owned-browser-fixture.mjs");
+  let fixture;
+  try {
+    const info = await lstat(path);
+    assert.ok(info.isFile() && !info.isSymbolicLink() && info.size < 16384);
+    fixture = validateBrowserFixture(JSON.parse(await readFile(path, "utf8")));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  return {
+    fixture,
+    remember: (value) =>
+      writeFile(path, JSON.stringify(validateBrowserFixture(value)), {
+        flag: fixture ? "w" : "wx",
+        mode: 0o600,
+      }),
+  };
+}
+
 try {
   let bytes = 0;
   const chunks = [];
@@ -508,6 +688,10 @@ try {
   report.browserPublicOrigin = originSettings.origin || null;
   report.loopbackPortsOnly = true;
   report.localOnly = !originSettings.origin;
+  if (nutritionUpdate) {
+    phase = "nutrition_delivery_guard";
+    await updateNutritionWeb(installedWeb, { originSettings, pilotUi });
+  }
   if (action === "Resume") {
     phase = "resume_existing_installation";
     // Require every exact installed container before starting any of them.
@@ -829,40 +1013,10 @@ try {
       }
     }
     phase = "web_build";
-    let web = await existing("web");
+    const web = await existing("web");
     const pantryEnabled = pantryUpdate || installedPantry === pantryWebLabel;
     if (!web || action === "Update") {
-      const flags = {
-        ...originSettings.build,
-        VITE_OWNED_BACKEND_ENABLED: "true",
-        VITE_SUPABASE_URL: ownedApi,
-        VITE_SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
-        VITE_WINE_IMAGE_PROXY_ENABLED: "true",
-        VITE_LOCAL_AI_ENABLED: "true",
-        VITE_COOKING_CORE_ENABLED: "true",
-        VITE_AI_CHEF_ENABLED: "true",
-        VITE_MEALS_ENABLED: "true",
-        VITE_PANTRY_ENABLED: pantryEnabled ? "true" : "false",
-        VITE_RECIPE_NUTRITION_ENABLED: "true",
-        VITE_PILOT_UI_ENABLED: pilotUi.enabled ? "true" : "false",
-        VITE_PRIVACY_CONTROLS_ENABLED: "true",
-        VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
-        VITE_PRIVACY_SUPPLIERS_VERIFIED: "false",
-      };
-      await command(
-        [
-          "build",
-          "--tag",
-          "winesnap-owned:local",
-          ...Object.entries(flags).flatMap(([key, value]) => ["--build-arg", `${key}=${value}`]),
-          "--file",
-          "Dockerfile",
-          ".",
-        ],
-        undefined,
-        {},
-        600000,
-      );
+      await buildOwnedWeb({ originSettings, pilotUi, pantryEnabled, tag: "winesnap-owned:local" });
       if (pantryUpdate) {
         phase = "pantry_pre_replacement_guard";
         assert.equal((await existing("web"))?.Image, previousPantryImage);
@@ -876,35 +1030,58 @@ try {
       .toString()
       .trim();
     phase = "web_start";
-    await start("web", webImage, {
-      user: "node",
-      publicOrigin: originSettings.origin,
-      pilotUiLabel: pilotUi.label,
-      pantryLabel: pantryEnabled ? pantryWebLabel : undefined,
-      memory: "768m",
-      port: "5212:3000",
-      env: {
-        SUPABASE_URL: "http://winesnap-owned-gateway:8080",
-        SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
-        WINESNAP_OWNED_BACKEND_ENABLED: "true",
-        WINESNAP_LOCAL_AI_ENABLED: "true",
-        WINESNAP_LOCAL_OPERATIONS_ENABLED: "true",
-        WINESNAP_COOKING_CORE_ENABLED: "true",
-        WINESNAP_AI_CHEF_ENABLED: "true",
-        WINESNAP_MEALS_ENABLED: "true",
-        WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED: "true",
-        NODE_OPTIONS: "--max-old-space-size=384",
-      },
-    });
-    await wait(async () =>
-      assert.equal(
-        (await fetch(ownedApp + "/api/health", { signal: AbortSignal.timeout(3000) })).status,
-        200,
-      ),
-    );
+    await startOwnedWeb(webImage, { originSettings, pilotUi, pantryEnabled });
   }
-  phase = "verification";
-  await verify({ syncWebKeys: !pantryAcceptance });
+  if (!nutritionUpdate) {
+    phase = "verification";
+    await verify({ syncWebKeys: !pantryAcceptance && !nutritionAcceptance });
+  }
+  if (nutritionAcceptance) {
+    phase = "nutrition_acceptance_guard";
+    await readPausedPantryState();
+    assert.equal(installedPantry, pantryWebLabel);
+    if (action === "NutritionAccept") {
+      assert.equal(installedWeb?.Config.Labels["winesnap.recipe-nutrition"], nutritionWebLabel);
+    }
+    report.nutritionLedger = requireNutritionLedger(
+      await readMigrationSources(),
+      JSON.parse(await sql(pantryLedgerQuery)),
+      keys.installationId,
+    );
+    const { fixture, remember } = await openOwnedKitchenManifest(
+      "nutrition-browser-owner-fixture.json",
+    );
+    if (action === "NutritionCleanup") {
+      phase = "nutrition_cleanup";
+      if (fixture) {
+        const { ownedBrowserFixture } = await import("./lib/owned-browser-fixture.mjs");
+        const cleaned = await ownedBrowserFixture(keys, "cleanup", fixture, undefined, {
+          planningOnly: true,
+        });
+        assert.ok(cleaned.cleanupCompleted || cleaned.alreadyClean);
+      }
+      report.nutritionCleanupVerified = true;
+    } else {
+      const { acceptInstalledNutrition } = await import("./lib/owned-nutrition-accept.mjs");
+      phase = "nutrition_prepare";
+      report.nutritionAcceptance = await acceptInstalledNutrition(keys, {
+        previous: fixture,
+        remember,
+        artifactDirectory: fileURLToPath(
+          new URL("../dist/owned-nutrition-accept", import.meta.url),
+        ),
+        progress(step) {
+          assert.match(step, /^nutrition_[a-z_]+$/);
+          phase = step;
+        },
+      });
+      assert.ok(
+        report.nutritionAcceptance.completed && report.nutritionAcceptance.cleanupCompleted,
+      );
+    }
+    await readPausedPantryState();
+    report.publicTunnelPausedVerified = true;
+  }
   if (pantryAcceptance) {
     phase = "pantry_acceptance_ledger";
     await readPausedPantryState();
@@ -916,27 +1093,8 @@ try {
     );
     assert.equal(ledger.scope, "already_applied");
     report.pantryLedger = ledger;
-    const { ownedBrowserFixture, validateBrowserFixture } =
-      await import("./lib/owned-browser-fixture.mjs");
-    const readManifest = async (name) => {
-      const path = join(homedir(), "WineSnapOwned", `pantry-browser-${name}-fixture.json`);
-      let fixture;
-      try {
-        const info = await lstat(path);
-        assert.ok(info.isFile() && !info.isSymbolicLink() && info.size < 16384);
-        fixture = validateBrowserFixture(JSON.parse(await readFile(path, "utf8")));
-      } catch (error) {
-        if (error.code !== "ENOENT") throw error;
-      }
-      return {
-        fixture,
-        remember: (value) =>
-          writeFile(path, JSON.stringify(validateBrowserFixture(value)), {
-            flag: fixture ? "w" : "wx",
-            mode: 0o600,
-          }),
-      };
-    };
+    const { ownedBrowserFixture } = await import("./lib/owned-browser-fixture.mjs");
+    const readManifest = (name) => openOwnedKitchenManifest(`pantry-browser-${name}-fixture.json`);
     phase = "pantry_acceptance_manifests";
     const own = await readManifest("owner"),
       peer = await readManifest("peer");

@@ -230,7 +230,10 @@ describe("owned DEV-07 update preflight", () => {
       /phase = "application_migrations";[\s\S]+?guardOwnedPantryBatch\([\s\S]+?requirePantryUpdate\(sources, ledger, keys.installationId\);[\s\S]+?pantryMigrationTransaction\(pending\)/,
     );
     expect(node).toMatch(
-      /report\.pantryRestSchemaVerified = true;[\s\S]+?VITE_PANTRY_ENABLED: pantryEnabled \? "true" : "false"[\s\S]+?phase = "pantry_pre_replacement_guard";[\s\S]+?pantryDeliveryChecks\(previousPantryImage\);[\s\S]+?\["rm", "--force", name\("web"\)\]/,
+      /report\.pantryRestSchemaVerified = true;[\s\S]+?buildOwnedWeb\(\{ originSettings, pilotUi, pantryEnabled,[\s\S]+?phase = "pantry_pre_replacement_guard";[\s\S]+?pantryDeliveryChecks\(previousPantryImage\);[\s\S]+?\["rm", "--force", name\("web"\)\]/,
+    );
+    expect(node).toMatch(
+      /async function buildOwnedWeb\([\s\S]+?VITE_PANTRY_ENABLED: pantryEnabled \? "true" : "false"/,
     );
   });
 });

@@ -11,7 +11,8 @@ import {
 import { finishOwnedInput } from "./owned-process-input.mjs";
 import { recoveryToken } from "./platform-recovery.mjs";
 import { ownedContainerProjection } from "./owned-planning-preflight.mjs";
-import { pantryRollbackTag } from "./owned-pantry-preflight.mjs";
+import { pantryRollbackTag, pantryWebLabel } from "./owned-pantry-preflight.mjs";
+import { nutritionRollbackTag } from "./owned-nutrition-delivery.mjs";
 import { openPlanningWebRelay } from "./planning-web-relay.mjs";
 
 const scope = "planning-database-check";
@@ -566,7 +567,8 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
       assert.ok(webRelay);
       return webRelay.request(path, method);
     },
-    async inspectPreviousOwnedWeb({ pantry = false } = {}) {
+    async inspectPreviousOwnedWeb({ pantry = false, nutrition = false } = {}) {
+      assert.ok(!(pantry && nutrition));
       const name = "winesnap-owned-web";
       const value = JSON.parse(
         await output([
@@ -584,28 +586,25 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
       assert.equal(value.State.Running, true);
       assert.match(value.Id, idPattern);
       assert.match(value.Image, /^sha256:[a-f0-9]{64}$/);
+      if (nutrition) assert.equal(value.Config.Labels["winesnap.pantry"], pantryWebLabel);
+      const retained = nutrition
+        ? nutritionRollbackTag(value.Image)
+        : pantry
+          ? pantryRollbackTag(value.Image)
+          : value.Image;
       assert.equal(
-        await output([
-          "image",
-          "inspect",
-          "--format",
-          "{{.Id}}",
-          pantry ? pantryRollbackTag(value.Image) : value.Image,
-        ]),
+        await output(["image", "inspect", "--format", "{{.Id}}", retained]),
         value.Image,
       );
       return { container: value.Id, image: value.Image };
     },
-    candidateImage(tag, { pantry = false } = {}) {
-      assert.match(
-        tag,
-        pantry
-          ? /^winesnap-planning-rehearsal:dev07-[a-f0-9]{7,40}$/
-          : /^winesnap-planning-rehearsal:dev06-[a-f0-9]{7,40}$/,
-      );
+    candidateImage(tag, { pantry = false, nutrition = false } = {}) {
+      assert.ok(!(pantry && nutrition));
+      const stage = nutrition ? "dev08" : pantry ? "dev07" : "dev06";
+      assert.match(tag, new RegExp(`^winesnap-planning-rehearsal:${stage}-[a-f0-9]{7,40}$`));
       return output(["image", "inspect", "--format", "{{.Id}}", tag]);
     },
-    async planSnapshot({ pantry = false } = {}) {
+    async planSnapshot({ pantry = false, nutrition = false } = {}) {
       const query = await source("config/owned-windows/backup-manifest.sql");
       const manifest = validateOwnedManifest(JSON.parse(await sql(query)));
       const interesting = new Set([
@@ -613,7 +612,7 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
         "public.kitchen_recipes",
         "public.kitchen_recipe_versions",
         "winesnap_local.migrations",
-        ...(pantry
+        ...(pantry || nutrition
           ? [
               "public.kitchen_pantry",
               "public.kitchen_pantry_consumption",

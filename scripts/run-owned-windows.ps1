@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly,
@@ -9,7 +9,8 @@ param(
   [switch]$WaitForBackupLock,
   [switch]$RequirePlanningMigration,
   [switch]$RequirePantryMigration,
-  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedPantryBackup
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedPantryBackup,
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedNutritionBackup
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
@@ -23,6 +24,8 @@ if($WaitForBackupLock -and $Action -ne 'Backup'){throw 'Backup lock waiting is o
 if($RequirePlanningMigration -and ($Action -ne 'Update' -or $PublicOrigin -or $LocalOnly -or $PilotUi)){throw 'DEV-06 requires an explicit Update without origin or UI changes.'}
 if($RequirePantryMigration -and ($Action -ne 'Update' -or $PublicOrigin -or $LocalOnly -or $PilotUi -or $RequirePlanningMigration -or -not $VerifiedPantryBackup)){throw 'DEV-07 requires its own explicit Update and the exact freshly restored backup, without origin or UI changes.'}
 if($VerifiedPantryBackup -and -not $RequirePantryMigration){throw 'The archive is only used for the guarded DEV-07 Update.'}
+if($Action -eq 'NutritionUpdate' -and -not $VerifiedNutritionBackup){throw 'DEV-08 requires the exact freshly restored backup.'}
+if($VerifiedNutritionBackup -and $Action -ne 'NutritionUpdate'){throw 'The archive is only used for the web-only DEV-08 update.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 . (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
@@ -65,7 +68,7 @@ try {
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
-  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
+  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -eq 'NutritionUpdate'){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
   $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $waitMs
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
@@ -129,6 +132,7 @@ try {
   if($AccountIsolationOnly){$start.Environment['WINESNAP_OWNED_ACCOUNT_ISOLATION_ONLY']='1'}
   if($RequirePlanningMigration){$start.Environment['WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION']='1'}
   if($RequirePantryMigration){$start.Environment['WINESNAP_OWNED_PANTRY_BACKUP']=$VerifiedPantryBackup}
+  if($Action -eq 'NutritionUpdate'){$start.Environment['WINESNAP_OWNED_NUTRITION_BACKUP']=$VerifiedNutritionBackup}
   $start.ArgumentList.Add((Join-Path $PSScriptRoot 'manage-owned-backend.mjs'));$start.ArgumentList.Add($Action)
   $phase='owned_backend_operation'
   $process=[Diagnostics.Process]::Start($start)

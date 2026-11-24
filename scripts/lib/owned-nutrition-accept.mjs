@@ -1,0 +1,241 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { lstat, mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { ownedApi, ownedApp, ownedToken, validateOwnedKeys } from "./owned-backend.mjs";
+import {
+  assertFixtureOwner,
+  ownedBrowserFixture,
+  ownedBrowserPassword,
+} from "./owned-browser-fixture.mjs";
+import { pantryBrowserRequest } from "./owned-pantry-accept.mjs";
+import { acceptRecipeNutrition } from "./recipe-nutrition-browser.mjs";
+
+const recipeSave = "/rest/v1/rpc/kitchen_save_recipe";
+const rpcs = new Set([
+  recipeSave,
+  "/rest/v1/rpc/kitchen_save_week_plan",
+  "/rest/v1/rpc/kitchen_access",
+  "/rest/v1/rpc/meals_access",
+  "/rest/v1/rpc/privacy_me_active",
+]);
+
+export function nutritionBrowserRequest(value, method) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return "blocked";
+  }
+  if (method === "OPTIONS") {
+    const decisions = ["GET", "POST"].map((verb) => nutritionBrowserRequest(value, verb));
+    return decisions.some((decision) => ["api", "login"].includes(decision))
+      ? "preflight"
+      : "blocked";
+  }
+  if (url.origin === ownedApi && method === "POST" && url.pathname.startsWith("/rest/")) {
+    return !url.username && !url.password && !url.search && rpcs.has(url.pathname)
+      ? "api"
+      : "blocked";
+  }
+  return pantryBrowserRequest(value, method);
+}
+
+function nutritionFixture(session, anon) {
+  const current = session.user.id;
+  const request = (path, { method = "GET", body } = {}) =>
+    fetch(ownedApi + path, {
+      method,
+      headers: {
+        apikey: anon,
+        Authorization: `Bearer ${session.access_token}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+    });
+  return {
+    owner: current,
+    async recipe(owner, title, _household, ingredient) {
+      assert.equal(owner, current);
+      assert.equal(_household, undefined);
+      const id = randomUUID(),
+        recipeId = randomUUID();
+      const response = await request(recipeSave, {
+        method: "POST",
+        body: {
+          _recipe_id: recipeId,
+          _version_id: id,
+          _expected_revision: 0,
+          _document: {
+            title,
+            description: "Syntetiskt prov av portionsberakning och receptversioner.",
+            servings: 2,
+            totalMinutes: 15,
+            image: "none",
+            sourceNote: "Local synthetic nutrition QA",
+            notes: "",
+            ingredients: [{ id: randomUUID(), ...ingredient, unit: "g" }],
+            steps: [
+              {
+                id: randomUUID(),
+                title: "Teststeg",
+                text: "Syntetiskt matlagningssteg.",
+                timerSeconds: null,
+              },
+            ],
+          },
+        },
+      });
+      assert.equal(response.status, 200);
+      return { id, recipeId };
+    },
+    async rest(owner, path) {
+      assert.equal(owner, current);
+      assert.match(path, /^\/kitchen_(?:recipe_versions|week_plans)\?/);
+      const url = new URL(ownedApi + "/rest/v1" + path);
+      url.searchParams.set("user_id", `eq.${current}`);
+      const response = await request(url.pathname + url.search);
+      assert.equal(response.status, 200);
+      const rows = await response.clone().json();
+      assert.ok(Array.isArray(rows) && rows.every((row) => row.user_id === current));
+      return response;
+    },
+  };
+}
+
+export async function acceptInstalledNutrition(
+  keys,
+  { previous, remember, artifactDirectory, progress },
+) {
+  validateOwnedKeys(keys);
+  assert.equal(typeof remember, "function");
+  assert.equal(typeof progress, "function");
+  const options = { planningOnly: true };
+  const report = {
+    completed: false,
+    cleanupCompleted: false,
+    realAccountsChanged: false,
+    productionTouched: false,
+    hostedTestTouched: false,
+    phase: "nutrition_prepare",
+    passed: [],
+    blockedRequests: 0,
+    pageErrors: 0,
+  };
+  await mkdir(artifactDirectory, { recursive: true });
+  const directory = await lstat(artifactDirectory);
+  assert.ok(directory.isDirectory() && !directory.isSymbolicLink());
+  let created, session, browser;
+  try {
+    if (previous) await ownedBrowserFixture(keys, "absent", previous, undefined, options);
+    await ownedBrowserFixture(
+      keys,
+      "prepare",
+      undefined,
+      async (fixture) => {
+        created = fixture;
+        await remember(fixture);
+      },
+      options,
+    );
+    const password = ownedBrowserPassword(keys, created.run);
+    const { chromium } = await import(
+      pathToFileURL(
+        join(
+          process.env.USERPROFILE,
+          ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs",
+        ),
+      ).href
+    );
+    browser = await chromium.launch({ headless: true, args: ["--disable-background-networking"] });
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: "block",
+    });
+    await context.addInitScript(() => localStorage.setItem("lang", "sv"));
+    await context.route("**/*", async (route) => {
+      const request = route.request();
+      const decision = nutritionBrowserRequest(request.url(), request.method());
+      if (decision === "web" || decision === "preflight") return route.continue();
+      try {
+        if (decision === "login" && !session) {
+          const body = request.postDataJSON();
+          if (body?.email === created.email && body?.password === password) {
+            const response = await route.fetch({ maxRedirects: 0 });
+            if (response.status() === 200) {
+              const result = await response.json();
+              assertFixtureOwner(result.user, created);
+              assert.match(result.access_token, /^[A-Za-z0-9_.-]+$/);
+              session = { user: result.user, access_token: result.access_token };
+              return await route.fulfill({ response });
+            }
+          }
+        } else if (
+          decision === "api" &&
+          session &&
+          (await request.allHeaders()).authorization === `Bearer ${session.access_token}`
+        ) {
+          const response = await route.fetch({ maxRedirects: 0 });
+          if (response.status() < 300 || response.status() >= 400)
+            return await route.fulfill({ response });
+        }
+      } catch {
+        /* Never report request headers or authentication bodies. */
+      }
+      report.blockedRequests++;
+      return route.abort();
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(45000);
+    page.on("pageerror", () => report.pageErrors++);
+    report.phase = "nutrition_fixture_login";
+    progress(report.phase);
+    await page.goto(ownedApp + "/login", { waitUntil: "networkidle" });
+    await page.locator("#email").fill(created.email);
+    await page.locator("#password").fill(password);
+    await page.getByRole("button", { name: "Logga in", exact: true }).click();
+    await page.waitForURL(ownedApp + "/");
+    assert.ok(session);
+    report.fixtureBrowserLoginVerified = true;
+    await acceptRecipeNutrition({
+      page,
+      base: ownedApp,
+      fixture: nutritionFixture(session, ownedToken(keys, "anon")),
+      report,
+      progress,
+      async capture(name, width) {
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        );
+        await page.screenshot({
+          path: join(artifactDirectory, `${name}-${width}.png`),
+          animations: "disabled",
+        });
+      },
+    });
+    assert.equal(report.blockedRequests, 0);
+    assert.equal(report.pageErrors, 0);
+    report.completed = true;
+  } catch (error) {
+    report.failure = "owned_nutrition_acceptance_failed";
+    report.errorType = ["AssertionError", "TimeoutError"].includes(error.name)
+      ? error.name
+      : "Error";
+  } finally {
+    await browser?.close().catch(() => undefined);
+    if (created) {
+      try {
+        const cleaned = await ownedBrowserFixture(keys, "cleanup", created, undefined, options);
+        report.cleanupCompleted = Boolean(cleaned.cleanupCompleted || cleaned.alreadyClean);
+      } catch {
+        report.cleanupCompleted = false;
+      }
+    }
+    if (!report.cleanupCompleted) report.completed = false;
+    await writeFile(join(artifactDirectory, "status.json"), JSON.stringify(report));
+  }
+  return report;
+}

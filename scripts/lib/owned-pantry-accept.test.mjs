@@ -31,7 +31,9 @@ describe("installed DEV-07 browser acceptance", () => {
 
   it("gates test writes on the installed binary, exact ledger, paused tunnel and private manifests", () => {
     const launcher = readFileSync(new URL("../manage-owned-backend.mjs", import.meta.url), "utf8");
-    expect(launcher).toContain("await verify({ syncWebKeys: !pantryAcceptance });");
+    expect(launcher).toContain(
+      "await verify({ syncWebKeys: !pantryAcceptance && !nutritionAcceptance });",
+    );
     expect(launcher).toMatch(
       /phase = "pantry_acceptance_ledger";[\s\S]+?readPausedPantryState\(\);[\s\S]+?assert\.equal\(installedPantry, pantryWebLabel\);[\s\S]+?assert\.equal\(ledger.scope, "already_applied"\);[\s\S]+?acceptInstalledPantry\(keys,/,
     );

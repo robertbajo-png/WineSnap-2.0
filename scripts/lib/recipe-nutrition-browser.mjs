@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 
-export async function acceptRecipeNutrition({ page, base, fixture, report, capture }) {
+export async function acceptRecipeNutrition({
+  page,
+  base,
+  fixture,
+  report,
+  capture = async () => {},
+  progress = () => {},
+}) {
   const { owner, rest, recipe } = fixture;
   const title = "Syntetisk pastaratt";
   const version = await recipe(owner, title, undefined, { name: "Pasta", amount: 200 });
   const phase = (name) => {
     report.phase = name;
+    progress(name);
   };
   const button = (name) => page.getByRole("button", { name, exact: typeof name === "string" });
   const text = (value) => page.getByText(value, { exact: true });
@@ -164,4 +172,5 @@ export async function acceptRecipeNutrition({ page, base, fixture, report, captu
   await text("300 g").waitFor();
   assert.equal(await text("Squash").count(), 0);
   report.passed.push("only_explicit_save_created_a_version_and_shopping_kept_the_original");
+  return { title, originalVersion: version, savedVersion: saved[1], plan: pinned[0] };
 }

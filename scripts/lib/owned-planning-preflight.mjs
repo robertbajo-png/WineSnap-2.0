@@ -10,6 +10,7 @@ export const ownedContainerProjection =
  "Config":{"User":{{json .Config.User}},"Labels":{
   "winesnap.scope":{{json (index .Config.Labels "winesnap.scope")}},
   "winesnap.installation":{{json (index .Config.Labels "winesnap.installation")}},
+  "winesnap.pantry":{{json (index .Config.Labels "winesnap.pantry")}},
   "winesnap.pilot-ui":{{json (index .Config.Labels "winesnap.pilot-ui")}},
   "winesnap.public-origin":{{json (index .Config.Labels "winesnap.public-origin")}}}},
  "HostConfig":{"ReadonlyRootfs":{{json .HostConfig.ReadonlyRootfs}},

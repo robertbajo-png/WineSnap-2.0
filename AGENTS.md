@@ -35,10 +35,13 @@ Current handoff: DEV-08 source has 41 versioned nutrition references and
 inline per-serving estimates. Optional adult recipe comparisons can produce
 a normal local draft, never an automatic save. The isolated `--nutrition-db`
 run passed known/missing values, weighed changes, portion scaling, cancellation
-and explicit version save with the original week plan intact. See the canonical
-plan. Next: prepare and verify the web-only Windows delivery before seeking
-approval. DEV-07 remains installed; keep the public connector paused and do
-not touch the old production or abandoned hosted test.
+and explicit version save with the original week plan intact. The exact-image
+DEV-07 rollback passed 11 isolated browser checks; all 831 script tests passed.
+The guarded `NutritionUpdate` and installed synthetic `NutritionAccept` are
+prepared, not executed. Next: await approval, then follow
+`docs/owned-nutrition-local-update.md` for fresh backup/restore, web-only update
+and installed acceptance. DEV-07 remains installed. Keep the public connector
+paused and do not touch old production or the abandoned hosted test.
 
 Previous handoff: DEV-07 is installed and technically accepted on the owned
 Windows app. The approved maintenance passed the fresh encrypted archive and
