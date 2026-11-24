@@ -6,6 +6,17 @@ account changes or public rollout are in scope. **Wait for explicit approval
 before taking the maintenance backup or installing.** A synthetic browser
 pass is not acceptance of the installed app.
 
+## Installed Result
+
+The approved November 24 window installed `1f76671b878e` and passed all
+five `NutritionAccept` checks with verified fixture cleanup. The exact
+pre-update encrypted archive and isolated restore matched 78 tables and one
+stored image. The 40-migration ledger and non-web services were unchanged
+by the update, the DEV-07 image remains retained and the tunnel stayed
+paused. See the [installed development record](development-plan.md#dev-08-installed-and-verified-current).
+The steps below describe that guarded delivery; do not repeat it over an
+already updated app.
+
 ## Readiness evidence
 
 The approved DEV-07 image is retained as `winesnap-owned:nutrition-rollback-60b9e422a8a4`.

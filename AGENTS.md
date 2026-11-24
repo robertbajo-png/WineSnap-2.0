@@ -31,19 +31,16 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-08 source has 41 versioned nutrition references and
-inline per-serving estimates. Optional adult recipe comparisons can produce
-a normal local draft, never an automatic save. The isolated `--nutrition-db`
-run passed known/missing values, weighed changes, portion scaling, cancellation
-and explicit version save with the original week plan intact. The exact-image
-DEV-07 rollback passed 11 isolated browser checks; all 831 script tests passed.
-The guarded `NutritionUpdate` and installed synthetic `NutritionAccept` are
-prepared, not executed against the installation. The `NutritionAccept`
-workflow itself passed its isolated synthetic login, five browser cases and
-verified cleanup. Next: await approval, then follow
-`docs/owned-nutrition-local-update.md` for fresh backup/restore, web-only update
-and installed acceptance. DEV-07 remains installed. Keep the public connector
-paused and do not touch old production or the abandoned hosted test.
+Current handoff: DEV-08 is installed and accepted on the owned Windows app.
+The approved window on November 24 verified a fresh encrypted backup and its
+isolated restore, then replaced only the web image with `1f76671b878e` from
+reviewed delivery `43a4362` (app source `cf4de80`). The 40-migration ledger
+and other service identities stayed unchanged. `NutritionAccept` passed all
+five browser cases with a real synthetic login and verified cleanup; the
+installed app still pins the original recipe in existing weeks. No real user
+account was used. Keep the public connector paused and do not touch old
+production or the abandoned hosted test. See `docs/development-plan.md` and
+`docs/owned-nutrition-local-update.md`. DEV-09 remains planned, not started.
 
 Previous handoff: DEV-07 is installed and technically accepted on the owned
 Windows app. The approved maintenance passed the fresh encrypted archive and

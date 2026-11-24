@@ -247,12 +247,14 @@ async function runAcceptance(keys, { previous, remember, artifactDirectory, prog
         if (decision === "login" && !session) {
           const body = request.postDataJSON();
           if (body?.email === created.email && body?.password === password) {
+            report.fixtureLoginRequestSent = true;
             const response = await forward(await request.allHeaders());
             if (response.status === 200) {
               const result = await response.json();
               assertFixtureOwner(result.user, created);
               assert.match(result.access_token, /^[A-Za-z0-9_.-]+$/);
               session = { user: result.user, access_token: result.access_token };
+              report.fixtureLoginTokenVerified = true;
               return await response.reply();
             }
           }
@@ -272,12 +274,36 @@ async function runAcceptance(keys, { previous, remember, artifactDirectory, prog
     const page = await context.newPage();
     page.setDefaultTimeout(45000);
     page.on("pageerror", () => report.pageErrors++);
-    report.phase = "nutrition_fixture_login";
-    progress(report.phase);
-    await page.goto(base + "/login", { waitUntil: "networkidle" });
-    await page.locator("#email").fill(created.email);
-    await page.locator("#password").fill(password);
+    page.on("requestfailed", (request) => {
+      const url = new URL(request.url());
+      if (url.origin === (rehearsal ? rehearsalApi : ownedApi) && url.pathname === "/auth/v1/token")
+        report.fixtureLoginNetworkFailed = true;
+    });
+    const phase = (name) => {
+      report.phase = "nutrition_fixture_login_" + name;
+      progress(report.phase);
+    };
+    phase("document");
+    const loginPage = await page.goto(base + "/login", { waitUntil: "domcontentloaded" });
+    assert.equal(loginPage?.status(), 200);
+    phase("interactive");
+    // The server-rendered inputs can be visible before the form handles events.
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "Inget konto? Skapa ett", exact: true }).click();
+    await page.locator("#name").waitFor({ state: "visible" });
+    await page.getByRole("button", { name: "Har du redan konto? Logga in", exact: true }).click();
+    await page.locator("#name").waitFor({ state: "detached" });
+    phase("form");
+    const emailField = page.locator("#email");
+    const passwordField = page.locator("#password");
+    await emailField.fill(created.email);
+    await passwordField.fill(password);
+    assert.ok((await emailField.inputValue()) === created.email);
+    assert.ok((await passwordField.inputValue()) === password);
+    assert.ok(await emailField.evaluate((input) => input.form?.checkValidity()));
+    phase("submit");
     await page.getByRole("button", { name: "Logga in", exact: true }).click();
+    phase("landing");
     await page.waitForURL(base + "/");
     assert.ok(session);
     report.fixtureBrowserLoginVerified = true;
