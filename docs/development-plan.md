@@ -1,6 +1,6 @@
 # WineSnap Development Plan
 
-Revision: 1.6. This is the current, user-approved source of truth for future
+Revision: 1.7. This is the current, user-approved source of truth for future
 development in this repository. Earlier dated inventories and pilot plans remain
 historical evidence, not competing task queues. Safety/runbook restrictions in
 AGENTS.md still apply. This document contains no credentials or private user data.
@@ -24,7 +24,11 @@ AGENTS.md still apply. This document contains no credentials or private user dat
 - Never change old production, the abandoned hosted test, DNS, root credentials,
   passwords or OS security settings on a generic continuation request.
 - Portable off-device copies and actual second-PC recovery remain deferred.
-  Public hosting, mobile login, store packaging, payments and branding are parked.
+  Public hosting, mobile login, iOS packaging, payments and branding are parked.
+- Continue with the local Windows web app and its existing backend. Build an
+  Android app once the owner is happy with the local experience. Reuse the
+  existing web app and API where practical. Android packaging, secure mobile
+  access and distribution are later decisions, outside the current local plan.
 
 ## Starting Evidence
 
@@ -2389,6 +2393,7 @@ entry points passed validation; `git diff --check` passed.
 | 1.4      | Reopen local activation diagnostics while continuing non-disruptive DEV-03 read work                                                | Owner safely closed the viewer, but fresh Resume/Check timed out under operation contention and measured severe host load; keep backup, restore, install and actual-owner gates rather than weakening them |
 | 1.5      | Close DEV-02 after measured, validated batched inspections and fresh actual-owner activation                                        | Preserve all deadlines/account/container checks; Check, visible Open, duplicate focus and advancing fresh authentication passed without rebuilding or closing the verified owner viewer                    |
 | 1.6      | Defer the owner's pending bottle test and begin source-only DEV-06 on request                                                          | Keep DEV-05 open and all acceptance/release boundaries intact; record new planning work separately from the installed app and any actual user evidence                                                       |
+| 1.7      | Continue as a local web app; schedule Android only once the owner is satisfied                                                       | Confirmed November 25. Keep the current backend and DEV-09 through DEV-12 order; no Android implementation, mobile access change or publication now                                                            |
 
 ## Verification Record
 
