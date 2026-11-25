@@ -42,6 +42,12 @@ account was used. Keep the public connector paused and do not touch old
 production or the abandoned hosted test. See `docs/development-plan.md` and
 `docs/owned-nutrition-local-update.md`. DEV-09 remains planned, not started.
 
+An independent owned text AI update is source-tested, not installed. It offers
+GPT-6 Luna as the OpenAI default, explicit GPT-6.2 Sol, and a manual Gemini
+profile. Bottle scans keep GPT-6.1 Sol. The running DEV-08 instance still uses
+its previous routing. See `docs/ai-models.md` for the guarded local update and
+`TEMP-openai-migration-ledger.md` for simulated evidence and live checks.
+
 Previous handoff: DEV-07 is installed and technically accepted on the owned
 Windows app. The approved maintenance passed the fresh encrypted archive and
 exact isolated restore, guarded 38-to-40 schema update and all five

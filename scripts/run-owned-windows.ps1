@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','TextAiUpdate','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly,
@@ -10,7 +10,10 @@ param(
   [switch]$RequirePlanningMigration,
   [switch]$RequirePantryMigration,
   [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedPantryBackup,
-  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedNutritionBackup
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedNutritionBackup,
+  [ValidateSet('OpenAI','Gemini')][string]$AiTextProvider,
+  [ValidateSet('gpt-6-luna','gpt-6.2-sol')][string]$AiTextModel,
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedAiTextBackup
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
@@ -26,6 +29,9 @@ if($RequirePantryMigration -and ($Action -ne 'Update' -or $PublicOrigin -or $Loc
 if($VerifiedPantryBackup -and -not $RequirePantryMigration){throw 'The archive is only used for the guarded DEV-07 Update.'}
 if($Action -eq 'NutritionUpdate' -and -not $VerifiedNutritionBackup){throw 'DEV-08 requires the exact freshly restored backup.'}
 if($VerifiedNutritionBackup -and $Action -ne 'NutritionUpdate'){throw 'The archive is only used for the web-only DEV-08 update.'}
+if($Action -eq 'TextAiUpdate' -and (-not $AiTextProvider -or -not $VerifiedAiTextBackup)){throw 'Text AI requires an explicit provider and the exact freshly restored backup.'}
+if(($AiTextProvider -or $AiTextModel -or $VerifiedAiTextBackup) -and $Action -ne 'TextAiUpdate'){throw 'AI settings require a separate web-only TextAiUpdate.'}
+if($AiTextModel -and $AiTextProvider -ne 'OpenAI'){throw 'An OpenAI model requires the OpenAI provider.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 . (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
@@ -68,7 +74,7 @@ try {
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
-  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -eq 'NutritionUpdate'){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
+  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -in @('NutritionUpdate','TextAiUpdate')){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
   $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $waitMs
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
@@ -127,6 +133,9 @@ try {
   if($PublicOrigin){$start.Environment['WINESNAP_OWNED_PUBLIC_ORIGIN']=$PublicOrigin}
   if($LocalOnly){$start.Environment['WINESNAP_OWNED_ORIGIN_RESET']='1'}
   if($PilotUi){$start.Environment['WINESNAP_OWNED_PILOT_UI']=$PilotUi}
+  if($AiTextProvider){$start.Environment['WINESNAP_OWNED_AI_TEXT_PROVIDER']=$AiTextProvider.ToLowerInvariant()}
+  if($AiTextModel){$start.Environment['WINESNAP_OWNED_AI_TEXT_MODEL']=$AiTextModel.ToLowerInvariant()}
+  if($VerifiedAiTextBackup){$start.Environment['WINESNAP_OWNED_AI_TEXT_BACKUP']=$VerifiedAiTextBackup}
   if($ReplayApprovedImage){$start.Environment['WINESNAP_OWNED_REPLAY_APPROVED_IMAGE']='1'}
   if($KitchenRecoveryOnly){$start.Environment['WINESNAP_OWNED_KITCHEN_RECOVERY_ONLY']='1'}
   if($AccountIsolationOnly){$start.Environment['WINESNAP_OWNED_ACCOUNT_ISOLATION_ONLY']='1'}

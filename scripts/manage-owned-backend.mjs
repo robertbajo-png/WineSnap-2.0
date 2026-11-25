@@ -20,6 +20,7 @@ import {
 import { ownedResumeOrder, planOwnedMigrations } from "./lib/owned-lifecycle.mjs";
 import { selectOwnedPublicOrigin } from "./lib/owned-public-origin.mjs";
 import { selectOwnedPilotUi } from "./lib/owned-pilot-ui.mjs";
+import { selectOwnedTextAi, textAiRollbackTag } from "./lib/owned-text-ai.mjs";
 import { finishOwnedInput } from "./lib/owned-process-input.mjs";
 import { inspectOwnedContainers } from "./lib/owned-installed-state.mjs";
 import { readOwnedOperations } from "./lib/owned-operations.mjs";
@@ -63,6 +64,7 @@ assert.ok(
     "Backup",
     "Update",
     "NutritionUpdate",
+    "TextAiUpdate",
     "NutritionAccept",
     "NutritionCleanup",
     "Accept",
@@ -94,8 +96,12 @@ const pantryAcceptance = ["PantryAccept", "PantryCleanup"].includes(action);
 const nutritionUpdate = action === "NutritionUpdate";
 const nutritionAcceptance = ["NutritionAccept", "NutritionCleanup"].includes(action);
 const nutritionBackup = process.env.WINESNAP_OWNED_NUTRITION_BACKUP;
+const textAiUpdate = action === "TextAiUpdate";
+const textAiBackup = process.env.WINESNAP_OWNED_AI_TEXT_BACKUP;
 assert.equal(nutritionBackup !== undefined, nutritionUpdate);
 if (nutritionUpdate) assert.match(nutritionBackup, pantryBackupPattern);
+assert.equal(textAiBackup !== undefined, textAiUpdate);
+if (textAiUpdate) assert.match(textAiBackup, pantryBackupPattern);
 if (pantryUpdate) {
   assert.match(pantryBackup, pantryBackupPattern);
   assert.equal(planningUpdate, false);
@@ -334,6 +340,7 @@ async function start(
     pilotUiLabel,
     pantryLabel,
     nutritionLabel,
+    textAi,
   } = {},
 ) {
   let found = await existing(service);
@@ -356,6 +363,8 @@ async function start(
     ...(pilotUiLabel ? ["--label", `winesnap.pilot-ui=${pilotUiLabel}`] : []),
     ...(pantryLabel ? ["--label", `winesnap.pantry=${pantryLabel}`] : []),
     ...(nutritionLabel ? ["--label", `winesnap.recipe-nutrition=${nutritionLabel}`] : []),
+    ...(textAi ? ["--label", "winesnap.ai-text-provider=" + textAi.provider] : []),
+    ...(textAi?.model ? ["--label", "winesnap.ai-text-model=" + textAi.model] : []),
     "--network",
     ownedNetwork,
     "--restart",
@@ -517,13 +526,17 @@ async function buildOwnedWeb({ originSettings, pilotUi, pantryEnabled, tag, webO
   );
 }
 
-async function startOwnedWeb(image, { originSettings, pilotUi, pantryEnabled, nutritionLabel }) {
+async function startOwnedWeb(
+  image,
+  { originSettings, pilotUi, pantryEnabled, nutritionLabel, textAi },
+) {
   await start("web", image, {
     user: "node",
     publicOrigin: originSettings.origin,
     pilotUiLabel: pilotUi.label,
     pantryLabel: pantryEnabled ? pantryWebLabel : undefined,
     nutritionLabel,
+    textAi,
     memory: "768m",
     port: "5212:3000",
     env: {
@@ -531,6 +544,8 @@ async function startOwnedWeb(image, { originSettings, pilotUi, pantryEnabled, nu
       SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
       WINESNAP_OWNED_BACKEND_ENABLED: "true",
       WINESNAP_LOCAL_AI_ENABLED: "true",
+      WINESNAP_LOCAL_TEXT_PROVIDER: textAi.provider,
+      ...(textAi.model ? { WINESNAP_LOCAL_TEXT_MODEL: textAi.model } : {}),
       WINESNAP_LOCAL_OPERATIONS_ENABLED: "true",
       WINESNAP_COOKING_CORE_ENABLED: "true",
       WINESNAP_AI_CHEF_ENABLED: "true",
@@ -547,13 +562,27 @@ async function startOwnedWeb(image, { originSettings, pilotUi, pantryEnabled, nu
   );
 }
 
-async function updateNutritionWeb(previous, { originSettings, pilotUi }) {
+function installedTextAi(web) {
+  return {
+    installed: web?.Config.Labels["winesnap.ai-text-provider"],
+    installedModel: web?.Config.Labels["winesnap.ai-text-model"],
+  };
+}
+
+async function updateGuardedWeb(previous, { originSettings, pilotUi, textAi }) {
   assert.equal(previous?.Config.Labels["winesnap.pantry"], pantryWebLabel);
-  assert.equal(previous.Config.Labels["winesnap.recipe-nutrition"], undefined);
+  const previousNutrition = previous.Config.Labels["winesnap.recipe-nutrition"];
+  assert.equal(previousNutrition, textAiUpdate ? nutritionWebLabel : undefined);
   assert.ok(previous.State.Running);
+  const previousTextAi = selectOwnedTextAi({ action: "Verify", ...installedTextAi(previous) });
+  const phasePrefix = textAiUpdate ? "text_ai" : "nutrition";
+  const reportPrefix = textAiUpdate ? "textAi" : "nutrition";
+  const backup = textAiUpdate ? textAiBackup : nutritionBackup;
+  const rollbackTag = textAiUpdate ? textAiRollbackTag : nutritionRollbackTag;
+  if (textAiUpdate) assert.ok(keys[textAi.provider], "Selected provider credential is missing");
   const sources = await readMigrationSources();
   async function verifyLedger() {
-    report.nutritionLedger = requireNutritionLedger(
+    report[reportPrefix + "Ledger"] = requireNutritionLedger(
       sources,
       JSON.parse(await sql(pantryLedgerQuery)),
       keys.installationId,
@@ -571,15 +600,17 @@ async function updateNutritionWeb(previous, { originSettings, pilotUi }) {
     (await command(["image", "inspect", tag, "--format", "{{.Id}}"])).toString().trim();
   const backend = await backendSnapshot();
   const guard = async () => {
-    requirePantryRecovery(await readPausedPantryState(), nutritionBackup);
-    assert.equal(await imageId(nutritionRollbackTag(previous.Image)), previous.Image);
+    requirePantryRecovery(await readPausedPantryState(), backup);
+    assert.equal(await imageId(rollbackTag(previous.Image)), previous.Image);
     assert.equal(await imageId("winesnap-owned:local"), previous.Image);
     assert.deepEqual(await backendSnapshot(), backend);
     await verifyLedger();
   };
   await guard();
-  phase = "nutrition_build";
-  const candidateTag = "winesnap-owned:nutrition-candidate";
+  phase = phasePrefix + "_build";
+  const candidateTag = textAiUpdate
+    ? "winesnap-owned:text-ai-candidate"
+    : "winesnap-owned:nutrition-candidate";
   await buildOwnedWeb({
     originSettings,
     pilotUi,
@@ -588,25 +619,36 @@ async function updateNutritionWeb(previous, { originSettings, pilotUi }) {
     webOnly: true,
   });
   const candidate = await imageId(candidateTag);
-  phase = "nutrition_pre_replacement_guard";
+  phase = phasePrefix + "_pre_replacement_guard";
   await replaceNutritionWeb({
     previous,
     candidate,
+    allowSameImage: textAiUpdate,
     guard,
     readWeb: () => existing("web"),
     removeWeb: async (id) => {
-      if (!recovering) phase = "nutrition_web_replacement";
+      if (!recovering) phase = phasePrefix + "_web_replacement";
       await command(["rm", "--force", id]);
     },
-    startWeb: (image, nutritionLabel) =>
-      startOwnedWeb(image, { originSettings, pilotUi, pantryEnabled: true, nutritionLabel }),
-    verifyWeb: async (image, nutritionLabel) => {
-      if (!recovering) phase = "nutrition_web_verification";
+    startWeb: (image, stageLabel) =>
+      startOwnedWeb(image, {
+        originSettings,
+        pilotUi,
+        pantryEnabled: true,
+        nutritionLabel: stageLabel ?? previousNutrition,
+        textAi: stageLabel ? textAi : previousTextAi,
+      }),
+    verifyWeb: async (image, stageLabel) => {
+      if (!recovering) phase = phasePrefix + "_web_verification";
       const web = await existing("web");
       assert.equal(web?.Image, image);
       assert.ok(web.State.Running);
-      assert.equal(web.Config.Labels["winesnap.recipe-nutrition"], nutritionLabel);
+      assert.equal(web.Config.Labels["winesnap.recipe-nutrition"], stageLabel ?? previousNutrition);
       assert.equal(web.Config.Labels["winesnap.pantry"], pantryWebLabel);
+      assert.deepEqual(
+        selectOwnedTextAi({ action: "Verify", ...installedTextAi(web) }),
+        stageLabel ? textAi : previousTextAi,
+      );
       await verify();
       assert.deepEqual(await backendSnapshot(), backend);
       await verifyLedger();
@@ -615,12 +657,12 @@ async function updateNutritionWeb(previous, { originSettings, pilotUi }) {
     tagWeb: (image) => command(["image", "tag", image, "winesnap-owned:local"]),
     recovery(verified) {
       recovering = true;
-      phase = "nutrition_web_rollback";
-      report.nutritionRollbackVerified = verified;
+      phase = phasePrefix + "_web_rollback";
+      report[reportPrefix + "RollbackVerified"] = verified;
     },
   });
-  report.nutritionWebUpdated = true;
-  report.nutritionServicesUnchanged = true;
+  report[reportPrefix + "WebUpdated"] = true;
+  report[reportPrefix + "ServicesUnchanged"] = true;
   report.publicTunnelPausedVerified = true;
 }
 
@@ -673,6 +715,16 @@ try {
   const installedWeb = await existing("web");
   const installedPantry = installedWeb?.Config.Labels["winesnap.pantry"];
   assert.ok(installedPantry === undefined || installedPantry === pantryWebLabel);
+  const installedNutrition = installedWeb?.Config.Labels["winesnap.recipe-nutrition"];
+  assert.ok(installedNutrition === undefined || installedNutrition === nutritionWebLabel);
+  const textAi = selectOwnedTextAi({
+    action,
+    requested: process.env.WINESNAP_OWNED_AI_TEXT_PROVIDER,
+    model: process.env.WINESNAP_OWNED_AI_TEXT_MODEL,
+    ...installedTextAi(installedWeb),
+  });
+  report.textAiProvider = textAi.provider;
+  report.textAiModel = textAi.model ?? null;
   const pilotUi = selectOwnedPilotUi({
     requested: process.env.WINESNAP_OWNED_PILOT_UI,
     installed: installedWeb?.Config.Labels["winesnap.pilot-ui"] ?? "",
@@ -688,9 +740,9 @@ try {
   report.browserPublicOrigin = originSettings.origin || null;
   report.loopbackPortsOnly = true;
   report.localOnly = !originSettings.origin;
-  if (nutritionUpdate) {
-    phase = "nutrition_delivery_guard";
-    await updateNutritionWeb(installedWeb, { originSettings, pilotUi });
+  if (nutritionUpdate || textAiUpdate) {
+    phase = textAiUpdate ? "text_ai_delivery_guard" : "nutrition_delivery_guard";
+    await updateGuardedWeb(installedWeb, { originSettings, pilotUi, textAi });
   }
   if (action === "Resume") {
     phase = "resume_existing_installation";
@@ -1030,9 +1082,15 @@ try {
       .toString()
       .trim();
     phase = "web_start";
-    await startOwnedWeb(webImage, { originSettings, pilotUi, pantryEnabled });
+    await startOwnedWeb(webImage, {
+      originSettings,
+      pilotUi,
+      pantryEnabled,
+      nutritionLabel: installedNutrition,
+      textAi,
+    });
   }
-  if (!nutritionUpdate) {
+  if (!nutritionUpdate && !textAiUpdate) {
     phase = "verification";
     await verify({ syncWebKeys: !pantryAcceptance && !nutritionAcceptance });
   }

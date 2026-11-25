@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createAiClient } from "../../supabase/functions/_shared/aiClient";
+import { createLocalAiClient } from "./ownedTextAi.server";
 import { AI_MODELS } from "../../supabase/functions/_shared/aiModels";
 import {
   aiObservationHeaders,
@@ -435,11 +435,21 @@ export const handleChef = createChefHandler({
   complete: async (body, observe) => {
     let observation: AiCallObservation | undefined;
     const keys = await loadCredentials();
-    const client = createAiClient(
+    const owned = process.env.WINESNAP_OWNED_BACKEND_ENABLED === "true";
+    const environment: Record<string, string | undefined> = {
+      GEMINI_API_KEY: keys.gemini,
+      GEMINI_FAST_MODEL: AI_MODELS.fast,
+      OPENAI_API_KEY: keys.openai,
+      SUPABASE_URL: process.env.SUPABASE_URL,
+      WINESNAP_OWNED_BACKEND_ENABLED: owned ? "true" : undefined,
+      WINESNAP_LOCAL_TEXT_PROVIDER: owned ? process.env.WINESNAP_LOCAL_TEXT_PROVIDER : undefined,
+      WINESNAP_LOCAL_TEXT_MODEL: owned ? process.env.WINESNAP_LOCAL_TEXT_MODEL : undefined,
+    };
+    const client = createLocalAiClient(
       "fast",
-      (name) => ({ GEMINI_API_KEY: keys.gemini, GEMINI_FAST_MODEL: AI_MODELS.fast })[name],
+      (name) => environment[name],
       fetch,
-      process.env.WINESNAP_OWNED_BACKEND_ENABLED === "true"
+      owned
         ? (value) => {
             observation = value;
             observe?.(value);

@@ -4,6 +4,38 @@ Model availability and API compatibility checked against official documentation 
 2026-10-05. Defaults are maintained in
 `supabase/functions/_shared/aiModels.ts`, shared by Edge Functions and the server
 recommendation routes. No provider credentials are sent to the browser.
+The gateway sections below are historical; do not use their deployment steps
+for the standalone installation.
+
+## Owned Windows Profile
+
+The standalone server can use direct OpenAI Responses for Ask WineSnap, Chef,
+recipe generation/adaptation, food and wine preference extraction, wine and
+taste recommendations, and restaurant menu text/images. Select **GPT-6 Luna**
+(`gpt-6-luna`) by default when choosing OpenAI, or explicitly select
+**GPT-6.2 Sol** (`gpt-6.2-sol`). Bottle-label recognition remains on direct
+GPT-6.1 Sol through Chat Completions. Gemini 3.8 Flash remains a manual alternative
+for the text profile. An error never switches models or providers automatically.
+
+The profile is only read by the private standalone web server and only for
+`http://winesnap-owned-gateway:8080`. It uses the existing protected provider
+key. It does not change Auth, database migrations, storage or the browser
+configuration. OpenAI requests set `store: false` and keep conversation state
+in WineSnap; this does not assert Zero Data Retention or project credit eligibility.
+
+For authorized local maintenance, use the paused-tunnel and restore checks
+from [the DEV-08 runbook](owned-nutrition-local-update.md). Retain the exact
+current web image under `winesnap-owned:text-ai-rollback-<first 12 hash digits>`
+before replacement. Run `scripts/run-owned-windows.ps1` with
+`-Action TextAiUpdate -AiTextProvider OpenAI -VerifiedAiTextBackup` followed by
+the exact freshly restored archive filename. Omit `-AiTextModel` for Luna;
+specify `-AiTextModel gpt-6.2-sol` for Sol. Select `-AiTextProvider Gemini`
+without a model to return to the prior direct Gemini route in a new verified
+update. The guarded action preserves the 40-migration ledger and other
+service identities and restores the previous image and profile on failure.
+Check the sanitized report and exercise the affected flows locally. Test
+coverage with simulated responses is separate from actual provider access
+and credit/quality checks. No old hosted environment is involved.
 
 ## Workload routing
 

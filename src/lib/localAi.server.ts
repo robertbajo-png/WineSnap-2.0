@@ -9,6 +9,7 @@ import { createHandler as createRestaurantMatch } from "../../supabase/functions
 import { createHandler as createPreferenceSignals } from "../../supabase/functions/extract-preference-signals/handler";
 import type { LocalAiFunction } from "./aiTransport";
 import { createAiClient } from "../../supabase/functions/_shared/aiClient";
+import { createLocalAiClient } from "./ownedTextAi.server";
 import {
   aiObservationHeaders,
   type AiCallObservation,
@@ -128,6 +129,9 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
     const keys = await loadCredentials();
     const input = await readInput(request, name);
     if (!input?.success) return json("Invalid or oversized wine input", 400);
+    const owned = process.env.WINESNAP_OWNED_BACKEND_ENABLED === "true";
+    const textProvider = owned ? process.env.WINESNAP_LOCAL_TEXT_PROVIDER : undefined;
+    const textModel = owned ? process.env.WINESNAP_LOCAL_TEXT_MODEL : undefined;
     const environment: Record<string, string> = {
       SUPABASE_URL: origin,
       SUPABASE_ANON_KEY: keys.publishable,
@@ -136,9 +140,9 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
       OPENAI_LABEL_MODEL: "gpt-6.1-sol",
       GEMINI_FAST_MODEL: "gemini-3.8-flash",
       GEMINI_TRANSIENT_RETRY_ENABLED: "true",
-      ...(process.env.WINESNAP_OWNED_BACKEND_ENABLED === "true"
-        ? { WINESNAP_OWNED_BACKEND_ENABLED: "true" }
-        : {}),
+      ...(owned ? { WINESNAP_OWNED_BACKEND_ENABLED: "true" } : {}),
+      ...(textProvider !== undefined ? { WINESNAP_LOCAL_TEXT_PROVIDER: textProvider } : {}),
+      ...(textModel !== undefined ? { WINESNAP_LOCAL_TEXT_MODEL: textModel } : {}),
       ...(keys.gemini ? { GEMINI_API_KEY: keys.gemini } : {}),
     };
     const env = (name: string) => environment[name];
@@ -157,11 +161,11 @@ export async function handleLocalAi(request: Request, name: LocalAiFunction) {
     );
     const dependencies = {
       aiClient: ((workload, env, send) =>
-        createAiClient(
+        createLocalAiClient(
           workload,
           env,
           send,
-          process.env.WINESNAP_OWNED_BACKEND_ENABLED === "true"
+          owned
             ? (value) => {
                 observation = value;
               }

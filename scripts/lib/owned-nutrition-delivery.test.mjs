@@ -189,4 +189,22 @@ describe("DEV-08 owned web delivery", () => {
     expect(test.calls.slice(4)).toEqual([["recovery", false]]);
     expect(test.state().tagged).toBe(previous.Image);
   });
+
+  it("can replace a profile using the same image and still recover the original profile", async () => {
+    const test = rehearsal();
+    await expect(
+      replaceNutritionWeb({
+        ...test.options,
+        candidate: previous.Image,
+        allowSameImage: true,
+        async verifyWeb(image, stageLabel) {
+          await test.options.verifyWeb(image, stageLabel);
+          if (stageLabel) throw new Error("candidate profile failed");
+        },
+      }),
+    ).rejects.toThrow("candidate profile failed");
+    expect(test.calls).toContainEqual(["start", previous.Image, nutritionWebLabel]);
+    expect(test.calls).toContainEqual(["start", previous.Image, undefined]);
+    expect(test.calls.at(-1)).toEqual(["recovery", true]);
+  });
 });

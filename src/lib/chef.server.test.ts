@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createChefHandler } from "./chef.server";
 import { emptyChefContext, recipeDraft, safetyAnswer } from "@/features/chef/domain";
 import type { AiObserver, AiCallObservation } from "../../supabase/functions/_shared/aiObservation";
+import { OWNED_OPENAI_TEXT_MODELS } from "../../supabase/functions/_shared/aiModels";
+import { createLocalAiClient } from "./ownedTextAi.server";
 
 const owner = "00000000-0000-4000-8000-000000000001";
 const input = () => ({
@@ -134,6 +136,87 @@ describe("DEV-04 fixed Chef quality cases", () => {
       ]);
     },
   );
+
+  describe.each(OWNED_OPENAI_TEXT_MODELS)("%s via Responses", (openAiModel) => {
+    it.each(["chat", "generate", "adapt", "extract"] as const)(
+      "validates and stores only the expected %s result",
+      async (action) => {
+        const { version, rows } = contextRows();
+        const feedbackId = crypto.randomUUID();
+        const candidate = {
+          attribute: "ingredient",
+          value: "tomat",
+          direction: 1,
+          quote: "Jag gillar tomat.",
+        };
+        const content =
+          action === "chat"
+            ? "Skiva tomaten."
+            : action === "extract"
+              ? JSON.stringify({ candidates: [candidate, { ...candidate, quote: "Not in note" }] })
+              : JSON.stringify(output);
+        const test = setup({
+          openAiModel,
+          content,
+          rows: {
+            ...rows,
+            cooking_feedback: [
+              {
+                id: feedbackId,
+                user_id: owner,
+                note: candidate.quote,
+                created_at: "2026-11-15T12:00:00Z",
+              },
+            ],
+            food_memory_state: [{ reset_at: "2026-11-14T12:00:00Z" }],
+          },
+        });
+        const requestId = crypto.randomUUID();
+        const response = await test.call(
+          action === "chat"
+            ? input()
+            : action === "extract"
+              ? { action, requestId, context: emptyChefContext, feedbackId }
+              : {
+                  action,
+                  requestId,
+                  context: action === "adapt" ? { recipeVersionId: version.id } : emptyChefContext,
+                  prompt: "En enkel soppa",
+                  servings: 2,
+                  maxMinutes: 20,
+                },
+        );
+        expect(response.status).toBe(200);
+        expect(test.fetcher).toHaveBeenCalledOnce();
+        const [url, request] = test.fetcher.mock.calls[0];
+        expect(url).toBe("https://api.openai.com/v1/responses");
+        const payload = JSON.parse(String(request?.body));
+        const result = await response.json();
+        expect(result.model).toBe(openAiModel);
+        expect(payload).toMatchObject({ model: openAiModel, store: false });
+        if (action === "chat") {
+          expect(payload).not.toHaveProperty("text");
+          expect(result.answer).toBe(content);
+        } else {
+          expect(payload.text.format).toMatchObject({
+            type: "json_schema",
+            name: action === "extract" ? "food_memory_candidates" : "recipe_draft",
+            strict: true,
+          });
+          if (action !== "extract") expect(result.draft.servings).toBe(2);
+        }
+        expect(test.writes.map((write) => write.name)).toEqual([
+          "chef_user_active",
+          "chef_claim_request",
+          "chef_finish_request",
+        ]);
+        expect(test.writes[2].args).toMatchObject({
+          u: owner,
+          candidates: action === "extract" ? [candidate] : [],
+        });
+      },
+    );
+  });
 });
 function setup(
   options: {
@@ -148,6 +231,7 @@ function setup(
     rows?: Record<string, Record<string, unknown>[]>;
     observation?: AiCallObservation;
     providerTimeout?: boolean;
+    openAiModel?: (typeof OWNED_OPENAI_TEXT_MODELS)[number];
   } = {},
 ) {
   const writes: { name: string; args: Record<string, unknown> }[] = [];
@@ -177,7 +261,32 @@ function setup(
     };
     return query;
   });
-  const complete = vi.fn(async (_body: Record<string, unknown>, observe?: AiObserver) => {
+  const fetcher = vi.fn<typeof fetch>(async () =>
+    Response.json({
+      status: "completed",
+      model: options.openAiModel,
+      output: [
+        {
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_text", text: options.content }],
+        },
+      ],
+      usage: { input_tokens: 50, output_tokens: 15 },
+    }),
+  );
+  const complete = vi.fn(async (body: Record<string, unknown>, observe?: AiObserver) => {
+    if (options.openAiModel) {
+      const env: Record<string, string> = {
+        WINESNAP_OWNED_BACKEND_ENABLED: "true",
+        SUPABASE_URL: "http://winesnap-owned-gateway:8080",
+        WINESNAP_LOCAL_TEXT_PROVIDER: "openai",
+        WINESNAP_LOCAL_TEXT_MODEL: options.openAiModel,
+        OPENAI_API_KEY: "synthetic-server-key",
+      };
+      const client = createLocalAiClient("fast", (key) => env[key], fetcher, observe);
+      return { model: client.model, response: await client.complete(body) };
+    }
     if (options.observation) observe?.(options.observation);
     if (options.providerTimeout) throw new DOMException("private provider timeout", "TimeoutError");
     return {
@@ -214,7 +323,7 @@ function setup(
         ...init,
       }),
     );
-  return { call, complete, authorize, writes, filters };
+  return { call, complete, authorize, fetcher, writes, filters };
 }
 describe("test-only Chef security boundary", () => {
   const measured: AiCallObservation = {

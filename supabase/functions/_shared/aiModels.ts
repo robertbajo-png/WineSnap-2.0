@@ -5,3 +5,6 @@ export const AI_MODELS = {
   labelReading: "gpt-6.1-sol",
   fast: "gemini-3.8-flash",
 } as const;
+
+// Only used by the owned Windows Responses adapter, not an Edge workload.
+export const OWNED_OPENAI_TEXT_MODELS = ["gpt-6-luna", "gpt-6.2-sol"] as const;

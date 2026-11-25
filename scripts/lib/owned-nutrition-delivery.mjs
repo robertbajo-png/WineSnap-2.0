@@ -24,11 +24,12 @@ export async function replaceNutritionWeb({
   verifyWeb,
   tagWeb,
   recovery,
+  allowSameImage = false,
 }) {
   assert.match(previous.Id, /^[a-f0-9]{64}$/);
   assert.match(previous.Image, /^sha256:[a-f0-9]{64}$/);
   assert.match(candidate, /^sha256:[a-f0-9]{64}$/);
-  assert.notEqual(candidate, previous.Image);
+  if (!allowSameImage) assert.notEqual(candidate, previous.Image);
   await guard();
   const current = await readWeb();
   assert.equal(current?.Id, previous.Id);

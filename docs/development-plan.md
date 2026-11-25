@@ -1,6 +1,6 @@
 # WineSnap Development Plan
 
-Revision: 1.7. This is the current, user-approved source of truth for future
+Revision: 1.8. This is the current, user-approved source of truth for future
 development in this repository. Earlier dated inventories and pilot plans remain
 historical evidence, not competing task queues. Safety/runbook restrictions in
 AGENTS.md still apply. This document contains no credentials or private user data.
@@ -21,6 +21,11 @@ AGENTS.md still apply. This document contains no credentials or private user dat
   storage in WineSnap; disclose provider processing before actual use.
 - Local hosting/data do not imply local AI inference. Retain the existing
   approved server-side provider integrations; no silent model/provider changes.
+- For the separate owned Windows AI update, choose OpenAI Responses with
+  GPT-6 Luna as the default and GPT-6.2 Sol as an explicit alternative for
+  non-bottle AI. Keep GPT-6.1 Sol for bottle scans and Gemini as a manual choice.
+  [Source verification and the separate installation gate](ai-models.md#owned-windows-profile)
+  do not change the feature order or the installed DEV-08 baseline.
 - Never change old production, the abandoned hosted test, DNS, root credentials,
   passwords or OS security settings on a generic continuation request.
 - Portable off-device copies and actual second-PC recovery remain deferred.
@@ -2394,6 +2399,7 @@ entry points passed validation; `git diff --check` passed.
 | 1.5      | Close DEV-02 after measured, validated batched inspections and fresh actual-owner activation                                        | Preserve all deadlines/account/container checks; Check, visible Open, duplicate focus and advancing fresh authentication passed without rebuilding or closing the verified owner viewer                    |
 | 1.6      | Defer the owner's pending bottle test and begin source-only DEV-06 on request                                                          | Keep DEV-05 open and all acceptance/release boundaries intact; record new planning work separately from the installed app and any actual user evidence                                                       |
 | 1.7      | Continue as a local web app; schedule Android only once the owner is satisfied                                                       | Confirmed November 25. Keep the current backend and DEV-09 through DEV-12 order; no Android implementation, mobile access change or publication now                                                            |
+| 1.8      | Prepare direct OpenAI Luna with an explicit 6.2 Sol option for the owned text/vision workloads                                       | User-approved provider/model choice. 312 focused mock/guard tests passed; local installation, provider access and credit checks remain separate. Bottle scan and old production stay unchanged                 |
 
 ## Verification Record
 

@@ -1,4 +1,4 @@
-import { AI_MODELS } from "./aiModels.ts";
+import { AI_MODELS, OWNED_OPENAI_TEXT_MODELS } from "./aiModels.ts";
 
 export type AiCallObservation = {
   selectedModel: string | null;
@@ -38,7 +38,7 @@ function count(value: unknown, max = 1_000_000_000) {
 }
 function publicModel(value: unknown) {
   if (typeof value !== "string") return null;
-  for (const model of Object.values(AI_MODELS)) {
+  for (const model of [...Object.values(AI_MODELS), ...OWNED_OPENAI_TEXT_MODELS]) {
     if (value === model) return model;
     if (
       value.startsWith(model + "-") &&
