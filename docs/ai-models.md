@@ -9,11 +9,18 @@ for the standalone installation.
 
 ## Owned Windows Profile
 
+**Installed on November 25, 2026:** The owned Windows web app uses direct
+`gpt-6.2-sol` for these workloads (image `1e2211ebc69e`). A short plain-text
+API check and a structured-output check from the installed web container
+passed with synthetic inputs. This does not verify every app workflow,
+latency, comparative quality or credit coverage.
+
 The standalone server can use direct OpenAI Responses for Ask WineSnap, Chef,
 recipe generation/adaptation, food and wine preference extraction, wine and
 taste recommendations, and restaurant menu text/images. Select **GPT-6 Luna**
 (`gpt-6-luna`) by default when choosing OpenAI, or explicitly select
-**GPT-6.2 Sol** (`gpt-6.2-sol`). Bottle-label recognition remains on direct
+**GPT-6.2 Sol** (`gpt-6.2-sol`), as selected for this installation.
+Bottle-label recognition remains on direct
 GPT-6.1 Sol through Chat Completions. Gemini 3.8 Flash remains a manual alternative
 for the text profile. An error never switches models or providers automatically.
 

@@ -1,9 +1,10 @@
 # WineSnap Local OpenAI Migration
 
 **Decision:** The owner approved the assessed migration and previously chose to
-reuse WineSnap's existing protected OpenAI credential. GPT-6 Luna is the default
-for the OpenAI text profile; GPT-6.2 Sol is an explicit choice for the same
-workloads. No live provider calls or local installation were made in this change.
+reuse WineSnap's existing protected OpenAI credential. The OpenAI profile
+defaults to GPT-6 Luna when no model is specified. The owner subsequently
+selected a GPT-6.2 model for the private Windows installation; OpenAI documents
+GPT-6.2 Sol and GPT-6 Luna, so the installed profile explicitly uses 6.2 Sol.
 
 **Scope:** Direct OpenAI on the owned Windows server only. Keep the existing
 database, Auth, context selection, response contract and UI. Keep Gemini as an
@@ -12,8 +13,8 @@ hosted app, Edge defaults, tunnel, device settings and DEV-09 audio unchanged.
 
 **Privacy:** Send only the context each existing handler authorizes. Turn
 Responses storage off; this is not a claim of Zero Data Retention or regional
-processing. Organization, credit-grant eligibility, retention settings and
-live model access remain unverified. Do not change data sharing or billing.
+processing. Organization-wide credit coverage and retention settings were not
+verified. Do not change data sharing or billing.
 
 ## Approved Stages
 
@@ -23,7 +24,7 @@ live model access remain unverified. Do not change data sharing or billing.
 | 1 | Ask WineSnap and its scoped history | Luna or 6.2 Sol, Responses API | Simulated responses through handler; completed answers saved to the scoped owner only |
 | 2 | Chef chat, recipe generation, adaptation and food feedback extraction | Luna or 6.2 Sol, Responses API | All four actions tested through Chef; drafts and evidence checks retained |
 | 3 | Taste and wine suggestions, restaurant text and images, wine preference extraction | Luna or 6.2 Sol, Responses API | Actual handlers tested with simulated responses; verified catalog/ranking and valid signals retained |
-| Delivery | Windows provider choice, isolated tests and setup documentation | Explicit OpenAI or Gemini | Script checks and simulated rollback passed; installation separate |
+| Delivery | Windows provider choice, isolated tests and setup documentation | OpenAI with explicit 6.2 Sol | Running locally; restore, scope, health and synthetic provider checks passed |
 
 ## Integration Decisions
 
@@ -48,11 +49,21 @@ suites passed again (124 tests); application code was unchanged. PowerShell
 syntax passed. Tests do not establish real model access,
 quality, latency, token spend or credit eligibility on the owner's project.
 
-The installed DEV-08 image still uses its previous AI routing. Follow
-[the owned-only update procedure](docs/ai-models.md#owned-windows-profile)
-in a separate maintenance window. Before calling the new profile live-verified,
-check the project's model access, credit and data settings and use bounded
-synthetic prompts and allowed fixture images only.
+On November 25, the approved [owned-only update](docs/ai-models.md#owned-windows-profile)
+installed `1e2211ebc69e` from clean reviewed source `3f16a15`; Quality and
+Database Safety had passed. The exact fresh encrypted backup passed an isolated
+restore with 78 tables, Auth and one stored image; temporary resources were
+removed. The update retained the exact previous image under
+`winesnap-owned:text-ai-rollback-1f76671b878e`, kept 40 migrations and other
+services unchanged, left the connector paused, and passed app, database, Auth
+and Storage checks. A loopback visit and the app health endpoint returned 200.
+
+Live provider evidence is limited to two bounded requests, with no app or
+owner data: a plain-text preflight and a strict JSON output check from the
+installed web container. Both returned a completed result under GPT-6.2 Sol,
+without retries, fallback or changes to billing or data settings. Per-feature
+acceptance and credit eligibility remain separate. Bottle scans and hosted
+environments were not tested or changed in this rollout.
 
 References: [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna),
 [GPT-6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol),

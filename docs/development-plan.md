@@ -1,6 +1,6 @@
 # WineSnap Development Plan
 
-Revision: 1.8. This is the current, user-approved source of truth for future
+Revision: 1.9. This is the current, user-approved source of truth for future
 development in this repository. Earlier dated inventories and pilot plans remain
 historical evidence, not competing task queues. Safety/runbook restrictions in
 AGENTS.md still apply. This document contains no credentials or private user data.
@@ -21,11 +21,11 @@ AGENTS.md still apply. This document contains no credentials or private user dat
   storage in WineSnap; disclose provider processing before actual use.
 - Local hosting/data do not imply local AI inference. Retain the existing
   approved server-side provider integrations; no silent model/provider changes.
-- For the separate owned Windows AI update, choose OpenAI Responses with
-  GPT-6 Luna as the default and GPT-6.2 Sol as an explicit alternative for
-  non-bottle AI. Keep GPT-6.1 Sol for bottle scans and Gemini as a manual choice.
-  [Source verification and the separate installation gate](ai-models.md#owned-windows-profile)
-  do not change the feature order or the installed DEV-08 baseline.
+- The owned Windows app uses direct OpenAI Responses with explicit GPT-6.2 Sol
+  for non-bottle AI. GPT-6.1 Sol remains the bottle scanner, GPT-6 Luna is the
+  OpenAI profile default when no model is supplied, and Gemini is a manual
+  choice. The [guarded local update](ai-models.md#owned-windows-profile)
+  does not change the DEV-08 features or the remaining feature order.
 - Never change old production, the abandoned hosted test, DNS, root credentials,
   passwords or OS security settings on a generic continuation request.
 - Portable off-device copies and actual second-PC recovery remain deferred.
@@ -272,6 +272,22 @@ After each meaningful implementation/verification: update the board, evidence,
 remaining substeps and the current handoff before the final response. Log scope
 or priority changes with a revision/reason; retain IDs and historical decisions.
 Never put real participant notes, health values, secrets or private exports here.
+
+### Owned Windows GPT-6.2 Sol Profile
+
+The owner requested a GPT-6.2 model for general WineSnap AI. The clean reviewed
+revision `3f16a15` passed Quality and Database Safety, then local maintenance
+on November 25 selected documented `gpt-6.2-sol`. The fresh encrypted backup
+and exact isolated restore matched 78 tables, Auth and one stored object.
+The web-only update installed image `1e2211ebc69e` and kept the exact prior
+image `1f76671b878e` as rollback. The 40 migrations, non-web services, old
+production and abandoned hosted test were unchanged; the connector stayed paused.
+
+Loopback app, database, Auth and Storage checks passed. Two minimal synthetic
+API calls verified project access and a structured result from the installed
+web container. They did not use real accounts or owner content and do not
+establish live quality of every feature or credit coverage. Bottle recognition
+retains GPT-6.1 Sol. DEV-09 remains separate; no change to its plan or status.
 
 ### DEV-08 Installed And Verified (Current)
 
@@ -2400,6 +2416,7 @@ entry points passed validation; `git diff --check` passed.
 | 1.6      | Defer the owner's pending bottle test and begin source-only DEV-06 on request                                                          | Keep DEV-05 open and all acceptance/release boundaries intact; record new planning work separately from the installed app and any actual user evidence                                                       |
 | 1.7      | Continue as a local web app; schedule Android only once the owner is satisfied                                                       | Confirmed November 25. Keep the current backend and DEV-09 through DEV-12 order; no Android implementation, mobile access change or publication now                                                            |
 | 1.8      | Prepare direct OpenAI Luna with an explicit 6.2 Sol option for the owned text/vision workloads                                       | User-approved provider/model choice. 312 focused mock/guard tests passed; local installation, provider access and credit checks remain separate. Bottle scan and old production stay unchanged                 |
+| 1.9      | Activate explicit GPT-6.2 Sol for the existing owned text/vision profile                                                           | Owner requested a 6.2 model. Guarded local update, exact isolated restore, unchanged ledger/services and two synthetic API checks passed. No change to the bottle model or hosted environments               |
 
 ## Verification Record
 
