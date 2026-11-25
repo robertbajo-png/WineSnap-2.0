@@ -197,12 +197,12 @@ describe("owned OpenAI Responses bridge", () => {
   });
 
   it.each([
-    [outputText()],
-    [{ ...functionCall, name: "other" }],
-    [{ ...functionCall, arguments: "[" }],
-    [{ ...functionCall, arguments: "[]" }],
-    [functionCall, functionCall],
-  ])("refuses a missing, malformed, duplicate or wrong function result", async (output) => {
+    { kind: "missing", output: [outputText()] },
+    { kind: "wrong name", output: [{ ...functionCall, name: "other" }] },
+    { kind: "malformed JSON", output: [{ ...functionCall, arguments: "[" }] },
+    { kind: "non-object JSON", output: [{ ...functionCall, arguments: "[]" }] },
+    { kind: "duplicate", output: [functionCall, functionCall] },
+  ])("refuses the $kind function result", async ({ output }) => {
     const send = vi.fn<typeof fetch>().mockResolvedValue(Response.json(envelope(output)));
     const result = await createLocalAiClient("fast", env(), send).complete({ ...forced, messages });
     expect(result.status).toBe(502);

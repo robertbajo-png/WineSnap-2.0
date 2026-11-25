@@ -42,7 +42,10 @@ live model access remain unverified. Do not change data sharing or billing.
 Eleven focused files / 312 tests and the full Windows Vitest run
 (189 files / 2,216 tests) passed. Evidence covers transport, existing provider
 routing, complete handlers, web-only profile selection and simulated rollback.
-PowerShell syntax passed. Tests do not establish real model access,
+The first typecheck caught a table-test fixture receiving individual output
+items instead of an array. The fixture was corrected and the three affected
+suites passed again (124 tests); application code was unchanged. PowerShell
+syntax passed. Tests do not establish real model access,
 quality, latency, token spend or credit eligibility on the owner's project.
 
 The installed DEV-08 image still uses its previous AI routing. Follow
