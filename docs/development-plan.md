@@ -210,6 +210,24 @@ wording; no raw answer or new automated paid replay is needed for that review.
 - Acceptance: real Swedish commands and interruptions on the owner's PC after
   human microphone approval. A microphone icon or mocked transcript is not proof.
 
+**November 25 baseline.** Existing Cook Mode actions use the pinned recipe
+version, timer deadlines and the normal local save/conflict handling. Finish
+and abandon have explicit review. The existing Chef entry opens the current
+step's context without sending a question automatically. Seven focused suites
+(139 tests) passed for existing timer/step validation, cache/reconnect, Chef
+owner/revision scope and synthetic browser-fixture isolation. This was not a
+new browser journey or an installed voice test.
+
+The new command and voice path was not added. Actual Swedish on-device
+availability on the owner's viewer is unknown. [Chrome's release notes](https://developer.chrome.com/release-notes/150)
+describe on-device recognition capability, but do not prove this viewer's
+Swedish support. Microsoft's separate [Voice Access language list](https://support.microsoft.com/en-us/accessibility/windows/voice-access/set-up-voice-access)
+does not list Swedish; [Windows voice typing](https://support.microsoft.com/sv-se/accessibility/windows/use-voice-typing-to-talk-instead-of-type-on-your-pc)
+uses online processing and is not WineSnap voice acceptance. No provider or
+fallback was enabled, and no microphone, real recording or local installation
+was used. Keep the existing buttons and Chef text entry available and keep
+the DEV-09 acceptance gate open.
+
 ## DEV-10: Food And Meal Photos
 
 - Separate food output contracts from wine-label recognition. Present proposed
