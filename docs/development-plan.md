@@ -228,6 +228,25 @@ fallback was enabled, and no microphone, real recording or local installation
 was used. Keep the existing buttons and Chef text entry available and keep
 the DEV-09 acceptance gate open.
 
+**November 27 provider data review (documentation only).** If cloud
+transcription is needed, assess the specific endpoint, not the existing Chef
+configuration. OpenAI's [API data controls](https://developers.openai.com/api/docs/guides/your-data#storage-requirements-and-retention-controls-per-endpoint)
+currently list `/v1/audio/transcriptions` with no training use, abuse-monitoring
+retention or application-state retention. This is not the same as the policy for
+Realtime, which lists 30 days of abuse-monitoring retention. Endpoint eligibility
+for Zero Data Retention does not establish that WineSnap's project has it.
+[Regional processing](https://developers.openai.com/api/docs/guides/data-residency)
+is project- and service-dependent; do not infer it from the local hosting address.
+
+Before enabling any cloud path, verify the chosen project's endpoint access,
+data-sharing and residency settings, and the applicable processor terms. Before
+microphone permission, disclose that the selected audio is processed by OpenAI
+and that WineSnap must not store or log raw audio. Do not carry these findings
+over to any separate Chef request. No provider or model was selected, no project
+settings were inspected or changed, and no audio was collected or sent. The
+implementation issue reported to OpenAI Support and all microphone and local
+installation gates remain open.
+
 ## DEV-10: Food And Meal Photos
 
 - Separate food output contracts from wine-label recognition. Present proposed
