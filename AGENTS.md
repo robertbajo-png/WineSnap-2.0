@@ -40,8 +40,9 @@ five browser cases with a real synthetic login and verified cleanup; the
 installed app still pins the original recipe in existing weeks. No real user
 account was used. Keep the public connector paused and do not touch old
 production or the abandoned hosted test. See `docs/development-plan.md` and
-`docs/owned-nutrition-local-update.md`. DEV-09 voice control is parked at the
-owner's request; consult the canonical plan before resuming it.
+`docs/owned-nutrition-local-update.md`. The owner resumed DEV-09 after the
+pause. The implementation blocker remains; see the canonical plan for evidence
+and the unchanged local installation and microphone approval gates.
 
 The November 25 text AI update runs GPT-6.2 Sol on the owned Windows app
 (web image `1e2211ebc69e`, source `3f16a15`). Bottle scans keep GPT-6.1 Sol.
