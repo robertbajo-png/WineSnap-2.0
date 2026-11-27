@@ -247,6 +247,18 @@ settings were inspected or changed, and no audio was collected or sent. The
 implementation issue reported to OpenAI Support and all microphone and local
 installation gates remain open.
 
+**November 27 installed permissions check.** The owned loopback server
+returned HTTP 200 for both `/` and `/kitchen`, with `microphone=()` in its
+`Permissions-Policy` header. The [independent server configuration](../vite.independent.config.ts)
+and [runtime check](../scripts/check-independent-runtime.mjs) match that result.
+The [Media Capture and Streams specification](https://www.w3.org/TR/mediacapture-streams/)
+explains why the document cannot request a microphone with `getUserMedia`
+under that policy. This is a separate installation constraint, not the cause
+of the Codex issue. Future DEV-09 acceptance must verify permission behavior
+for the intended local Cook Mode experience without exposing access elsewhere.
+No permissions changed and no microphone, language pack or speech recognition
+was tested.
+
 ## DEV-10: Food And Meal Photos
 
 - Separate food output contracts from wine-label recognition. Present proposed
