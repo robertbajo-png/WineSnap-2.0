@@ -42,7 +42,8 @@ account was used. Keep the public connector paused and do not touch old
 production or the abandoned hosted test. See `docs/development-plan.md` and
 `docs/owned-nutrition-local-update.md`. The owner resumed DEV-09 after the
 pause. The implementation blocker remains; see the canonical plan for evidence
-and the unchanged local installation and microphone approval gates.
+and the unchanged local installation and microphone approval gates. At the
+owner's request, DEV-10 is the next milestone and does not wait for DEV-09.
 
 The November 25 text AI update runs GPT-6.2 Sol on the owned Windows app
 (web image `1e2211ebc69e`, source `3f16a15`). Bottle scans keep GPT-6.1 Sol.
