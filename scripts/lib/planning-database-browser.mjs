@@ -37,6 +37,7 @@ export async function createPlanningDatabaseFixture({
   report,
   relayWeb,
   pantry = false,
+  mealPhotos = false,
   preparedAccounts,
 }) {
   assert.equal(origin, "http://127.0.0.1:54323");
@@ -45,6 +46,7 @@ export async function createPlanningDatabaseFixture({
   assert.equal(frontend.hostname, "127.0.0.1");
   assert.ok(!["", "5212", "54323", "8026"].includes(frontend.port));
   assert.ok(preparedAccounts === undefined || (pantry && preparedAccounts.length === 2));
+  assert.ok(!mealPhotos || (pantry && relayWeb));
   const [owner, peer] = preparedAccounts ?? [
     await backend.createAccount("owner"),
     await backend.createAccount("peer"),
@@ -125,6 +127,9 @@ export async function createPlanningDatabaseFixture({
     peer,
     writes,
     rest,
+    browserOwner(bearer) {
+      return tokens.get(bearer)?.id;
+    },
     recipe,
     exportAccount,
     armLatePlan,
@@ -202,6 +207,7 @@ export async function createPlanningDatabaseFixture({
               (path === "/user" ? method === "GET" : method === "POST")
           : (method === "GET" &&
               (tables.has(path) ||
+                (mealPhotos && token !== key && path === "/kitchen_photo_meals") ||
                 (pantry &&
                   ["/kitchen_pantry", "/kitchen_diners", "/kitchen_pantry_consumption"].includes(
                     path,
@@ -209,6 +215,7 @@ export async function createPlanningDatabaseFixture({
               (method === "POST" &&
                 token !== key &&
                 (rpcs.has(path) ||
+                  (mealPhotos && path === "/rpc/kitchen_save_photo_meal") ||
                   (pantry &&
                     [
                       "/rpc/kitchen_save_pantry_item",

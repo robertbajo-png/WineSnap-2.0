@@ -208,7 +208,7 @@ export function createCoreMealPhotoFixture({
   };
 }
 
-async function syntheticPhoto(page) {
+export async function syntheticPhoto(page) {
   const uri = await page.evaluate(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 1280;

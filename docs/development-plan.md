@@ -613,6 +613,20 @@ credentials. Health and Kitchen returned 200; unauthenticated food photo
 read and analysis returned 401. Typecheck passed. No provider call, live
 backup, installation or live-device acceptance took place.
 
+**November 28 browser and real storage checkpoint.** The same disposable
+image passed the mobile browser flow with two real synthetic logins in
+isolated Auth. The relay used the shared photo handler against isolated
+REST and Storage, and blocked all other network access. The browser
+recovered from a simulated analysis failure, showed manual and unknown
+amounts separately, and created no row on review or discard. An opted-in
+save created a private file whose digest matched the database. A second
+session could read neither the row nor the file. Removing the photo in
+the browser deleted the exact object and preserved the meal. The test
+confirmed teardown; it did not call an AI provider, install or touch live
+data. 71 focused tests and scoped lint passed. Run:
+`node --import tsx scripts/check-isolated-meal-photo-browser.mjs winesnap-planning-rehearsal:dev10-5f04580`.
+Report: `dist/core-meal-photo/browser-real-backend-2026-11-28T13-41-07-912Z.json`.
+
 Next: after separate owner approval, make a fresh encrypted backup, prove
 isolated recovery with that exact archive, then run the reviewed local
 action and confirm the installed workflow using synthetic data. Do not use

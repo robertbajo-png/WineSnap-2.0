@@ -40,8 +40,11 @@ they send no photo and do not call OpenAI.
 ## Acceptance and recovery
 
 - Before handing it over, verify the installed synthetic flow: analyze,
-  correct, discard, confirm, open a retained photo, and delete the synthetic
-  meal. Confirm the tunnel is still paused. Label any skipped check.
+  correct, discard, confirm, open a retained photo, and remove the image
+  while retaining the meal. After checking the file is gone, clean up the
+  disposable test account and remaining synthetic meal via the existing
+  account erasure flow. Confirm the tunnel is still paused. Label any
+  skipped check.
 - If the report says `schema_unchanged`, the original web remains in place
   and the database remains at 40. Review the failure before reattempting;
   verify that the exact backup and restore evidence are still fresh.
