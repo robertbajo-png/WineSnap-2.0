@@ -670,7 +670,9 @@ separate safety/data-protection review and opt-in.
 - **November 28 review checkpoint:** [Safety and data protection review](dev-11-safety-and-data-protection.md)
   maps current Nutrition/Keto, meal history, privacy and recovery. It proposes
   separate opt-ins, owner-only data, 90-day measurement retention, and a
-  restore gate that preserves withdrawals and deletions. No app changes.
+  restore gate that preserves withdrawals and deletions. The follow-up
+  specifies both proxy denial paths and verification of portable archive
+  contents before copying or recovering them. No app changes.
   Next: get explicit approval of the design before building with synthetic
   data. Installation and activation with real values remain separate gates.
 - First complete a separate safety/data-protection review and explicit owner

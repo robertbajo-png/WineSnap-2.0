@@ -135,6 +135,44 @@ or infer consent from a snapshot. Ordinary WineSnap recovery remains
 separate. Build a synthetic proof that a retained record can be restored,
 while one erased after the snapshot cannot, including interruption/restart.
 
+### Existing Routes and Portable Copy Paths
+
+Both the [gated proxy](../config/owned-windows/gated-internet.conf) and
+[alternate proxy](../config/owned-windows/internet.conf) forward app paths
+and backend REST paths. The [ordinary privacy export](../src/routes/api/privacy/privacy-export.ts)
+is an app path. A paused tunnel is an operating constraint, not proof
+that these routes would reject the new data if it were reopened.
+
+- Use distinct local-only entry points for DEV-11 reads, writes and the
+  owner export. Block those entry points in both ingress configurations;
+  verify the local server boundary independently. Do not trust a client
+  flag, Host header or the fact that a request passed the outer login gate.
+  Deny direct access to DEV-11 tables and functions through backend REST
+  with any browser token, including the owner's. The local handler still
+  verifies owner, active account and current consent.
+- Keep the ordinary export available for its existing data. The local
+  rights interface must clearly offer the dedicated DEV-11 export; do not
+  add these records to a shared allowlist also used by proxied exports.
+  Rehearse denial with authenticated synthetic owners at both simulated
+  ingress modes and their direct REST paths, leaving the real tunnel paused.
+
+The [portable wrapper](../scripts/run-owned-portable.ps1) reads a verified
+app archive for Create. Its Export action can copy an existing encrypted
+file as is, without decrypting it. An off switch or filename is therefore
+not proof of what an older artifact contains.
+
+- Before enabling real data, verify exclusion from the actual portable
+  payload, including the database dump, not just its inventory. Create must
+  verify the contents and bind trusted exclusion evidence to the resulting
+  archive bytes before making the file available. Before either copy path
+  runs, compare that evidence against the exact source file. Stop safely
+  without a match; preserve verified pre-DEV-11 archives.
+- Rehearse and RecoverFiles must also verify permitted scope before
+  materializing recovered files. Test refusal of a portable artifact with
+  DEV-11 content as well as restoration of an eligible local archive from
+  before a withdrawal. Do not let previously approved app recovery reopen
+  this new data class or bypass the separate withdrawal evidence.
+
 ## Risks and Required Evidence
 
 | Risk | Proposed reduction | Evidence before real activation |
