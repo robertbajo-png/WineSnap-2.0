@@ -14,6 +14,7 @@ import {
   prepareMealPhoto,
   readMealPhoto,
   removeMealPhoto,
+  resumeMealPhoto,
   savePhotoMeal,
   type PreparedMealPhoto,
 } from "./client";
@@ -116,6 +117,27 @@ describe("reviewed meal and private photo persistence", () => {
   };
   const scope = { owner, current: () => true };
   const signal = new AbortController().signal;
+
+  it("only sends a bodyless owner request when resuming and accepts both supported outcomes", async () => {
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ photoState: "pending" }))
+      .mockResolvedValueOnce(Response.json({ photoState: "ready" }))
+      .mockResolvedValueOnce(Response.json({ photoState: "removed" }));
+    vi.stubGlobal("fetch", send);
+    await expect(resumeMealPhoto(id, scope, signal)).resolves.toBe("pending");
+    await expect(resumeMealPhoto(id, scope, signal)).resolves.toBe("ready");
+    await expect(resumeMealPhoto(id, scope, signal)).rejects.toMatchObject({ code: "invalid" });
+    expect(send).toHaveBeenLastCalledWith(
+      `/api/meal-photo?id=${id}`,
+      expect.objectContaining({
+        method: "PATCH",
+        headers: { Authorization: "Bearer synthetic-scoped-token" },
+        body: undefined,
+        cache: "no-store",
+      }),
+    );
+  });
 
   it("uses the caller's fixed request ID and owner-scoped write for both attempts", async () => {
     const select = vi.fn().mockReturnThis();

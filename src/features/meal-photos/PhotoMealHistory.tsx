@@ -1,9 +1,37 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Eye, EyeOff, Trash2 } from "lucide-react";
-import { listPhotoMeals, photoMealPageSize, readMealPhoto, removeMealPhoto } from "./client";
+import { Eye, EyeOff, ImagePlus, RotateCcw, Save, Trash2 } from "lucide-react";
+import {
+  attachMealPhoto,
+  listPhotoMeals,
+  mealPhotoAccept,
+  MealPhotoError,
+  photoMealPageSize,
+  prepareMealPhoto,
+  readMealPhoto,
+  removeMealPhoto,
+  resumeMealPhoto,
+} from "./client";
 import { portionText, type SavedPhotoMeal } from "./domain";
 
 const dateLabel = new Intl.DateTimeFormat("sv-SE", { dateStyle: "medium" });
+const progressText = {
+  show: "Hämtar bilden…",
+  resume: "Kontrollerar den sparade bilden…",
+  upload: "Sparar bilden…",
+  remove: "Tar bort bilden…",
+};
+type PhotoAction = keyof typeof progressText;
+
+function errorText(action: PhotoAction, error: unknown) {
+  const code = error instanceof MealPhotoError ? error.code : null;
+  if (code === "auth") return "Inloggningen kunde inte verifieras. Logga in och försök igen.";
+  if (action === "show") return "Bilden kunde inte visas. Försök igen.";
+  if (action === "remove") return "Borttagningen kunde inte bekräftas. Försök igen.";
+  if (action === "resume") return "Bildsparandet kunde inte kontrolleras. Försök igen.";
+  if (code === "format" || code === "read") return "Bilden kunde inte läsas. Välj en annan fil.";
+  if (code === "conflict") return "Bilden stämmer inte med den tidigare uppladdningen.";
+  return "Det gick inte att spara bilden. Försök igen.";
+}
 
 function HistoryMeal({
   meal,
@@ -16,10 +44,13 @@ function HistoryMeal({
 }) {
   const pending = useRef<AbortController | null>(null);
   const objectUrl = useRef<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [src, setSrc] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<PhotoAction | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [photoState, setPhotoState] = useState(meal.photo_state);
+  const [needsFile, setNeedsFile] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [notice, setNotice] = useState("");
   const hasPhoto = photoState === "pending" || photoState === "ready" || photoState === "removing";
 
@@ -36,13 +67,14 @@ function HistoryMeal({
     setSrc(null);
   }
 
-  async function request(action: "show" | "remove") {
+  async function request(action: PhotoAction) {
     if (offline || pending.current) return;
+    if (action === "upload" && !file) return;
     const controller = new AbortController();
     pending.current = controller;
     const current = () => pending.current === controller && !controller.signal.aborted;
     const scope = { owner, current };
-    setBusy(true);
+    setBusy(action);
     setNotice("");
     try {
       if (action === "show") {
@@ -50,25 +82,35 @@ function HistoryMeal({
         if (!current()) return;
         objectUrl.current = URL.createObjectURL(image);
         setSrc(objectUrl.current);
-      } else {
+      } else if (action === "remove") {
         hide();
+        setFile(null);
         setPhotoState("removing");
         await removeMealPhoto(meal.id, scope, controller.signal);
         if (!current()) return;
         setPhotoState("removed");
         setConfirm(false);
+      } else if (action === "resume") {
+        const state = await resumeMealPhoto(meal.id, scope, controller.signal);
+        if (!current()) return;
+        setPhotoState(state);
+        setNeedsFile(state === "pending");
+        if (state === "ready") setFile(null);
+      } else if (file) {
+        const prepared = await prepareMealPhoto(file, controller.signal);
+        if (!current()) return;
+        await attachMealPhoto(meal.id, prepared, scope, controller.signal);
+        if (!current()) return;
+        setFile(null);
+        setNeedsFile(false);
+        setPhotoState("ready");
       }
-    } catch {
-      if (current())
-        setNotice(
-          action === "show"
-            ? "Bilden kunde inte visas. Försök igen."
-            : "Borttagningen kunde inte bekräftas. Försök igen.",
-        );
+    } catch (error) {
+      if (current()) setNotice(errorText(action, error));
     } finally {
       if (current()) {
         pending.current = null;
-        setBusy(false);
+        setBusy(null);
       }
     }
   }
@@ -85,24 +127,39 @@ function HistoryMeal({
         ))}
       </ul>
       {src && <img className="meal-photo-preview" src={src} alt="Sparad måltidsbild" />}
-      {photoState === "pending" && (
-        <p className="meal-photo-detail">Bildsparandet är inte klart.</p>
+      {photoState === "pending" &&
+        (needsFile ? (
+          <p className="meal-photo-detail" role="status">
+            Ingen färdig bild hittades. Välj samma bild igen eller lämna måltiden utan bild.
+          </p>
+        ) : (
+          <p className="meal-photo-detail">Bildsparandet är inte klart.</p>
+        ))}
+      {photoState === "ready" && meal.photo_state === "pending" && (
+        <p role="status">Bilden är sparad.</p>
       )}
       {photoState === "removing" && (
         <p className="meal-photo-detail">Borttagningen är inte klar.</p>
       )}
       {photoState === "removed" && <p className="meal-photo-detail">Bilden är borttagen.</p>}
       {notice && <p role="alert">{notice}</p>}
-      {busy && <p role="status">{confirm ? "Tar bort bilden…" : "Hämtar bilden…"}</p>}
+      {busy && <p role="status">{progressText[busy]}</p>}
+      {file && photoState === "pending" && !confirm && (
+        <p className="meal-photo-detail">Vald bild: {file.name}</p>
+      )}
       {hasPhoto && (
         <div className="meal-photo-actions">
           {confirm ? (
             <>
-              <p>Ta bort bilden permanent? Måltiden finns kvar.</p>
+              <p>
+                {photoState === "pending"
+                  ? "Avsluta bildsparandet och behåll måltiden utan bild?"
+                  : "Ta bort bilden permanent? Måltiden finns kvar."}
+              </p>
               <button
                 type="button"
                 className="k-secondary"
-                disabled={busy || offline}
+                disabled={!!busy || offline}
                 onClick={() => void request("remove")}
               >
                 <Trash2 size={17} aria-hidden /> Bekräfta borttagning
@@ -110,7 +167,7 @@ function HistoryMeal({
               <button
                 type="button"
                 className="k-text"
-                disabled={busy}
+                disabled={!!busy}
                 onClick={() => setConfirm(false)}
               >
                 Stäng
@@ -118,11 +175,60 @@ function HistoryMeal({
             </>
           ) : (
             <>
+              {photoState === "pending" && (
+                <>
+                  <button
+                    type="button"
+                    className="k-secondary"
+                    disabled={!!busy || offline}
+                    onClick={() => void request("resume")}
+                  >
+                    <RotateCcw size={17} aria-hidden /> Slutför bildsparandet
+                  </button>
+                  {needsFile && (
+                    <>
+                      <input
+                        ref={fileInput}
+                        type="file"
+                        hidden
+                        accept={mealPhotoAccept}
+                        aria-label="Välj samma måltidsbild"
+                        onChange={(event) => {
+                          const selected = event.currentTarget.files?.[0];
+                          event.currentTarget.value = "";
+                          if (selected && !pending.current && !offline) {
+                            setNotice("");
+                            setFile(selected);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="k-secondary"
+                        disabled={!!busy || offline}
+                        onClick={() => fileInput.current?.click()}
+                      >
+                        <ImagePlus size={17} aria-hidden /> Välj bilden igen
+                      </button>
+                      {file && (
+                        <button
+                          type="button"
+                          className="k-primary"
+                          disabled={!!busy || offline}
+                          onClick={() => void request("upload")}
+                        >
+                          <Save size={17} aria-hidden /> Spara vald bild
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
               {photoState === "ready" && (
                 <button
                   type="button"
                   className="k-secondary"
-                  disabled={busy || (offline && !src)}
+                  disabled={!!busy || (offline && !src)}
                   onClick={() => (src ? hide() : void request("show"))}
                 >
                   {src ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}
@@ -132,10 +238,11 @@ function HistoryMeal({
               <button
                 type="button"
                 className="k-secondary"
-                disabled={offline || busy}
+                disabled={offline || !!busy}
                 onClick={() => setConfirm(true)}
               >
-                <Trash2 size={17} aria-hidden /> Ta bort bild
+                <Trash2 size={17} aria-hidden />{" "}
+                {photoState === "pending" ? "Behåll måltiden utan bild" : "Ta bort bild"}
               </button>
             </>
           )}

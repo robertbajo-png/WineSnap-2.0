@@ -50,6 +50,19 @@ export function createCoreMealPhotoFixture({
     files,
     saveIds,
     fileRequests,
+    seedPending(label, staged) {
+      const id = crypto.randomUUID();
+      rows.set(id, {
+        id,
+        user_id: fixtureOwner,
+        created_at: "2026-11-28T12:30:00+00:00",
+        items: [{ name: label, portion: null }],
+        keep_photo: true,
+        photo_state: "pending",
+        photo_sha256: staged ? "a".repeat(64) : null,
+      });
+      if (staged) files.add(id);
+    },
     setPhoto: (buffer) => (photoFixture = buffer),
     preferSuccess: () => (outcome = "success"),
     holdNext() {
@@ -142,6 +155,15 @@ export function createCoreMealPhotoFixture({
         if (method === "GET") {
           assert.ok(files.has(id));
           return route.fulfill({ status: 200, contentType: "image/png", body: photoFixture });
+        }
+        if (method === "PATCH") {
+          assert.equal(request.postDataBuffer(), null);
+          if (record.photo_state === "pending" && files.has(id)) {
+            report.simulatedWrites++;
+            record.photo_state = "ready";
+          }
+          assert.ok(["pending", "ready"].includes(record.photo_state));
+          return respond(200, { photoState: record.photo_state });
         }
         assert.equal(method, "DELETE");
         report.simulatedWrites++;
@@ -406,4 +428,49 @@ export async function acceptCoreMealPhoto({ page, context, base, artifacts, repo
   assert.equal(report.simulatedAiRequests, 6);
   assert.equal(report.simulatedWrites, 8);
   report.passed.push("meal-photo-remove-image-retry-preserves-meal");
+
+  report.phase = "meal-photo-resume-after-leaving";
+  const inactive = await fetch(base + photoPath + "?id=11111111-1111-4111-8111-111111111111", {
+    method: "PATCH",
+    redirect: "error",
+  });
+  assert.equal(inactive.status, 404);
+  assert.deepEqual(await inactive.json(), { error: "meal_photo_not_found" });
+  report.passed.push("meal-photo-built-resume-route-default-off");
+  fixture.seedPending("Testmåltid med bevarad fil", true);
+  fixture.seedPending("Testmåltid utan fil", false);
+  fixture.seedPending("Testmåltid utan bildval kvar", false);
+  await page.getByRole("button", { name: "Recept", exact: true }).click();
+  await panel.waitFor({ state: "detached" });
+  await select.selectOption("meal-photo");
+  const row = (text) => history.locator(".meal-photo-history-entry").filter({ hasText: text });
+  const preserved = row("Testmåltid med bevarad fil");
+  const missing = row("Testmåltid utan fil");
+  const discarded = row("Testmåltid utan bildval kvar");
+  const resume = (entry) => entry.getByRole("button", { name: "Slutför bildsparandet" });
+  await resume(preserved).click();
+  await preserved.getByText("Bilden är sparad.").waitFor();
+  assert.deepEqual(fixture.fileRequests.slice(5), ["PATCH"]);
+  report.passed.push("meal-photo-resume-staged-bytes-without-reupload");
+
+  await resume(missing).click();
+  await missing.getByText(/Ingen färdig bild hittades/).waitFor();
+  await missing.getByLabel("Välj samma måltidsbild").setInputFiles(file);
+  await missing.getByText(/Vald bild:/).waitFor();
+  await layout(page, artifacts, report, "meal-photo-resume");
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.deepEqual(fixture.fileRequests.slice(5), ["PATCH", "PATCH"]);
+  await missing.getByRole("button", { name: "Spara vald bild" }).click();
+  await missing.getByText("Bilden är sparad.").waitFor();
+  assert.deepEqual(fixture.fileRequests.slice(5), ["PATCH", "PATCH", "POST"]);
+  report.passed.push("meal-photo-resume-missing-file-requires-explicit-upload");
+
+  await discarded.getByRole("button", { name: "Behåll måltiden utan bild" }).click();
+  await discarded.getByRole("button", { name: "Bekräfta borttagning" }).click();
+  await discarded.getByText("Bilden är borttagen.").waitFor();
+  assert.deepEqual(fixture.fileRequests.slice(5), ["PATCH", "PATCH", "POST", "DELETE"]);
+  assert.equal(fixture.rows.size, 5);
+  assert.equal(fixture.saveIds.length, 4);
+  assert.equal(report.simulatedAiRequests, 6);
+  report.passed.push("meal-photo-drop-interrupted-attachment-keeps-meal");
 }

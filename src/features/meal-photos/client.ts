@@ -24,7 +24,9 @@ export type PreparedMealPhoto = {
 };
 
 export class MealPhotoError extends Error {
-  constructor(readonly code: "format" | "read" | "auth" | "quota" | "disabled" | "invalid") {
+  constructor(
+    readonly code: "format" | "read" | "auth" | "quota" | "disabled" | "invalid" | "conflict",
+  ) {
     super(code);
   }
 }
@@ -179,7 +181,7 @@ export async function listPhotoMeals(
 
 async function photoFile(
   id: string,
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   scope: AccountWriteScope,
   signal: AbortSignal,
   photo?: PreparedMealPhoto,
@@ -206,6 +208,7 @@ async function photoFile(
   assertCurrent(scope, deadline);
   if (!response.ok) {
     await response.body?.cancel();
+    if (method === "POST" && response.status === 409) throw new MealPhotoError("conflict");
     throw new MealPhotoError(
       response.status === 401 || response.status === 403 ? "auth" : "invalid",
     );
@@ -223,6 +226,15 @@ export async function attachMealPhoto(
   const result = await response.json();
   assertCurrent(scope, deadline);
   if (result?.photoState !== "ready") throw new MealPhotoError("invalid");
+}
+
+export async function resumeMealPhoto(id: string, scope: AccountWriteScope, signal: AbortSignal) {
+  const { response, deadline } = await photoFile(id, "PATCH", scope, signal);
+  const result = await response.json();
+  assertCurrent(scope, deadline);
+  if (result?.photoState === "ready" || result?.photoState === "pending")
+    return result.photoState as "ready" | "pending";
+  throw new MealPhotoError("invalid");
 }
 
 export async function readMealPhoto(id: string, scope: AccountWriteScope, signal: AbortSignal) {

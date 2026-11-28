@@ -39,6 +39,7 @@ const operationText: Record<OperationKind, string> = {
   removing: "Tar bort bilden…",
 };
 const errors: Record<MealPhotoError["code"], string> = {
+  conflict: "Bilden matchar inte den tidigare uppladdningen.",
   format: "Välj en JPG-, PNG- eller WebP-bild på högst 16 MB.",
   read: "Bilden gick inte att läsa. Prova en annan bild.",
   auth: "Kontot kunde inte verifieras. Logga in och försök igen.",

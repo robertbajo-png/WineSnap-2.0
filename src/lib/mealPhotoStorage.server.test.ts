@@ -11,7 +11,11 @@ const rgb = [145, 32, 41, 81, 99, 27];
 type Authorize = Parameters<typeof createMealPhotoStorageHandler>[0]["authorize"];
 type Session = NonNullable<Awaited<ReturnType<Authorize>>>;
 
-function request(method: "POST" | "GET" | "DELETE", url = endpoint, token = "synthetic-token") {
+function request(
+  method: "POST" | "GET" | "PATCH" | "DELETE",
+  url = endpoint,
+  token = "synthetic-token",
+) {
   return new Request(url, {
     method,
     headers: {
@@ -69,7 +73,7 @@ describe("private meal photo objects", () => {
     authorize.mockResolvedValueOnce(null);
     expect((await handle(request("GET"))).status).toBe(401);
     session.read.mockResolvedValue(null);
-    for (const method of ["GET", "POST", "DELETE"] as const)
+    for (const method of ["GET", "POST", "PATCH", "DELETE"] as const)
       expect((await handle(request(method))).status).toBe(404);
     expect(session.get).not.toHaveBeenCalled();
     expect(session.put).not.toHaveBeenCalled();
@@ -81,6 +85,7 @@ describe("private meal photo objects", () => {
     const { handle, session } = fixture();
     session.read.mockResolvedValue({ photo_state: "none", photo_sha256: null });
     expect((await handle(request("POST"))).status).toBe(409);
+    expect((await handle(request("PATCH"))).status).toBe(409);
     expect((await handle(request("GET"))).status).toBe(404);
     session.transition.mockResolvedValue("none");
     expect((await handle(request("DELETE"))).status).toBe(204);
@@ -130,6 +135,68 @@ describe("private meal photo objects", () => {
     session.read.mockResolvedValue({ photo_state: "ready", photo_sha256: digest });
     session.transition.mockResolvedValue("ready");
     expect((await handle(request("POST"))).status).toBe(503);
+    expect(session.put).not.toHaveBeenCalled();
+  });
+
+  it("returns pending for a missing file, without uploading or committing anything", async () => {
+    const { handle, session } = fixture();
+    const { digest } = await makeStored();
+    expect(await (await handle(request("PATCH"))).json()).toEqual({ photoState: "pending" });
+    expect(session.get).not.toHaveBeenCalled();
+    session.read.mockResolvedValue({ photo_state: "pending", photo_sha256: digest });
+    expect(await (await handle(request("PATCH"))).json()).toEqual({ photoState: "pending" });
+    expect(session.get).toHaveBeenCalledExactlyOnceWith(path);
+    expect(session.put).not.toHaveBeenCalled();
+    expect(session.transition).not.toHaveBeenCalled();
+  });
+
+  it("only publishes the matching staged bytes and requires no upload on the ready retry", async () => {
+    const { handle, session } = fixture();
+    const { blob, digest } = await makeStored();
+    session.read
+      .mockResolvedValue({ photo_state: "ready", photo_sha256: digest })
+      .mockResolvedValueOnce({ photo_state: "pending", photo_sha256: digest });
+    session.get.mockResolvedValue(blob);
+    session.transition.mockResolvedValue("ready");
+    for (let index = 0; index < 2; index++) {
+      const response = await handle(request("PATCH"));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(await response.json()).toEqual({ photoState: "ready" });
+    }
+    expect(session.transition).toHaveBeenCalledExactlyOnceWith(id, "publish", digest);
+    expect(session.put).not.toHaveBeenCalled();
+  });
+
+  it("rejects pixels on resume and does not mistake bad bytes or Storage errors for absence", async () => {
+    const { handle, session } = fixture();
+    const { digest } = await makeStored();
+    session.read.mockResolvedValue({ photo_state: "pending", photo_sha256: digest });
+    const withBody = new Request(endpoint, {
+      method: "PATCH",
+      headers: { Authorization: "Bearer synthetic-token" },
+      body: "unexpected",
+    });
+    expect((await handle(withBody)).status).toBe(400);
+    expect(session.get).not.toHaveBeenCalled();
+    session.get.mockResolvedValueOnce(new Blob(["synthetic mismatch"], { type: "image/png" }));
+    expect((await handle(request("PATCH"))).status).toBe(503);
+    session.get.mockRejectedValueOnce(new Error("synthetic permission error"));
+    expect((await handle(request("PATCH"))).status).toBe(503);
+    expect(session.transition).not.toHaveBeenCalled();
+  });
+
+  it("fails a resume held during erasure or concurrent deletion", async () => {
+    const { handle, session } = fixture();
+    const { blob, digest } = await makeStored();
+    session.get.mockResolvedValue(blob);
+    session.read.mockResolvedValue({ photo_state: "pending", photo_sha256: digest });
+    session.transition.mockResolvedValueOnce("unavailable");
+    expect((await handle(request("PATCH"))).status).toBe(404);
+    session.transition.mockResolvedValueOnce("ready");
+    session.read.mockResolvedValueOnce({ photo_state: "pending", photo_sha256: digest });
+    session.read.mockResolvedValueOnce({ photo_state: "removed", photo_sha256: null });
+    expect((await handle(request("PATCH"))).status).toBe(404);
     expect(session.put).not.toHaveBeenCalled();
   });
 

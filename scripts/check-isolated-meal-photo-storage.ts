@@ -14,13 +14,16 @@ import { runAccountErasure } from "../supabase/functions/_shared/privacyErasure"
 import { createHandler as createExport } from "../supabase/functions/privacy-export/handler";
 
 assert.ok(
-  process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === "--restore-only"),
+  process.argv.length === 2 ||
+    (process.argv.length === 3 && ["--restore-only", "--resume-only"].includes(process.argv[2])),
 );
 const restoreOnly = process.argv[2] === "--restore-only";
+const resumeOnly = process.argv[2] === "--resume-only";
 const report = {
   checkedAt: new Date().toISOString(),
   synthetic: true,
   restoreOnly,
+  resumeOnly,
   backupStage: undefined as string | undefined,
   failureCategory: undefined as string | undefined,
   archiveRejection: undefined as string | undefined,
@@ -91,25 +94,27 @@ async function run() {
     { name: "Matvete", portion: { source: "manual", grams: 160 } },
     { name: "Gronkalsmix", portion: null },
   ];
-  const handle = createMealPhotoStorageHandler({
-    enabled: () => true,
-    authorize: (token) => authorizeMealPhotoStorage(token, anon, async () => admin),
-  });
-  const photo = (method: "GET" | "POST" | "DELETE", id: string, token?: string, frame = body) =>
-    handle(
-      new Request(`http://127.0.0.1/api/meal-photo?id=${id}`, {
-        method,
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-          ...(method === "POST" && {
-            "Content-Type": "application/octet-stream",
-            "X-Meal-Photo-Width": "2",
-            "X-Meal-Photo-Height": "2",
-          }),
-        },
-        body: method === "POST" ? frame : undefined,
-      }),
-    );
+  const authorize = (token: string) => authorizeMealPhotoStorage(token, anon, async () => admin);
+  const handle = createMealPhotoStorageHandler({ enabled: () => true, authorize });
+  const photoRequest = (
+    method: "GET" | "POST" | "PATCH" | "DELETE",
+    id: string,
+    token?: string,
+    frame = body,
+  ) =>
+    new Request(`http://127.0.0.1/api/meal-photo?id=${id}`, {
+      method,
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(method === "POST" && {
+          "Content-Type": "application/octet-stream",
+          "X-Meal-Photo-Width": "2",
+          "X-Meal-Photo-Height": "2",
+        }),
+      },
+      body: method === "POST" ? frame : undefined,
+    });
+  const photo = (...args: Parameters<typeof photoRequest>) => handle(photoRequest(...args));
   const save = (id: string, keep: boolean) =>
     ownerClient
       .rpc("kitchen_save_photo_meal", { _id: id, _items: items, _keep_photo: keep })
@@ -124,8 +129,13 @@ async function run() {
   const storedPhoto = () => admin.storage.from(bucket).download(path);
   let retained: Buffer;
   const restoreName = "archive_restore_verifies_meal_photo_bytes_and_owner_isolation";
+  const resumeName = "resume_checks_staged_bytes_missing_image_and_owner_access";
   if (restoreOnly) {
     await test(restoreName, verifyRestore);
+    return;
+  }
+  if (resumeOnly) {
+    await test(resumeName, verifyResume);
     return;
   }
 
@@ -299,6 +309,7 @@ async function run() {
       items,
     });
   });
+  await test(resumeName, verifyResume);
 
   await test("account_erasure_revokes_read_and_removes_private_file", async () => {
     const id = randomUUID();
@@ -339,6 +350,71 @@ async function run() {
   });
 
   await test(restoreName, verifyRestore);
+
+  async function verifyResume() {
+    const staged = randomUUID();
+    const missing = randomUUID();
+    const retainNone = randomUUID();
+    status((await save(staged, true)).status, 200);
+    status((await save(missing, true)).status, 200);
+    status((await save(retainNone, false)).status, 200);
+    status((await photo("PATCH", retainNone, ownerToken)).status, 409);
+    const preHash = await photo("PATCH", missing, ownerToken);
+    status(preHash.status, 200);
+    assert.deepEqual(await preHash.json(), { photoState: "pending" });
+
+    const fault = (stage: "before-write" | "before-publish") =>
+      createMealPhotoStorageHandler({
+        enabled: () => true,
+        async authorize(token) {
+          const session = await authorize(token);
+          assert.ok(session);
+          return {
+            ...session,
+            async put(path, png) {
+              return stage === "before-write" ? false : session.put(path, png);
+            },
+            async transition(id, ...args) {
+              if (stage === "before-publish" && args[0] === "publish")
+                throw new Error("synthetic interrupted upload");
+              return session.transition(id, ...args);
+            },
+          };
+        },
+      });
+    status((await fault("before-write")(photoRequest("POST", missing, ownerToken))).status, 503);
+    assert.ok((await read(missing)).data.photo_sha256);
+    const absent = await photo("PATCH", missing, ownerToken);
+    status(absent.status, 200);
+    assert.deepEqual(await absent.json(), { photoState: "pending" });
+    const other = body.slice();
+    other[0] ^= 1;
+    status((await photo("POST", missing, ownerToken, other)).status, 409);
+    status((await photo("POST", missing, ownerToken)).status, 200);
+
+    status((await fault("before-publish")(photoRequest("POST", staged, ownerToken))).status, 503);
+    const pinned = (await read(staged)).data;
+    assert.equal(pinned.photo_state, "pending");
+    status((await photo("GET", staged, ownerToken)).status, 404);
+    status((await photo("PATCH", staged, peerToken)).status, 404);
+    status((await photo("PATCH", staged)).status, 401);
+    const ready = await photo("PATCH", staged, ownerToken);
+    status(ready.status, 200);
+    assert.deepEqual(await ready.json(), { photoState: "ready" });
+    const restored = await photo("GET", staged, ownerToken);
+    status(restored.status, 200);
+    assert.equal(
+      createHash("sha256")
+        .update(Buffer.from(await restored.arrayBuffer()))
+        .digest("hex"),
+      pinned.photo_sha256,
+    );
+    status((await photo("PATCH", staged, ownerToken)).status, 200);
+    status((await photo("DELETE", staged, ownerToken)).status, 204);
+    status((await photo("PATCH", staged, ownerToken)).status, 409);
+    assert.deepEqual((await read(staged)).data.items, items);
+    report.actualAuthRestStorage = true;
+  }
 
   async function verifyRestore() {
     const restoredMeal = randomUUID();

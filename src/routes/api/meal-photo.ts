@@ -6,6 +6,7 @@ export const Route = createFileRoute("/api/meal-photo")({
     handlers: {
       GET: ({ request }) => handleMealPhotoStorage(request),
       POST: ({ request }) => handleMealPhotoStorage(request),
+      PATCH: ({ request }) => handleMealPhotoStorage(request),
       DELETE: ({ request }) => handleMealPhotoStorage(request),
     },
   },
