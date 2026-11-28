@@ -69,6 +69,7 @@ export async function ownedBrowserFixture(
   {
     demo = false,
     cleanupImages = false,
+    cleanupMealPhotos = false,
     cleanupMeals = false,
     cleanupMemory = false,
     planningOnly = false,
@@ -80,6 +81,8 @@ export async function ownedBrowserFixture(
   validateOwnedKeys(keys);
   assert.equal(typeof demo, "boolean");
   assert.equal(typeof cleanupImages, "boolean");
+  assert.equal(typeof cleanupMealPhotos, "boolean");
+  assert.ok(!cleanupMealPhotos || planningOnly);
   assert.equal(typeof cleanupMeals, "boolean");
   assert.equal(typeof cleanupMemory, "boolean");
   assert.equal(typeof planningOnly, "boolean");
@@ -127,6 +130,16 @@ export async function ownedBrowserFixture(
       await app.auth.signInWithPassword({ email: fixture.email, password: password(fixture.run) }),
     ).session;
   }
+  async function mealPhotoObjects() {
+    const storage = admin.storage.from("meal-photos");
+    const objects = ok(await storage.list(fixture.userId, { limit: 21, offset: 0 }));
+    assert.ok(Array.isArray(objects) && objects.length <= 20);
+    return objects.map(({ id, name }) => {
+      assert.ok(typeof id === "string" && id.length > 0);
+      assert.ok(typeof name === "string" && name.endsWith(".png") && uuid.test(name.slice(0, -4)));
+      return fixture.userId + "/" + name;
+    });
+  }
   async function assertDependentsAbsent() {
     for (const [table, column = "id"] of [
       ...(kitchenOnly
@@ -144,6 +157,7 @@ export async function ownedBrowserFixture(
             ["kitchen_diners"],
           ]
         : []),
+      ...(cleanupMealPhotos ? [["kitchen_photo_meals"]] : []),
       ...(cleanupMeals
         ? [
             ["kitchen_households"],
@@ -171,6 +185,7 @@ export async function ownedBrowserFixture(
       assert.ok(Array.isArray(rows));
       assert.equal(rows.length, 0);
     }
+    if (cleanupMealPhotos) assert.deepEqual(await mealPhotoObjects(), []);
   }
   if (action === "absent") {
     const found = await admin.auth.admin.getUserById(fixture.userId);
@@ -400,6 +415,11 @@ export async function ownedBrowserFixture(
     }
     assertFixtureOwner(ok(found).user, fixture);
     if (demo) assert.equal(found.data.user.app_metadata?.owned_demo_run, fixture.run);
+    if (cleanupMealPhotos) {
+      const paths = await mealPhotoObjects();
+      if (paths.length) ok(await admin.storage.from("meal-photos").remove(paths));
+      assert.deepEqual(await mealPhotoObjects(), []);
+    }
     if (cleanupImages) {
       const wines = ok(
         await admin.from("wines").select("image_url").eq("user_id", fixture.userId).limit(101),

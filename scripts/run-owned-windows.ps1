@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','TextAiUpdate','MealPhotoUpdate','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','TextAiUpdate','MealPhotoUpdate','MealPhotoAccept','MealPhotoCleanup','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly,
@@ -80,7 +80,7 @@ try {
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
-  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -in @('NutritionUpdate','TextAiUpdate','MealPhotoUpdate')){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
+  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','MealPhotoAccept','MealPhotoCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -in @('NutritionUpdate','TextAiUpdate','MealPhotoUpdate')){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
   $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $waitMs
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}

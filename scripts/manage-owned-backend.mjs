@@ -80,6 +80,8 @@ assert.ok(
     "NutritionUpdate",
     "TextAiUpdate",
     "MealPhotoUpdate",
+    "MealPhotoAccept",
+    "MealPhotoCleanup",
     "NutritionAccept",
     "NutritionCleanup",
     "Accept",
@@ -110,6 +112,7 @@ const pantryUpdate = pantryBackup !== undefined;
 const pantryAcceptance = ["PantryAccept", "PantryCleanup"].includes(action);
 const nutritionUpdate = action === "NutritionUpdate";
 const nutritionAcceptance = ["NutritionAccept", "NutritionCleanup"].includes(action);
+const mealPhotoAcceptance = ["MealPhotoAccept", "MealPhotoCleanup"].includes(action);
 const nutritionBackup = process.env.WINESNAP_OWNED_NUTRITION_BACKUP;
 const textAiUpdate = action === "TextAiUpdate";
 const textAiBackup = process.env.WINESNAP_OWNED_AI_TEXT_BACKUP;
@@ -908,7 +911,10 @@ async function updateGuardedWeb(previous, { originSettings, pilotUi, textAi }) {
 }
 
 async function openOwnedKitchenManifest(file) {
-  assert.match(file, /^(?:pantry-browser-(?:owner|peer)|nutrition-browser-owner)-fixture\.json$/);
+  assert.match(
+    file,
+    /^(?:(?:pantry|meal-photo)-browser-(?:owner|peer)|nutrition-browser-owner)-fixture\.json$/,
+  );
   const path = join(homedir(), "WineSnapOwned", file);
   const { validateBrowserFixture } = await import("./lib/owned-browser-fixture.mjs");
   let fixture;
@@ -1347,7 +1353,52 @@ try {
   }
   if (!nutritionUpdate && !textAiUpdate && !mealPhotoUpdate) {
     phase = "verification";
-    await verify({ syncWebKeys: !pantryAcceptance && !nutritionAcceptance });
+    await verify({
+      syncWebKeys: !pantryAcceptance && !nutritionAcceptance && !mealPhotoAcceptance,
+    });
+  }
+  if (mealPhotoAcceptance) {
+    phase = "meal_photo_acceptance_guard";
+    await readPausedPantryState();
+    assert.equal(installedMealPhoto, mealPhotoWebLabel);
+    assert.equal(installedPantry, pantryWebLabel);
+    assert.equal(installedNutrition, nutritionWebLabel);
+    assert.deepEqual(textAi, { provider: "openai", model: "gpt-6.2-sol" });
+    const ledger = assessOwnedMealPhotoLedger(
+      await readMigrationSources(),
+      JSON.parse(await sql(ownedMealPhotoLedgerQuery)),
+      keys.installationId,
+    );
+    assert.equal(ledger.scope, "already_applied");
+    report.mealPhotoLedger = { applied: ledger.applied, scope: ledger.scope };
+    const manifests = await Promise.all(
+      ["owner", "peer"].map((name) =>
+        openOwnedKitchenManifest(`meal-photo-browser-${name}-fixture.json`),
+      ),
+    );
+    const { acceptOwnedMealPhotos, cleanupOwnedMealPhotoFixtures } =
+      await import("./lib/owned-meal-photo-accept.mjs");
+    if (action === "MealPhotoCleanup") {
+      phase = "meal_photo_acceptance_cleanup";
+      report.mealPhotoCleanupVerified = await cleanupOwnedMealPhotoFixtures(
+        keys,
+        manifests.map(({ fixture }) => fixture),
+      );
+      assert.equal(report.mealPhotoCleanupVerified, true);
+    } else {
+      report.mealPhotoAcceptance = await acceptOwnedMealPhotos(keys, {
+        manifests,
+        progress(step) {
+          assert.match(step, /^meal_photo_accept_[a-z_]+$/);
+          phase = step;
+        },
+      });
+      assert.ok(
+        report.mealPhotoAcceptance.completed && report.mealPhotoAcceptance.cleanupCompleted,
+      );
+    }
+    await readPausedPantryState();
+    report.publicTunnelPausedVerified = true;
   }
   if (nutritionAcceptance) {
     phase = "nutrition_acceptance_guard";

@@ -252,6 +252,50 @@ describe("owned meal fixture cascade verification", () => {
     expect(admin.deleteUser).toHaveBeenCalledTimes(1);
     expect(from).toHaveBeenCalledTimes(6);
   });
+  it("removes only the validated synthetic meal-photo prefix before account deletion", async () => {
+    const name = randomUUID() + ".png";
+    const storage = {
+      list: vi
+        .fn()
+        .mockResolvedValueOnce({ data: [{ id: randomUUID(), name }], error: null })
+        .mockResolvedValue({ data: [], error: null }),
+      remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const buckets = vi.fn(() => storage);
+    mocks.createClient.mockReturnValue({ auth: { admin }, from, storage: { from: buckets } });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, {
+        planningOnly: true,
+        cleanupMealPhotos: true,
+      }),
+    ).resolves.toMatchObject({ cleanupCompleted: true });
+    expect(buckets.mock.calls.every(([bucket]) => bucket === "meal-photos")).toBe(true);
+    expect(storage.remove).toHaveBeenCalledExactlyOnceWith([value.userId + "/" + name]);
+    expect(storage.remove.mock.invocationCallOrder[0]).toBeLessThan(
+      admin.deleteUser.mock.invocationCallOrder[0],
+    );
+    expect(queries.get("kitchen_photo_meals").eq).toHaveBeenCalledExactlyOnceWith(
+      "user_id",
+      value.userId,
+    );
+  });
+  it("refuses to delete an account or any files if a fixture photo path is unexpected", async () => {
+    const storage = {
+      list: vi
+        .fn()
+        .mockResolvedValue({ data: [{ id: randomUUID(), name: "../other.png" }], error: null }),
+      remove: vi.fn(),
+    };
+    mocks.createClient.mockReturnValue({ auth: { admin }, from, storage: { from: () => storage } });
+    await expect(
+      ownedBrowserFixture(keys(), "cleanup", value, undefined, {
+        planningOnly: true,
+        cleanupMealPhotos: true,
+      }),
+    ).rejects.toThrow();
+    expect(storage.remove).not.toHaveBeenCalled();
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+  });
   it.each([{ rows: [{ id: randomUUID() }] }, { rows: { length: 0 } }, { rows: null }])(
     "does not treat surviving or malformed child rows as successful cleanup",
     async ({ rows }) => {

@@ -39,12 +39,16 @@ they send no photo and do not call OpenAI.
 
 ## Acceptance and recovery
 
-- Before handing it over, verify the installed synthetic flow: analyze,
-  correct, discard, confirm, open a retained photo, and remove the image
-  while retaining the meal. After checking the file is gone, clean up the
-  disposable test account and remaining synthetic meal via the existing
-  account erasure flow. Confirm the tunnel is still paused. Label any
-  skipped check.
+- Before handing it over, run `./scripts/run-owned-windows.ps1 -Action MealPhotoAccept`
+  against the enabled owned installation. It exercises installed login,
+  correction, discard, explicit retention, owner-only access, export and
+  image removal while retaining the meal. The browser uses simulated
+  analysis; a separate request uses one fixed synthetic image through the
+  installed OpenAI route. It verifies cleanup of both synthetic accounts
+  and confirms the tunnel is still paused. No private photo is used.
+- For an interrupted acceptance, finish only its tagged fixture cleanup
+  with `./scripts/run-owned-windows.ps1 -Action MealPhotoCleanup`. Do not
+  point the check at any other account, environment or public origin.
 - If the report says `schema_unchanged`, the original web remains in place
   and the database remains at 40. Review the failure before reattempting;
   verify that the exact backup and restore evidence are still fresh.

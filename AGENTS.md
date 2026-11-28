@@ -31,7 +31,20 @@
 - Follow the user's standing preference to commit and push completed work.
   Do not automatically merge or deploy while production gates remain unresolved.
 
-Current handoff: DEV-08 is installed and accepted on the owned Windows app.
+Current handoff: DEV-10 is installed and technically accepted on the owned
+Windows app. The approved November 28 window verified the fresh encrypted
+archive and exact isolated restore, advanced the ledger from 40 to 42, and
+replaced only the web image with `f8b99303c8f8` from `51b1e64`. The prior
+image is retained. `MealPhotoAccept` verified the installed browser flow,
+private storage and export, peer denial, deletion and two fixture cleanups.
+Its three browser AI replies were simulated; one separate synthetic call
+through the installed server passed on GPT-6.2 Sol. The public connector
+stayed paused. No owner photo, old production or abandoned hosted test was
+used. See `docs/development-plan.md` and `docs/owned-meal-photo-local-update.md`.
+DEV-09 remains blocked outside this work; DEV-11 still requires its own
+safety/data-protection review and explicit opt-in.
+
+Previous handoff: DEV-08 was installed and accepted on the owned Windows app.
 The approved window on November 24 verified a fresh encrypted backup and its
 isolated restore, then replaced only the web image with `1f76671b878e` from
 reviewed delivery `43a4362` (app source `cf4de80`). The 40-migration ledger
@@ -42,8 +55,8 @@ account was used. Keep the public connector paused and do not touch old
 production or the abandoned hosted test. See `docs/development-plan.md` and
 `docs/owned-nutrition-local-update.md`. The owner resumed DEV-09 after the
 pause. The implementation blocker remains; see the canonical plan for evidence
-and the unchanged local installation and microphone approval gates. At the
-owner's request, DEV-10 is the next milestone and does not wait for DEV-09.
+and the unchanged local installation and microphone approval gates. The
+owner then prioritized DEV-10 independently of DEV-09.
 
 The November 25 text AI update runs GPT-6.2 Sol on the owned Windows app
 (web image `1e2211ebc69e`, source `3f16a15`). Bottle scans keep GPT-6.1 Sol.
