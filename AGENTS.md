@@ -46,10 +46,13 @@ implementation and isolated synthetic tests only. Read the DEV-11 handoff
 in `docs/development-plan.md` and `docs/owned-private-journal.md`. The isolated
 database/recovery and responsive browser run passed. The separate dormant
 `PrivateJournalUpdate` path was prepared and rehearsed with the retained
-DEV-10 web image, failure injection and both ingress configurations. Keep
-DEV-11 off in the installed app. Do not invoke the installer or apply its
-private SQL to that app without separate approval; real collection has its
-own gate. Never add the private SQL to the ordinary migration ledger.
+DEV-10 web image, failure injection and both ingress configurations. The
+Windows DPAPI vault, expiry and independent cleanup retries passed in isolation,
+including real disposable PostgreSQL capture and selective restore. Next source
+work is the bounded operator adapter and maintenance health gate. No job or
+runtime bridge is installed. Keep DEV-11 off in the installed app. Do not
+invoke the installer or apply its private SQL to that app without separate
+approval; real collection has its own gate. Never add its SQL to the ledger.
 
 Previous handoff: DEV-08 was installed and accepted on the owned Windows app.
 The approved window on November 24 verified a fresh encrypted backup and its

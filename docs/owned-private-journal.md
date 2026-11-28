@@ -58,14 +58,32 @@ match. Deletion removes the permission, and no missing or superseded grant
 is reconstructed from backup. Loss of that control state locks the journal;
 it is not a second-PC or whole-machine recovery claim.
 
-The separately reviewed Windows installation still needs a trusted
-CurrentUser key store and short-lived local archive directory, scheduled
-expiry/purge, integrity and rollback checks, and exact binding of the
-new role and bridge. Before activating real collection, establish
-controller responsibility and impact decisions from the design review,
-verify private host paths including live database/WAL encryption and no cloud
-sync/host snapshots bypassing the control store, and review the local notice.
-No protection against an OS administrator or compromised system is claimed.
+The unscheduled Windows vault library uses an owner/System-only directory
+on a fixed local drive, CurrentUser DPAPI for its key and last-observed time,
+and AES-GCM for separate journal archives. It refuses redirects, synced
+paths, changed installation identity, and missing or overly broad vault
+permissions. It never falls back to a new key for an existing vault. Capture
+preserves the exact bytes and measurement offsets. Publication is an encrypted
+temporary write followed by a move within the same directory; no plaintext
+intermediate file is created. This vault is not the ordinary backup directory.
+
+Each maintenance invocation attempts SQL expiry and file retirement independently.
+It can clear old encrypted files during a database outage, or prune expired
+rows while the vault is unavailable. It refuses new capture if either check
+fails, and captures populated snapshots at most once per day. Restore checks
+sealed capture age and the current database permits; an archive's filename
+or filesystem modified time cannot extend its recovery window. A missed tick,
+power loss or locked file can delay physical deletion until a successful
+retry. This does not make an expired archive restorable. No promise covers
+administrator/OS compromise or rollback of the entire machine and its clock.
+
+Before real collection, wire trusted operator-only prune/capture/restore and
+an installation-bound maintenance health gate; rehearse first tick, restart,
+outage, stale state and retries without touching the running app. The active
+role, loopback bridge and automatic job are not installed. Verify real host
+paths and database/WAL encryption, rule out sync and host snapshots bypassing
+the control store, close the impact and controller decisions in the design
+review and approve the local notice before real activation.
 
 ## Guarded Delivery And Rollback
 
@@ -141,6 +159,20 @@ contents anyway.
   ordinary account erasure passed with the restored bridge function still
   present. This is not proof of live Windows disk protection, scheduled
   private-file expiry, or a full backup on the installed app.
+- The `--windows-storage` rehearsal applied all 42 ordinary migrations and
+  the private SQL in a disposable backend. The real operator functions pruned
+  an expired permission, captured into the Windows-protected vault and restored
+  only the still-permitted entry after a deletion, an edit and simulated data
+  loss. The run also passed actual dump exclusion, late export denial, ongoing
+  expiry and withdrawal, and whole-account erasure. Test vault and backend
+  cleanup both passed. This pipeline is not a live operator adapter.
+- The final standalone Windows run passed DPAPI reopen from a new process,
+  exact byte/offset roundtrip, expired restore refusal without a maintenance
+  tick, clock regression after expiry, tamper and rename refusal, independent
+  cleanup on store failures, and retry after a locked file. Pending ciphertext
+  was removed, wrong identity and broad permissions were denied, and an
+  ordinary backup canary was unchanged. A previous run timed out at the
+  restart step; no timeout was increased and that run is not a pass.
 - The default synthetic Node build, typecheck, Node smoke and client bundle
   budget passed. The smoke checks require 404 for both journal endpoints.
 - Full lint passed with two existing Chef warnings. The full Vitest attempt
@@ -160,6 +192,13 @@ contents anyway.
   ports 5291/5292, uses real synthetic sign-in, and denies direct browser
   network access. This is responsive browser evidence, not physical mobile
   access, an installed-run report or authorization to collect real values.
+- `pwsh -NoProfile -NonInteractive -File scripts/check-owned-private-journal-vault.ps1`
+  runs the vault checks with only synthetic vectors in a private temporary
+  directory. Use PowerShell 7 and run the SQL-to-vault rehearsal separately
+  with `tsx scripts/check-isolated-private-journal.ts --windows-storage`.
+  It passes disposable fixture bytes over a private pipe, does not print
+  contents or keys, and cleans up the disposable vault and backend. Neither
+  test invokes the installed supervisor or configures real maintenance.
 - For dormant delivery, `node scripts/build-isolated-private-journal-web.mjs`
   builds the pinned runtime with a synthetic public configuration.
   `node scripts/check-isolated-private-journal-delivery.mjs` uses the same

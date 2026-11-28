@@ -14,10 +14,12 @@ import {
   sealJournalArchive,
 } from "./lib/owned-dev11-archive.mjs";
 import { verifyPrivateJournalBrowser } from "./lib/private-journal-browser.mjs";
+import { verifyWindowsVault } from "./lib/private-journal-vault-fixture.mjs";
 
 assert.ok(
   process.argv.length === 2 ||
-    (process.argv.length === 3 && ["--browser", "--browser-only"].includes(process.argv[2])),
+    (process.argv.length === 3 &&
+      ["--browser", "--browser-only", "--windows-storage"].includes(process.argv[2])),
 );
 
 const evidence: Record<string, boolean | number | string | undefined> = {
@@ -209,29 +211,71 @@ async function accept() {
   evidence.ordinaryDumpExcludedAllPrivateSchemas = true;
 
   evidence.phase = "recover_without_resurrection";
-  const snapshot = await result(`SELECT winesnap_dev11_control.capture(${id});`);
-  const key = randomBytes(32);
-  const sealed = sealJournalArchive(snapshot, key, snapshot.installation);
-  const archive = openJournalArchive(sealed, key, snapshot.installation);
-  key.fill(0);
   const [first, second, third] = state.readings;
-  await command({
-    action: "deleteReading",
-    revision: version,
-    id: first.id,
-    entryRevision: first.revision,
-  });
-  await command({
-    action: "editReading",
-    revision: version,
-    id: second.id,
-    entryRevision: second.revision,
-    reading: { ...breath, value: "22" },
-  });
-  await sql(`DELETE FROM winesnap_dev11_data.reading WHERE owner = ${id};`);
+  const prepareSelectiveRestore = async () => {
+    await command({
+      action: "deleteReading",
+      revision: version,
+      id: first.id,
+      entryRevision: first.revision,
+    });
+    await command({
+      action: "editReading",
+      revision: version,
+      id: second.id,
+      entryRevision: second.revision,
+      reading: { ...breath, value: "22" },
+    });
+    await sql(`DELETE FROM winesnap_dev11_data.reading WHERE owner = ${id};`);
+  };
+  let archive: Record<string, unknown> | undefined;
   const restore = (snapshot = archive) =>
     result(`SELECT winesnap_dev11_control.restore(${id},${json(snapshot)});`);
-  assert.deepEqual(await restore(), { status: 200, goals: 0, readings: 1 });
+  const captureSql = `SELECT winesnap_dev11_control.capture(${id});`;
+  if (process.argv[2] === "--windows-storage") {
+    evidence.phase = "windows_storage";
+    const seeded = await command({
+      action: "addReading",
+      revision: version,
+      reading: { ...blood, value: "9.87", at: at(4) },
+    });
+    const expiring = seeded.readings.find((entry) => entry.reading.value === "9.87");
+    assert.ok(expiring);
+    await sql(`UPDATE winesnap_dev11_control.reading_permit
+       SET expires_at = statement_timestamp() - interval '1 second'
+       WHERE id = ${literal(expiring.id)};`);
+    await verifyWindowsVault({
+      installation: await sql("SELECT identity FROM winesnap_dev11_control.installation;"),
+      prune: async () => Number(await sql("SELECT winesnap_dev11_control.prune();")),
+      capture: async () => {
+        const document = await sql(captureSql);
+        archive = JSON.parse(document);
+        return document;
+      },
+      captured: prepareSelectiveRestore,
+      restore: (document: string) => restore(JSON.parse(document)),
+      report: evidence,
+    });
+    assert.equal(
+      await sql(
+        `SELECT count(*) FROM winesnap_dev11_control.reading_permit WHERE id = ${literal(expiring.id)};`,
+      ),
+      "0",
+    );
+  } else {
+    const snapshot = await result(captureSql);
+    const key = randomBytes(32);
+    try {
+      const sealed = sealJournalArchive(snapshot, key, snapshot.installation);
+      archive = openJournalArchive(sealed, key, snapshot.installation);
+    } finally {
+      key.fill(0);
+    }
+    await prepareSelectiveRestore();
+    assert.deepEqual(await restore(), { status: 200, goals: 0, readings: 1 });
+  }
+  assert.ok(archive);
+  evidence.phase = "recover_without_resurrection";
   assert.deepEqual(await restore(), { status: 200, goals: 0, readings: 0 });
   assert.deepEqual(
     (await command({ action: "read" })).readings.map((entry) => entry.id),
