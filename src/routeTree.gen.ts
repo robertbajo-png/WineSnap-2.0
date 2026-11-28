@@ -32,6 +32,7 @@ import { Route as TasteRouteImport } from './routes/taste'
 import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as ApiChefRouteImport } from './routes/api/chef'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiMealPhotoRouteImport } from './routes/api/meal-photo'
 import { Route as ApiWineImageRouteImport } from './routes/api/wine-image'
 import { Route as CellarCollectionRouteImport } from './routes/cellar.collection'
 import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
@@ -170,6 +171,11 @@ const ApiChefRoute = ApiChefRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMealPhotoRoute = ApiMealPhotoRouteImport.update({
+  id: '/api/meal-photo',
+  path: '/api/meal-photo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWineImageRoute = ApiWineImageRouteImport.update({
@@ -324,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/wishlist': typeof WishlistRoute
   '/api/chef': typeof ApiChefRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/meal-photo': typeof ApiMealPhotoRoute
   '/api/wine-image': typeof ApiWineImageRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
@@ -373,6 +380,7 @@ export interface FileRoutesByTo {
   '/wishlist': typeof WishlistRoute
   '/api/chef': typeof ApiChefRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/meal-photo': typeof ApiMealPhotoRoute
   '/api/wine-image': typeof ApiWineImageRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
@@ -423,6 +431,7 @@ export interface FileRoutesById {
   '/wishlist': typeof WishlistRoute
   '/api/chef': typeof ApiChefRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/meal-photo': typeof ApiMealPhotoRoute
   '/api/wine-image': typeof ApiWineImageRoute
   '/cellar/collection': typeof CellarCollectionRoute
   '/cellar/overview': typeof CellarOverviewRoute
@@ -474,6 +483,7 @@ export interface FileRouteTypes {
     | '/wishlist'
     | '/api/chef'
     | '/api/health'
+    | '/api/meal-photo'
     | '/api/wine-image'
     | '/cellar/collection'
     | '/cellar/overview'
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/wishlist'
     | '/api/chef'
     | '/api/health'
+    | '/api/meal-photo'
     | '/api/wine-image'
     | '/cellar/collection'
     | '/cellar/overview'
@@ -572,6 +583,7 @@ export interface FileRouteTypes {
     | '/wishlist'
     | '/api/chef'
     | '/api/health'
+    | '/api/meal-photo'
     | '/api/wine-image'
     | '/cellar/collection'
     | '/cellar/overview'
@@ -622,6 +634,7 @@ export interface RootRouteChildren {
   WishlistRoute: typeof WishlistRoute
   ApiChefRoute: typeof ApiChefRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiMealPhotoRoute: typeof ApiMealPhotoRoute
   ApiWineImageRoute: typeof ApiWineImageRoute
   UUsernameRoute: typeof UUsernameRoute
   WShareIdRoute: typeof WShareIdRoute
@@ -804,6 +817,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/meal-photo': {
+      id: '/api/meal-photo'
+      path: '/api/meal-photo'
+      fullPath: '/api/meal-photo'
+      preLoaderRoute: typeof ApiMealPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/wine-image': {
@@ -1029,6 +1049,7 @@ const rootRouteChildren: RootRouteChildren = {
   WishlistRoute: WishlistRoute,
   ApiChefRoute: ApiChefRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiMealPhotoRoute: ApiMealPhotoRoute,
   ApiWineImageRoute: ApiWineImageRoute,
   UUsernameRoute: UUsernameRoute,
   WShareIdRoute: WShareIdRoute,

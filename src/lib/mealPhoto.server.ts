@@ -1,5 +1,3 @@
-import { promisify } from "node:util";
-import { crc32, deflate } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
@@ -7,13 +5,16 @@ import {
   type AiAccessOptions,
 } from "../../supabase/functions/_shared/aiAccess";
 import { AiConfigurationError } from "../../supabase/functions/_shared/aiClient";
-import { mealPhotoEstimateSchema, mealPhotoFrameSideLimit } from "../features/meal-photos/domain";
+import { mealPhotoEstimateSchema } from "../features/meal-photos/domain";
 import { approvedLocalBackend, ownedBackendOrigin } from "./backendScope";
 import { loadCredentials, localBackendFetch } from "./localCredentials.server";
+import {
+  encodeMealPhotoFrame,
+  hasMealPhotoFrameType,
+  mealPhotoFrame,
+} from "./mealPhotoFrame.server";
 import { createLocalAiClient } from "./ownedTextAi.server";
 
-const compress = promisify(deflate);
-const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const outputSchema = z.toJSONSchema(mealPhotoEstimateSchema);
 delete outputSchema.$schema;
 const privateHeaders = { "Cache-Control": "no-store", "CDN-Cache-Control": "no-store" };
@@ -47,66 +48,6 @@ function fail(error: string, status: number, retryAfter?: string | null) {
       headers: { ...privateHeaders, ...(retryAfter ? { "Retry-After": retryAfter } : {}) },
     },
   );
-}
-
-function dimension(value: string | null) {
-  if (value === null || !/^[1-9]\d{0,3}$/.test(value)) return 0;
-  const side = Number(value);
-  return side <= mealPhotoFrameSideLimit ? side : 0;
-}
-
-async function readPixels(request: Request, length: number, signal: AbortSignal) {
-  const reader = request.body?.getReader();
-  if (!reader) return null;
-  const pixels = Buffer.alloc(length);
-  let offset = 0;
-  const cancel = () => void reader.cancel().catch(() => undefined);
-  signal.addEventListener("abort", cancel, { once: true });
-  try {
-    while (true) {
-      signal.throwIfAborted();
-      const { done, value } = await reader.read();
-      signal.throwIfAborted();
-      if (done) return offset === length ? pixels : null;
-      if (offset + value.byteLength > length) {
-        cancel();
-        return null;
-      }
-      pixels.set(value, offset);
-      offset += value.byteLength;
-    }
-  } finally {
-    signal.removeEventListener("abort", cancel);
-    reader.releaseLock();
-  }
-}
-
-function pngChunk(type: "IHDR" | "IDAT" | "IEND", data: Buffer) {
-  const chunk = Buffer.alloc(data.length + 12);
-  chunk.writeUInt32BE(data.length);
-  chunk.write(type, 4, "ascii");
-  data.copy(chunk, 8);
-  chunk.writeUInt32BE(crc32(chunk.subarray(4, -4)), chunk.length - 4);
-  return chunk;
-}
-
-async function pngFromPixels(width: number, height: number, rgb: Buffer) {
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width);
-  header.writeUInt32BE(height, 4);
-  header[8] = 8;
-  header[9] = 2;
-  // Each row starts with the PNG "no filter" byte. No original-file metadata is accepted.
-  const stride = width * 3;
-  const rows = Buffer.alloc((stride + 1) * height);
-  for (let y = 0; y < height; y++)
-    rgb.copy(rows, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
-  return Buffer.concat([
-    pngSignature,
-    pngChunk("IHDR", header),
-    pngChunk("IDAT", await compress(rows, { level: 1 })),
-    pngChunk("IEND", Buffer.alloc(0)),
-  ]);
 }
 
 function providerInput(png: Buffer, language: "sv" | "en") {
@@ -145,23 +86,11 @@ export function createMealPhotoHandler(deps: Dependencies) {
     if (request.method !== "POST") return fail("meal_photo_method", 405);
     if (!/^Bearer \S+$/.test(request.headers.get("authorization") ?? ""))
       return fail("meal_photo_auth", 401);
-    if (
-      request.headers.get("content-type") !== "application/octet-stream" ||
-      request.headers.has("content-encoding")
-    )
-      return fail("meal_photo_format", 415);
+    if (!hasMealPhotoFrameType(request)) return fail("meal_photo_format", 415);
 
-    const width = dimension(request.headers.get("x-meal-photo-width"));
-    const height = dimension(request.headers.get("x-meal-photo-height"));
+    const frame = mealPhotoFrame(request);
     const language = request.headers.get("x-meal-photo-language") ?? "sv";
-    const length = width * height * 3;
-    const declaredLength = request.headers.get("content-length");
-    if (
-      !length ||
-      (language !== "sv" && language !== "en") ||
-      (declaredLength !== null && declaredLength !== String(length))
-    )
-      return fail("meal_photo_frame", 400);
+    if (!frame || (language !== "sv" && language !== "en")) return fail("meal_photo_frame", 400);
 
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(45_000)]);
     try {
@@ -169,9 +98,8 @@ export function createMealPhotoHandler(deps: Dependencies) {
       const access = await deps.requireAccess(request, accessOptions);
       if (access instanceof Response)
         return fail("meal_photo_access", access.status, access.headers.get("retry-after"));
-      const pixels = await readPixels(request, length, signal);
-      if (!pixels) return fail("meal_photo_frame", 400);
-      const png = await pngFromPixels(width, height, pixels);
+      const png = await encodeMealPhotoFrame(request, frame, signal);
+      if (!png) return fail("meal_photo_frame", 400);
       signal.throwIfAborted();
       const response = await deps.complete(providerInput(png, language), signal);
       signal.throwIfAborted();

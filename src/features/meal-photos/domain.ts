@@ -39,6 +39,9 @@ export const confirmedPhotoMealSchema = z.strictObject({
   keepPhoto: z.boolean(),
 });
 
+export const mealPhotoStateSchema = z.enum(["none", "pending", "ready", "removing", "removed"]);
+export const mealPhotoDigestSchema = z.string().regex(/^[0-9a-f]{64}$/);
+
 export const savedPhotoMealSchema = z
   .strictObject({
     id: z.uuid(),
@@ -46,9 +49,16 @@ export const savedPhotoMealSchema = z
     created_at: z.iso.datetime({ offset: true }),
     items: reviewedItems,
     keep_photo: z.boolean(),
-    photo_state: z.enum(["none", "pending", "ready", "removing", "removed"]),
+    photo_state: mealPhotoStateSchema,
+    photo_sha256: mealPhotoDigestSchema.nullable(),
   })
-  .refine((record) => record.keep_photo === (record.photo_state !== "none"));
+  .refine(
+    (record) =>
+      record.keep_photo === (record.photo_state !== "none") &&
+      (record.photo_state !== "ready" || record.photo_sha256 !== null) &&
+      (record.photo_sha256 === null ||
+        ["pending", "ready", "removing"].includes(record.photo_state)),
+  );
 
 export type MealPhotoEstimate = z.infer<typeof mealPhotoEstimateSchema>;
 export type PhotoMealReviewItem = z.infer<typeof reviewItemSchema>;

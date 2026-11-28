@@ -85,19 +85,28 @@ describe("saved photo meal", () => {
     items: [{ name: "Ris", portion: null }],
     keep_photo: false,
     photo_state: "none",
+    photo_sha256: null,
   };
 
   it("distinguishes pending retention, attachment, and photo removal", () => {
     expect(savedPhotoMealSchema.parse(record).photo_state).toBe("none");
     for (const photo_state of ["pending", "ready", "removing", "removed"]) {
       expect(
-        savedPhotoMealSchema.parse({ ...record, photo_state, keep_photo: true }).photo_state,
+        savedPhotoMealSchema.parse({
+          ...record,
+          photo_state,
+          keep_photo: true,
+          photo_sha256: photo_state === "ready" ? "a".repeat(64) : null,
+        }).photo_state,
       ).toBe(photo_state);
     }
   });
 
   it("rejects inconsistent retention and unexpected image paths", () => {
     expect(savedPhotoMealSchema.safeParse({ ...record, photo_state: "ready" }).success).toBe(false);
+    expect(
+      savedPhotoMealSchema.safeParse({ ...record, keep_photo: true, photo_state: "ready" }).success,
+    ).toBe(false);
     expect(savedPhotoMealSchema.safeParse({ ...record, keep_photo: true }).success).toBe(false);
     expect(savedPhotoMealSchema.safeParse({ ...record, signed_url: "unexpected" }).success).toBe(
       false,

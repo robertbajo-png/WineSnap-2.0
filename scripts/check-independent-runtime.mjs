@@ -186,6 +186,10 @@ async function checkServer(configuredCron, artifact) {
     );
     assert.equal(mealPhoto.response.headers.get("cache-control"), "no-store");
     assert.deepEqual(JSON.parse(mealPhoto.body), { error: "meal_photo_disabled" });
+    const storedPhoto = await request("/api/meal-photo?id=ba000000-0000-4000-8000-000000000001");
+    assert.equal(storedPhoto.response.status, 404);
+    assert.equal(storedPhoto.response.headers.get("cache-control"), "private, no-store");
+    assert.deepEqual(JSON.parse(storedPhoto.body), { error: "meal_photo_not_found" });
     for (const name of ["privacy-export", "privacy-controls", "privacy-maintenance"]) {
       const privacy = await request(`/api/privacy/${name}`, {
         method: "POST",

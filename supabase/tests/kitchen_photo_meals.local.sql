@@ -52,6 +52,8 @@ SELECT pg_temp.photo_meal_reject($q$SELECT public.kitchen_save_photo_meal(
   current_setting('test.photo_kept_meal')::uuid, '[{"name":"Ris","portion":null,"photoUrl":"https://example.invalid"}]', true)$q$, '22023');
 SELECT pg_temp.photo_meal_reject($q$UPDATE public.kitchen_photo_meals SET photo_state = 'ready'$q$, '42501');
 SELECT pg_temp.photo_meal_reject($q$DELETE FROM public.kitchen_photo_meals$q$, '42501');
+SELECT pg_temp.photo_meal_reject($q$SELECT public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid, 'pin', repeat('a', 64))$q$, '42501');
 
 SELECT set_config('request.jwt.claim.sub', current_setting('test.photo_peer'), true);
 SELECT pg_temp.photo_meal_assert(NOT EXISTS(SELECT 1 FROM public.kitchen_photo_meals), 'peer sees no meals');
@@ -89,12 +91,52 @@ SELECT pg_temp.photo_meal_reject($q$SELECT public.kitchen_save_photo_meal(
   current_setting('test.photo_kept_meal')::uuid, current_setting('test.photo_items')::jsonb, true)$q$, '42501');
 RESET ROLE;
 
+SET LOCAL ROLE service_role;
+SELECT pg_temp.photo_meal_reject($q$UPDATE public.kitchen_photo_meals SET photo_state = 'ready'
+  WHERE user_id = current_setting('test.photo_owner')::uuid AND keep_photo$q$, '23514');
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_plain_meal')::uuid,
+  'pin', repeat('a', 64)) = 'conflict', 'no reservation without retention choice');
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid,
+  'pin', repeat('a', 64)) = 'pending', 'reserve exact photo digest');
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid,
+  'pin', repeat('b', 64)) = 'conflict', 'cannot replace reserved bytes');
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid,
+  'publish', repeat('a', 64)) = 'ready', 'only matching reservation becomes ready');
+UPDATE storage.objects SET created_at = now() - interval '24 hours' WHERE bucket_id = 'meal-photos'
+  AND name = current_setting('test.photo_owner') || '/' || current_setting('test.photo_kept_meal') || '.png';
+SELECT pg_temp.photo_meal_assert(NOT EXISTS(SELECT 1 FROM public.privacy_orphan_images()
+  WHERE bucket_id = 'meal-photos'), 'the ready object is protected from orphan cleanup');
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid,
+  'begin_remove') = 'removing', 'removal hides photo before deleting bytes');
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid,
+  'publish', repeat('a', 64)) = 'conflict', 'late publication cannot undo removal');
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid,
+  'finish_remove') = 'removed', 'complete photo removal');
+SELECT pg_temp.photo_meal_assert((SELECT photo_sha256 IS NULL FROM public.kitchen_photo_meals
+  WHERE user_id = current_setting('test.photo_owner')::uuid AND keep_photo), 'remove photo digest');
+SELECT pg_temp.photo_meal_assert((SELECT count(*) = 1 FROM public.privacy_orphan_images()
+  WHERE bucket_id = 'meal-photos' AND name LIKE current_setting('test.photo_owner') || '/%'),
+  'late private file is discoverable for bounded orphan cleanup');
+RESET ROLE;
+
 SELECT public.request_account_erasure(current_setting('test.photo_owner')::uuid);
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', current_setting('test.photo_owner'), true);
 SELECT pg_temp.photo_meal_assert(NOT EXISTS(SELECT 1 FROM public.kitchen_photo_meals), 'pending erasure hides private meals');
 SELECT pg_temp.photo_meal_reject($q$SELECT public.kitchen_save_photo_meal(
   current_setting('test.photo_kept_meal')::uuid, current_setting('test.photo_items')::jsonb, true)$q$, '42501');
+RESET ROLE;
+SET LOCAL ROLE service_role;
+SELECT pg_temp.photo_meal_assert(public.kitchen_photo_object_transition(
+  current_setting('test.photo_owner')::uuid, current_setting('test.photo_kept_meal')::uuid,
+  'pin', repeat('a', 64)) = 'unavailable', 'erasure prevents server-side publication too');
 RESET ROLE;
 DELETE FROM auth.users WHERE id = current_setting('test.photo_owner')::uuid;
 SELECT pg_temp.photo_meal_assert((SELECT count(*) = 1 AND bool_and(user_id = current_setting('test.photo_peer')::uuid)
