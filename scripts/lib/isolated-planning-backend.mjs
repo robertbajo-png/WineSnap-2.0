@@ -24,7 +24,10 @@ import { openPlanningRelay, openPlanningWebRelay } from "./planning-web-relay.mj
 import { planOwnedMigrations } from "./owned-lifecycle.mjs";
 import {
   assessOwnedMealPhotoLedger,
+  deliverOwnedMealPhotoUpdate,
+  mealPhotoFallbackLabel,
   mealPhotoMigrationBatch,
+  mealPhotoWebLabel,
   ownedMealPhotoLedgerQuery,
   ownedMealPhotoMigrationTransaction,
   requireOwnedMealPhotoUpdate,
@@ -167,13 +170,14 @@ export function isolatedPlanningBackend(
     service,
     image,
     user,
-    { vars = {}, tmpfs = [], entrypoint, args = [], networkMode = networkId } = {},
+    { vars = {}, tmpfs = [], entrypoint, args = [], networkMode = networkId, mealPhotoLabel } = {},
   ) {
     const id = await output([
       "create",
       "--name",
       names[service],
       ...labelArgs,
+      ...(mealPhotoLabel ? ["--label", `winesnap.meal-photo=${mealPhotoLabel}`] : []),
       "--network",
       networkMode,
       "--read-only",
@@ -436,7 +440,7 @@ export function isolatedPlanningBackend(
     return { id, email, password: accountPassword };
   }
 
-  async function rehearseMealPhotoMigrations() {
+  async function rehearseMealPhotoMigrations(images) {
     assert.ok(mealPhotos && meals && serviceRelay);
     assert.equal(throughMigration, pantryMigrationBatch.at(-1));
     const files = (await readdir(new URL("../../supabase/migrations/", import.meta.url)))
@@ -462,22 +466,91 @@ export function isolatedPlanningBackend(
     );
     assert.deepEqual(await readLedger(), before);
     report.failedBatchLeftBaselineUntouched = true;
+    const verifyPrivateRest = async () => {
+      await ready(async () => {
+        const response = await request("rest", "/kitchen_photo_meals?select=id&limit=0", {
+          headers: authHeader(tokens.anon),
+        });
+        assert.ok([401, 403].includes(response.status));
+        assert.equal((await response.json()).code, "42501");
+      });
+    };
     report.phase = "apply_exact_meal_photo_migration_batch";
-    await sql(transaction);
+    if (images) {
+      const { previousImage, candidateImage } = images;
+      await replaceRehearsalWeb(previousImage);
+      const previous = await readRehearsalWeb();
+      const injected = new Error("synthetic post-verification failure");
+      let retained, tagged, recovery;
+      await assert.rejects(
+        deliverOwnedMealPhotoUpdate({
+          previous,
+          async guard({ retained: needsRetention }) {
+            if (needsRetention) assert.equal(retained, previousImage);
+            return requireOwnedMealPhotoUpdate(sources, await readLedger(), installation);
+          },
+          build: async () => candidateImage,
+          async retain(id) {
+            assert.equal(id, previousImage);
+            retained = id;
+          },
+          async apply(statement) {
+            await sql(statement);
+            await sql("NOTIFY pgrst, 'reload schema';");
+          },
+          assess: async () => assessOwnedMealPhotoLedger(sources, await readLedger(), installation),
+          verifyBackend: verifyPrivateRest,
+          readWeb: readRehearsalWeb,
+          removeWeb: removeRehearsalWeb,
+          startWeb: replaceRehearsalWeb,
+          async verifyWeb(id, label) {
+            const web = await readRehearsalWeb();
+            assert.equal(web.Image, id);
+            assert.equal(web.Config.Labels["winesnap.meal-photo"], label);
+            assert.equal(web.HostConfig.NetworkMode, "none");
+            const path = "/api/meal-photo?id=11111111-1111-4111-8111-111111111111";
+            if (label === mealPhotoWebLabel) {
+              const photo = await webRelay.request(path);
+              assert.equal(photo.status, 401);
+              assert.deepEqual(JSON.parse(photo.body), { error: "meal_photo_auth" });
+              assert.equal(
+                (await webRelay.request("/api/ai/analyze-meal-photo", "POST")).status,
+                401,
+              );
+              report.guardedCandidateAnonDenied = true;
+              throw injected;
+            }
+            assert.equal(label, mealPhotoFallbackLabel);
+            const disabled = await webRelay.request("/api/privacy/privacy-export", "POST");
+            assert.equal(disabled.status, 503);
+            assert.deepEqual(JSON.parse(disabled.body), { error: "Local operations disabled" });
+          },
+          async tagWeb(id) {
+            tagged = id;
+          },
+          stage(step) {
+            report.phase = step;
+          },
+          recovery(state) {
+            recovery = state;
+          },
+        }),
+        (failure) => failure === injected,
+      );
+      assert.equal(tagged, previousImage);
+      assert.equal(recovery, "restricted_fallback_verified");
+      report.guardedRestrictedFallbackVerified = true;
+    } else {
+      await sql(transaction);
+      await sql("NOTIFY pgrst, 'reload schema';");
+    }
     const after = await readLedger();
     const result = assessOwnedMealPhotoLedger(sources, after, installation);
     assert.equal(result.scope, "already_applied");
     assert.deepEqual(after.applied.slice(0, before.applied.length), before.applied);
     assert.throws(() => requireOwnedMealPhotoUpdate(sources, after, installation), /not a retry/);
     report.phase = "reload_rest_and_deny_anonymous_meals";
-    await sql("NOTIFY pgrst, 'reload schema';");
-    await ready(async () => {
-      const response = await request("rest", "/kitchen_photo_meals?select=id&limit=0", {
-        headers: authHeader(tokens.anon),
-      });
-      assert.ok([401, 403].includes(response.status));
-      assert.equal((await response.json()).code, "42501");
-    });
+    await verifyPrivateRest();
     report.restSchemaRefreshedPrivately = true;
     return { before: plan.applied, after: result.applied, applied: [...mealPhotoMigrationBatch] };
   }
@@ -724,32 +797,51 @@ export function isolatedPlanningBackend(
       1,
     );
   }
-  async function replaceRehearsalWeb(image) {
-    assert.match(image, /^sha256:[a-f0-9]{64}$/);
+  async function readRehearsalWeb() {
+    const web = containers.find(({ service }) => service === "web");
+    if (!web) return null;
+    const record = await inspect(["inspect", web.id]);
+    assert.equal(record.Name, "/" + names.web);
+    assert.ok(sameLabels(record.Config.Labels));
+    return record;
+  }
+  async function removeRehearsalWeb(id) {
     const previous = containers.find(({ service }) => service === "web");
-    if (previous) {
-      await webRelay?.close();
-      webRelay = undefined;
-      await removeFixture(previous);
-    }
+    assert.equal(previous?.id, id);
+    await webRelay?.close();
+    webRelay = undefined;
+    await removeFixture(previous);
+  }
+  async function replaceRehearsalWeb(image, mealPhotoLabel) {
+    assert.match(image, /^sha256:[a-f0-9]{64}$/);
+    assert.ok([undefined, mealPhotoWebLabel, mealPhotoFallbackLabel].includes(mealPhotoLabel));
+    if (mealPhotoLabel) assert.ok(mealPhotos && meals);
+    const previous = containers.find(({ service }) => service === "web");
+    if (previous) await removeRehearsalWeb(previous.id);
+    const enabled = mealPhotoLabel === mealPhotoWebLabel;
     const id = await start("web", image, "node", {
       networkMode: "none",
+      mealPhotoLabel,
       vars: {
-        SUPABASE_URL: "http://127.0.0.1:54323",
+        SUPABASE_URL: enabled ? isolatedMealPhotoApi : "http://127.0.0.1:54323",
         SUPABASE_PUBLISHABLE_KEY: tokens.anon,
         WINESNAP_OWNED_BACKEND_ENABLED: "true",
         WINESNAP_COOKING_CORE_ENABLED: "true",
         ...(mealPhotos
           ? {
-              WINESNAP_LOCAL_OPERATIONS_ENABLED: "false",
-              WINESNAP_LOCAL_AI_ENABLED: "false",
-              WINESNAP_MEAL_PHOTO_AI_ENABLED: "false",
-              WINESNAP_MEAL_PHOTO_STORAGE_ENABLED: "false",
+              WINESNAP_LOCAL_OPERATIONS_ENABLED: String(enabled),
+              WINESNAP_LOCAL_AI_ENABLED: String(enabled),
+              ...(enabled ? { WINESNAP_LOCAL_TEXT_PROVIDER: "openai" } : {}),
+              WINESNAP_MEAL_PHOTO_AI_ENABLED: String(enabled),
+              WINESNAP_MEAL_PHOTO_STORAGE_ENABLED: String(enabled),
             }
           : {}),
       },
     });
-    webRelay = openPlanningWebRelay(docker, engine, env, id, { privacyProbe: mealPhotos });
+    webRelay = openPlanningWebRelay(docker, engine, env, id, {
+      privacyProbe: mealPhotos,
+      mealPhotoProbe: enabled,
+    });
     await ready(async () => assert.equal((await webRelay.request("/api/health")).status, 200));
     return id;
   }

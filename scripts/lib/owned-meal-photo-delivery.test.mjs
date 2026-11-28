@@ -1,11 +1,16 @@
 import { readFile, readdir } from "node:fs/promises";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assessOwnedMealPhotoLedger,
+  deliverOwnedMealPhotoUpdate,
+  mealPhotoFallbackLabel,
   mealPhotoMigrationBatch,
+  mealPhotoWebLabel,
+  ownedInstallationFingerprint,
   ownedMealPhotoLedgerQuery,
   ownedMealPhotoMigrationTransaction,
   refuseOrdinaryMealPhotoMigration,
+  requireMealPhotoRecovery,
   requireOwnedMealPhotoUpdate,
 } from "./owned-meal-photo-delivery.mjs";
 import { planOwnedMigrations } from "./owned-lifecycle.mjs";
@@ -39,6 +44,223 @@ const state = (installed = false) => ({
   directWriteGranted: false,
   anonymousSaveGranted: false,
   clientTransitionGranted: false,
+});
+
+const previousImage = "sha256:" + "1".repeat(64);
+const candidateImage = "sha256:" + "2".repeat(64);
+const archive = "owned-20261128-120000000.dpapi";
+const now = Date.parse("2026-11-28T13:00:00Z");
+const archiveSha256 = "3".repeat(64);
+
+function recoveryEvidence() {
+  const common = {
+    project: "winesnap-owned-local",
+    checkedAt: "2026-11-28T12:00:01Z",
+    completed: true,
+    productionTouched: false,
+    hostedTestTouched: false,
+  };
+  const binding = {
+    backupFile: archive,
+    backupArchiveSha256: archiveSha256,
+    backupInstallationFingerprint: ownedInstallationFingerprint(installation),
+  };
+  return {
+    archives: { application: [archive] },
+    reports: {
+      "ingress-control": { ...common, enabled: true },
+      "tunnel-control": { ...common, enabled: false },
+      backup: {
+        ...common,
+        ...binding,
+        backupWebImage: previousImage,
+        encryptedRoundtripVerified: true,
+        backupIncludesAuthHashes: true,
+        backupIncludesImageBytes: true,
+      },
+      restore: {
+        ...common,
+        ...binding,
+        checkedAt: "2026-11-28T12:04:09Z",
+        archiveVersion: 2,
+        cleanupCompleted: true,
+        isolatedOwnedRestoreVerified: true,
+        runningInstallationStopped: false,
+        sourceDatabaseConnected: false,
+        providerCredentialsLoaded: false,
+        publicPorts: 0,
+        permanentVolumesCreated: 0,
+        originalUserPasswordsEnteredOrReset: false,
+        authHashesAndIdentitiesMatched: true,
+        grantsPoliciesAndFunctionsMatched: true,
+        allTableRowsAndShareIdsMatched: true,
+        syntheticCloneLoginAndWrongPassword: true,
+        restoredOwnerIsolationWithRealJwt: true,
+        tablesVerified: 82,
+        storageFilesVerified: 1,
+        restoredObjectsDownloaded: 1,
+      },
+    },
+  };
+}
+
+describe("meal-photo pre-update recovery evidence", () => {
+  const binding = { archiveSha256, installation, previousImage };
+
+  it("requires the same fresh encrypted bytes, installation and previous image", () => {
+    expect(() => requireMealPhotoRecovery(recoveryEvidence(), archive, binding, now)).not.toThrow();
+    expect(() =>
+      requireMealPhotoRecovery(recoveryEvidence(), archive, binding, now + 2 * 3600000),
+    ).toThrow();
+    expect(() =>
+      requireMealPhotoRecovery(
+        recoveryEvidence(),
+        archive,
+        { ...binding, previousImage: candidateImage },
+        now,
+      ),
+    ).toThrow("different web image");
+    expect(() =>
+      requireMealPhotoRecovery(
+        recoveryEvidence(),
+        archive,
+        { ...binding, archiveSha256: "4".repeat(64) },
+        now,
+      ),
+    ).toThrow("digest changed");
+  });
+
+  it.each(["backup", "restore"])("rejects missing or foreign evidence in %s", (report) => {
+    const observation = recoveryEvidence();
+    delete observation.reports[report].backupArchiveSha256;
+    expect(() => requireMealPhotoRecovery(observation, archive, binding, now)).toThrow(
+      "digest changed",
+    );
+    observation.reports[report].backupArchiveSha256 = archiveSha256;
+    observation.reports[report].backupInstallationFingerprint = ownedInstallationFingerprint(
+      "b".repeat(32),
+    );
+    expect(() => requireMealPhotoRecovery(observation, archive, binding, now)).toThrow(
+      "another installation",
+    );
+  });
+});
+
+function maintenanceFixture() {
+  const previous = { Id: "b".repeat(64), Image: previousImage, State: { Running: true } };
+  let web = previous;
+  let installed = false;
+  const currentState = () => assessOwnedMealPhotoLedger(sources, state(installed), installation);
+  const steps = [];
+  const adapters = {
+    previous,
+    guard: vi.fn(async ({ retained }) => {
+      steps.push(retained ? "guard-retained" : "guard");
+      return currentState();
+    }),
+    build: vi.fn(async () => {
+      steps.push("build");
+      return candidateImage;
+    }),
+    retain: vi.fn(async () => steps.push("retain")),
+    apply: vi.fn(async () => {
+      steps.push("apply");
+      installed = true;
+    }),
+    assess: vi.fn(async () => currentState()),
+    verifyBackend: vi.fn(async () => steps.push("verify-backend")),
+    readWeb: async () => web,
+    removeWeb: vi.fn(async (id) => {
+      expect(id).toBe(web.Id);
+      web = null;
+      steps.push("remove");
+    }),
+    startWeb: vi.fn(async (Image, label) => {
+      web = { Id: "c".repeat(64), Image, Config: { Labels: { "winesnap.meal-photo": label } } };
+      steps.push(label);
+    }),
+    verifyWeb: vi.fn(async () => steps.push("verify-web")),
+    tagWeb: vi.fn(async () => steps.push("tag")),
+    stage: vi.fn(),
+    recovery: vi.fn(),
+  };
+  return { adapters, steps, currentState, substituteWeb: (replacement) => (web = replacement) };
+}
+
+describe("meal-photo maintenance and restricted fallback", () => {
+  it("does not build or mutate if preflight rejects, or apply if the post-retain gate fails", async () => {
+    const { adapters } = maintenanceFixture();
+    adapters.guard.mockRejectedValueOnce(new Error("restore proof missing"));
+    await expect(deliverOwnedMealPhotoUpdate(adapters)).rejects.toThrow("restore proof missing");
+    expect(adapters.build).not.toHaveBeenCalled();
+    expect(adapters.retain).not.toHaveBeenCalled();
+    adapters.guard.mockImplementation(async ({ retained }) => {
+      if (retained) throw new Error("tunnel active");
+      return requireOwnedMealPhotoUpdate(sources, state(), installation);
+    });
+    await expect(deliverOwnedMealPhotoUpdate(adapters)).rejects.toThrow("tunnel active");
+    expect(adapters.apply).not.toHaveBeenCalled();
+    expect(adapters.removeWeb).not.toHaveBeenCalled();
+  });
+
+  it("retains the previous image before DDL and tags only a verified upgrade", async () => {
+    const { adapters, steps, currentState } = maintenanceFixture();
+    await expect(deliverOwnedMealPhotoUpdate(adapters)).resolves.toBe(candidateImage);
+    expect(steps).toEqual([
+      "guard",
+      "build",
+      "guard",
+      "retain",
+      "guard-retained",
+      "apply",
+      "verify-backend",
+      "remove",
+      mealPhotoWebLabel,
+      "verify-web",
+      "verify-backend",
+      "tag",
+    ]);
+    expect(adapters.retain).toHaveBeenCalledWith(previousImage);
+    expect(adapters.apply).toHaveBeenCalledWith(ownedMealPhotoMigrationTransaction(pending));
+    expect(adapters.tagWeb).toHaveBeenCalledWith(candidateImage);
+    expect(adapters.recovery).not.toHaveBeenCalled();
+    expect(currentState().applied).toBe(42);
+  });
+
+  it("leaves the existing container untouched if the transaction is not committed", async () => {
+    const { adapters, currentState } = maintenanceFixture();
+    adapters.apply.mockRejectedValueOnce(new Error("transaction failed"));
+    await expect(deliverOwnedMealPhotoUpdate(adapters)).rejects.toThrow("transaction failed");
+    expect(adapters.recovery).toHaveBeenCalledWith("schema_unchanged");
+    expect(adapters.removeWeb).not.toHaveBeenCalled();
+    expect(adapters.startWeb).not.toHaveBeenCalled();
+    expect(adapters.tagWeb).not.toHaveBeenCalled();
+    expect(currentState().applied).toBe(40);
+  });
+
+  it("keeps committed DDL and restores only a restricted previous web if verification fails", async () => {
+    const { adapters, currentState } = maintenanceFixture();
+    adapters.verifyWeb.mockRejectedValueOnce(new Error("candidate is unhealthy"));
+    await expect(deliverOwnedMealPhotoUpdate(adapters)).rejects.toThrow("candidate is unhealthy");
+    expect(adapters.startWeb.mock.calls).toEqual([
+      [candidateImage, mealPhotoWebLabel],
+      [previousImage, mealPhotoFallbackLabel],
+    ]);
+    expect(adapters.tagWeb.mock.calls).toEqual([[previousImage]]);
+    expect(adapters.recovery).toHaveBeenLastCalledWith("restricted_fallback_verified");
+    expect(currentState().applied).toBe(42);
+  });
+
+  it("does not remove an unexpected replacement during failure recovery", async () => {
+    const { adapters, substituteWeb } = maintenanceFixture();
+    adapters.verifyWeb.mockImplementationOnce(async () => {
+      substituteWeb({ Id: "d".repeat(64), Image: candidateImage, Config: { Labels: {} } });
+      throw new Error("unexpected replacement");
+    });
+    await expect(deliverOwnedMealPhotoUpdate(adapters)).rejects.toThrow("refuse removal");
+    expect(adapters.removeWeb.mock.calls).toEqual([[adapters.previous.Id]]);
+    expect(adapters.tagWeb).not.toHaveBeenCalled();
+  });
 });
 
 describe("guarded owned meal-photo migrations", () => {

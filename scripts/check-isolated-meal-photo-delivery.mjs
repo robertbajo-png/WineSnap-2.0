@@ -148,7 +148,9 @@ try {
   };
   const before = await readShare();
   assert.deepEqual(before, [{ id, share_id, image_url: null }]);
-  report.migrations = await backend.rehearseMealPhotoMigrations();
+  report.migrations = await backend.rehearseMealPhotoMigrations(
+    candidate ? { previousImage: previous.image, candidateImage: candidate } : undefined,
+  );
   assert.deepEqual(report.migrations, {
     before: mealPhotoMigrationBaseline,
     after: mealPhotoMigrationBaseline + mealPhotoMigrationBatch.length,

@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','TextAiUpdate','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','TextAiUpdate','MealPhotoUpdate','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly,
@@ -13,7 +13,11 @@ param(
   [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedNutritionBackup,
   [ValidateSet('OpenAI','Gemini')][string]$AiTextProvider,
   [ValidateSet('gpt-6-luna','gpt-6.2-sol')][string]$AiTextModel,
-  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedAiTextBackup
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedAiTextBackup,
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedMealPhotoBackup,
+  [ValidatePattern('^[a-f0-9]{40}$')][string]$ExpectedMealPhotoRevision,
+  [ValidatePattern('^sha256:[a-f0-9]{64}$')][string]$ExpectedMealPhotoPreviousImage,
+  [switch]$ConfirmMealPhotoMaintenance
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
@@ -32,6 +36,8 @@ if($VerifiedNutritionBackup -and $Action -ne 'NutritionUpdate'){throw 'The archi
 if($Action -eq 'TextAiUpdate' -and (-not $AiTextProvider -or -not $VerifiedAiTextBackup)){throw 'Text AI requires an explicit provider and the exact freshly restored backup.'}
 if(($AiTextProvider -or $AiTextModel -or $VerifiedAiTextBackup) -and $Action -ne 'TextAiUpdate'){throw 'AI settings require a separate web-only TextAiUpdate.'}
 if($AiTextModel -and $AiTextProvider -ne 'OpenAI'){throw 'An OpenAI model requires the OpenAI provider.'}
+if($Action -eq 'MealPhotoUpdate' -and (-not $ConfirmMealPhotoMaintenance -or -not $VerifiedMealPhotoBackup -or -not $ExpectedMealPhotoRevision -or -not $ExpectedMealPhotoPreviousImage)){throw 'DEV-10 needs an approved window, reviewed revision, exact previous web image and freshly restored backup.'}
+if(($VerifiedMealPhotoBackup -or $ExpectedMealPhotoRevision -or $ExpectedMealPhotoPreviousImage -or $ConfirmMealPhotoMaintenance) -and $Action -ne 'MealPhotoUpdate'){throw 'DEV-10 inputs belong only to the dedicated MealPhotoUpdate action.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 . (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
@@ -74,7 +80,7 @@ try {
   Assert-Safe $store
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
   Set-Private $directory -Folder
-  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -in @('NutritionUpdate','TextAiUpdate')){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
+  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -in @('NutritionUpdate','TextAiUpdate','MealPhotoUpdate')){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
   $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $waitMs
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
@@ -142,6 +148,12 @@ try {
   if($RequirePlanningMigration){$start.Environment['WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION']='1'}
   if($RequirePantryMigration){$start.Environment['WINESNAP_OWNED_PANTRY_BACKUP']=$VerifiedPantryBackup}
   if($Action -eq 'NutritionUpdate'){$start.Environment['WINESNAP_OWNED_NUTRITION_BACKUP']=$VerifiedNutritionBackup}
+  if($Action -eq 'MealPhotoUpdate'){
+    $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_APPROVED']='1'
+    $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_BACKUP']=$VerifiedMealPhotoBackup
+    $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_REVISION']=$ExpectedMealPhotoRevision
+    $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_PREVIOUS_IMAGE']=$ExpectedMealPhotoPreviousImage
+  }
   $start.ArgumentList.Add((Join-Path $PSScriptRoot 'manage-owned-backend.mjs'));$start.ArgumentList.Add($Action)
   $phase='owned_backend_operation'
   $process=[Diagnostics.Process]::Start($start)
@@ -163,11 +175,14 @@ try {
     $file=Join-Path $backupDirectory $filename
     [IO.File]::WriteAllBytes($file,[Security.Cryptography.ProtectedData]::Protect($bytes,$null,'CurrentUser'))
     Set-Private $file
-    $roundtrip=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($file),$null,'CurrentUser')
+    $encrypted=[IO.File]::ReadAllBytes($file)
+    $archiveHash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($encrypted)).ToLowerInvariant()
+    $roundtrip=[Security.Cryptography.ProtectedData]::Unprotect($encrypted,$null,'CurrentUser')
+    $encrypted=$null
     if(-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals([Security.Cryptography.SHA256]::HashData($bytes),[Security.Cryptography.SHA256]::HashData($roundtrip))){throw 'Backup encryption verification failed.'}
     [Array]::Clear($roundtrip,0,$roundtrip.Length)
     $report=$result.report | ConvertTo-Json | ConvertFrom-Json -AsHashtable
-    $report.backupFile=$filename;$report.encryptedRoundtripVerified=$true
+    $report.backupFile=$filename;$report.encryptedRoundtripVerified=$true;$report.backupArchiveSha256=$archiveHash
     $files=@(Get-ChildItem -LiteralPath $backupDirectory -Filter 'owned-*.dpapi' -File | Sort-Object Name -Descending)
     for($i=0;$i -lt $files.Count;$i++){
       $item=$files[$i]

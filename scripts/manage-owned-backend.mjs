@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, readdir, lstat, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { readFile, readdir, lstat, realpath, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -52,8 +53,17 @@ import {
   requireNutritionLedger,
 } from "./lib/owned-nutrition-delivery.mjs";
 import {
+  assessOwnedMealPhotoLedger,
+  deliverOwnedMealPhotoUpdate,
+  mealPhotoFallbackLabel,
   mealPhotoMigrationBatch,
+  mealPhotoRollbackTag,
+  mealPhotoWebLabel,
+  ownedInstallationFingerprint,
+  ownedMealPhotoLedgerQuery,
   refuseOrdinaryMealPhotoMigration,
+  requireMealPhotoRecovery,
+  requireOwnedMealPhotoUpdate,
 } from "./lib/owned-meal-photo-delivery.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
@@ -69,6 +79,7 @@ assert.ok(
     "Update",
     "NutritionUpdate",
     "TextAiUpdate",
+    "MealPhotoUpdate",
     "NutritionAccept",
     "NutritionCleanup",
     "Accept",
@@ -102,10 +113,32 @@ const nutritionAcceptance = ["NutritionAccept", "NutritionCleanup"].includes(act
 const nutritionBackup = process.env.WINESNAP_OWNED_NUTRITION_BACKUP;
 const textAiUpdate = action === "TextAiUpdate";
 const textAiBackup = process.env.WINESNAP_OWNED_AI_TEXT_BACKUP;
+const mealPhotoUpdate = action === "MealPhotoUpdate";
+const mealPhotoBackup = process.env.WINESNAP_OWNED_MEAL_PHOTO_BACKUP;
+const mealPhotoRevision = process.env.WINESNAP_OWNED_MEAL_PHOTO_REVISION;
+const mealPhotoPreviousImage = process.env.WINESNAP_OWNED_MEAL_PHOTO_PREVIOUS_IMAGE;
+const mealPhotoApproval = process.env.WINESNAP_OWNED_MEAL_PHOTO_APPROVED;
 assert.equal(nutritionBackup !== undefined, nutritionUpdate);
 if (nutritionUpdate) assert.match(nutritionBackup, pantryBackupPattern);
 assert.equal(textAiBackup !== undefined, textAiUpdate);
 if (textAiUpdate) assert.match(textAiBackup, pantryBackupPattern);
+for (const value of [mealPhotoBackup, mealPhotoRevision, mealPhotoPreviousImage, mealPhotoApproval])
+  assert.equal(value !== undefined, mealPhotoUpdate);
+if (mealPhotoUpdate) {
+  assert.equal(mealPhotoApproval, "1");
+  assert.match(mealPhotoBackup, pantryBackupPattern);
+  assert.match(mealPhotoRevision, /^[a-f0-9]{40}$/);
+  assert.match(mealPhotoPreviousImage, /^sha256:[a-f0-9]{64}$/);
+  assert.ok(
+    !planningUpdate &&
+      !pantryUpdate &&
+      !process.env.WINESNAP_OWNED_PUBLIC_ORIGIN &&
+      !process.env.WINESNAP_OWNED_ORIGIN_RESET &&
+      !process.env.WINESNAP_OWNED_PILOT_UI &&
+      !process.env.WINESNAP_OWNED_AI_TEXT_PROVIDER &&
+      !process.env.WINESNAP_OWNED_AI_TEXT_MODEL,
+  );
+}
 if (pantryUpdate) {
   assert.match(pantryBackup, pantryBackupPattern);
   assert.equal(planningUpdate, false);
@@ -140,6 +173,7 @@ let paused = [];
 const startedAt = performance.now();
 const deadline = startedAt + 16 * 60 * 1000;
 let recovering = false;
+let mealPhotoRecoveryDeadline;
 const report = {
   project: ownedProject,
   completed: false,
@@ -152,9 +186,11 @@ const report = {
 };
 const command = (args, input, extraEnv = {}, timeout = 180000) =>
   new Promise((resolve, reject) => {
-    const remaining = recovering
-      ? Math.min(timeout, 15000)
-      : Math.floor(deadline - performance.now());
+    const remaining = mealPhotoRecoveryDeadline
+      ? Math.min(timeout, Math.floor(mealPhotoRecoveryDeadline - performance.now()))
+      : recovering
+        ? Math.min(timeout, 15000)
+        : Math.floor(deadline - performance.now());
     if (remaining <= 0) return reject(new Error("owned_operation_deadline"));
     const child = execFile(
       docker,
@@ -344,6 +380,7 @@ async function start(
     pilotUiLabel,
     pantryLabel,
     nutritionLabel,
+    mealPhotoLabel,
     textAi,
   } = {},
 ) {
@@ -367,6 +404,7 @@ async function start(
     ...(pilotUiLabel ? ["--label", `winesnap.pilot-ui=${pilotUiLabel}`] : []),
     ...(pantryLabel ? ["--label", `winesnap.pantry=${pantryLabel}`] : []),
     ...(nutritionLabel ? ["--label", `winesnap.recipe-nutrition=${nutritionLabel}`] : []),
+    ...(mealPhotoLabel ? ["--label", `winesnap.meal-photo=${mealPhotoLabel}`] : []),
     ...(textAi ? ["--label", "winesnap.ai-text-provider=" + textAi.provider] : []),
     ...(textAi?.model ? ["--label", "winesnap.ai-text-model=" + textAi.model] : []),
     "--network",
@@ -471,7 +509,8 @@ async function installWebKeys() {
   );
 }
 async function verify({ syncWebKeys = true } = {}) {
-  for (const value of (await installedServices()).values()) {
+  const services = await installedServices();
+  for (const value of services.values()) {
     assert.ok(value?.State.Running);
   }
   assert.equal(await sql("SELECT id FROM winesnap_local.installation"), keys.installationId);
@@ -487,7 +526,11 @@ async function verify({ syncWebKeys = true } = {}) {
     ).status,
     200,
   );
-  if (syncWebKeys) await installWebKeys();
+  if (
+    syncWebKeys &&
+    services.get(name("web")).Config.Labels["winesnap.meal-photo"] !== mealPhotoFallbackLabel
+  )
+    await installWebKeys();
   report.database = true;
   report.auth = true;
   report.storage = true;
@@ -495,7 +538,15 @@ async function verify({ syncWebKeys = true } = {}) {
   report.emailDelivery = "local-inbox-only";
 }
 
-async function buildOwnedWeb({ originSettings, pilotUi, pantryEnabled, tag, webOnly = false }) {
+async function buildOwnedWeb({
+  originSettings,
+  pilotUi,
+  pantryEnabled,
+  mealPhotoEnabled = false,
+  tag,
+  webOnly = false,
+  sourceArchive,
+}) {
   const flags = {
     ...originSettings.build,
     VITE_OWNED_BACKEND_ENABLED: "true",
@@ -506,6 +557,7 @@ async function buildOwnedWeb({ originSettings, pilotUi, pantryEnabled, tag, webO
     VITE_COOKING_CORE_ENABLED: "true",
     VITE_AI_CHEF_ENABLED: "true",
     VITE_MEALS_ENABLED: "true",
+    VITE_MEAL_PHOTOS_ENABLED: String(mealPhotoEnabled),
     VITE_PANTRY_ENABLED: pantryEnabled ? "true" : "false",
     VITE_RECIPE_NUTRITION_ENABLED: "true",
     VITE_PILOT_UI_ENABLED: pilotUi.enabled ? "true" : "false",
@@ -522,9 +574,9 @@ async function buildOwnedWeb({ originSettings, pilotUi, pantryEnabled, tag, webO
       ...Object.entries(flags).flatMap(([key, value]) => ["--build-arg", `${key}=${value}`]),
       "--file",
       "Dockerfile",
-      ".",
+      sourceArchive ? "-" : ".",
     ],
-    undefined,
+    sourceArchive,
     {},
     600000,
   );
@@ -532,14 +584,18 @@ async function buildOwnedWeb({ originSettings, pilotUi, pantryEnabled, tag, webO
 
 async function startOwnedWeb(
   image,
-  { originSettings, pilotUi, pantryEnabled, nutritionLabel, textAi },
+  { originSettings, pilotUi, pantryEnabled, nutritionLabel, textAi, mealPhotoLabel },
 ) {
+  assert.ok([undefined, mealPhotoWebLabel, mealPhotoFallbackLabel].includes(mealPhotoLabel));
+  const restricted = mealPhotoLabel === mealPhotoFallbackLabel;
+  const mealPhotoEnabled = mealPhotoLabel === mealPhotoWebLabel;
   await start("web", image, {
     user: "node",
     publicOrigin: originSettings.origin,
     pilotUiLabel: pilotUi.label,
     pantryLabel: pantryEnabled ? pantryWebLabel : undefined,
     nutritionLabel,
+    mealPhotoLabel,
     textAi,
     memory: "768m",
     port: "5212:3000",
@@ -547,10 +603,12 @@ async function startOwnedWeb(
       SUPABASE_URL: "http://winesnap-owned-gateway:8080",
       SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
       WINESNAP_OWNED_BACKEND_ENABLED: "true",
-      WINESNAP_LOCAL_AI_ENABLED: "true",
+      WINESNAP_LOCAL_AI_ENABLED: String(!restricted),
       WINESNAP_LOCAL_TEXT_PROVIDER: textAi.provider,
       ...(textAi.model ? { WINESNAP_LOCAL_TEXT_MODEL: textAi.model } : {}),
-      WINESNAP_LOCAL_OPERATIONS_ENABLED: "true",
+      WINESNAP_LOCAL_OPERATIONS_ENABLED: String(!restricted),
+      WINESNAP_MEAL_PHOTO_AI_ENABLED: String(mealPhotoEnabled),
+      WINESNAP_MEAL_PHOTO_STORAGE_ENABLED: String(mealPhotoEnabled),
       WINESNAP_COOKING_CORE_ENABLED: "true",
       WINESNAP_AI_CHEF_ENABLED: "true",
       WINESNAP_MEALS_ENABLED: "true",
@@ -571,6 +629,185 @@ function installedTextAi(web) {
     installed: web?.Config.Labels["winesnap.ai-text-provider"],
     installedModel: web?.Config.Labels["winesnap.ai-text-model"],
   };
+}
+
+async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textAi }) {
+  assert.ok(previous?.State.Running);
+  assert.equal(previous.Image, mealPhotoPreviousImage);
+  assert.equal(previous.Config.Labels["winesnap.pantry"], pantryWebLabel);
+  assert.equal(previous.Config.Labels["winesnap.recipe-nutrition"], nutritionWebLabel);
+  assert.deepEqual(textAi, { provider: "openai", model: "gpt-6.2-sol" });
+  assert.ok(keys.openai, "Existing owned OpenAI credential required");
+  const root = await realpath(fileURLToPath(new URL("../", import.meta.url)));
+  assert.ok(!/(?:^|[\\/])OneDrive[^\\/]*(?:[\\/]|$)/i.test(root));
+  const git = (args) =>
+    new Promise((resolve, reject) =>
+      execFile(
+        "git.exe",
+        args,
+        {
+          cwd: root,
+          env: baseEnv,
+          encoding: "buffer",
+          maxBuffer: 64 * 1024 * 1024,
+          timeout: 60_000,
+          windowsHide: true,
+        },
+        (error, stdout) =>
+          error ? reject(new Error("Reviewed checkout could not be verified")) : resolve(stdout),
+      ),
+    );
+  const requireRevision = async () => {
+    assert.equal((await git(["rev-parse", "HEAD"])).toString().trim(), mealPhotoRevision);
+    assert.equal(
+      (await git(["status", "--porcelain=v1", "--untracked-files=all"])).toString().trim(),
+      "",
+    );
+  };
+  await requireRevision();
+  const sources = await readMigrationSources();
+  const databaseLedger = async () => JSON.parse(await sql(ownedMealPhotoLedgerQuery));
+  const snapshot = async () =>
+    [...(await installedServices())]
+      .filter(([service]) => service !== name("web"))
+      .map(([service, container]) => {
+        assert.ok(container.State.Running);
+        return [service, container.Id, container.Image, container.State.StartedAt];
+      });
+  const before = await snapshot();
+  const image = async (tag) =>
+    (await command(["image", "inspect", tag, "--format", "{{.Id}}"])).toString().trim();
+  const rollback = mealPhotoRollbackTag(previous.Image);
+  const archivePath = join(homedir(), "WineSnapOwned", "backups", mealPhotoBackup);
+  const archiveSha256 = async () => {
+    const before = await lstat(archivePath);
+    assert.ok(
+      before.isFile() &&
+        !before.isSymbolicLink() &&
+        before.size > 0 &&
+        before.size <= 130 * 1024 * 1024,
+    );
+    const sha = createHash("sha256");
+    let size = 0;
+    for await (const chunk of createReadStream(archivePath)) {
+      size += chunk.length;
+      assert.ok(size <= before.size);
+      sha.update(chunk);
+    }
+    const after = await lstat(archivePath);
+    assert.ok(after.isFile() && !after.isSymbolicLink());
+    assert.equal(size, before.size);
+    for (const field of ["size", "mtimeMs", "ctimeMs", "ino", "dev"])
+      assert.equal(before[field], after[field]);
+    return sha.digest("hex");
+  };
+  const guard = async ({ retained }) => {
+    await requireRevision();
+    const observation = await readPausedPantryState();
+    requireMealPhotoRecovery(observation, mealPhotoBackup, {
+      archiveSha256: await archiveSha256(),
+      installation: keys.installationId,
+      previousImage: previous.Image,
+    });
+    assert.deepEqual(await snapshot(), before);
+    assert.equal(await image("winesnap-owned:local"), previous.Image);
+    if (retained) assert.equal(await image(rollback), previous.Image);
+    await verify({ syncWebKeys: false });
+    return requireOwnedMealPhotoUpdate(sources, await databaseLedger(), keys.installationId);
+  };
+  const candidateTag = "winesnap-owned:meal-photo-candidate";
+  const probe = (path, method = "GET") =>
+    fetch(ownedApp + path, { method, redirect: "error", signal: AbortSignal.timeout(5000) });
+  await deliverOwnedMealPhotoUpdate({
+    previous,
+    guard,
+    async build() {
+      const sourceArchive = await git(["archive", "--format=tar", mealPhotoRevision]);
+      await buildOwnedWeb({
+        originSettings,
+        pilotUi,
+        pantryEnabled: true,
+        mealPhotoEnabled: true,
+        tag: candidateTag,
+        webOnly: true,
+        sourceArchive,
+      });
+      return image(candidateTag);
+    },
+    retain: (id) => command(["image", "tag", id, rollback]),
+    async apply(transaction) {
+      await sql(transaction);
+      await sql("NOTIFY pgrst, 'reload schema';");
+    },
+    async assess() {
+      const state = assessOwnedMealPhotoLedger(
+        sources,
+        await databaseLedger(),
+        keys.installationId,
+      );
+      report.mealPhotoLedger = { applied: state.applied, scope: state.scope };
+      return state;
+    },
+    async verifyBackend() {
+      assert.deepEqual(await snapshot(), before);
+      await readPausedPantryState();
+      await wait(async () => {
+        const response = await request("/rest/v1/kitchen_photo_meals?limit=0");
+        assert.ok([401, 403].includes(response.status));
+        assert.equal((await response.json()).code, "42501");
+      });
+    },
+    readWeb: () => existing("web"),
+    removeWeb: (id) => command(["rm", "--force", id]),
+    startWeb: (id, mealPhotoLabel) =>
+      startOwnedWeb(id, {
+        originSettings,
+        pilotUi,
+        pantryEnabled: true,
+        nutritionLabel: nutritionWebLabel,
+        mealPhotoLabel,
+        textAi,
+      }),
+    async verifyWeb(id, label) {
+      const web = await existing("web");
+      assert.equal(web?.Image, id);
+      assert.ok(web.State.Running);
+      assert.equal(web.Config.Labels["winesnap.meal-photo"], label);
+      assert.equal(web.Config.Labels["winesnap.recipe-nutrition"], nutritionWebLabel);
+      assert.equal(web.Config.Labels["winesnap.pantry"], pantryWebLabel);
+      const enabled = label === mealPhotoWebLabel;
+      for (const flag of [
+        "WINESNAP_MEAL_PHOTO_AI_ENABLED",
+        "WINESNAP_MEAL_PHOTO_STORAGE_ENABLED",
+        "WINESNAP_LOCAL_AI_ENABLED",
+        "WINESNAP_LOCAL_OPERATIONS_ENABLED",
+      ])
+        assert.ok(web.Config.Env.includes(`${flag}=${enabled}`));
+      await verify({ syncWebKeys: enabled });
+      if (!enabled) {
+        const response = await probe("/api/privacy/privacy-export", "POST");
+        assert.equal(response.status, 503);
+        assert.deepEqual(await response.json(), { error: "Local operations disabled" });
+      } else {
+        const response = await probe("/api/meal-photo?id=11111111-1111-4111-8111-111111111111");
+        assert.equal(response.status, 401);
+        assert.deepEqual(await response.json(), { error: "meal_photo_auth" });
+        assert.equal((await probe("/api/ai/analyze-meal-photo", "POST")).status, 401);
+      }
+    },
+    tagWeb: (id) => command(["image", "tag", id, "winesnap-owned:local"]),
+    stage(step) {
+      phase = step;
+      if (step === "meal_photo_read_migration_outcome")
+        mealPhotoRecoveryDeadline = performance.now() + 120_000;
+    },
+    recovery(state) {
+      report.mealPhotoRecovery = state;
+    },
+  });
+  report.mealPhotoWebUpdated = true;
+  report.mealPhotoServicesUnchanged = true;
+  report.publicTunnelPausedVerified = true;
 }
 
 async function updateGuardedWeb(previous, { originSettings, pilotUi, textAi }) {
@@ -721,6 +958,13 @@ try {
   assert.ok(installedPantry === undefined || installedPantry === pantryWebLabel);
   const installedNutrition = installedWeb?.Config.Labels["winesnap.recipe-nutrition"];
   assert.ok(installedNutrition === undefined || installedNutrition === nutritionWebLabel);
+  const installedMealPhoto = installedWeb?.Config.Labels["winesnap.meal-photo"];
+  assert.ok([undefined, mealPhotoWebLabel, mealPhotoFallbackLabel].includes(installedMealPhoto));
+  if (installedMealPhoto)
+    assert.ok(
+      !["Start", "Update", "NutritionUpdate", "TextAiUpdate", "MealPhotoUpdate"].includes(action),
+      "DEV-10 needs its own reviewed forward update; existing supervised Resume remains supported",
+    );
   const textAi = selectOwnedTextAi({
     action,
     requested: process.env.WINESNAP_OWNED_AI_TEXT_PROVIDER,
@@ -744,6 +988,10 @@ try {
   report.browserPublicOrigin = originSettings.origin || null;
   report.loopbackPortsOnly = true;
   report.localOnly = !originSettings.origin;
+  if (mealPhotoUpdate) {
+    phase = "meal_photo_delivery_guard";
+    await updateGuardedMealPhoto(installedWeb, { originSettings, pilotUi, textAi });
+  }
   if (nutritionUpdate || textAiUpdate) {
     phase = textAiUpdate ? "text_ai_delivery_guard" : "nutrition_delivery_guard";
     await updateGuardedWeb(installedWeb, { originSettings, pilotUi, textAi });
@@ -1097,7 +1345,7 @@ try {
       textAi,
     });
   }
-  if (!nutritionUpdate && !textAiUpdate) {
+  if (!nutritionUpdate && !textAiUpdate && !mealPhotoUpdate) {
     phase = "verification";
     await verify({ syncWebKeys: !pantryAcceptance && !nutritionAcceptance });
   }
@@ -1528,6 +1776,8 @@ try {
       manifest,
     };
     validateOwnedArchive(archive);
+    report.backupInstallationFingerprint = ownedInstallationFingerprint(keys.installationId);
+    if (installedWeb?.Image) report.backupWebImage = installedWeb.Image;
     report.backupIncludesAuthHashes = true;
     report.backupIncludesImageBytes = true;
   }

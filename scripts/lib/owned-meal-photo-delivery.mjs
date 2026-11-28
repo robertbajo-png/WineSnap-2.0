@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { planOwnedMigrations } from "./owned-lifecycle.mjs";
-import { pantryMigrationBatch } from "./owned-pantry-preflight.mjs";
+import { pantryMigrationBatch, requirePantryRecovery } from "./owned-pantry-preflight.mjs";
 
 export const mealPhotoMigrationBaseline = 40;
 export const mealPhotoMigrationBatch = Object.freeze([
@@ -16,6 +16,42 @@ const digest = (value) => createHash("sha256").update(value).digest("hex");
 const table = "public.kitchen_photo_meals";
 const save = "public.kitchen_save_photo_meal(uuid,jsonb,boolean)";
 const transition = "public.kitchen_photo_object_transition(uuid,uuid,text,text)";
+export const mealPhotoWebLabel = "dev10";
+export const mealPhotoFallbackLabel = "dev10-restricted";
+const imageId = /^sha256:[a-f0-9]{64}$/;
+const containerId = /^[a-f0-9]{64}$/;
+
+export function mealPhotoRollbackTag(image) {
+  assert.match(image, imageId);
+  return "winesnap-owned:meal-photo-rollback-" + image.slice(7, 19);
+}
+
+export function ownedInstallationFingerprint(installation) {
+  assert.match(installation, /^[a-f0-9]{32}$/);
+  return digest(installation);
+}
+
+export function requireMealPhotoRecovery(
+  observation,
+  file,
+  { archiveSha256, installation, previousImage },
+  now = Date.now(),
+) {
+  requirePantryRecovery(observation, file, now);
+  assert.match(archiveSha256, /^[a-f0-9]{64}$/);
+  assert.match(previousImage, imageId);
+  const fingerprint = ownedInstallationFingerprint(installation);
+  const { backup, restore } = observation.reports;
+  for (const value of [backup, restore]) {
+    assert.equal(value.backupArchiveSha256, archiveSha256, "Encrypted archive digest changed");
+    assert.equal(
+      value.backupInstallationFingerprint,
+      fingerprint,
+      "Backup is for another installation",
+    );
+  }
+  assert.equal(backup.backupWebImage, previousImage, "Backup was taken with a different web image");
+}
 
 // Catalog and migration metadata only. Never select saved meals or object paths.
 export const ownedMealPhotoLedgerQuery = `
@@ -137,4 +173,91 @@ export function refuseOrdinaryMealPhotoMigration(pending) {
     !pending.some(({ name }) => mealPhotoMigrationBatch.includes(name)),
     "DEV-10 requires the dedicated locally approved update",
   );
+}
+
+// The caller supplies checked, owned-only adapters. No archive restore or reverse DDL is allowed here.
+export async function deliverOwnedMealPhotoUpdate({
+  previous,
+  guard,
+  build,
+  retain,
+  apply,
+  assess,
+  verifyBackend,
+  readWeb,
+  removeWeb,
+  startWeb,
+  verifyWeb,
+  tagWeb,
+  stage,
+  recovery,
+}) {
+  assert.match(previous.Id, containerId);
+  assert.match(previous.Image, imageId);
+  const exactPrevious = async () => {
+    const current = await readWeb();
+    assert.equal(current?.Id, previous.Id, "Previous web container changed");
+    assert.equal(current.Image, previous.Image);
+    assert.equal(current.State.Running, true);
+  };
+  const guardBeforeWrites = async (retained = false) => {
+    const plan = await guard({ retained });
+    assert.equal(plan.scope, "expected_additive_migrations");
+    await exactPrevious();
+    return ownedMealPhotoMigrationTransaction(plan.pending);
+  };
+  await guardBeforeWrites();
+  stage("meal_photo_build");
+  const candidate = await build();
+  assert.match(candidate, imageId);
+  assert.notEqual(candidate, previous.Image);
+  await guardBeforeWrites();
+  await retain(previous.Image);
+  const transaction = await guardBeforeWrites(true);
+  const requireUpgraded = async () => {
+    assert.equal((await assess()).scope, "already_applied");
+    await verifyBackend();
+  };
+  try {
+    stage("meal_photo_atomic_migration");
+    await apply(transaction);
+    await requireUpgraded();
+    stage("meal_photo_web_replacement");
+    await exactPrevious();
+    await removeWeb(previous.Id);
+    await startWeb(candidate, mealPhotoWebLabel);
+    await verifyWeb(candidate, mealPhotoWebLabel);
+    await requireUpgraded();
+    await tagWeb(candidate);
+  } catch (failure) {
+    stage("meal_photo_read_migration_outcome");
+    const state = await assess();
+    if (state.scope === "expected_additive_migrations") {
+      // An uncommitted migration leaves the old app and its database intact.
+      await exactPrevious();
+      recovery("schema_unchanged");
+      throw failure;
+    }
+    assert.equal(state.scope, "already_applied");
+    stage("meal_photo_restricted_web_rollback");
+    recovery("attempting_restricted_fallback");
+    const current = await readWeb();
+    if (current) {
+      assert.match(current.Id, containerId);
+      assert.ok(
+        (current.Id === previous.Id && current.Image === previous.Image) ||
+          (current.Image === candidate &&
+            current.Config.Labels["winesnap.meal-photo"] === mealPhotoWebLabel),
+        "Unexpected web container; refuse removal",
+      );
+      await removeWeb(current.Id);
+    }
+    await startWeb(previous.Image, mealPhotoFallbackLabel);
+    await verifyWeb(previous.Image, mealPhotoFallbackLabel);
+    await requireUpgraded();
+    await tagWeb(previous.Image);
+    recovery("restricted_fallback_verified");
+    throw failure;
+  }
+  return candidate;
 }

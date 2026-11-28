@@ -206,6 +206,7 @@ try {
   for (const chunk of chunks) chunk.fill(0);
   chunks.length = 0;
   const originalInstallation = bundle.configuration.installationId;
+  report.backupInstallationFingerprint = sha256(originalInstallation);
   // Never reuse the source DB/JWT/job secrets in a running clone.
   for (const key of Object.keys(bundle.configuration)) bundle.configuration[key] = null;
   delete bundle.configuration;

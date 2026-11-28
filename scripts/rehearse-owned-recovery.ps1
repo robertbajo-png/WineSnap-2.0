@@ -35,7 +35,10 @@ try {
   Assert-Private $file -AllowInherited
   $item=Get-Item -LiteralPath $file -Force
   if($item.Length -gt 130MB -or $item.Length -lt 1){throw 'Unexpected archive size.'}
-  $plain=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($file),$null,'CurrentUser')
+  $encrypted=[IO.File]::ReadAllBytes($file)
+  $archiveHash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($encrypted)).ToLowerInvariant()
+  $plain=[Security.Cryptography.ProtectedData]::Unprotect($encrypted,$null,'CurrentUser')
+  $encrypted=$null
   if($plain.Length -gt 128MB){throw 'Oversized owned archive.'}
   $phase='isolated_restore'
   $start=[Diagnostics.ProcessStartInfo]::new()
@@ -59,6 +62,7 @@ try {
   if($restored.project -ne 'winesnap-owned-local' -or $restored.productionTouched -ne $false -or $restored.hostedTestTouched -ne $false){throw 'Unexpected restore scope.'}
   foreach($property in $restored.PSObject.Properties){$report[$property.Name]=$property.Value}
   $report.backupFile=$BackupFile
+  $report.backupArchiveSha256=$archiveHash
   if($process.ExitCode -ne 0){$report.completed=$false}
 } catch {
   $report.completed=$false
