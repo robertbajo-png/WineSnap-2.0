@@ -9,6 +9,7 @@ const owner = "33333333-3333-4333-8333-333333333333";
 const secret = "synthetic-secret-".repeat(3);
 function setup(name: string, env: Record<string, string> = {}) {
   let handler: Handler | undefined;
+  const exported: { createHandler?: (dependencies: unknown) => Handler } = {};
   const user = {
     id: owner,
     email: "owner@example.test",
@@ -35,22 +36,23 @@ function setup(name: string, env: Record<string, string> = {}) {
     error: null,
   }));
   const remove = vi.fn().mockResolvedValue({ error: null });
+  const createSignedUrls = vi.fn();
   const admin = {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }) },
     rpc,
     from: vi.fn().mockReturnValue(chain),
-    storage: { from: vi.fn().mockReturnValue({ remove }) },
+    storage: { from: vi.fn().mockReturnValue({ remove, createSignedUrls }) },
   };
   const erase = vi.fn().mockResolvedValue({ complete: true });
   const logger = { error: vi.fn(), info: vi.fn() };
   const output = transpileModule(
-    readFileSync(new URL(`../../supabase/functions/${name}/index.ts`, import.meta.url), "utf8"),
+    readFileSync(new URL(`../../supabase/functions/${name}/handler.ts`, import.meta.url), "utf8"),
     {
       compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
     },
   ).outputText;
   runInNewContext(output, {
-    exports: {},
+    exports: exported,
     require: (path: string) => {
       if (path === "../_shared/privacy.ts") return privacy;
       if (path === "../_shared/privacyRuntime.ts")
@@ -70,6 +72,7 @@ function setup(name: string, env: Record<string, string> = {}) {
     TextEncoder,
     console: logger,
   });
+  handler = exported.createHandler?.({ env: (key: string) => env[key], admin: () => admin, erase });
   if (!handler) throw new Error("Missing handler");
   return {
     admin,
@@ -77,6 +80,7 @@ function setup(name: string, env: Record<string, string> = {}) {
     chain,
     erase,
     remove,
+    createSignedUrls,
     logger,
     call: (body: unknown = {}, token: string | null = "synthetic-token", method = "POST") =>
       handler!(
@@ -90,6 +94,65 @@ function setup(name: string, env: Record<string, string> = {}) {
       ),
   };
 }
+
+describe("private meal photo export", () => {
+  const id = "babbaabb-aaaa-4aaa-aaaa-bbbbbbbbbbbb";
+  const path = `${owner}/${id}.png`;
+  const object = { bucket_id: "meal-photos", name: path };
+
+  function fixture(enabled: boolean, state = "ready", objects = [object]) {
+    const api = setup("privacy-export", enabled ? { OWNED_MEAL_PHOTO_EXPORT: "true" } : {});
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockResolvedValue({
+        data: [{ id, user_id: owner, photo_state: state }],
+        error: null,
+      }),
+    };
+    api.admin.from.mockImplementation((table) =>
+      table === "kitchen_photo_meals" ? { ...api.chain, ...query } : api.chain,
+    );
+    api.rpc.mockImplementation(async (name) => ({
+      data:
+        name === "privacy_account_active"
+          ? true
+          : name === "consume_ai_quota"
+            ? [{ allowed: true }]
+            : objects,
+      error: null,
+    }));
+    return { ...api, query };
+  }
+
+  it("exports the owner's ready photo using only a same-account logical reference", async () => {
+    const api = fixture(true);
+    const response = await api.call();
+    expect(response.status).toBe(200);
+    const { files, tables } = await response.json();
+    expect(tables.kitchen_photo_meals).toEqual([{ id, user_id: owner, photo_state: "ready" }]);
+    expect(api.query.eq).toHaveBeenCalledWith("user_id", owner);
+    expect(files).toEqual([{ bucket: "meal-photos", path, mealId: id }]);
+    expect(api.createSignedUrls).not.toHaveBeenCalled();
+  });
+
+  it("does not sign pending or unrecognized objects even when the export feature is off", async () => {
+    const pending = fixture(true, "pending");
+    expect((await (await pending.call()).json()).files).toEqual([]);
+    expect(pending.createSignedUrls).not.toHaveBeenCalled();
+    const disabled = fixture(false);
+    expect((await disabled.call()).status).toBe(503);
+    expect(disabled.admin.from).not.toHaveBeenCalledWith("kitchen_photo_meals");
+    expect(disabled.createSignedUrls).not.toHaveBeenCalled();
+  });
+
+  it("refuses a ready photo export whose object is missing", async () => {
+    const api = fixture(true, "ready", []);
+    expect((await api.call()).status).toBe(500);
+    expect(api.createSignedUrls).not.toHaveBeenCalled();
+  });
+});
 
 describe("actual privacy-control handler", () => {
   it("rejects anonymous callers and unsupported methods without mutations", async () => {
@@ -152,9 +215,47 @@ describe("actual scheduler handler", () => {
     expect(api.remove).not.toHaveBeenCalled();
     expect((await api.call({ execute: true }, secret)).status).toBe(503);
   });
+  it("reports another batch instead of silently claiming a drained queue", async () => {
+    const api = setup("privacy-maintenance", { PRIVACY_CRON_SECRET: secret });
+    api.rpc.mockImplementationOnce(async () => ({
+      data: { more_batches_required: true },
+      error: null,
+    }));
+    const response = await api.call({}, secret);
+    expect(response.status).toBe(200);
+    expect((await response.json()).more_work).toBe(true);
+  });
 });
 
 describe("actual owner export handler", () => {
+  it("includes all six private Chef tables only behind the explicit rollout gate", async () => {
+    const enabled = setup("privacy-export", { AI_CHEF_ENABLED: "true" });
+    const result = await (await enabled.call()).json();
+    for (const table of [
+      "food_memory_state",
+      "food_signals",
+      "food_memory_tombstones",
+      "chef_conversations",
+      "chef_messages",
+      "chef_requests",
+    ])
+      expect(result.tables).toHaveProperty(table);
+    const disabled = setup("privacy-export");
+    expect((await (await disabled.call()).json()).tables).not.toHaveProperty("food_signals");
+  });
+  it("includes cooking tables only after the explicit verified rollout switch", async () => {
+    const enabled = setup("privacy-export", { KITCHEN_CORE_ENABLED: "true" });
+    const result = await (await enabled.call()).json();
+    for (const table of [
+      "kitchen_recipes",
+      "kitchen_recipe_versions",
+      "cooking_sessions",
+      "cooking_feedback",
+    ])
+      expect(result.tables).toHaveProperty(table);
+    const disabled = setup("privacy-export");
+    expect((await (await disabled.call()).json()).tables).not.toHaveProperty("kitchen_recipes");
+  });
   it("includes owner-filtered social and quota rows without reading other profiles", async () => {
     const api = setup("privacy-export");
     const response = await api.call({ userId: "stranger" });
@@ -170,6 +271,25 @@ describe("actual owner export handler", () => {
       ),
     ).toBe(true);
     expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+  it("exports private week plans by owner and week even without an active Kitchen UI", async () => {
+    const api = setup("privacy-export");
+    const response = await api.call({ userId: "stranger" });
+    expect(response.status).toBe(200);
+    expect((await response.json()).tables).toHaveProperty("kitchen_week_plans");
+    expect(api.admin.from).toHaveBeenCalledWith("kitchen_week_plans");
+    expect(api.chain.order).toHaveBeenCalledWith("week_start");
+    expect(api.chain.eq.mock.calls.every(([, id]) => id === owner)).toBe(true);
+  });
+  it("includes the owner's confirmed stock and consumption receipts in the private export", async () => {
+    const api = setup("privacy-export");
+    const response = await api.call({ userId: "stranger" });
+    expect(response.status).toBe(200);
+    const { tables } = await response.json();
+    expect(tables).toHaveProperty("kitchen_pantry");
+    expect(tables).toHaveProperty("kitchen_pantry_consumption");
+    expect(api.chain.order).toHaveBeenCalledWith("session_id");
+    expect(api.chain.eq.mock.calls.every(([, id]) => id === owner)).toBe(true);
   });
   it("refuses a partial export when any table fails", async () => {
     const api = setup("privacy-export");

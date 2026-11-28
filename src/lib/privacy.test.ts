@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { eraseAccountFiles, recentSignIn } from "../../supabase/functions/_shared/privacy";
 import { completePrivacyExport } from "./privacyExport";
+import { ownedBackendOrigin, ownedBrowserOrigin } from "./backendScope";
 import { readFileSync } from "node:fs";
 
 describe("account erasure", () => {
@@ -82,6 +83,77 @@ const sample = () => ({
   ],
 });
 describe("complete private export", () => {
+  const meal = "bc47c8cd-6273-4f56-aff5-214230c82b54";
+
+  it("uses only the approved browser gateway for signed URLs from the owned server", async () => {
+    const data = sample();
+    const path = "/storage/v1/object/sign/wine-labels/owner/image?token=synthetic";
+    data.files[0].signedUrl = ownedBackendOrigin + path;
+    const read = vi.fn(async () => new Response("synthetic"));
+    const complete = (origin: string, publicOrigin?: string) =>
+      completePrivacyExport(data, "owner", ownedBrowserOrigin, read, () => true, {
+        ownedPage: { origin, publicOrigin },
+      });
+    await complete("http://127.0.0.1:5212");
+    await complete("https://winesnap.example.com", "https://winesnap.example.com");
+    await expect(
+      complete("https://unknown.example.com", "https://winesnap.example.com"),
+    ).rejects.toThrow("does not allow");
+    await expect(
+      completePrivacyExport(data, "owner", ownedBrowserOrigin, read, () => true),
+    ).rejects.toThrow("origin");
+    expect(read.mock.calls).toEqual([
+      [ownedBrowserOrigin + path],
+      ["https://winesnap.example.com/backend" + path],
+    ]);
+  });
+
+  it("downloads private meal photos only through the authenticated reader", async () => {
+    const path = `owner/${meal}.png`;
+    const readSigned = vi.fn();
+    const readPrivateMealPhoto = vi.fn(
+      async () => new Response("png-bytes", { headers: { "content-type": "image/png" } }),
+    );
+    const downloaded = await completePrivacyExport(
+      { ...sample(), files: [{ bucket: "meal-photos", path, mealId: meal }] },
+      "owner",
+      "https://db.example",
+      readSigned,
+      () => true,
+      { readPrivateMealPhoto },
+    );
+    expect(readPrivateMealPhoto).toHaveBeenCalledExactlyOnceWith(meal);
+    expect(readSigned).not.toHaveBeenCalled();
+    expect(downloaded.files).toEqual([
+      { bucket: "meal-photos", path, mimeType: "image/png", base64: btoa("png-bytes") },
+    ]);
+  });
+
+  it("rejects signed meal photo links and private refs outside the owner path", async () => {
+    const download = vi.fn();
+    for (const file of [
+      { bucket: "meal-photos", path: `peer/${meal}.png`, mealId: meal },
+      { bucket: "meal-photos", path: `owner/${meal}.png`, signedUrl: "https://db.example/token" },
+      {
+        bucket: "wine-labels",
+        path: "owner/label.png",
+        signedUrl: `https://db.example/storage/v1/object/sign/meal-photos/owner/${meal}.png`,
+      },
+    ]) {
+      await expect(
+        completePrivacyExport(
+          { ...sample(), files: [file] },
+          "owner",
+          "https://db.example",
+          download,
+          () => true,
+          { readPrivateMealPhoto: download },
+        ),
+      ).rejects.toThrow();
+    }
+    expect(download).not.toHaveBeenCalled();
+  });
+
   it("embeds file bytes rather than expiring signed URLs", async () => {
     const result = await completePrivacyExport(
       sample(),
@@ -140,7 +212,7 @@ describe("complete private export", () => {
         "https://db.example",
         async () => new Response("X".repeat(100)),
         () => true,
-        50,
+        { maxBytes: 50 },
       ),
     ).rejects.toThrow("export_requires_support");
   });
@@ -157,7 +229,9 @@ describe("privacy source contracts", () => {
       "restaurant-match",
       "extract-preference-signals",
     ]) {
-      const code = read(`supabase/functions/${name}/index.ts`);
+      const code = read(
+        `supabase/functions/${name}/${["analyze-wine", "ask-winesnap", "taste-suggestions", "wine-suggestions"].includes(name) ? "handler" : "index"}.ts`,
+      );
       expect(code).not.toMatch(
         /console\.error\([^;]*(?:\.message|\.slice\(|response\.text\(|, error\)|, e\))/,
       );
@@ -175,10 +249,10 @@ describe("privacy source contracts", () => {
     expect(code.slice(code.indexOf("const savePending"))).toContain(".upload(");
   });
   it("takes the erasure identity only from the verified session", () => {
-    const code = read("supabase/functions/privacy-controls/index.ts");
+    const code = read("supabase/functions/privacy-controls/handler.ts");
     expect(code).toContain("admin.auth.getUser(token)");
     expect(code).toContain("_user_id: auth.user.id");
     expect(code).not.toContain("body.userId");
-    expect(code).toContain('Deno.env.get("PRIVACY_DELETION_ENABLED") !== "true"');
+    expect(code).toContain('env("PRIVACY_DELETION_ENABLED") !== "true"');
   });
 });

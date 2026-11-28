@@ -1,17 +1,22 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { X, Loader2, Type, Camera, Sparkles, AlertCircle } from "lucide-react";
+import { X, Loader2, Type, Camera, Sparkles } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { accountWriteClient } from "@/lib/accountWriteScope";
 import { LiveCamera } from "@/components/LiveCamera";
 import { Button } from "@/components/ui/button";
 import { ScanResult } from "@/components/ScanResult";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useT, useI18n } from "@/i18n";
 import { logEvent } from "@/lib/analytics";
 import { createSaveGuard } from "@/lib/tastingNotes";
 import { scanFailure } from "@/lib/scanFailure";
+import { analyzeWine } from "@/lib/analyzeWine";
+import { useOnline } from "@/hooks/useOnline";
+import { OperationNotice } from "@/components/OperationNotice";
+import { saveScanOnce, scanUploadPath, ScanSaveError, type ScanSaveAttempt } from "@/lib/scanSave";
 import {
   checkImageInput,
   createAttemptGuard,
@@ -48,6 +53,7 @@ type PendingMatch = {
 
 type ScannedWine = {
   id: string;
+  user_id: string;
   image_url: string | null;
   producer: string | null;
   wine_name: string | null;
@@ -63,6 +69,16 @@ function ScanPage() {
   const navigate = useNavigate();
   const t = useT();
   const { lang } = useI18n();
+  const online = useOnline();
+  const ownerRef = useRef(user?.id);
+  const alive = useRef(true);
+  const saveGeneration = useRef(0);
+  ownerRef.current = user?.id;
+  const [scopeOwner, setScopeOwner] = useState(user?.id);
+  const attemptRef = useRef<ScanSaveAttempt | null>(null);
+  const [saveError, setSaveError] = useState(false);
+  const [saveUncertain, setSaveUncertain] = useState(false);
+  const [retryImage, setRetryImage] = useState<{ image: Blob; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -79,6 +95,26 @@ function ScanPage() {
   // response from an abandoned attempt is dropped instead of overwriting state.
   const guardRef = useRef(createAttemptGuard());
   const previewUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    ++saveGeneration.current;
+    guardRef.current.cancel();
+    setPendingMatch(null);
+    setPendingFile(null);
+    setText("");
+    setRetryImage(null);
+    setAnalysisError(null);
+    setStage("idle");
+    setSaving(false);
+    setSavedId(null);
+    savedIdRef.current = null;
+    attemptRef.current = null;
+    saveGuardRef.current = createSaveGuard();
+    setSaveError(false);
+    setSaveUncertain(false);
+    setPreviewUrl(null);
+    setScopeOwner(user?.id);
+    // Every account has an independent review/attempt scope, including logout.
+  }, [user?.id]);
 
   const reportAnalysisFailure = async (error: unknown, attempt: number) => {
     const failure = await scanFailure(error);
@@ -99,7 +135,9 @@ function ScanPage() {
 
   useEffect(() => {
     const guard = guardRef.current;
+    alive.current = true;
     return () => {
+      alive.current = false;
       guard.cancel();
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
@@ -114,15 +152,18 @@ function ScanPage() {
   }, [user, loading, navigate, t]);
 
   const persistWine = async (
+    client: SupabaseClient,
+    id: string,
+    owner: string,
     w: AnalyzedWine,
     imageUrl: string | null,
     originalWine: AnalyzedWine,
   ) => {
-    if (!user) throw new Error("Not authenticated");
-    const { data: inserted, error: insErr } = await supabase
+    const { data: inserted, error: insErr } = await client
       .from("wines")
       .insert({
-        user_id: user.id,
+        id,
+        user_id: owner,
         image_url: imageUrl,
         producer: w.producer,
         wine_name: w.wine_name,
@@ -147,7 +188,9 @@ function ScanPage() {
         decant: w.decant,
         ai_raw: originalWine,
       } as never)
-      .select("id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type")
+      .select(
+        "id,user_id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type",
+      )
       .single();
     if (insErr) throw insErr;
     return inserted as ScannedWine;
@@ -160,6 +203,7 @@ function ScanPage() {
       "wine" | "partial" | "labelText" | "confidence" | "originalWine" | "edited"
     >,
   ) => {
+    setPreviewUrl(base.previewUrl);
     setPendingMatch({
       ...base,
       wine: result.wine,
@@ -171,11 +215,15 @@ function ScanPage() {
     });
     setSavedId(null);
     savedIdRef.current = null;
+    attemptRef.current = null;
+    setSaveError(false);
+    setSaveUncertain(false);
+    setRetryImage(null);
     setStage("result");
   };
 
   const handleText = async () => {
-    if (!user) return;
+    if (!user || !navigator.onLine) return;
     const guard = guardRef.current;
     if (guard.isBusy()) return;
     const q = text.trim();
@@ -187,9 +235,7 @@ function ScanPage() {
     setAnalysisError(null);
     setStage("analyzing");
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { text: q, language: lang },
-      });
+      const { data, error } = await analyzeWine({ text: q, language: lang });
       if (!guard.isCurrent(attempt)) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -231,6 +277,12 @@ function ScanPage() {
       return;
     }
     const mimeType = check.mimeType;
+    setRetryImage({ image, mime: mimeType });
+    if (!navigator.onLine) {
+      setPreviewUrl(URL.createObjectURL(image));
+      setAnalysisError(t("state.scanOffline"));
+      return;
+    }
 
     const attempt = guard.start();
     setAnalysisError(null);
@@ -253,9 +305,7 @@ function ScanPage() {
       });
       if (!guard.isCurrent(attempt)) return;
 
-      const { data, error } = await supabase.functions.invoke("analyze-wine", {
-        body: { imageBase64: base64, mimeType, language: lang },
-      });
+      const { data, error } = await analyzeWine({ imageBase64: base64, mimeType, language: lang });
       if (!guard.isCurrent(attempt)) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -272,7 +322,6 @@ function ScanPage() {
       });
     } catch (e) {
       if (!guard.isCurrent(attempt)) return;
-      setPreviewUrl(null);
       await reportAnalysisFailure(e, attempt);
       if (!guard.isCurrent(attempt)) return;
       setStage("idle");
@@ -282,36 +331,83 @@ function ScanPage() {
   };
 
   const savePending = async () => {
-    if (!pendingMatch || !user || savedIdRef.current || !saveGuardRef.current.tryStart()) return;
+    if (
+      !pendingMatch ||
+      !user ||
+      !navigator.onLine ||
+      savedIdRef.current ||
+      !saveGuardRef.current.tryStart()
+    )
+      return;
+    const saveGuard = saveGuardRef.current;
+    const owner = user.id;
+    const generation = saveGeneration.current;
+    const scope = {
+      owner,
+      current: () =>
+        alive.current && ownerRef.current === owner && saveGeneration.current === generation,
+    };
     setSaving(true);
-    let path: string | null = null;
-    let persisted = false;
+    setSaveError(false);
     try {
-      const { data: auth, error: authError } = await supabase.auth.getUser();
-      if (authError || auth.user?.id !== user.id) throw new Error("Account changed");
-      if (pendingMatch.image && pendingMatch.mimeType) {
-        path = `${user.id}/${crypto.randomUUID()}.${extensionForMime(pendingMatch.mimeType)}`;
-        const { error } = await supabase.storage
-          .from("wine-labels")
-          .upload(path, pendingMatch.image, {
-            contentType: pendingMatch.mimeType,
-            cacheControl: "0",
-          });
-        if (error) throw error;
-      }
-      const inserted = await persistWine(pendingMatch.wine, path, pendingMatch.originalWine);
-      persisted = true;
+      const client = (await accountWriteClient(scope)) as unknown as SupabaseClient;
+      const attempt = attemptRef.current ?? {
+        id: crypto.randomUUID(),
+        owner,
+        imagePath: null,
+        insertStarted: false,
+      };
+      attemptRef.current = attempt;
+      const inserted = await saveScanOnce<ScannedWine>(attempt, {
+        find: async () => {
+          if (!scope.current()) throw new Error("Account changed");
+          const r = await client
+            .from("wines")
+            .select(
+              "id,user_id,image_url,producer,wine_name,vintage,grape_varieties,region,country,wine_type",
+            )
+            .eq("id", attempt.id)
+            .eq("user_id", owner)
+            .maybeSingle();
+          if (r.error) throw r.error;
+          return r.data as ScannedWine | null;
+        },
+        ...(pendingMatch.image && pendingMatch.mimeType
+          ? {
+              upload: async () => {
+                if (!scope.current()) throw new Error("Account changed");
+                const path = scanUploadPath(attempt, extensionForMime(pendingMatch.mimeType!));
+                const r = await client.storage
+                  .from("wine-labels")
+                  .upload(path, pendingMatch.image!, {
+                    contentType: pendingMatch.mimeType!,
+                    cacheControl: "0",
+                    upsert: true,
+                  });
+                if (r.error) throw r.error;
+                return path;
+              },
+            }
+          : {}),
+        insert: (id, path) => {
+          if (!scope.current()) throw new Error("Account changed");
+          return persistWine(client, id, owner, pendingMatch.wine, path, pendingMatch.originalWine);
+        },
+      });
+      if (!scope.current()) return;
       savedIdRef.current = inserted.id;
       setSavedId(inserted.id);
-      if (path) {
-        const { error: photoError } = await supabase.from("wine_photos").insert({
+      setSaveUncertain(false);
+      if (inserted.image_url) {
+        const { error: photoError } = await client.from("wine_photos").insert({
           wine_id: inserted.id,
-          user_id: user.id,
-          url: path,
-          storage_path: path,
+          user_id: owner,
+          url: inserted.image_url,
+          storage_path: inserted.image_url,
           kind: "label",
           sort_order: 0,
         });
+        if (!scope.current()) return;
         if (photoError) toast.warning(t("scan.photoWarning"));
       }
       logEvent("wine_scanned", {
@@ -321,21 +417,35 @@ function ScanPage() {
         partial: pendingMatch.partial,
       });
     } catch (e) {
-      if (path && !persisted) await supabase.storage.from("wine-labels").remove([path]);
-      toast.error(t("common.error"));
+      if (!scope.current()) return;
+      const uncertain =
+        e instanceof ScanSaveError ? e.uncertain : !!attemptRef.current?.insertStarted;
+      setSaveError(true);
+      setSaveUncertain(uncertain);
+      // Retain the same ID/path even when only the upload acknowledgement was lost.
     } finally {
-      setSaving(false);
-      saveGuardRef.current.finish();
+      if (scope.current()) setSaving(false);
+      saveGuard.finish();
     }
   };
 
   const discardPending = async () => {
     if (saving || savedIdRef.current) return;
+    if (saveUncertain) return;
     setPendingMatch(null);
+    attemptRef.current = null;
+    setSaveError(false);
+    setRetryImage(null);
     setPreviewUrl(null);
     setStage("idle");
   };
 
+  if (loading || scopeOwner !== user?.id)
+    return (
+      <div className="p-5">
+        <OperationNotice kind="loading">{t("common.loading")}</OperationNotice>
+      </div>
+    );
   if (stage === "result" && pendingMatch) {
     return (
       <ScanResult
@@ -347,9 +457,13 @@ function ScanPage() {
         edited={pendingMatch.edited}
         saved={savedId !== null}
         busy={saving}
-        onEdit={(wine) =>
-          setPendingMatch((current) => (current ? { ...current, wine, edited: true } : current))
-        }
+        offline={!online}
+        saveError={saveError}
+        saveUncertain={saveUncertain}
+        onEdit={(wine) => {
+          attemptRef.current = null;
+          setPendingMatch((current) => (current ? { ...current, wine, edited: true } : current));
+        }}
         onSave={savePending}
         onClose={discardPending}
         onDetails={() => {
@@ -432,9 +546,29 @@ function ScanPage() {
       </div>
 
       {analysisError && (
-        <div role="alert" className="mx-5 mt-4 flex items-start gap-2 text-sm text-cream">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
-          <p>{analysisError}</p>
+        <div className="mx-5">
+          <OperationNotice
+            kind="error"
+            action={
+              retryImage && mode === "camera"
+                ? {
+                    label: t("state.analyzeAgain"),
+                    disabled: !online || stage === "analyzing",
+                    onClick: () => void handleFile(retryImage.image, retryImage.mime),
+                  }
+                : undefined
+            }
+          >
+            {analysisError}
+            {retryImage && mode === "camera" && (
+              <span className="block">{t("state.imageRetained")}</span>
+            )}
+          </OperationNotice>
+        </div>
+      )}
+      {!online && (
+        <div className="mx-5">
+          <OperationNotice kind="offline">{t("state.scanOffline")}</OperationNotice>
         </div>
       )}
 
@@ -455,7 +589,7 @@ function ScanPage() {
           </div>
         )
       ) : (
-        <div className="flex flex-1 flex-col px-5 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
           <div className="flex flex-1 flex-col">
             <label
               htmlFor="scan-description"
@@ -479,7 +613,7 @@ function ScanPage() {
 
           <Button
             onClick={handleText}
-            disabled={stage === "analyzing" || text.trim().length < 3}
+            disabled={!online || stage === "analyzing" || text.trim().length < 3}
             className="mt-6 h-14 bg-gradient-burgundy text-cream shadow-soft min-h-11"
           >
             {stage === "analyzing" ? (

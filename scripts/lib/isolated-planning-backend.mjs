@@ -1,0 +1,1296 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
+import { readFile, readdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { checkOwnedContainer, ownedApi, ownedProject, ownedServices } from "./owned-backend.mjs";
+import {
+  ownedRestoreProbeImage,
+  inspectOwnedTar,
+  validateOwnedArchive,
+  ownedRoleRestoreSql,
+  validateOwnedManifest,
+} from "./owned-recovery.mjs";
+import { finishOwnedInput } from "./owned-process-input.mjs";
+import { binaryPart, recoveryToken } from "./platform-recovery.mjs";
+import { ownedContainerProjection } from "./owned-planning-preflight.mjs";
+import {
+  pantryMigrationBatch,
+  pantryRollbackTag,
+  pantryWebLabel,
+} from "./owned-pantry-preflight.mjs";
+import { nutritionRollbackTag } from "./owned-nutrition-delivery.mjs";
+import { openPlanningRelay, openPlanningWebRelay } from "./planning-web-relay.mjs";
+import { planOwnedMigrations } from "./owned-lifecycle.mjs";
+import { assertOrdinaryJournalFree, ordinaryJournalExclusions } from "./owned-dev11-archive.mjs";
+import {
+  assessOwnedMealPhotoLedger,
+  deliverOwnedMealPhotoUpdate,
+  mealPhotoFallbackLabel,
+  mealPhotoMigrationBatch,
+  mealPhotoWebLabel,
+  ownedMealPhotoLedgerQuery,
+  ownedMealPhotoMigrationTransaction,
+  requireOwnedMealPhotoUpdate,
+} from "./owned-meal-photo-delivery.mjs";
+import {
+  journalDeliveryLabel,
+  journalLabelKey,
+  journalPriorWebImage,
+  journalWebRevision,
+} from "./owned-private-journal-delivery.mjs";
+
+const scope = "planning-database-check";
+const prefix = "winesnap-planning-check";
+const services = ["db", "auth", "storage", "rest", "probe"];
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
+export const isolatedMealPhotoApi = "http://winesnap-owned-gateway:8080";
+
+// The relay runs inside the disposable network. It cannot address an installed or remote API.
+const relayLimit = 6 * 1024 * 1024;
+const relayRequest = `
+async function serve(input) {
+  let id;
+  try {
+    if (input.length > ${relayLimit}) throw Error();
+    const req = JSON.parse(input);
+    id = req.id;
+    const { url, method, headers, body, binary } = req;
+    const target = new URL(url);
+    if (target.protocol !== "http:" || target.username || target.password ||
+        !/^winesnap-planning-check-[a-f0-9]{16}-(auth:9999|rest:3000|storage:5000)$/.test(target.host) ||
+        (binary ? target.port !== "5000" : input.length > 524288)) throw Error();
+    const response = await fetch(target, { method, headers,
+      body: binary ? Buffer.from(body, "base64") : body,
+      redirect: "error", signal: AbortSignal.timeout(20000) });
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > 8388608) throw Error();
+    return { id, status: response.status,
+      headers: Object.fromEntries([...response.headers].filter(([key]) =>
+        ["content-type", "content-range", "range-unit"].includes(key))),
+      bytes: bytes.toString("base64") };
+  } catch { return { id, failure: true }; }
+}`;
+const relay = `${relayRequest}
+let input = "";
+for await (const chunk of process.stdin) {
+  input += chunk;
+  if (input.length > 524288) process.exit(2);
+}
+const result = await serve(input);
+if (result.failure) process.exit(3);
+console.log(JSON.stringify(result));`;
+const persistentRelay = `${relayRequest}
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
+for await (const line of lines) {
+  const result = await serve(line);
+  process.stdout.write(JSON.stringify(result) + "\\n");
+}`;
+
+export function isolatedPlanningBackend(
+  report,
+  { meals = false, mealPhotos = false, privateJournal = false, throughMigration } = {},
+) {
+  const run = randomBytes(8).toString("hex");
+  const names = Object.fromEntries(
+    [...services, "restore", "web", "network", "proxy-target", "ingress"].map((s) => [
+      s,
+      `${prefix}-${run}-${s}`,
+    ]),
+  );
+  const sign = randomBytes(32).toString("hex");
+  const password = randomBytes(32).toString("hex");
+  const tokens = {
+    anon: recoveryToken(sign, "anon"),
+    service_role: recoveryToken(sign, "service_role"),
+  };
+  const labels = { "winesnap.scope": scope, "winesnap.planning-check": run };
+  const labelArgs = Object.entries(labels).flatMap(([k, v]) => ["--label", `${k}=${v}`]);
+  const docker = `${process.env.LOCALAPPDATA}/Programs/DockerDesktop/resources/bin/docker.exe`;
+  const env = Object.fromEntries(
+    [
+      "PATH",
+      "Path",
+      "PATHEXT",
+      "COMSPEC",
+      "SystemRoot",
+      "WINDIR",
+      "USERPROFILE",
+      "APPDATA",
+      "LOCALAPPDATA",
+      "TEMP",
+      "TMP",
+    ].flatMap((key) => (process.env[key] ? [[key, process.env[key]]] : [])),
+  );
+  let networkId, databaseImage, fixtureImages;
+  const engine = "npipe:////./pipe/dockerDesktopLinuxEngine";
+  let webRelay, serviceRelay;
+  const containers = [];
+  function command(args, input, timeout = 120000) {
+    return new Promise((resolve, reject) => {
+      const proc = execFile(
+        docker,
+        ["--host", engine, ...args],
+        { env, timeout, maxBuffer: 32 * 1024 * 1024, windowsHide: true, encoding: "buffer" },
+        (error, stdout, stderr) => {
+          if (!error) return resolve(stdout);
+          // Safe diagnostics: never print SQL, argv, env, Docker logs or response bodies.
+          const code = (stderr?.toString() ?? "").match(/(?:ERROR|FATAL):\s+([0-9A-Z]{5}):/)?.[1];
+          const failure = new Error("planning_database_command_failed");
+          failure.code = code;
+          reject(failure);
+        },
+      );
+      finishOwnedInput(proc.stdin, input);
+    });
+  }
+  const output = async (args, stdin, timeout) =>
+    (await command(args, stdin, timeout)).toString().trim();
+  const inspect = async (args) => JSON.parse(await output(args))[0];
+  const idPattern = /^[a-f0-9]{64}$/;
+  const sameLabels = (available) => Object.entries(labels).every(([k, v]) => available?.[k] === v);
+  const psql = (service = "db") => [
+    "exec",
+    "--interactive",
+    names[service],
+    "psql",
+    "-h",
+    "/tmp",
+    "-X",
+    "-qAt",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-v",
+    "VERBOSITY=verbose",
+  ];
+  const sql = (text, service) =>
+    output(psql(service), "SET search_path=public,extensions;\n" + text);
+  const authHeader = (token) => ({
+    authorization: "Bearer " + token,
+    "content-type": "application/json",
+  });
+  const dbUrl = (role) => `postgres://${role}:${password}@${names.db}:5432/postgres`;
+  async function start(
+    service,
+    image,
+    user,
+    {
+      vars = {},
+      tmpfs = [],
+      entrypoint,
+      args = [],
+      networkMode = networkId,
+      mealPhotoLabel,
+      journalLabel,
+    } = {},
+  ) {
+    const id = await output([
+      "create",
+      "--name",
+      names[service],
+      ...labelArgs,
+      ...(mealPhotoLabel ? ["--label", `winesnap.meal-photo=${mealPhotoLabel}`] : []),
+      ...(journalLabel ? ["--label", `${journalLabelKey}=${journalLabel}`] : []),
+      "--network",
+      networkMode,
+      "--read-only",
+      "--user",
+      user,
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges:true",
+      "--log-driver",
+      "none",
+      "--no-healthcheck",
+      "--memory",
+      "512m",
+      "--cpus",
+      "1",
+      "--pids-limit",
+      "96",
+      ...tmpfs.flatMap((mount) => ["--tmpfs", mount]),
+      ...Object.entries(vars).flatMap(([k, v]) => ["--env", `${k}=${v}`]),
+      ...(entrypoint ? ["--entrypoint", entrypoint] : []),
+      image,
+      ...args,
+    ]);
+    assert.match(id, idPattern);
+    containers.push({ id, service });
+    const record = await inspect(["inspect", id]);
+    assert.equal(record.Name, "/" + names[service]);
+    assert.equal(record.Image, image);
+    assert.ok(sameLabels(record.Config.Labels));
+    assert.equal(record.HostConfig.NetworkMode, networkMode);
+    assert.equal(record.HostConfig.ReadonlyRootfs, true);
+    assert.equal(record.HostConfig.LogConfig.Type, "none");
+    assert.equal(record.Mounts.length, 0);
+    assert.equal(Object.keys(record.HostConfig.PortBindings ?? {}).length, 0);
+    assert.notEqual(record.HostConfig.PublishAllPorts, true);
+    await command(["start", id]);
+    return id;
+  }
+  async function ready(action) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await action();
+      } catch (error) {
+        if (attempt >= 45) throw error;
+        await pause(600);
+      }
+    }
+  }
+  async function startDatabase(service, networkMode) {
+    assert.ok(["db", "restore"].includes(service));
+    await start(service, databaseImage, "postgres", {
+      networkMode,
+      vars: {
+        POSTGRES_USER: "postgres",
+        POSTGRES_DB: "postgres",
+        POSTGRES_PASSWORD: randomBytes(32).toString("hex"),
+        POSTGRES_HOST_AUTH_METHOD: "scram-sha-256",
+        POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=trust",
+      },
+      tmpfs: [
+        "/var/lib/postgresql/data:rw,nosuid,nodev,noexec,size=512m,uid=999,gid=999,mode=0700",
+        "/tmp:rw,nosuid,nodev,noexec,size=64m,uid=999,gid=999,mode=0700",
+        "/var/run/postgresql:rw,nosuid,nodev,noexec,size=1m,uid=999,gid=999,mode=0770",
+      ],
+      entrypoint: "/bin/sh",
+      args: [
+        "-c",
+        "exec /usr/local/bin/docker-entrypoint.sh postgres -c unix_socket_directories=/tmp,/var/run/postgresql -c shared_buffers=32MB -c max_connections=40",
+      ],
+    });
+    await ready(async () => {
+      await command(["exec", names[service], "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]);
+      assert.equal(await sql("SELECT 1", service), "1");
+    });
+  }
+  async function request(service, path, { method = "GET", headers = {}, body } = {}) {
+    assert.ok(["auth", "rest"].includes(service) || (mealPhotos && service === "storage"));
+    assert.ok(path.startsWith("/") && !path.startsWith("//") && !path.includes("\\"));
+    const port = { auth: 9999, rest: 3000, storage: 5000 }[service];
+    const binary = Buffer.isBuffer(body);
+    assert.ok(!binary || (service === "storage" && body.length <= 4 * 1024 * 1024 + 4096));
+    const input = {
+      url: `http://${names[service]}:${port}${path}`,
+      method,
+      headers,
+      body: binary ? body.toString("base64") : body,
+      binary,
+    };
+    const result = serviceRelay
+      ? await serviceRelay.request(input)
+      : JSON.parse(
+          await output(
+            ["exec", "--interactive", names.probe, "node", "--input-type=module", "--eval", relay],
+            JSON.stringify(input),
+          ),
+        );
+    const bytes = result.body ?? Buffer.from(result.bytes, "base64");
+    return new Response([204, 205, 304].includes(result.status) ? null : bytes, {
+      status: result.status,
+      headers: result.headers,
+    });
+  }
+  async function boot() {
+    report.phase = "check_local_images";
+    assert.equal(
+      (await inspect(["context", "inspect", "desktop-linux"])).Endpoints.docker.Host,
+      engine,
+    );
+    const images = {};
+    for (const service of services) {
+      images[service] = await output([
+        "image",
+        "inspect",
+        service === "probe" ? ownedRestoreProbeImage : ownedServices[service],
+        "--format",
+        "{{.Id}}",
+      ]);
+      assert.match(images[service], /^sha256:[a-f0-9]{64}$/);
+    }
+    databaseImage = images.db;
+    fixtureImages = images;
+    report.phase = "create_internal_network";
+    networkId = await output(["network", "create", "--internal", ...labelArgs, names.network]);
+    assert.match(networkId, idPattern);
+    const network = await inspect(["network", "inspect", networkId]);
+    assert.equal(network.Internal, true);
+    assert.ok(sameLabels(network.Labels));
+    report.phase = "base_database";
+    await startDatabase("db", networkId);
+    await sql(
+      (await source("config/owned-windows/platform.sql")) +
+        `
+      INSERT INTO winesnap_local.installation VALUES('${run}${run}');
+      ALTER ROLE authenticator PASSWORD '${password}';
+      ALTER ROLE supabase_auth_admin PASSWORD '${password}';
+      ALTER ROLE supabase_storage_admin PASSWORD '${password}';`,
+    );
+    report.phase = "auth_and_storage_schema";
+    await start("auth", images.auth, "1000:1000", {
+      tmpfs: ["/tmp:rw,nosuid,nodev,noexec,size=16m,uid=1000,gid=1000"],
+      vars: {
+        GOTRUE_API_HOST: "0.0.0.0",
+        GOTRUE_API_PORT: "9999",
+        GOTRUE_DB_DRIVER: "postgres",
+        GOTRUE_DB_DATABASE_URL: dbUrl("supabase_auth_admin"),
+        GOTRUE_DB_NAMESPACE: "auth",
+        API_EXTERNAL_URL: `http://${names.auth}:9999`,
+        GOTRUE_SITE_URL: "http://example.test",
+        GOTRUE_JWT_SECRET: sign,
+        GOTRUE_JWT_AUD: "authenticated",
+        GOTRUE_JWT_DEFAULT_GROUP_NAME: "authenticated",
+        GOTRUE_JWT_ADMIN_ROLES: "service_role",
+        GOTRUE_JWT_EXP: "3600",
+        GOTRUE_EXTERNAL_EMAIL_ENABLED: "true",
+        GOTRUE_DISABLE_SIGNUP: "true",
+        GOTRUE_LOG_LEVEL: "error",
+      },
+    });
+    await ready(async () =>
+      assert.equal(await sql("SELECT to_regclass('auth.users') IS NOT NULL"), "t"),
+    );
+    const storageTenant = mealPhotos ? "winesnap-owned" : "winesnap-planning";
+    await start("storage", images.storage, "1000:1000", {
+      tmpfs: [
+        "/tmp:rw,nosuid,nodev,noexec,size=16m,uid=1000,gid=1000",
+        "/var/lib/storage:rw,nosuid,nodev,noexec,size=64m,uid=1000,gid=1000" +
+          (mealPhotos ? ",mode=0700" : ""),
+      ],
+      vars: {
+        DATABASE_URL: dbUrl("supabase_storage_admin"),
+        AUTH_JWT_SECRET: sign,
+        ANON_KEY: tokens.anon,
+        SERVICE_KEY: tokens.service_role,
+        POSTGREST_URL: `http://${names.rest}:3000`,
+        STORAGE_BACKEND: "file",
+        FILE_STORAGE_BACKEND_PATH: "/var/lib/storage",
+        TENANT_ID: storageTenant,
+        REGION: "local",
+        GLOBAL_S3_BUCKET: storageTenant,
+        FILE_SIZE_LIMIT: "10485760",
+        ENABLE_IMAGE_TRANSFORMATION: "false",
+        LOG_LEVEL: "error",
+      },
+    });
+    await ready(async () =>
+      assert.equal(
+        await sql("SELECT to_regprocedure('storage.allow_any_operation(text[])') IS NOT NULL"),
+        "t",
+      ),
+    );
+    report.phase = "apply_repository_migrations";
+    let files = (await readdir(new URL("../../supabase/migrations/", import.meta.url)))
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+    assert.ok(files.every((file) => /^\d{14}_[a-z0-9_-]+\.sql$/i.test(file)));
+    assert.ok(files.includes("20261118200000_kitchen_week_plans.sql"));
+    if (throughMigration) {
+      const last = files.indexOf(throughMigration);
+      assert.ok(last >= 0);
+      files = files.slice(0, last + 1);
+    }
+    let schema = await source("config/owned-windows/auth-helpers.sql");
+    const photoSources = [];
+    for (const file of files) {
+      const migration = await source("supabase/migrations/" + file);
+      if (mealPhotoMigrationBatch.includes(file)) {
+        photoSources.push({ name: file, source: migration });
+        continue;
+      }
+      const hash = createHash("sha256").update(migration).digest("hex");
+      schema += `\nBEGIN;\n${migration}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES('${file}','${hash}'); COMMIT;\n`;
+    }
+    if (photoSources.length)
+      schema += "\n" + ownedMealPhotoMigrationTransaction(planOwnedMigrations(photoSources, []));
+    await sql(
+      schema +
+        "\nUPDATE public.kitchen_config SET enabled=true" +
+        (meals ? ",chef_enabled=true,meals_enabled=true" : "") +
+        " WHERE id=true;",
+    );
+    assert.equal(Number(await sql("SELECT count(*) FROM winesnap_local.migrations")), files.length);
+    report.isolatedMigrationsApplied = files.length;
+    report.phase = "postgrest_and_relay";
+    await start("rest", images.rest, "65534:65534", {
+      vars: {
+        PGRST_DB_URI: dbUrl("authenticator"),
+        PGRST_DB_SCHEMAS: "public",
+        PGRST_DB_ANON_ROLE: "anon",
+        PGRST_JWT_SECRET: sign,
+        PGRST_DB_EXTRA_SEARCH_PATH: "public,extensions",
+        PGRST_DB_POOL: "3",
+        PGRST_SERVER_PORT: "3000",
+        PGRST_LOG_LEVEL: "crit",
+      },
+    });
+    const probe = await start("probe", images.probe, "node", {
+      entrypoint: "node",
+      args: ["--eval", "setInterval(()=>{},60000)"],
+    });
+    if (mealPhotos || privateJournal)
+      serviceRelay = openPlanningRelay(docker, engine, env, probe, persistentRelay, relayLimit);
+    await ready(async () => assert.equal((await request("auth", "/health")).status, 200));
+    await ready(async () => assert.equal((await request("rest", "/")).status, 200));
+    if (mealPhotos)
+      await ready(async () => assert.equal((await request("storage", "/status")).status, 200));
+  }
+  async function createAccount(label) {
+    assert.ok(["owner", "peer"].includes(label));
+    const email = `planning-${label}-${run}@example.test`;
+    const accountPassword = randomBytes(24).toString("hex");
+    const response = await request("auth", "/admin/users", {
+      method: "POST",
+      headers: authHeader(tokens.service_role),
+      body: JSON.stringify({ email, password: accountPassword, email_confirm: true }),
+    });
+    assert.ok([200, 201].includes(response.status));
+    const { id } = await response.json();
+    assert.match(id, /^[a-f0-9-]{36}$/);
+    return { id, email, password: accountPassword };
+  }
+
+  async function rehearseMealPhotoMigrations(images) {
+    assert.ok(mealPhotos && meals && serviceRelay);
+    assert.equal(throughMigration, pantryMigrationBatch.at(-1));
+    const files = (await readdir(new URL("../../supabase/migrations/", import.meta.url)))
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+    const sources = await Promise.all(
+      files.map(async (name) => ({
+        name,
+        source: await source("supabase/migrations/" + name),
+      })),
+    );
+    const readLedger = async () => JSON.parse(await sql(ownedMealPhotoLedgerQuery));
+    const installation = run + run;
+    const before = await readLedger();
+    const plan = requireOwnedMealPhotoUpdate(sources, before, installation);
+    const transaction = ownedMealPhotoMigrationTransaction(plan.pending);
+    const insert = `INSERT INTO winesnap_local.migrations(name,sha256) VALUES('${mealPhotoMigrationBatch[1]}'`;
+    assert.equal(transaction.split(insert).length, 2);
+    report.phase = "reject_interrupted_second_meal_photo_migration";
+    await assert.rejects(
+      sql(transaction.replace(insert, "SELECT 1/0;\n" + insert)),
+      (error) => error.code === "22012",
+    );
+    assert.deepEqual(await readLedger(), before);
+    report.failedBatchLeftBaselineUntouched = true;
+    const verifyPrivateRest = async () => {
+      await ready(async () => {
+        const response = await request("rest", "/kitchen_photo_meals?select=id&limit=0", {
+          headers: authHeader(tokens.anon),
+        });
+        assert.ok([401, 403].includes(response.status));
+        assert.equal((await response.json()).code, "42501");
+      });
+    };
+    report.phase = "apply_exact_meal_photo_migration_batch";
+    if (images) {
+      const { previousImage, candidateImage } = images;
+      await replaceRehearsalWeb(previousImage);
+      const previous = await readRehearsalWeb();
+      const injected = new Error("synthetic post-verification failure");
+      let retained, tagged, recovery;
+      await assert.rejects(
+        deliverOwnedMealPhotoUpdate({
+          previous,
+          async guard({ retained: needsRetention }) {
+            if (needsRetention) assert.equal(retained, previousImage);
+            return requireOwnedMealPhotoUpdate(sources, await readLedger(), installation);
+          },
+          build: async () => candidateImage,
+          async retain(id) {
+            assert.equal(id, previousImage);
+            retained = id;
+          },
+          async apply(statement) {
+            await sql(statement);
+            await sql("NOTIFY pgrst, 'reload schema';");
+          },
+          assess: async () => assessOwnedMealPhotoLedger(sources, await readLedger(), installation),
+          verifyBackend: verifyPrivateRest,
+          readWeb: readRehearsalWeb,
+          removeWeb: removeRehearsalWeb,
+          startWeb: replaceRehearsalWeb,
+          async verifyWeb(id, label) {
+            const web = await readRehearsalWeb();
+            assert.equal(web.Image, id);
+            assert.equal(web.Config.Labels["winesnap.meal-photo"], label);
+            assert.equal(web.HostConfig.NetworkMode, "none");
+            const path = "/api/meal-photo?id=11111111-1111-4111-8111-111111111111";
+            if (label === mealPhotoWebLabel) {
+              const photo = await webRelay.request(path);
+              assert.equal(photo.status, 401);
+              assert.deepEqual(JSON.parse(photo.body), { error: "meal_photo_auth" });
+              assert.equal(
+                (await webRelay.request("/api/ai/analyze-meal-photo", "POST")).status,
+                401,
+              );
+              report.guardedCandidateAnonDenied = true;
+              throw injected;
+            }
+            assert.equal(label, mealPhotoFallbackLabel);
+            const disabled = await webRelay.request("/api/privacy/privacy-export", "POST");
+            assert.equal(disabled.status, 503);
+            assert.deepEqual(JSON.parse(disabled.body), { error: "Local operations disabled" });
+          },
+          async tagWeb(id) {
+            tagged = id;
+          },
+          stage(step) {
+            report.phase = step;
+          },
+          recovery(state) {
+            recovery = state;
+          },
+        }),
+        (failure) => failure === injected,
+      );
+      assert.equal(tagged, previousImage);
+      assert.equal(recovery, "restricted_fallback_verified");
+      report.guardedRestrictedFallbackVerified = true;
+    } else {
+      await sql(transaction);
+      await sql("NOTIFY pgrst, 'reload schema';");
+    }
+    const after = await readLedger();
+    const result = assessOwnedMealPhotoLedger(sources, after, installation);
+    assert.equal(result.scope, "already_applied");
+    assert.deepEqual(after.applied.slice(0, before.applied.length), before.applied);
+    assert.throws(() => requireOwnedMealPhotoUpdate(sources, after, installation), /not a retry/);
+    report.phase = "reload_rest_and_deny_anonymous_meals";
+    await verifyPrivateRest();
+    report.restSchemaRefreshedPrivately = true;
+    return { before: plan.applied, after: result.applied, applied: [...mealPhotoMigrationBatch] };
+  }
+
+  async function restoreMealPhotoFixture(expectedDigest) {
+    assert.ok(mealPhotos && meals && serviceRelay && networkId);
+    assert.match(expectedDigest, /^[a-f0-9]{64}$/);
+    const stage = (value) => {
+      report.backupStage = value;
+      console.log("ARCHIVE " + value);
+    };
+    stage("freeze_synthetic_writers");
+    // Close the only way to issue fixture requests before capturing the tmpfs.
+    await serviceRelay.close();
+    serviceRelay = undefined;
+    const writers = containers.filter(({ service }) => ["auth", "rest"].includes(service));
+    assert.equal(writers.length, 2);
+    await command(["stop", "--time", "5", ...writers.map(({ id }) => id)]);
+    const manifestSql = await source("config/owned-windows/backup-manifest.sql");
+    const manifest = await sql(manifestSql);
+    const buffers = [];
+    try {
+      stage("database_and_roles");
+      const dump = await command([
+        "exec",
+        names.db,
+        "pg_dump",
+        "-h",
+        "/tmp",
+        "-U",
+        "postgres",
+        "--format=custom",
+        "postgres",
+      ]);
+      buffers.push(dump);
+      const roles = await command([
+        "exec",
+        names.db,
+        "pg_dumpall",
+        "-h",
+        "/tmp",
+        "-U",
+        "postgres",
+        "--roles-only",
+        "--no-role-passwords",
+      ]);
+      buffers.push(roles);
+      stage("storage_tar");
+      const tar = await command([
+        "exec",
+        "--user",
+        "1000:1000",
+        names.storage,
+        "tar",
+        "--numeric-owner",
+        "-C",
+        "/var/lib/storage",
+        "-cf",
+        "-",
+        ".",
+      ]);
+      buffers.push(tar);
+      assert.equal(await sql(manifestSql), manifest);
+      stage("exact_tar_manifest");
+      const files = await inspectOwnedTar(tar);
+      assert.equal(files.filter((file) => file.sha256 === expectedDigest).length, 1);
+      const images = {};
+      stage("archive_images");
+      for (const service of Object.keys(ownedServices)) {
+        images[service] =
+          fixtureImages[service] ??
+          (await output(["image", "inspect", ownedServices[service], "--format", "{{.Id}}"]));
+      }
+      const archive = validateOwnedArchive({
+        version: 2,
+        project: ownedProject,
+        createdAt: new Date().toISOString(),
+        configuration: {
+          version: 1,
+          project: ownedProject,
+          installationId: run + run,
+          dbPassword: password,
+          jwtSecret: sign,
+          cronSecret: randomBytes(32).toString("hex"),
+          privacyCronSecret: randomBytes(32).toString("hex"),
+          issuedAt: Math.floor(Date.now() / 1000),
+        },
+        database: binaryPart(dump),
+        roles: binaryPart(roles),
+        storage: binaryPart(tar),
+        images,
+        writeQuiesced: true,
+        manifest: { database: validateOwnedManifest(JSON.parse(manifest)), files },
+      });
+      const payload = Buffer.from(JSON.stringify(archive));
+      buffers.push(payload);
+      stage("restartless_isolated_restore");
+      return await new Promise((resolve, reject) => {
+        const child = execFile(
+          process.execPath,
+          [fileURLToPath(new URL("../rehearse-owned-recovery.mjs", import.meta.url))],
+          {
+            env: {
+              ...env,
+              WINESNAP_OWNED_RESTORE_PIPE: "1",
+              WINESNAP_OWNED_RESTORE_ID: randomBytes(8).toString("hex"),
+            },
+            timeout: 720_000,
+            maxBuffer: 128 * 1024,
+            windowsHide: true,
+          },
+          (_error, stdout) => {
+            try {
+              const result = JSON.parse(stdout);
+              resolve({
+                completed: result.completed === true,
+                cleanupCompleted: result.cleanupCompleted === true,
+                restoredObjectsDownloaded: result.restoredObjectsDownloaded,
+                restoredMealPhotoDigestsVerified: result.restoredMealPhotoDigestsVerified,
+                restoredPeerMealRowsHidden: result.restoredPeerMealRowsHidden === true,
+                phase: /^[a-z_]+$/.test(result.phase) ? result.phase : undefined,
+                errorCategory: /^[a-z_]+$/.test(result.errorCategory)
+                  ? result.errorCategory
+                  : undefined,
+              });
+            } catch {
+              reject(new Error("isolated_meal_photo_restore_failed"));
+            }
+          },
+        );
+        finishOwnedInput(child.stdin, payload);
+      });
+    } finally {
+      for (const buffer of buffers) buffer.fill(0);
+    }
+  }
+  async function recover() {
+    const manifestSql = await source("config/owned-windows/backup-manifest.sql");
+    const writers = containers.filter(({ service }) =>
+      ["rest", "auth", "storage"].includes(service),
+    );
+    assert.equal(writers.length, 3);
+    const writerIds = writers.map(({ id }) => id);
+    let archive;
+    try {
+      report.phase = "restore_quiesce_disposable_writers";
+      await command(["stop", "--time", "5", ...writerIds]);
+      report.phase = "restore_source_manifest";
+      const before = validateOwnedManifest(JSON.parse(await sql(manifestSql)));
+      assert.equal(
+        before.relations.find(
+          ({ schema, table }) => schema === "public" && table === "kitchen_week_plans",
+        )?.rows,
+        2,
+      );
+      report.phase = "restore_capture_database_archive";
+      archive = await command([
+        "exec",
+        names.db,
+        "pg_dump",
+        "-h",
+        "/tmp",
+        "-U",
+        "postgres",
+        "--format=custom",
+        "--dbname=postgres",
+      ]);
+      assert.equal(archive.subarray(0, 5).toString(), "PGDMP");
+      const roles = await output([
+        "exec",
+        names.db,
+        "pg_dumpall",
+        "-h",
+        "/tmp",
+        "-U",
+        "postgres",
+        "--roles-only",
+        "--no-role-passwords",
+      ]);
+      // The manifest includes catalog names from information_schema. Compare
+      // identically named databases in two distinct clusters, not two names in one.
+      report.phase = "restore_empty_networkless_cluster";
+      await startDatabase("restore", "none");
+      assert.equal(
+        await sql(
+          "SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema');",
+          "restore",
+        ),
+        "0",
+      );
+      report.phase = "restore_role_and_database_archives";
+      await sql(ownedRoleRestoreSql(roles), "restore");
+      await command(
+        [
+          "exec",
+          "--interactive",
+          names.restore,
+          "pg_restore",
+          "-h",
+          "/tmp",
+          "-U",
+          "postgres",
+          "--exit-on-error",
+          "--single-transaction",
+          "--dbname=postgres",
+        ],
+        archive,
+      );
+      report.phase = "restore_compare_manifest";
+      const restored = validateOwnedManifest(JSON.parse(await sql(manifestSql, "restore")));
+      const restoredRelations = new Map(
+        restored.relations.map((row) => [row.schema + "." + row.table, row]),
+      );
+      const changedRows = before.relations
+        .filter((row) => {
+          const copy = restoredRelations.get(row.schema + "." + row.table);
+          return copy?.rows !== row.rows || copy?.sha256 !== row.sha256;
+        })
+        .map((row) => row.schema + "." + row.table);
+      const changedCatalog = Object.keys(before.catalog).filter(
+        (key) => before.catalog[key] !== restored.catalog[key],
+      );
+      if (changedRows.length) report.restoreDifferentRelations = changedRows;
+      if (changedCatalog.length) report.restoreDifferentCatalogSections = changedCatalog;
+      assert.deepEqual(restored.relations, before.relations);
+      assert.deepEqual(restored.catalog, before.catalog);
+      report.restoredRelationsVerified = restored.relations.length;
+    } finally {
+      archive?.fill(0);
+    }
+    report.phase = "restore_resume_disposable_services";
+    await command(["start", ...writerIds]);
+    await ready(async () => assert.equal((await request("auth", "/health")).status, 200));
+    await ready(async () => assert.equal((await request("rest", "/")).status, 200));
+    return report.restoredRelationsVerified;
+  }
+  async function removeFixture({ id, service }) {
+    const record = await inspect(["inspect", id]);
+    assert.equal(record.Name, "/" + names[service]);
+    assert.ok(sameLabels(record.Config.Labels));
+    await command(["rm", "--force", id]);
+    containers.splice(
+      containers.findIndex((item) => item.id === id),
+      1,
+    );
+  }
+  async function readRehearsalWeb() {
+    const web = containers.find(({ service }) => service === "web");
+    if (!web) return null;
+    const record = await inspect(["inspect", web.id]);
+    assert.equal(record.Name, "/" + names.web);
+    assert.ok(sameLabels(record.Config.Labels));
+    return record;
+  }
+  async function removeRehearsalWeb(id) {
+    const previous = containers.find(({ service }) => service === "web");
+    assert.equal(previous?.id, id);
+    await webRelay?.close();
+    webRelay = undefined;
+    await removeFixture(previous);
+  }
+  async function replaceRehearsalWeb(image, mealPhotoLabel, journalLabel) {
+    assert.match(image, /^sha256:[a-f0-9]{64}$/);
+    assert.ok([undefined, mealPhotoWebLabel, mealPhotoFallbackLabel].includes(mealPhotoLabel));
+    if (mealPhotoLabel) assert.ok(mealPhotos && meals);
+    if (journalLabel) assert.ok(privateJournal && journalLabel === journalDeliveryLabel);
+    const previous = containers.find(({ service }) => service === "web");
+    if (previous) await removeRehearsalWeb(previous.id);
+    const enabled = mealPhotoLabel === mealPhotoWebLabel;
+    const id = await start("web", image, "node", {
+      networkMode: "none",
+      mealPhotoLabel,
+      journalLabel,
+      vars: {
+        SUPABASE_URL: enabled ? isolatedMealPhotoApi : "http://127.0.0.1:54323",
+        SUPABASE_PUBLISHABLE_KEY: tokens.anon,
+        WINESNAP_OWNED_BACKEND_ENABLED: "true",
+        WINESNAP_COOKING_CORE_ENABLED: "true",
+        ...(mealPhotos
+          ? {
+              WINESNAP_LOCAL_OPERATIONS_ENABLED: String(enabled),
+              WINESNAP_LOCAL_AI_ENABLED: String(enabled),
+              ...(enabled ? { WINESNAP_LOCAL_TEXT_PROVIDER: "openai" } : {}),
+              WINESNAP_MEAL_PHOTO_AI_ENABLED: String(enabled),
+              WINESNAP_MEAL_PHOTO_STORAGE_ENABLED: String(enabled),
+            }
+          : {}),
+      },
+    });
+    webRelay = openPlanningWebRelay(docker, engine, env, id, {
+      privacyProbe: mealPhotos,
+      mealPhotoProbe: enabled,
+      journalProbe: privateJournal,
+    });
+    await ready(async () => assert.equal((await webRelay.request("/api/health")).status, 200));
+    return id;
+  }
+  async function checkJournalIngress(ownerToken) {
+    assert.ok(privateJournal && networkId && fixtureImages);
+    assert.match(ownerToken, /^[a-zA-Z0-9._-]{20,4096}$/);
+    const image = await output(["image", "inspect", ownedServices.gateway, "--format", "{{.Id}}"]);
+    assert.match(image, /^sha256:[a-f0-9]{64}$/);
+    const upstreamProgram = `
+      import {createServer} from "node:http";
+      createServer(async (req,res) => {
+        if (req.url === "/api/authz/auth-request") {
+          res.writeHead(req.headers.cookie === "fixture=accepted" ? 204 : 403);
+        } else if (req.url === "/api/health") {
+          res.writeHead(req.headers["x-winesnap-dev11-proof"] ? 409 : 200);
+        } else if (req.url === "/rest/v1/reading") {
+          try {
+            const target = await fetch("http://${names.rest}:3000/reading", {
+              headers: {Authorization: req.headers.authorization, "Accept-Profile": "winesnap_dev11_data"},
+              redirect: "error", signal: AbortSignal.timeout(10000),
+            });
+            await target.body?.cancel();
+            res.writeHead(target.status);
+          } catch { res.writeHead(502); }
+        } else {
+          res.writeHead(500);
+        }
+        res.end();
+      }).listen(8091, "0.0.0.0");
+    `;
+    await start("proxy-target", fixtureImages.probe, "node", {
+      entrypoint: "node",
+      args: ["--input-type=module", "--eval", upstreamProgram],
+    });
+    const test = async (path, method) =>
+      Number(
+        await output(
+          [
+            "exec",
+            "--interactive",
+            names.probe,
+            "node",
+            "--input-type=module",
+            "--eval",
+            `
+        import http from "node:http";
+        let raw = "";
+        for await (const part of process.stdin) raw += part;
+        const {path,method,ownerToken} = JSON.parse(raw);
+        if (!["/api/health","/api/dev11/journal","/api/dev11/export","/backend/rest/v1/reading"].includes(path))
+          throw new Error();
+        const req = http.request("http://${names.ingress}:8080" + path, {
+          method, headers: {
+            Host: "winesnap.boleoai.se", Origin: "https://winesnap.boleoai.se",
+            Cookie: "fixture=accepted", Authorization: "Bearer " + ownerToken,
+            "X-WineSnap-Dev11-Proof": "a".repeat(64)
+          }, timeout: 10000,
+        }, (res) => { res.resume(); console.log(res.statusCode); });
+        req.on("timeout", () => req.destroy()); req.end();
+      `,
+          ],
+          JSON.stringify({ path, method, ownerToken }),
+        ),
+      );
+    for (const config of ["internet.conf", "gated-internet.conf"]) {
+      const raw = await source("config/owned-windows/" + config);
+      const rewritten = raw
+        .replace(
+          /winesnap-owned-(?:web:3000|gateway:8080|gate:9091)/g,
+          names["proxy-target"] + ":8091",
+        )
+        .replaceAll("\r\n", "\n");
+      assert.ok(!/server winesnap-owned-/.test(rewritten));
+      const fixture = Buffer.from(rewritten).toString("base64");
+      const id = await start("ingress", image, "101:101", {
+        tmpfs: ["/tmp:rw,nosuid,nodev,noexec,size=16m,uid=101,gid=101,mode=0700"],
+        entrypoint: "/bin/sh",
+        args: [
+          "-c",
+          'printf %s "$1" | base64 -d >/tmp/fixture.conf && exec nginx -c /tmp/fixture.conf -g "daemon off;"',
+          "fixture",
+          fixture,
+        ],
+      });
+      await ready(async () => assert.equal(await test("/api/health", "GET"), 200));
+      assert.equal(await test("/api/dev11/journal", "POST"), 404);
+      assert.equal(await test("/api/dev11/export", "POST"), 404);
+      assert.equal(await test("/backend/rest/v1/reading", "GET"), 406);
+      await removeFixture({ id, service: "ingress" });
+    }
+    await removeFixture(containers.find(({ service }) => service === "proxy-target"));
+  }
+  async function restoreOrdinaryJournalArchive(owner) {
+    assert.ok(privateJournal && networkId);
+    assert.match(owner, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+    // Prevent disposable Auth/REST/Storage writers from changing the snapshot.
+    const writers = containers.filter(({ service }) =>
+      ["auth", "rest", "storage"].includes(service),
+    );
+    assert.equal(writers.length, 3);
+    await command(["stop", "--time", "5", ...writers.map(({ id }) => id)]);
+    const manifest = await source("config/owned-windows/backup-manifest.sql");
+    const before = validateOwnedManifest(JSON.parse(await sql(manifest)));
+    const connection = ["-h", "/tmp", "-U", "postgres"];
+    const ordinary = await command([
+      "exec",
+      names.db,
+      "pg_dump",
+      ...connection,
+      "--format=custom",
+      ...ordinaryJournalExclusions,
+      "postgres",
+    ]);
+    try {
+      assertOrdinaryJournalFree(
+        await output(["exec", "--interactive", names.db, "pg_restore", "--list"], ordinary),
+      );
+      const roles = await output([
+        "exec",
+        names.db,
+        "pg_dumpall",
+        ...connection,
+        "--roles-only",
+        "--no-role-passwords",
+      ]);
+      await startDatabase("restore", "none");
+      await sql(ownedRoleRestoreSql(roles), "restore");
+      await command(
+        [
+          "exec",
+          "--interactive",
+          names.restore,
+          "pg_restore",
+          ...connection,
+          "--exit-on-error",
+          "--single-transaction",
+          "--dbname=postgres",
+        ],
+        ordinary,
+      );
+      assert.deepEqual(validateOwnedManifest(JSON.parse(await sql(manifest, "restore"))), before);
+      assert.equal(
+        await sql(
+          `SELECT to_regnamespace('winesnap_dev11_control') IS NULL
+        AND to_regnamespace('winesnap_dev11_data') IS NULL
+        AND to_regprocedure('winesnap_local.dev11_account_erasure()') IS NOT NULL;`,
+          "restore",
+        ),
+        "t",
+      );
+      assert.equal(await sql(`SELECT public.privacy_account_active('${owner}');`, "restore"), "t");
+      await sql(`SELECT public.request_account_erasure('${owner}');`, "restore");
+      assert.equal(await sql(`SELECT public.privacy_account_active('${owner}');`, "restore"), "f");
+      return before.relations.length;
+    } finally {
+      ordinary.fill(0);
+    }
+  }
+  async function close() {
+    let clean = true;
+    await webRelay?.close();
+    await serviceRelay?.close();
+    for (const { id, service } of containers.slice().reverse()) {
+      try {
+        await removeFixture({ id, service });
+      } catch {
+        clean = false;
+      }
+    }
+    if (networkId) {
+      try {
+        const record = await inspect(["network", "inspect", networkId]);
+        assert.equal(record.Name, names.network);
+        assert.equal(record.Internal, true);
+        assert.ok(sameLabels(record.Labels));
+        assert.equal(Object.keys(record.Containers ?? {}).length, 0);
+        await command(["network", "rm", networkId]);
+      } catch {
+        clean = false;
+      }
+    }
+    return clean;
+  }
+  return {
+    boot,
+    request,
+    journalFixtureSql(query) {
+      assert.ok(privateJournal && networkId && serviceRelay);
+      return sql(query);
+    },
+    journalDeliveryFixture() {
+      assert.ok(privateJournal && mealPhotos && networkId);
+      return {
+        installation: run + run,
+        readWeb: readRehearsalWeb,
+        removeWeb: removeRehearsalWeb,
+        startWeb: (id, label) => replaceRehearsalWeb(id, mealPhotoWebLabel, label),
+        async images() {
+          const prior = journalPriorWebImage;
+          assert.equal(await output(["image", "inspect", prior, "--format", "{{.Id}}"]), prior);
+          const tag = "winesnap-planning-rehearsal:dev11-" + journalWebRevision.slice(0, 7);
+          const candidate = await inspect(["image", "inspect", tag]);
+          assert.equal(candidate.Config.Labels["winesnap.rehearsal"], "dev11");
+          assert.equal(candidate.Config.Labels["winesnap.rehearsal-source"], journalWebRevision);
+          assert.match(candidate.Id, /^sha256:[a-f0-9]{64}$/);
+          return { prior, candidate: candidate.Id };
+        },
+        async services() {
+          const instances = [];
+          for (const { id, service } of containers.filter(({ service }) => service !== "web")) {
+            const value = await inspect(["inspect", id]);
+            assert.ok(value.State.Running && sameLabels(value.Config.Labels));
+            instances.push([service, value.Id, value.Image, value.State.StartedAt]);
+          }
+          return instances;
+        },
+        checkJournalIngress,
+        restoreOrdinaryJournalArchive,
+      };
+    },
+    async checkJournalArchive(dumpOptions, verify) {
+      assert.ok(privateJournal && networkId && serviceRelay);
+      const common = ["-h", "/tmp", "-U", "postgres"];
+      const dump = await command([
+        "exec",
+        names.db,
+        "pg_dump",
+        ...common,
+        "--format=custom",
+        ...dumpOptions,
+        "postgres",
+      ]);
+      try {
+        const list = await output(
+          ["exec", "--interactive", names.db, "pg_restore", "--list"],
+          dump,
+        );
+        return await verify(list, dump);
+      } finally {
+        dump.fill(0);
+      }
+    },
+    rehearseMealPhotoMigrations,
+    restoreMealPhotoFixture,
+    mealPhotoFixtureFetch() {
+      assert.ok(mealPhotos && meals && networkId);
+      return async (input, init) => {
+        const next = new Request(input, init);
+        const url = new URL(next.url);
+        assert.equal(url.origin, isolatedMealPhotoApi);
+        assert.ok(!url.username && !url.password && !url.hash);
+        const path = url.pathname.match(/^\/(auth|rest|storage)\/v1(\/[a-z0-9_./-]+)$/);
+        assert.ok(path);
+        const [, service, endpoint] = path;
+        if (service === "storage")
+          assert.match(
+            endpoint,
+            /^\/object(?:\/(?:authenticated|public|sign))?\/(?:meal-photos|wine-labels)(?:\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.png)?$/,
+          );
+        next.signal.throwIfAborted();
+        const result = await request(service, endpoint + url.search, {
+          method: next.method,
+          headers: Object.fromEntries(next.headers),
+          body: next.body
+            ? service === "storage"
+              ? Buffer.from(await next.arrayBuffer())
+              : await next.text()
+            : undefined,
+        });
+        next.signal.throwIfAborted();
+        return result;
+      };
+    },
+    pantryFixtureTransport() {
+      assert.ok(meals && networkId);
+      const keys = {
+        version: 1,
+        project: ownedProject,
+        installationId: run + run,
+        dbPassword: password,
+        jwtSecret: sign,
+        cronSecret: randomBytes(32).toString("hex"),
+        privacyCronSecret: randomBytes(32).toString("hex"),
+        issuedAt: Math.floor(Date.now() / 1000),
+      };
+      return {
+        keys,
+        async relay(input, init) {
+          const next = new Request(input, init);
+          const url = new URL(next.url);
+          assert.equal(url.origin, ownedApi);
+          const path = url.pathname.match(/^\/(auth|rest)\/v1(\/[a-z0-9_/-]+)$/);
+          assert.ok(path);
+          const [, service, endpoint] = path;
+          return request(service, endpoint + url.search, {
+            method: next.method,
+            headers: Object.fromEntries(next.headers),
+            body: next.body ? await next.text() : undefined,
+          });
+        },
+      };
+    },
+    replaceRehearsalWeb,
+    requestWeb(path, method) {
+      assert.ok(webRelay);
+      return webRelay.request(path, method);
+    },
+    async inspectPreviousOwnedWeb({ pantry = false, nutrition = false } = {}) {
+      assert.ok(!(pantry && nutrition));
+      const name = "winesnap-owned-web";
+      const value = JSON.parse(
+        await output([
+          "inspect",
+          "--type",
+          "container",
+          "--format",
+          ownedContainerProjection,
+          name,
+        ]),
+      );
+      const identity = value.Config.Labels["winesnap.installation"];
+      assert.match(identity, /^[a-f0-9]{32}$/);
+      checkOwnedContainer(value, name, identity);
+      assert.equal(value.State.Running, true);
+      assert.match(value.Id, idPattern);
+      assert.match(value.Image, /^sha256:[a-f0-9]{64}$/);
+      if (nutrition) assert.equal(value.Config.Labels["winesnap.pantry"], pantryWebLabel);
+      const retained = nutrition
+        ? nutritionRollbackTag(value.Image)
+        : pantry
+          ? pantryRollbackTag(value.Image)
+          : value.Image;
+      assert.equal(
+        await output(["image", "inspect", "--format", "{{.Id}}", retained]),
+        value.Image,
+      );
+      return { container: value.Id, image: value.Image };
+    },
+    candidateImage(tag, { pantry = false, nutrition = false, mealPhoto = false } = {}) {
+      assert.ok([pantry, nutrition, mealPhoto].filter(Boolean).length <= 1);
+      assert.ok(!mealPhoto || mealPhotos);
+      const stage = mealPhoto ? "dev10" : nutrition ? "dev08" : pantry ? "dev07" : "dev06";
+      assert.match(tag, new RegExp(`^winesnap-planning-rehearsal:${stage}-[a-f0-9]{7,40}$`));
+      return output(["image", "inspect", "--format", "{{.Id}}", tag]);
+    },
+    async planSnapshot({ pantry = false, nutrition = false } = {}) {
+      const query = await source("config/owned-windows/backup-manifest.sql");
+      const manifest = validateOwnedManifest(JSON.parse(await sql(query)));
+      const interesting = new Set([
+        "public.kitchen_week_plans",
+        "public.kitchen_recipes",
+        "public.kitchen_recipe_versions",
+        "winesnap_local.migrations",
+        ...(pantry || nutrition
+          ? [
+              "public.kitchen_pantry",
+              "public.kitchen_pantry_consumption",
+              "public.kitchen_diners",
+              "public.cooking_sessions",
+            ]
+          : []),
+      ]);
+      const relations = manifest.relations.filter(({ schema, table }) =>
+        interesting.has(schema + "." + table),
+      );
+      assert.equal(relations.length, interesting.size);
+      const sequenceDefinitions = JSON.parse(
+        await sql(`
+        SELECT coalesce(jsonb_agg(to_jsonb(s) - 'last_value' ORDER BY schemaname, sequencename), '[]')
+        FROM pg_sequences s WHERE schemaname IN ('public','auth','storage','extensions','winesnap_local');`),
+      );
+      return { relations, catalog: manifest.catalog, sequenceDefinitions };
+    },
+    async mealPhotoSnapshot() {
+      assert.ok(mealPhotos && networkId);
+      const query = await source("config/owned-windows/backup-manifest.sql");
+      const manifest = validateOwnedManifest(JSON.parse(await sql(query)));
+      const fields = new Set([
+        "public.kitchen_photo_meals",
+        "public.wines",
+        "storage.objects",
+        "storage.buckets",
+        "winesnap_local.migrations",
+      ]);
+      const relations = manifest.relations.filter(({ schema, table }) =>
+        fields.has(schema + "." + table),
+      );
+      assert.equal(relations.length, fields.size);
+      assert.equal(relations.find(({ table }) => table === "kitchen_photo_meals").rows, 1);
+      assert.equal(
+        relations.find(({ schema, table }) => schema === "storage" && table === "objects").rows,
+        1,
+      );
+      return { relations, catalog: manifest.catalog };
+    },
+    createAccount,
+    recover,
+    close,
+    get anon() {
+      return tokens.anon;
+    },
+    get serviceRole() {
+      return tokens.service_role;
+    },
+    async discardFixtureVersion(owner, version) {
+      for (const id of [owner, version]) assert.match(id, /^[a-f0-9-]{36}$/);
+      assert.equal(
+        await sql(`WITH removed AS (
+        DELETE FROM public.kitchen_recipe_versions
+        WHERE user_id='${owner}' AND id='${version}' RETURNING id
+      ) SELECT count(*) FROM removed;`),
+        "1",
+      );
+    },
+    admin(path, options = {}) {
+      return request("rest", path, {
+        ...options,
+        headers: {
+          ...authHeader(tokens.service_role),
+          ...options.headers,
+        },
+      });
+    },
+    removeAccount: (id) =>
+      request("auth", "/admin/users/" + id, {
+        method: "DELETE",
+        headers: authHeader(tokens.service_role),
+      }),
+  };
+}

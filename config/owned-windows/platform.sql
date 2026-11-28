@@ -1,0 +1,22 @@
+-- Executed only by the owned-local installer inside its fresh, labelled volume.
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE service_role NOLOGIN BYPASSRLS;
+CREATE ROLE authenticator LOGIN NOINHERIT;
+CREATE ROLE supabase_auth_admin LOGIN NOINHERIT CREATEROLE;
+CREATE ROLE supabase_storage_admin LOGIN NOINHERIT CREATEROLE;
+GRANT anon,authenticated,service_role TO authenticator,supabase_storage_admin;
+CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;
+CREATE SCHEMA storage AUTHORIZATION supabase_storage_admin;
+CREATE SCHEMA extensions;
+CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
+GRANT USAGE ON SCHEMA public,auth,storage,extensions TO anon,authenticated,service_role,supabase_auth_admin,supabase_storage_admin;
+GRANT CREATE ON SCHEMA public TO supabase_auth_admin,supabase_storage_admin;
+ALTER ROLE supabase_auth_admin SET search_path=auth,public,extensions;
+ALTER ROLE supabase_storage_admin SET search_path=storage,public,extensions;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon,authenticated,service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon,authenticated,service_role;
+CREATE SCHEMA winesnap_local;
+REVOKE ALL ON SCHEMA winesnap_local FROM PUBLIC;
+CREATE TABLE winesnap_local.installation(id text PRIMARY KEY);
+CREATE TABLE winesnap_local.migrations(name text PRIMARY KEY,sha256 text NOT NULL,applied_at timestamptz NOT NULL DEFAULT now());

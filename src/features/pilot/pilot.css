@@ -1,0 +1,475 @@
+:root.pilot-ui {
+  color-scheme: dark;
+  --background: #111614;
+  --foreground: #f2f5f2;
+  --card: #1c2420;
+  --card-foreground: #f2f5f2;
+  --popover: #202824;
+  --popover-foreground: #f2f5f2;
+  --primary: #a5d0b6;
+  --primary-foreground: #112419;
+  --secondary: #26312b;
+  --secondary-foreground: #f2f5f2;
+  --muted: #202824;
+  --muted-foreground: #b3c0b8;
+  --accent: #2a3930;
+  --accent-foreground: #f2f5f2;
+  --border: #3a4a40;
+  --input: #53645a;
+  --ring: #a5d0b6;
+  --gold: #d4ba7d;
+  --cream: #f2f5f2;
+  --burgundy: #ce8f9f;
+  --success: #a5d0b6;
+  --destructive: #d98d87;
+  --destructive-foreground: #1e1111;
+  --radius: 0.5rem;
+}
+.pilot-ui :is(h1, h2, h3, .font-display) {
+  font-family: var(--font-sans);
+}
+.pilot-ui .pilot-brand {
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.pilot-ui :is(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline-color: var(--primary) !important;
+}
+.pilot-ui .bg-gradient-burgundy {
+  background: #67404c;
+  color: #fff5f7;
+}
+.pilot-ui .bg-gradient-gold {
+  background: var(--gold);
+  color: #171b15;
+}
+.pilot-ui :is(.rounded-xl, .rounded-2xl, .rounded-3xl) {
+  border-radius: 8px;
+}
+.pilot-shell {
+  background: var(--background);
+}
+.pilot-journey {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 0 24px;
+}
+.pilot-journey a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--primary);
+  overflow-wrap: anywhere;
+}
+.pilot-journey svg {
+  flex-shrink: 0;
+}
+.pilot-home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 8px 0 18px;
+  gap: 16px;
+}
+.pilot-home-header h1 {
+  margin: 0;
+}
+.pilot-hero {
+  display: block;
+  width: calc(100% + 40px);
+  max-width: none;
+  margin-inline: -20px;
+  aspect-ratio: 16/9;
+  height: auto;
+  object-fit: cover;
+}
+.pilot-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--foreground);
+}
+.pilot-icon:hover {
+  background: var(--muted);
+}
+.pilot-entries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-block: 20px 8px;
+}
+.pilot-entry {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 650;
+}
+.pilot-food {
+  color: #f2f5f2;
+  background: #355d45;
+}
+.pilot-wine {
+  color: #fff5f7;
+  background: #67404c;
+}
+.pilot-entry:hover {
+  filter: brightness(1.12);
+}
+.pilot-band {
+  padding-block: 20px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.pilot-band:last-child {
+  border-bottom: 0;
+  padding-bottom: 16px;
+}
+.pilot-band h2 {
+  margin: 0 0 12px;
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.pilot-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pilot-section-heading h2 {
+  margin: 0;
+}
+.pilot-command,
+.pilot-resume,
+.pilot-recent-wine {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding-block: 12px;
+  font-size: 16px;
+}
+.pilot-command {
+  color: var(--primary);
+}
+.pilot-command > span {
+  flex: 1;
+  min-width: 0;
+}
+.pilot-command svg,
+.pilot-resume > svg,
+.pilot-recent-wine > svg {
+  flex-shrink: 0;
+}
+.pilot-resume > img {
+  width: 88px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.pilot-resume {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.pilot-row-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+.pilot-row-copy strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.pilot-row-copy > span {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.pilot-row-copy progress {
+  width: 100%;
+  height: 6px;
+  max-width: 240px;
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--muted);
+}
+.pilot-row-copy progress::-webkit-progress-bar {
+  background: var(--muted);
+}
+.pilot-row-copy progress::-webkit-progress-value {
+  background: var(--primary);
+}
+.pilot-row-copy progress::-moz-progress-bar {
+  background: var(--primary);
+}
+.pilot-assistants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+}
+.pilot-assistants > a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 10px 8px;
+  font-size: 15px;
+  color: var(--primary);
+}
+.pilot-assistants > a:last-child {
+  color: var(--burgundy);
+}
+.pilot-assistants svg {
+  flex-shrink: 0;
+}
+.pilot-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-block: 12px;
+  font-size: 16px;
+  color: var(--muted-foreground);
+}
+.pilot-recent-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.pilot-recent-list li + li {
+  border-top: 1px solid var(--border);
+}
+.pilot-bottle {
+  position: relative;
+  width: 48px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--gold);
+}
+.pilot-bottle img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--background);
+}
+.pilot-nav > div {
+  background: #171f1a;
+  box-shadow: none;
+}
+.pilot-nav a[aria-current] {
+  color: var(--primary);
+}
+.pilot-nav a.pilot-cellar-active {
+  color: var(--burgundy);
+}
+.pilot-nav a.pilot-camera {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: var(--gold);
+  color: #172018;
+  box-shadow: none;
+}
+.pilot-camera svg {
+  color: inherit;
+}
+.pilot-ui .kitchen,
+.pilot-ui .kitchen-dialog {
+  --k-ink: #f2f5f2;
+  --k-green: #a5d0b6;
+  --k-muted: #b3c0b8;
+  --k-line: #3a4a40;
+  --k-paper: #111614;
+}
+.pilot-kitchen:not(.pilot-cook) {
+  padding-bottom: calc(var(--bottom-nav-height) + 16px);
+}
+.pilot-kitchen .k-header {
+  max-width: 1120px;
+}
+.pilot-ui :is(.kitchen, .kitchen-dialog) :is(h1, h2, h3) {
+  font-family: var(--font-sans);
+}
+.pilot-ui .kitchen h1 {
+  font-size: 28px;
+}
+.pilot-ui :is(.kitchen, .kitchen-dialog) h2 {
+  font-size: 23px;
+}
+.pilot-ui :is(.kitchen, .kitchen-dialog) h3 {
+  font-size: 19px;
+}
+.pilot-ui :is(.k-primary, .k-primary:hover:not(:disabled)) {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+.pilot-ui
+  :is(
+    .k-secondary,
+    .k-search,
+    .k-recipe,
+    .k-timer-edit,
+    .k-extra-nav select,
+    .k-editor input,
+    .k-editor select,
+    .k-editor textarea,
+    .chef-panel input,
+    .chef-panel select,
+    .chef-panel textarea,
+    .meals-panel input,
+    .meals-panel select,
+    .meals-panel textarea,
+    .nutrition-panel input,
+    .nutrition-panel select
+  ) {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--input);
+}
+.pilot-ui
+  :is(
+    .k-resume,
+    .k-recipe-placeholder,
+    .k-paused,
+    .k-icon:hover:not(:disabled),
+    .chef-message .chat-answer pre,
+    .chef-message .chat-answer code
+  ) {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.pilot-ui :is(.k-error, .k-conflict) {
+  background: #36221f;
+  color: #ffd4c7;
+  border-color: #d9a28e;
+}
+.pilot-ui .k-current-step progress::-webkit-progress-bar {
+  background: var(--muted);
+}
+.pilot-ui .k-current-step progress::-webkit-progress-value {
+  background: var(--primary);
+}
+.pilot-ui .k-current-step progress::-moz-progress-bar {
+  background: var(--primary);
+}
+.pilot-ui .k-current-step h2 {
+  font-size: 28px;
+}
+.pilot-ui .nutrition-unknown {
+  color: #e7bc87;
+}
+.pilot-ui :is(.k-abandon, .k-timer small) {
+  color: var(--destructive);
+}
+.pilot-ui .k-stars,
+.pilot-ui .chef-message .chat-answer li::marker {
+  color: var(--gold);
+}
+.pilot-ui .chef-message.user {
+  color: var(--burgundy);
+}
+.pilot-ui
+  :is(
+    .chef-message .chat-answer a,
+    .meal-reasons strong,
+    .nutrition-summary strong,
+    .nutrition-panel a
+  ) {
+  color: var(--primary);
+}
+.pilot-ui
+  :is(
+    .kitchen-dialog [id$="description"],
+    .chef-meta,
+    .chef-panel blockquote cite,
+    .meal-people p,
+    .meal-caption,
+    .meal-unknown,
+    .meal-result-head p,
+    .nutrition-source
+  ) {
+  color: var(--muted-foreground);
+}
+.pilot-ui .meal-caution {
+  color: #e7bc87;
+}
+.pilot-ui .kitchen :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--primary);
+}
+.pilot-ui .k-wine {
+  color: var(--burgundy);
+}
+.pilot-ui
+  :is(.kitchen, .kitchen-dialog)
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select) {
+  background-color: var(--card);
+  color: var(--foreground);
+  border-color: var(--input);
+}
+.pilot-ui .k-brand {
+  color: var(--gold);
+}
+.pilot-cellar-list {
+  margin-top: 12px;
+}
+.pilot-cellar-row {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding: 16px 0;
+}
+.pilot-cellar-row:hover {
+  background: var(--muted);
+}
+.pilot-cellar-image {
+  width: 54px;
+  height: 104px;
+  background: transparent;
+  border-radius: 0;
+}
+.pilot-cellar-image img {
+  object-fit: contain;
+}
+@media (max-width: 430px) {
+  .pilot-kitchen .k-header {
+    padding: 12px 20px;
+  }
+  .pilot-kitchen .k-main {
+    padding-inline: 20px;
+  }
+  .pilot-assistants {
+    gap: 6px;
+  }
+  .pilot-assistants > a {
+    padding-inline: 0;
+    font-size: 14px;
+  }
+}

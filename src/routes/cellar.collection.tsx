@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, Plus, Pencil, Save, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -9,32 +9,30 @@ import { CollectorSelect } from "@/components/CollectorSelect";
 import { revealInvalidField } from "@/lib/mobileForms";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/i18n";
-import { supabase } from "@/integrations/supabase/client";
+import { OperationNotice } from "@/components/OperationNotice";
+import {
+  createCollectorAttempt,
+  loadCollectorAccount,
+  saveCollectorAttempt,
+  CollectorStoreError,
+  type CollectorSaveAttempt,
+  type CollectorWine,
+} from "@/lib/collectorStore";
 import {
   COLLECTOR_CURRENCIES,
   COLLECTOR_PURPOSES,
   collectorForm,
   parseCollectorForm,
-  collectorLotRowSchema,
   collectorTotals,
   type CollectorLot,
 } from "@/lib/collectorLots";
-
-const collectorLots = () => supabase.from("collector_lots");
 
 export const Route = createFileRoute("/cellar/collection")({
   head: () => ({ meta: [{ title: "Collector Cellar - WineSnap" }] }),
   component: CollectorPage,
 });
 
-type Wine = {
-  id: string;
-  producer: string | null;
-  wine_name: string | null;
-  vintage: number | null;
-  quantity: number | null;
-  consumed_at: string | null;
-};
+type Wine = CollectorWine;
 const emptyForm = () => collectorForm();
 type Form = ReturnType<typeof emptyForm>;
 const inputClass =
@@ -51,9 +49,13 @@ function wineName(wine?: Wine) {
 }
 
 function CollectorPage() {
+  const { user, loading } = useAuth();
+  return <CollectorAccount key={user?.id ?? "signed-out"} owner={user?.id} authLoading={loading} />;
+}
+
+function CollectorAccount({ owner, authLoading }: { owner?: string; authLoading: boolean }) {
   const t = useT();
-  const { user, loading: authLoading } = useAuth();
-  const userId = user?.id;
+  const userId = owner;
   const [lots, setLots] = useState<CollectorLot[]>([]);
   const [wines, setWines] = useState<Wine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,56 +66,62 @@ function CollectorPage() {
   const [form, setForm] = useState<Form | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveIssue, setSaveIssue] = useState<
+    "uncertain" | "conflict" | "stock" | "unavailable" | null
+  >(null);
+  const live = useRef(true),
+    write = useRef<AbortController | null>(null);
+  const attempt = useRef<CollectorSaveAttempt | null>(null);
+  const original = useRef<CollectorLot | null>(null);
+  const blocked = saving || saveIssue === "uncertain" || saveIssue === "conflict";
 
   useEffect(() => {
-    setForm(null);
-    setEditing(null);
-  }, [user?.id]);
+    live.current = true;
+    return () => {
+      live.current = false;
+      write.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    const current = () => live.current && !controller.signal.aborted;
     setLots([]);
     setWines([]);
     setError(null);
     setLoading(Boolean(userId));
     if (!userId) return;
-    Promise.all([
-      collectorLots().select("*").eq("user_id", userId).order("purchased_at", { ascending: false }),
-      supabase
-        .from("wines")
-        .select("id,producer,wine_name,vintage,quantity,consumed_at")
-        .eq("user_id", userId),
-    ])
-      .then(([lotResult, wineResult]) => {
-        if (cancelled) return;
-        if (lotResult.error || wineResult.error) {
-          const code = lotResult.error?.code;
-          setError(code === "42P01" || code === "PGRST205" ? "collector.pending" : "common.error");
-        } else {
-          setLots((lotResult.data ?? []).map((row: unknown) => collectorLotRowSchema.parse(row)));
-          setWines(wineResult.data ?? []);
-        }
+    loadCollectorAccount({ owner: userId, current }, controller.signal)
+      .then((data) => {
+        if (!current()) return;
+        setLots(data.lots);
+        setWines(data.wines);
         setLoading(false);
       })
-      .catch(() => {
-        if (!cancelled) {
-          setError("common.error");
+      .catch((cause: unknown) => {
+        if (current()) {
+          const code = cause && typeof cause === "object" && "code" in cause ? cause.code : null;
+          setError(code === "42P01" || code === "PGRST205" ? "collector.pending" : "common.error");
           setLoading(false);
         }
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [userId, revision]);
 
   function edit(lot: CollectorLot) {
+    if (write.current) return;
+    original.current = lot;
+    attempt.current = null;
+    setSaveIssue(null);
     setEditing(lot.id);
     setForm(collectorForm(lot));
   }
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!form || !user || saving) return;
+    if (!form || !owner || write.current || saveIssue === "conflict") return;
     const parsed = parseCollectorForm(form);
     if (!parsed.success) {
       toast.error(t("collector.invalid"));
@@ -124,41 +132,42 @@ function CollectorPage() {
       .filter((lot) => lot.wine_id === parsed.data.wine_id && lot.id !== editing)
       .reduce((sum, lot) => sum + lot.remaining, 0);
     const available = wine && !wine.consumed_at ? (wine.quantity ?? 1) : 0;
-    if (!wine || allocated + parsed.data.remaining > available) {
+    if (!attempt.current?.started && (!wine || allocated + parsed.data.remaining > available)) {
       toast.error(t("collector.stockError"));
       return;
     }
+    const controller = new AbortController();
+    write.current = controller;
+    const scope = {
+      owner,
+      current: () => live.current && write.current === controller && !controller.signal.aborted,
+    };
     setSaving(true);
+    setSaveIssue(null);
     try {
-      const result = editing
-        ? await collectorLots()
-            .update(parsed.data)
-            .eq("id", editing)
-            .eq("user_id", user.id)
-            .select("id")
-            .single()
-        : await collectorLots()
-            .insert({ ...parsed.data, user_id: user.id })
-            .select("id")
-            .single();
-      if (result.error) {
-        toast.error(
-          t(
-            result.error.message.includes("exceeds cellar stock")
-              ? "collector.stockError"
-              : "common.error",
-          ),
-        );
-        return;
-      }
+      attempt.current ??= createCollectorAttempt(owner, parsed.data, original.current);
+      await saveCollectorAttempt(attempt.current, scope, controller.signal);
+      if (!scope.current()) return;
       toast.success(t("common.saved"));
+      attempt.current = null;
+      original.current = null;
       setForm(null);
       setEditing(null);
       setRevision((n) => n + 1);
-    } catch {
-      toast.error(t("common.error"));
+    } catch (cause) {
+      if (!scope.current()) return;
+      const kind =
+        cause instanceof CollectorStoreError
+          ? cause.kind
+          : attempt.current?.started
+            ? "uncertain"
+            : "unavailable";
+      setSaveIssue(kind === "changed" ? "unavailable" : kind);
     } finally {
-      setSaving(false);
+      if (scope.current()) {
+        write.current = null;
+        setSaving(false);
+      }
     }
   }
 
@@ -166,8 +175,22 @@ function CollectorPage() {
     (lot) => (showClosed || lot.remaining > 0) && (filter === "all" || lot.purpose === filter),
   );
   const totals = collectorTotals(visible);
-  const update = (key: keyof Form, value: string) =>
+  const update = (key: keyof Form, value: string) => {
+    if (blocked || write.current) return;
+    attempt.current = null;
+    setSaveIssue(null);
     setForm((current) => (current ? { ...current, [key]: value } : current));
+  };
+  function closeForm() {
+    if (write.current) return;
+    if (saveIssue === "uncertain" && !window.confirm(t("collector.uncertainLeave"))) return;
+    attempt.current = null;
+    original.current = null;
+    setSaveIssue(null);
+    setForm(null);
+    setEditing(null);
+    setRevision((n) => n + 1);
+  }
   function field(key: keyof Form, label: string, type = "text", required = false) {
     return (
       <label className="grid min-w-0 gap-1 text-sm text-muted-foreground">
@@ -214,7 +237,7 @@ function CollectorPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h1 className="min-w-0 flex-1 font-display text-xl text-gold">{t("collector.title")}</h1>
-        {user && !error && !loading && (
+        {owner && !error && !loading && (
           <Button
             size="icon"
             variant="outline"
@@ -223,6 +246,9 @@ function CollectorPage() {
             disabled={!!form || saving || !wines.length}
             onClick={() => {
               setEditing(null);
+              original.current = null;
+              attempt.current = null;
+              setSaveIssue(null);
               setForm(emptyForm());
             }}
           >
@@ -234,7 +260,7 @@ function CollectorPage() {
         <p role="status" className="py-8 text-center">
           {t("common.loading")}
         </p>
-      ) : !user ? (
+      ) : !owner ? (
         <Link to="/login" className="mt-6 block text-center text-gold">
           {t("collector.signIn")}
         </Link>
@@ -317,15 +343,36 @@ function CollectorPage() {
                   variant="ghost"
                   aria-label={t("common.cancel")}
                   disabled={saving}
-                  onClick={() => setForm(null)}
+                  onClick={closeForm}
                 >
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              <fieldset disabled={saving} className="grid min-w-0 gap-3 sm:grid-cols-2">
+              {saveIssue && (
+                <OperationNotice
+                  kind="error"
+                  action={
+                    saveIssue === "conflict"
+                      ? { label: t("collector.reload"), onClick: closeForm }
+                      : undefined
+                  }
+                >
+                  {t(
+                    saveIssue === "uncertain"
+                      ? "collector.uncertain"
+                      : saveIssue === "conflict"
+                        ? "collector.changed"
+                        : saveIssue === "stock"
+                          ? "collector.stockError"
+                          : "common.error",
+                  )}
+                </OperationNotice>
+              )}
+              <fieldset disabled={blocked} className="grid min-w-0 gap-3 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm text-muted-foreground sm:col-span-2">
                   <span>{t("collector.wine")}</span>
                   <select
+                    aria-label={t("collector.wine")}
                     className={inputClass}
                     required
                     disabled={!!editing}
@@ -345,6 +392,7 @@ function CollectorPage() {
                 <label className="grid gap-1 text-sm text-muted-foreground">
                   <span>{t("collector.purpose")}</span>
                   <select
+                    aria-label={t("collector.purpose")}
                     className={inputClass}
                     value={form.purpose}
                     onChange={(e) => update("purpose", e.target.value)}
@@ -364,7 +412,7 @@ function CollectorPage() {
                 {field("unit_cost", t("collector.unitCost"), "number", true)}
               </fieldset>
               <MobileDetails title={t("collector.details")} className="mt-4">
-                <fieldset disabled={saving} className="grid min-w-0 gap-3 sm:grid-cols-2">
+                <fieldset disabled={blocked} className="grid min-w-0 gap-3 sm:grid-cols-2">
                   {field("additional_cost", t("collector.fees"), "number")}
                   {field("condition", t("collector.condition"))}
                   {field("provenance", t("collector.provenance"))}
@@ -376,7 +424,7 @@ function CollectorPage() {
                 defaultOpen={!!form.estimate_price}
                 className="mt-4"
               >
-                <fieldset disabled={saving} className="grid min-w-0 gap-3 sm:grid-cols-2">
+                <fieldset disabled={blocked} className="grid min-w-0 gap-3 sm:grid-cols-2">
                   {field("estimate_price", t("collector.estimateUnit"), "number")}
                   {currencySelect("estimate_currency")}
                   {field(
@@ -403,7 +451,11 @@ function CollectorPage() {
                   />
                 </fieldset>
               </MobileDetails>
-              <Button type="submit" disabled={saving} className="mt-4 min-h-11">
+              <Button
+                type="submit"
+                disabled={saving || saveIssue === "conflict"}
+                className="mt-4 min-h-11"
+              >
                 <Save className="mr-2 h-5 w-5" />
                 {t(saving ? "common.loading" : "common.save")}
               </Button>

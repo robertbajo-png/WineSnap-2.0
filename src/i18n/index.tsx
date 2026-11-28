@@ -3,6 +3,85 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export type Lang = "en" | "sv";
 
 const en = {
+  "state.saving": "Saving…",
+  "state.savingWine":
+    "Saving your wine and its original image. Keep this review open until the result is confirmed.",
+  "state.saveOffline":
+    "You are offline. Keep this page open to retain the review and image. Nothing is queued for automatic saving.",
+  "state.saveUncertain":
+    "The connection was interrupted. The wine may already be saved. Check the result before editing or starting another save; the same save ID will be used.",
+  "state.saveFailed":
+    "The wine could not be saved. Your review and image are still here. Check the connection and try again.",
+  "state.checkSave": "Check saved result",
+  "state.scanOffline":
+    "Connect to analyze a wine. Your text or selected image stays here; analysis will not start automatically.",
+  "state.analyzeAgain": "Analyze again",
+  "state.imageRetained": "Your selected image is still available for another analysis.",
+  "state.historyFailed":
+    "Conversation history could not be loaded. The latest answer remains here.",
+  "state.historyLoading": "Loading conversation history…",
+  "state.retryRead": "Load again",
+  "state.chefLoading": "Preparing your answer. No recipe or preference is saved automatically.",
+  "state.chefOffline":
+    "The Chef needs a connection. Your input stays here; Cook Mode still works offline.",
+  "state.chefFailed":
+    "The AI request could not be completed. Your input is unchanged. You can explicitly send the same request again.",
+  "state.chefQuota": "The AI limit has been reached. Your input remains here. Try again later.",
+  "state.chefAuth":
+    "Your session could not be verified. Sign in again before requesting another answer.",
+  "state.reviewDraft": "Review or discard the current recipe suggestion before requesting another.",
+  "state.discardDraft": "Discard suggestion",
+  "state.memoryLoading": "Loading your food memory…",
+  "state.memoryFailed":
+    "Food memory could not be loaded. This does not mean your preferences are empty.",
+  "state.memoryOffline":
+    "Connect to read or change food memory. Previously loaded preferences are hidden.",
+  "state.memoryWorking": "Updating food memory…",
+  "state.localSaved": "Saved on this device",
+  "state.syncPending": "Saved on this device. Waiting to sync.",
+  "state.synced": "Synced",
+  "state.syncing": "Syncing…",
+  "state.syncUnverified": "Local copy; server status not confirmed",
+  "state.retrySync": "Try syncing again",
+  "state.recipeSaveFailed":
+    "Saving could not be confirmed. Your draft remains open. Review it and try again; the same recipe-version ID is retained.",
+  "state.recipeOffline":
+    "Your draft is still open. Connect before saving; it will not be saved automatically.",
+  "nav.kitchen": "Kitchen",
+  "pilot.cellarEntry": "Cellar",
+  "pilot.heroAlt": "Tomato and basil pasta beside a glass of white wine",
+  "pilot.resume": "Continue cooking",
+  "pilot.recipes": "Your recipes",
+  "pilot.openRecipes": "Choose a recipe",
+  "pilot.cookingProgress": "Cooking progress",
+  "pilot.step": "Step {current} of {total}",
+  "pilot.foodWine": "Food & wine",
+  "pilot.chooseWine": "Choose wine for dinner",
+  "pilot.chef": "Ask the Chef",
+  "pilot.sommelier": "Ask the sommelier",
+  "pilot.recentWines": "Recent wines",
+  "pilot.bottleQuantity": "{count} bottles",
+  "pilot.singleBottle": "{count} bottle",
+  "pilot.openCellar": "Open your cellar",
+  "pilot.signIn": "Sign in",
+  "pilot.loading": "Loading…",
+  "pilot.winesOffline": "Connect to view your cellar.",
+  "pilot.kitchenUnavailable": "Your cooking session could not be loaded.",
+  "pilot.unnamedWine": "Unnamed wine",
+  "journey.foodWine": "Food & wine",
+  "journey.resumeCook": "Continue cooking",
+  "journey.backRecipe": "Back to the recipe",
+  "journey.backWine": "Back to the wine",
+  "journey.findRecipes": "Find recipes for this wine",
+  "journey.wineForMeal": "Wine for this meal",
+  "journey.unavailable": "This cooking context is unavailable",
+  "journey.unavailableDetail":
+    "The recipe or cooking session may have changed or belong to another account. Nothing has been replaced.",
+  "journey.openLibrary": "Open your cookbook",
+  "journey.wineUnavailable":
+    "This wine is no longer available in your cellar. Choose another wine.",
+  "journey.noWines": "No available bottles in your cellar.",
+  "journey.chooseWine": "Choose a wine",
   "wine.ownerRating": "Owner's rating",
   "privacy.link": "Privacy and your data",
   "recommendation.styleEstimate": "AI-estimated style",
@@ -67,6 +146,13 @@ const en = {
   "collector.pending":
     "Collector cellar is unavailable: its database migration has not been deployed.",
   "collector.retry": "Retry",
+  "collector.reload": "Reload acquisitions",
+  "collector.uncertain":
+    "This acquisition may already be saved. Save again to check the same attempt before retrying.",
+  "collector.uncertainLeave":
+    "The save result is unknown. Close the form and reload acquisitions before adding anything again?",
+  "collector.changed":
+    "This acquisition changed or was removed. Reload acquisitions before editing again; this draft will be discarded.",
   "collector.invalid":
     "Check dates, amounts and bottle counts. An estimate requires a source, date, currency and confidence.",
   "collector.stockError":
@@ -106,6 +192,8 @@ const en = {
   "ask.error.empty": "Write a question first.",
   "ask.error.long": "Keep the question under 2,000 characters.",
   "ask.error.generic": "WineSnap could not answer right now.",
+  "ask.error.loadConversation":
+    "This conversation could not be loaded. Load it again or start a new conversation.",
   "restaurant.error.generic": "The wine list could not be analyzed right now. Please try again.",
   "ask.error.rateLimit": "Too many questions. Please wait a few minutes and try again.",
   "ask.error.auth": "Your session has expired. Sign in again to continue.",
@@ -183,6 +271,7 @@ const en = {
   "login.hasAccount": "Have an account? Sign in",
   "login.created": "Account created — sign in.",
   "login.forgot": "Forgot password?",
+  "login.localInbox": "Local inbox",
 
   // Password reset
   "reset.forgotTitle": "Reset password",
@@ -287,7 +376,7 @@ const en = {
   "overview.addPrices": "Add purchase prices to track value",
   "overview.marketValue": "Retail price reference",
   "overview.marketValueDesc":
-    "Verified retail prices from the last 30 days, via bolaget.io. Not resale values or investment returns.",
+    "Verified retail reference prices from a community catalog mirror. Not resale values or investment returns.",
   "prices.coverage": "wines with a current, verified price",
   "prices.fresh": "Current",
   "prices.old": "Older / not rechecked",
@@ -303,6 +392,9 @@ const en = {
   "prices.checked": "checked",
   "prices.finished": "Price check finished",
   "prices.failed": "Price check interrupted. Remaining wines are saved in this view.",
+  "prices.reload": "Reload saved prices",
+  "prices.readBeforeRetry":
+    "The check or read-back failed. Reload saved prices before trying again; the previous check may already have finished.",
   "prices.setup": "The price update requires a database update. Existing prices are preserved.",
   "prices.confirm": "Confirm product",
   "prices.acknowledge": "I confirm the wine, vintage (if stated) and bottle size match.",
@@ -311,6 +403,7 @@ const en = {
   "prices.unknownYear": "Vintage not stated",
   "prices.unknownSize": "Bottle size not stated",
   "prices.attempted": "Latest attempt",
+  "prices.source": "Catalog source",
   "prices.product": "Catalog product",
   "prices.bottleMl": "Bottle size (ml)",
   "prices.invalidSize": "Enter a whole bottle size between 50 and 30,000 ml, or leave it empty.",
@@ -386,7 +479,8 @@ const en = {
   "scan.viewDetails": "View Details",
   "scan.saveToCellar": "Save to Cellar",
   "scan.imageTooLarge": "That photo is too large. Try a smaller one.",
-  "scan.imageType": "That file is not a photo we can read.",
+  "scan.imageType":
+    "This photo format cannot be saved and displayed here. Choose JPEG, PNG or WebP.",
   "scan.imageError": "We couldn't read that photo. Please try again.",
   "scan.error.auth": "Your session could not be verified. Sign in again and retry the scan.",
   "scan.error.rateLimit": "Too many scans. Wait a few minutes and try again.",
@@ -605,6 +699,8 @@ const en = {
 
   // Wine detail — share & edit
   "wine.share": "Share",
+  "wine.shareUnavailable":
+    "Public sharing is unavailable in this private installation. Your wine remains unchanged.",
   "wine.edit": "Edit",
   "wine.shareText": "Check out this wine on WineSnap",
   "wine.linkCopied": "Link copied",
@@ -730,7 +826,22 @@ const en = {
   "crop.use": "Use photo",
   "crop.useOriginal": "Use the whole photo",
   "photos.title": "Photos",
+  "photos.view": "View wine photo",
+  "photos.image": "Wine photo",
   "photos.add": "Add photo",
+  "photos.loading": "Loading photos...",
+  "photos.invalidImage":
+    "Choose a JPEG, PNG, WebP, GIF or AVIF image up to 10 MB, or crop it to reduce its size.",
+  "photos.loadFailed": "Photos could not be loaded. This does not mean the gallery is empty.",
+  "photos.offline":
+    "Connect to load photos or confirm a change. Saving and deletion will not retry automatically.",
+  "photos.saveUnconfirmed":
+    "Saving could not be confirmed. Keep this page open; your image and save ID are retained for a manual retry.",
+  "photos.deleteUnconfirmed":
+    "Deletion could not be confirmed. Retry checks the same photo; no new deletion is started automatically.",
+  "photos.removed": "Photo removed",
+  "photos.removedRetained":
+    "Photo removed from the gallery. Its file is still referenced elsewhere or could not be safely identified, so it was retained.",
   "photos.empty": "No extra photos yet.",
   "photos.delete": "Delete photo",
   "photos.deleteConfirm": "Delete this photo?",
@@ -784,6 +895,83 @@ const en = {
 } as const;
 
 const sv: Record<keyof typeof en, string> = {
+  "state.saving": "Sparar…",
+  "state.savingWine":
+    "Sparar vinet och originalbilden. Behåll granskningen öppen tills sparandet är bekräftat.",
+  "state.saveOffline":
+    "Du är offline. Behåll sidan öppen så finns granskningen och bilden kvar. Inget köas för automatisk sparning.",
+  "state.saveUncertain":
+    "Anslutningen avbröts. Vinet kan redan vara sparat. Kontrollera resultatet innan du ändrar eller sparar på nytt; samma spar-ID används.",
+  "state.saveFailed":
+    "Vinet kunde inte sparas. Granskningen och bilden finns kvar här. Kontrollera anslutningen och försök igen.",
+  "state.checkSave": "Kontrollera sparandet",
+  "state.scanOffline":
+    "Anslut för att analysera ett vin. Texten eller den valda bilden finns kvar här; analysen startar inte automatiskt.",
+  "state.analyzeAgain": "Analysera igen",
+  "state.imageRetained": "Den valda bilden finns kvar för en ny analys.",
+  "state.historyFailed": "Samtalshistoriken kunde inte hämtas. Det senaste svaret finns kvar här.",
+  "state.historyLoading": "Hämtar samtalshistorik…",
+  "state.retryRead": "Hämta igen",
+  "state.chefLoading": "Tar fram ditt svar. Inget recept eller någon preferens sparas automatiskt.",
+  "state.chefOffline":
+    "AI-kocken behöver anslutning. Din text finns kvar här; Cook Mode fungerar fortfarande offline.",
+  "state.chefFailed":
+    "AI-anropet kunde inte slutföras. Din text är oförändrad. Du kan själv skicka samma fråga igen.",
+  "state.chefQuota": "AI-gränsen är nådd. Din text finns kvar här. Försök igen senare.",
+  "state.chefAuth":
+    "Inloggningen kunde inte verifieras. Logga in igen innan du begär ett nytt svar.",
+  "state.reviewDraft": "Granska eller kasta det aktuella receptförslaget innan du begär ett nytt.",
+  "state.discardDraft": "Kasta förslag",
+  "state.memoryLoading": "Hämtar ditt matminne…",
+  "state.memoryFailed":
+    "Matminnet kunde inte hämtas. Det betyder inte att dina preferenser är tomma.",
+  "state.memoryOffline":
+    "Anslut för att läsa eller ändra matminnet. Tidigare hämtade preferenser är dolda.",
+  "state.memoryWorking": "Uppdaterar matminnet…",
+  "state.localSaved": "Sparat på enheten",
+  "state.syncPending": "Sparat på enheten. Väntar på synkning.",
+  "state.synced": "Synkat",
+  "state.syncing": "Synkar…",
+  "state.syncUnverified": "Lokal kopia; serverstatus inte bekräftad",
+  "state.retrySync": "Försök synka igen",
+  "state.recipeSaveFailed":
+    "Sparandet kunde inte bekräftas. Utkastet finns kvar öppet. Granska och försök igen; samma receptversions-ID behålls.",
+  "state.recipeOffline":
+    "Utkastet är fortfarande öppet. Anslut innan du sparar; det sparas inte automatiskt.",
+  "nav.kitchen": "Köket",
+  "pilot.cellarEntry": "Källaren",
+  "pilot.heroAlt": "Tomatpasta med basilika bredvid ett glas vitt vin",
+  "pilot.resume": "Fortsätt laga",
+  "pilot.recipes": "Dina recept",
+  "pilot.openRecipes": "Välj ett recept",
+  "pilot.cookingProgress": "Matlagningens framsteg",
+  "pilot.step": "Steg {current} av {total}",
+  "pilot.foodWine": "Mat & vin",
+  "pilot.chooseWine": "Välj vin till maten",
+  "pilot.chef": "Fråga AI-kocken",
+  "pilot.sommelier": "Fråga sommelieren",
+  "pilot.recentWines": "Senaste viner",
+  "pilot.bottleQuantity": "{count} flaskor",
+  "pilot.singleBottle": "{count} flaska",
+  "pilot.openCellar": "Öppna vinkällaren",
+  "pilot.signIn": "Logga in",
+  "pilot.loading": "Hämtar…",
+  "pilot.winesOffline": "Anslut för att visa din vinkällare.",
+  "pilot.kitchenUnavailable": "Din matlagning kunde inte hämtas.",
+  "pilot.unnamedWine": "Vin utan namn",
+  "journey.foodWine": "Mat & vin",
+  "journey.resumeCook": "Fortsätt laga",
+  "journey.backRecipe": "Tillbaka till receptet",
+  "journey.backWine": "Tillbaka till vinet",
+  "journey.findRecipes": "Hitta recept till vinet",
+  "journey.wineForMeal": "Vin till maten",
+  "journey.unavailable": "Den här matlagningen är inte tillgänglig",
+  "journey.unavailableDetail":
+    "Receptet eller matlagningen kan ha ändrats eller tillhöra ett annat konto. Inget har ersatts.",
+  "journey.openLibrary": "Öppna din kokbok",
+  "journey.wineUnavailable": "Vinet är inte längre tillgängligt i din källare. Välj ett annat vin.",
+  "journey.noWines": "Inga tillgängliga flaskor i din vinkällare.",
+  "journey.chooseWine": "Välj ett vin",
   "wine.ownerRating": "Ägarens betyg",
   "privacy.link": "Integritet och dina data",
   "recommendation.styleEstimate": "AI-uppskattad stil",
@@ -848,6 +1036,13 @@ const sv: Record<keyof typeof en, string> = {
   "collector.pending":
     "Samlarkällaren är inte tillgänglig: databasuppdateringen har inte driftsatts.",
   "collector.retry": "Försök igen",
+  "collector.reload": "Hämta inköp igen",
+  "collector.uncertain":
+    "Inköpet kan redan vara sparat. Tryck Spara igen för att kontrollera samma försök innan något upprepas.",
+  "collector.uncertainLeave":
+    "Resultatet av sparandet är okänt. Stäng formuläret och hämta inköpen igen innan du lägger till något på nytt?",
+  "collector.changed":
+    "Inköpet har ändrats eller tagits bort. Hämta inköpen igen innan du redigerar; detta utkast kommer att försvinna.",
   "collector.invalid":
     "Kontrollera datum, belopp och antal. En värdering kräver källa, datum, valuta och säkerhet.",
   "collector.stockError":
@@ -886,6 +1081,8 @@ const sv: Record<keyof typeof en, string> = {
   "ask.error.empty": "Skriv en fråga först.",
   "ask.error.long": "Håll frågan under 2 000 tecken.",
   "ask.error.generic": "WineSnap kunde inte svara just nu.",
+  "ask.error.loadConversation":
+    "Samtalet kunde inte hämtas. Hämta det igen eller starta ett nytt samtal.",
   "restaurant.error.generic": "Vinlistan kunde inte analyseras just nu. Försök igen.",
   "ask.error.rateLimit": "För många frågor. Vänta några minuter och försök igen.",
   "ask.error.auth": "Din session har gått ut. Logga in igen för att fortsätta.",
@@ -958,6 +1155,7 @@ const sv: Record<keyof typeof en, string> = {
   "login.hasAccount": "Har du redan konto? Logga in",
   "login.created": "Konto skapat — logga in.",
   "login.forgot": "Glömt lösenord?",
+  "login.localInbox": "Lokal inkorg",
 
   "reset.forgotTitle": "Återställ lösenord",
   "reset.forgotSub": "Ange din e-postadress så skickar vi en återställningslänk.",
@@ -1057,7 +1255,7 @@ const sv: Record<keyof typeof en, string> = {
   "overview.addPrices": "Lägg till inköpspris för att se värde",
   "overview.marketValue": "Butiksprisreferens",
   "overview.marketValueDesc":
-    "Verifierade butikspriser från de senaste 30 dagarna, via bolaget.io. Inte andrahandsvärden eller investeringsavkastning.",
+    "Verifierade butikspriser via en communityspegel av sortimentet. Inte andrahandsvärden eller investeringsavkastning.",
   "prices.coverage": "viner med aktuellt, verifierat pris",
   "prices.fresh": "Aktuellt",
   "prices.old": "Äldre / ej omkontrollerat",
@@ -1073,6 +1271,9 @@ const sv: Record<keyof typeof en, string> = {
   "prices.checked": "kontrollerade",
   "prices.finished": "Priskontrollen klar",
   "prices.failed": "Priskontrollen avbröts. Återstående viner är sparade i denna vy.",
+  "prices.reload": "Läs in sparade priser",
+  "prices.readBeforeRetry":
+    "Kontrollen eller återläsningen misslyckades. Läs in sparade priser före ett nytt försök; den tidigare kontrollen kan redan vara klar.",
   "prices.setup": "Prisuppdateringen kräver en databasuppdatering. Befintliga priser är bevarade.",
   "prices.confirm": "Bekräfta produkt",
   "prices.acknowledge": "Jag bekräftar att vin, årgång (om angiven) och flaskstorlek stämmer.",
@@ -1081,6 +1282,7 @@ const sv: Record<keyof typeof en, string> = {
   "prices.unknownYear": "Årgång ej angiven",
   "prices.unknownSize": "Flaskstorlek ej angiven",
   "prices.attempted": "Senaste försök",
+  "prices.source": "Sortimentskälla",
   "prices.product": "Sortimentsprodukt",
   "prices.bottleMl": "Flaskstorlek (ml)",
   "prices.invalidSize": "Ange en hel flaskstorlek mellan 50 och 30 000 ml, eller lämna tomt.",
@@ -1154,7 +1356,7 @@ const sv: Record<keyof typeof en, string> = {
   "scan.viewDetails": "Visa detaljer",
   "scan.saveToCellar": "Till källaren",
   "scan.imageTooLarge": "Bilden är för stor. Prova en mindre bild.",
-  "scan.imageType": "Filen är inte en bild vi kan läsa.",
+  "scan.imageType": "Bildformatet kan inte sparas och visas här. Välj JPEG, PNG eller WebP.",
   "scan.imageError": "Vi kunde inte läsa bilden. Försök igen.",
   "scan.error.auth": "Din session kunde inte verifieras. Logga in igen och försök skanna på nytt.",
   "scan.error.rateLimit": "För många skanningar. Vänta några minuter och försök igen.",
@@ -1363,6 +1565,8 @@ const sv: Record<keyof typeof en, string> = {
   "cellar.sort.name": "Namn",
 
   "wine.share": "Dela",
+  "wine.shareUnavailable":
+    "Publik delning är inte tillgänglig i den privata installationen. Ditt vin ändras inte.",
   "wine.edit": "Redigera",
   "wine.shareText": "Kolla in det här vinet på WineSnap",
   "wine.linkCopied": "Länk kopierad",
@@ -1484,7 +1688,22 @@ const sv: Record<keyof typeof en, string> = {
   "crop.use": "Använd bild",
   "crop.useOriginal": "Använd hela bilden",
   "photos.title": "Bilder",
+  "photos.view": "Visa vinbild",
+  "photos.image": "Vinbild",
   "photos.add": "Lägg till bild",
+  "photos.loading": "Hämtar bilder...",
+  "photos.invalidImage":
+    "Välj en JPEG-, PNG-, WebP-, GIF- eller AVIF-bild på högst 10 MB, eller beskär bilden för att minska storleken.",
+  "photos.loadFailed": "Bilderna kunde inte hämtas. Det betyder inte att galleriet är tomt.",
+  "photos.offline":
+    "Anslut för att hämta bilder eller bekräfta en ändring. Sparande och radering återförsöks inte automatiskt.",
+  "photos.saveUnconfirmed":
+    "Sparandet kunde inte bekräftas. Behåll sidan öppen; bilden och samma spar-ID finns kvar för ett manuellt återförsök.",
+  "photos.deleteUnconfirmed":
+    "Raderingen kunde inte bekräftas. Ett återförsök kontrollerar samma bild; ingen ny radering startas automatiskt.",
+  "photos.removed": "Bilden är borttagen",
+  "photos.removedRetained":
+    "Bilden är borttagen från galleriet. Filen används fortfarande på annat håll eller kunde inte identifieras säkert och har därför behållits.",
   "photos.empty": "Inga extra bilder än.",
   "photos.delete": "Radera bild",
   "photos.deleteConfirm": "Radera den här bilden?",

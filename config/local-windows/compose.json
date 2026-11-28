@@ -1,0 +1,47 @@
+{
+  "services": {
+    "web": {
+      "image": "winesnap-local:test",
+      "build": {
+        "context": "../..",
+        "dockerfile": "Dockerfile",
+        "args": {
+          "VITE_SUPABASE_URL": "https://pzniyupmgwvlldvztzqh.supabase.co",
+          "VITE_SUPABASE_PUBLISHABLE_KEY": "${WINESNAP_LOCAL_PUBLISHABLE_KEY:?Use scripts/run-local-windows.ps1}",
+          "VITE_WINE_IMAGE_PROXY_ENABLED": "true",
+          "VITE_LOCAL_AI_ENABLED": "true",
+          "VITE_COOKING_CORE_ENABLED": "true",
+          "VITE_AI_CHEF_ENABLED": "true",
+          "VITE_MEALS_ENABLED": "true",
+          "VITE_RECIPE_NUTRITION_ENABLED": "true",
+          "VITE_PRIVACY_CONTROLS_ENABLED": "true",
+          "VITE_PRIVACY_OPERATIONS_VERIFIED": "true",
+          "VITE_PRIVACY_SUPPLIERS_VERIFIED": "false"
+        }
+      },
+      "ports": [{ "target": 3000, "published": "5210", "host_ip": "127.0.0.1", "protocol": "tcp" }],
+      "environment": {
+        "SUPABASE_URL": "https://pzniyupmgwvlldvztzqh.supabase.co",
+        "WINESNAP_LOCAL_AI_ENABLED": "true",
+        "WINESNAP_LOCAL_OPERATIONS_ENABLED": "true",
+        "WINESNAP_LOCAL_RETAIL_MIRROR_ENABLED": "true",
+        "WINESNAP_COOKING_CORE_ENABLED": "true",
+        "WINESNAP_AI_CHEF_ENABLED": "true",
+        "WINESNAP_MEALS_ENABLED": "true",
+        "SUPABASE_PUBLISHABLE_KEY": "${WINESNAP_LOCAL_PUBLISHABLE_KEY:?Use scripts/run-local-windows.ps1}",
+        "NODE_OPTIONS": "--max-old-space-size=384"
+      },
+      "labels": { "winesnap.scope": "local-windows-test" },
+      "restart": "unless-stopped",
+      "init": true,
+      "read_only": true,
+      "tmpfs": ["/tmp:size=16m,noexec,nosuid,nodev"],
+      "cap_drop": ["ALL"],
+      "security_opt": ["no-new-privileges:true"],
+      "mem_limit": "768m",
+      "cpus": 1.5,
+      "pids_limit": 128,
+      "logging": { "driver": "json-file", "options": { "max-size": "10m", "max-file": "3" } }
+    }
+  }
+}

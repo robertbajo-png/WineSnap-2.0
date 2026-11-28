@@ -46,6 +46,61 @@ function setup(override: Partial<WishlistPriceRow> = {}) {
   return { deps, request };
 }
 describe("wishlist price authorization and alerts", () => {
+  it("does not present outdated or misattributed mirror prices as verified wishlist quotes", async () => {
+    const { deps, request } = setup();
+    await createWishlistPriceHandler(deps, "manual")(request);
+    const patch = deps.save.mock.calls[0][1];
+    const now = Date.parse("2026-10-23T14:00:00Z");
+    const quoted = {
+      ...row,
+      ...patch,
+      last_checked_price: 100,
+      last_checked_currency: "SEK",
+      price_source: "susbolaget.emrik.org",
+      retail_price_match: {
+        ...patch.retail_price_match,
+        source: "susbolaget.emrik.org",
+        sourceAsOf: new Date(now).toISOString(),
+      },
+    };
+    expect(verifiedWishlistQuote(quoted, now)).toBe(true);
+    expect(verifiedWishlistQuote(quoted, now + 49 * 3600000)).toBe(false);
+    expect(verifiedWishlistQuote({ ...quoted, price_source: "bolaget.io" }, now)).toBe(false);
+  });
+  it("warms the catalog for an authorized empty cron job, never for an unauthorized caller", async () => {
+    const { deps } = setup();
+    const warm = vi.fn(async () => {});
+    const handler = createWishlistPriceHandler(
+      { ...deps, warm, secret: () => "test-secret", load: async () => [] },
+      "cron",
+    );
+    expect((await handler(new Request("http://localhost/prices"))).status).toBe(401);
+    expect(warm).not.toHaveBeenCalled();
+    expect(
+      (
+        await handler(
+          new Request("http://localhost/prices", { headers: { "x-cron-secret": "test-secret" } }),
+        )
+      ).status,
+    ).toBe(200);
+    expect(warm).toHaveBeenCalledTimes(1);
+  });
+  it("awaits the private runtime's scheduler secret without exposing or caching it", async () => {
+    const { deps } = setup();
+    const handler = createWishlistPriceHandler(
+      { ...deps, secret: async () => "synthetic-private-secret" },
+      "cron",
+    );
+    const response = await handler(
+      new Request("http://localhost/prices", {
+        method: "POST",
+        headers: { "x-cron-secret": "synthetic-private-secret" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.text()).not.toContain("synthetic-private-secret");
+  });
   it("keeps a quote tied to the exact wishlist identity and does not repeat the same alert", async () => {
     const { deps, request } = setup();
     const repeat = request.clone();

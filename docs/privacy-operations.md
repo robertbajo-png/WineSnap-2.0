@@ -31,6 +31,13 @@ been performed by creating these files. No real account or cellar was erased.
   JWTs. The worker removes owned Storage files in all buckets before deleting Auth.
   Legacy photo metadata without an Auth FK is removed explicitly. Batches and
   five-minute claims support retries without reporting partial erasure as complete.
+  These RLS checks apply at the origin; an already cached Storage response can
+  still be served for the same previously authorized URL/token. The app bypasses
+  that cache using a new nonce per image request. Physical file deletion also
+  requires CDN propagation before previously fetched URLs are denied. Do not
+  describe the worker's `complete` result as an instantaneous purge of every CDN
+  or browser copy. See the measured
+  [test-only image revocation findings](image-revocation-diagnostics-2026-10-21.md).
 - A service-only erasure receipt survives the Auth cascade. It contains account ID
   and request/completion times, not wine/chat contents; cleanup expires completed
   receipts after 30 days. A missing completion mark is reconciled by maintenance.
@@ -118,8 +125,10 @@ then imports a separately preserved synthetic erasure ledger. Storage deletion i
 simulated using the local platform-contract tables. This is not a hosted backup/PITR
 or physical object-storage recovery certification.
 
-Confirm agreements cover the actual hosted app and AI-gateway flow, not merely the
-Lovable development chat. Record applicable DPAs, subprocessors, model-specific
+Confirm agreements cover the actual hosted app and direct OpenAI/Gemini flow,
+not merely the development tool. The 2026-10-23 standalone source no longer uses
+the Lovable gateway; see `lovable-exit-2026-10-23.md` for cutover boundaries.
+Record applicable DPAs, subprocessors, model-specific
 retention/training terms, locations and lawful international-transfer safeguards.
 An EU database location or a vendor GDPR marketing statement is not sufficient
 proof of the whole chain. No zero-retention or EU-only-processing claim is made.

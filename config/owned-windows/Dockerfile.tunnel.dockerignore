@@ -1,0 +1,10 @@
+**
+!config/
+!config/owned-windows/
+!config/owned-windows/Dockerfile.tunnel
+!config/owned-windows/tunnel-entry.mjs
+!scripts/
+!scripts/lib/
+!scripts/lib/owned-tunnel.mjs
+!scripts/lib/owned-backend.mjs
+!scripts/lib/owned-internet.mjs

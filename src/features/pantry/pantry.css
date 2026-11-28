@@ -1,0 +1,127 @@
+.k-pantry {
+  display: grid;
+  gap: 1rem;
+}
+
+.k-pantry :is(h1, h2, p),
+.k-pantry-stock {
+  margin: 0;
+}
+
+.k-pantry h1 {
+  font-size: 1.6rem;
+}
+
+.k-pantry h2 {
+  font-size: 1.1rem;
+}
+
+.k-pantry-heading,
+.k-pantry-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.k-pantry :is(.k-primary, .k-secondary),
+.k-pantry-dialog :is(.k-primary, .k-secondary) {
+  min-height: 44px;
+  max-width: 100%;
+  padding-inline: 0.75rem;
+}
+
+.k-pantry-stock {
+  list-style: none;
+  padding: 0;
+  border-top: 1px solid var(--k-line);
+}
+
+.k-pantry-stock > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 0.65rem;
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--k-line);
+}
+
+.k-pantry-stock .k-icon {
+  inline-size: 44px;
+  block-size: 44px;
+}
+
+.k-pantry-info {
+  display: grid;
+  gap: 0.15rem;
+  overflow-wrap: anywhere;
+}
+
+.k-pantry-info > span {
+  color: var(--k-muted);
+  font-size: 0.875rem;
+}
+
+.k-pantry-dialog fieldset,
+.k-pantry-dialog :is(form, label, .k-pantry-field) {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.k-pantry-dialog :is(fieldset, form) {
+  gap: 0.9rem;
+}
+
+.k-pantry-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.k-pantry-dialog :is(input:not([type="checkbox"]), select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--k-line);
+  border-radius: 8px;
+  padding-inline: 0.65rem;
+  color: var(--k-ink);
+  background: var(--k-paper);
+}
+
+.k-pantry-dialog .k-pantry-confirm {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 44px;
+}
+
+.k-pantry-dialog .k-pantry-confirm input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--k-green);
+}
+
+.k-pantry-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.6fr);
+  gap: 0.75rem;
+  align-items: center;
+  border-block-start: 1px solid var(--k-line);
+  padding-block: 0.4rem;
+  overflow-wrap: anywhere;
+}
+
+.k-pantry-review-row > label {
+  grid-column: 1;
+}
+
+.k-pantry-review-row small {
+  display: block;
+  color: var(--k-muted);
+}
+
+.k-pantry-review-row :is(label, summary) {
+  font-size: 0.875rem;
+}

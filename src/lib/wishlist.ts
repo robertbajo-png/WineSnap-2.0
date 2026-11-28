@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logEvent } from "@/lib/analytics";
+import { accountWriteClient, type AccountWriteScope } from "./accountWriteScope";
 
 type WineLike = {
   id?: string | null;
@@ -31,15 +32,27 @@ function normalizeVintage(vintage: WineLike["vintage"]): number | null {
  * exists in the wishlist, the row is left as-is. AI suggestions are checked by
  * producer, name and vintage. Concurrent calls in this client share one request.
  */
-export async function addToWishlist(input: WineLike): Promise<boolean> {
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData?.user;
-  if (!user) {
-    toast.error("Sign in to save to wishlist");
-    return false;
+export async function addToWishlist(input: WineLike, scope?: AccountWriteScope): Promise<boolean> {
+  let client = supabase;
+  let owner: string;
+  if (scope) {
+    try {
+      client = await accountWriteClient(scope);
+      owner = scope.owner;
+    } catch {
+      return false;
+    }
+  } else {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) {
+      toast.error("Sign in to save to wishlist");
+      return false;
+    }
+    owner = userData.user.id;
   }
+  if (scope && !scope.current()) return false;
   const key = JSON.stringify([
-    user.id,
+    owner,
     input.id ?? null,
     input.producer ?? null,
     input.wine_name ?? "Untitled",
@@ -50,7 +63,7 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
     await pending;
     return false;
   }
-  const request = insertWishlistWine(input, user.id);
+  const request = insertWishlistWine(input, owner, client, scope);
   pendingSaves.set(key, request);
   try {
     return await request;
@@ -59,7 +72,12 @@ export async function addToWishlist(input: WineLike): Promise<boolean> {
   }
 }
 
-async function insertWishlistWine(input: WineLike, userId: string): Promise<boolean> {
+async function insertWishlistWine(
+  input: WineLike,
+  userId: string,
+  client: typeof supabase,
+  scope?: AccountWriteScope,
+): Promise<boolean> {
   const vintage = normalizeVintage(input.vintage);
 
   const row = {
@@ -82,7 +100,7 @@ async function insertWishlistWine(input: WineLike, userId: string): Promise<bool
   };
 
   if (!row.wine_id) {
-    let query = supabase
+    let query = client
       .from("wishlist")
       .select("id")
       .eq("user_id", userId)
@@ -91,6 +109,7 @@ async function insertWishlistWine(input: WineLike, userId: string): Promise<bool
     query = row.producer === null ? query.is("producer", null) : query.eq("producer", row.producer);
     query = row.vintage === null ? query.is("vintage", null) : query.eq("vintage", row.vintage);
     const { data: existing, error: lookupError } = await query;
+    if (scope && !scope.current()) return false;
     if (lookupError) {
       toast.error("Could not check your wishlist. Please try again.");
       return false;
@@ -101,11 +120,13 @@ async function insertWishlistWine(input: WineLike, userId: string): Promise<bool
     }
   }
 
-  const { data: inserted, error } = await supabase
+  if (scope && !scope.current()) return false;
+  const { data: inserted, error } = await client
     .from("wishlist")
     .insert(row as never)
     .select("id")
     .single();
+  if (scope && !scope.current()) return false;
   if (error) {
     // Unique violation on (user_id, wine_id) → already saved
     if ((error as { code?: string }).code === "23505") {

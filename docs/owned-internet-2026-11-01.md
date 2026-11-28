@@ -1,0 +1,309 @@
+# Owned Windows Internet Deployment
+
+Date: 2026-11-01. Scope: the separate owner-controlled Windows installation only.
+The original published site, production Supabase, abandoned hosted test, apex DNS,
+router, firewall and shared Docker engine were not changed.
+
+## Installed State
+
+- Public hostname: `https://winesnap.boleoai.se`.
+- Tunnel: `winesnap-owned-windows`, ID `3c24ecc7-ab97-48dc-95ff-7d72c84918d0`.
+- A separately confirmed Cloudflare action created exactly the published route
+  and its `winesnap.boleoai.se` CNAME. The service is exclusively
+  `http://winesnap-owned-internet:8080`.
+- The owner chose the new gate password themselves in the masked Windows form.
+  Only its Argon2id hash and gate keys are stored in CurrentUser DPAPI. No password
+  was supplied through chat, entered by the agent or saved in a plaintext file.
+- Authelia, the gated proxy and the connector have no published host ports.
+  Existing app/API/mail ports remain loopback-only.
+- The owned app/auth public-origin update is installed. Both original loopback
+  origins and the original JWT issuer remain valid. All 37 existing migrations
+  remained applied; zero new migrations were executed.
+- This is an owner-private installation, not commercial/multi-user release approval.
+  Windows and Docker must stay running, with the owning Windows user signed in.
+
+## Isolation And Credentials
+
+The gate has a dedicated internal network. The proxy bridges the owned app/API
+egress, the private gate network and the internal ingress network. The connector
+has only its exclusive outward network plus the internal ingress network; it
+does not join the database, app/API egress or mail networks. Existing peer identity,
+labels, mounts, capabilities, images, commands and absence of host ports are checked.
+Docker's explicit default IPv4/IPv6 options are recognized without permitting
+custom bridges or unexpected peers.
+
+The connector image copies the cloudflared binary and vendor CA bundle from the
+previously approved digest-pinned official Cloudflare image into a digest-pinned
+official Node image. Its Dockerfile-specific build allowlist includes only the
+entrypoint and three credential-free shared modules. It never sends the runtime
+stores, source environment or provider keys to that image build.
+
+The Windows wrapper verifies the exact approved account/tunnel in the encrypted
+connector store, then supplies the token by private stdin into the container's
+user-owned tmpfs. It is not in Docker arguments, environment or persistent mounts.
+The entrypoint verifies ownership/mode and tunnel identity before running
+cloudflared with `--token-file`. TLS validation remains enabled. The private
+metrics readiness port is not published. See the official
+[run parameters](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/run-parameters/)
+and [container image source](https://github.com/cloudflare/cloudflared/blob/master/Dockerfile).
+
+The gate remains one-factor password authentication, not MFA. Its login is separate
+from WineSnap's own session, JWT and RLS. Outer logout does not erase WineSnap's
+existing private offline data; use the app's own logout on shared devices too.
+The API/admin/mail/maintenance exclusions and deny-by-default gate remain intact.
+
+## Supervisor And Recovery
+
+The current-user limited task now runs supervisor version
+`2026-11-01-private-ingress-v3`. Recovery remains protected by the private operation
+lock and kill-on-close process jobs. A successful explicit ingress/tunnel install
+sets that component's private control flag. The watcher only resumes components
+whose flag is enabled; missing resources are not automatically provisioned.
+
+After each Docker restart, user files/config and the tunnel token must be privately
+re-injected into empty tmpfs before the waiting processes serve/connect. Missing
+or invalid gate state fails closed. There is no ungated fallback route.
+
+A real recovery test stopped only the verified owned connector at
+`14:16:56Z`. Public HTTPS returned Cloudflare 530 and no private app. Without a
+manual resume, the watcher restarted it at `14:17:27Z`; readiness passed at
+`14:17:29Z`. This is process/container recovery, not an actual Windows reboot or
+power-loss/off-device test. The shared engine and unrelated containers stayed up.
+
+Read-only status:
+
+```powershell
+./scripts/get-owned-windows-status.ps1
+./scripts/run-owned-ingress.ps1 -Action Verify
+./scripts/run-owned-tunnel.ps1 -Action Verify
+node scripts/check-owned-public.mjs --check-approved-owned-host
+```
+
+## Backups
+
+The existing application backup still includes PostgreSQL/Auth hashes and actual
+image bytes. Before the origin update, the encrypted application archive
+`owned-20261101-135056144.dpapi` was created and encryption round-tripped.
+
+The gate has a separate daily backup under the private `internet-backups` directory.
+Only the verified private proxy/gate are quiesced, then fixed SQLite filenames are
+read through a networkless, unprivileged helper. The wrapper also includes encrypted
+copies of the gate and scoped tunnel stores, then encrypts the entire archive with
+CurrentUser DPAPI and verifies its round-trip. Retention is at most seven archives
+and seven days. No plaintext SQL, password hash or connector token is written to
+the workspace/status report.
+
+```powershell
+./scripts/run-owned-ingress.ps1 -Action Backup
+./scripts/run-owned-ingress.ps1 -Action Rehearse
+```
+
+The real isolated rehearsal of `gate-20261101-134237641.dpapi` passed SQLite integrity,
+matching counts for all 26 tables, exact file hashes and decryption/identity checks
+for the backed-up gate and tunnel credentials. It used a separate networkless tmpfs
+and did not restore over the live volume. This remains same-PC/current-user recovery,
+not portable or off-device disaster recovery. Keep application and gate archives
+as separate required recovery inputs.
+
+## Tests And Limitations
+
+Verified so far:
+
+- The installed gate's seven denial probes, restart and stop/re-enable rollback.
+- The encrypted gate backup and isolated database/credential recovery above.
+- Healthy Windows supervisor, jobs, private ingress and connected public tunnel.
+- 25 real public HTTPS checks, including app/API/image denial, forged cookie/identity,
+  an unauthenticated scan request, admin/mail/maintenance denial, foreign Origin
+  denial and gate static resources. Responses have `no-store`; no tested response
+  reports a CDN HIT. These calls do not carry an owner session or call an AI provider.
+- The local disposable acceptance passed 24 scenarios: signup/confirmation,
+  recovery, wine and image writes, RLS and revocation, a real Playwright login,
+  image rendering, persistence across owned-service restart, export and erasure.
+  Its test accounts/images were cleaned up; it makes no provider calls.
+- The final manual `ScanAccept` passed 25 scenarios with one live provider scenario
+  in that invocation, using the previously approved original Zehn Morgen WebP.
+  The installed OpenAI path identified Zehn Morgen, both Chardonnay and Weisser
+  Burgunder, and the 2023 vintage. The original image was saved/read only in a
+  disposable fixture's cellar and removed afterward, not in the owner's cellar.
+- Source regression run: 1,083 tests in 112 files passed. TypeScript, ESLint,
+  synthetic build, both standalone runtime smoke scenarios and client budget
+  passed at that checkpoint; final post-change CI is a separate result.
+
+The public-origin acceptance initially found that GoTrue's absolute mailer path
+replaced the `/backend` API base path. The settings now explicitly use
+`/backend/auth/v1/verify` for confirmation, recovery and email-change links. The
+disposable local acceptance helper validates exactly that public prefix and routes
+only its own synthetic confirmations to the fixed loopback API; it does not bypass
+the public gate or follow arbitrary inbox links. SMTP remains local Mailpit only,
+not external email delivery.
+
+Authenticated **Chrome acceptance is now verified for the owned installation**.
+The owner completed the outer gate login themselves. Inner-app tests used an
+administrator-tagged disposable account, not the owner's cellar or password.
+Its normal one-use sign-in link was consumed through the exact approved public
+verification path, with the approved public kitchen redirect. Tokens were not
+printed, persisted as browser state or supplied through chat.
+
+The browser checks found that the service worker fetched build assets with
+`credentials: "omit"`. Behind the owner gate this returns login HTML instead of
+the protected CSS/JavaScript. Build assets now use `same-origin` credentials;
+the cache version is `2026-11-01-gated-assets`. Private/no-store/no-cache, Vary,
+redirect, exact-origin and path guards remain in place. The anonymous generic
+cooking-shell fetch still omits credentials. No gate rule, cookie policy or
+static-file protection was weakened. Existing controlled tabs were closed and
+reopened to activate the corrected worker, then the app was reloaded.
+
+Verified through `https://winesnap.boleoai.se` in Chrome:
+
+- Desktop navigation and responsive layout at 390 by 844 pixels, with no horizontal
+  overflow in Cook Mode, the scan result or the AI conversation.
+- Recipe and Cook Mode rendering. Checking the synthetic tomato ingredient and
+  advancing to step two persisted on the server: revision 3, active step index 1,
+  one checked ingredient, two servings. The private fixture inspector confirmed it.
+- The synthetic cellar showed its two bottles and its correct wine detail page.
+- One additional live OpenAI scan used the approved original Zehn Morgen WebP.
+  It read Zehn Morgen, Chardonnay and Weisser Burgunder, Nahe, and 2023. The image
+  preview rendered correctly. The result was discarded, not saved to any cellar.
+- One live Gemini chat returned two vegetarian pairing suggestions in Swedish.
+  The conversation appeared in history and could be reopened. Browser logs showed
+  no captured errors or warnings at the final check.
+- Inner-app logout returned the profile to its unauthenticated state. Guarded
+  cleanup removed the disposable account and its linked records.
+
+After all browser and offline fixtures were cleaned up, the original counts
+remained one Auth user, one wine and one wine-label object. Only this task's five
+synthetic sign-in messages were removed from the local mailbox; older messages
+and the owner's mail were left intact.
+
+The isolated real-vendor gate check also passed 30 checks, including explicit
+cookie Path `/`, exact domain and valid lifetime. No real owner's cookie or
+password was read. All 25 external anonymous TLS/denial checks passed again.
+
+Two consecutive post-fix loopback offline rehearsals passed all ten scenarios: actual network
+loss, edits, reload, private-cellar denial, reconnect, silent reconnect, both
+conflict choices, desktop rendering and private-cache erasure on logout. The first
+two attempts exposed an over-eager test assertion on a controlled checkbox whose
+IndexedDB write completes asynchronously. The test now clicks once and waits for
+the persisted checked state; it does not retry clicks, loosen assertions or alter
+the application cooking logic. Its diagnostic report records safe checkpoints
+and primitive assertion values, never raw browser errors or response bodies.
+
+This offline rehearsal used only the loopback app in a separate Playwright browser;
+it is not a claim of offline operation through the authenticated public gate. Its
+external/provider request counters and page-error counter remained zero, and its
+temporary account was removed. Physical mobile/camera, Safari, outside-home-network,
+external email, portable backup and actual Windows cold-boot acceptance remain
+distinct release gates, not implied by Chrome viewport checks.
+
+At the final source checkpoint, all 1,084 tests in 112 files, TypeScript, ESLint,
+synthetic build, both standalone runtime smoke checks and the client budget passed.
+The largest client chunk remained 109,759 gzip bytes. This is not blanket commercial
+release approval or a deployment to the original production.
+
+Five live scan attempts were made during diagnosis and final acceptance. The
+first attempts exposed a fixture-contract mismatch and an unread split vintage.
+The prompt now explicitly permits joining a visibly paired printed century/year,
+with both parts quoted as evidence, while keeping isolated or unrelated numbers
+unknown. No identity validation was loosened. The final run verified 2023 through
+the same parser used by the app. `ScanAccept` is manual only, never a watcher job.
+Its browser-external-request counter remains separate from live provider scenarios.
+The ignored scan artifact contains only the approved reference label's transcript
+and wine identity, never credentials, user history or provider keys.
+
+The original five live scan attempts above belong to local diagnosis/acceptance;
+the subsequent Chrome scan is one additional live scenario, alongside one Gemini
+chat. The private URL and Chrome acceptance do not complete every device/release
+gate. The temporary, value-free proxy diagnostic was removed; the original proxy
+configuration and authentication remain unchanged.
+
+## Local Operations Follow-Up
+
+The owner deferred physical mobile/cellular acceptance on 2026-11-01. Those checks
+remain unverified; this follow-up is restricted to the owned Windows installation.
+
+The manual read-only command is:
+
+```powershell
+node scripts/check-owned-operations.mjs
+```
+
+It reuses the existing supervisor/task check, reads only seven fixed status-report
+names under `%USERPROFILE%\WineSnapOwned`, and inventories archive names, file types
+and bounded sizes in `backups` / `internet-backups`. It does not open credential
+stores, decrypt archives, contact any network service, change settings, start jobs,
+write status files or touch the abandoned test/old production. The PowerShell child
+receives a bounded system-environment allowlist, not inherited provider credentials.
+The installed Codex-bundled PowerShell path must remain available, as for startup.
+
+Reports must match the owned project, successful scope flags and timestamps.
+Supervisor health must be within five minutes, maintenance within two hours, and
+backup/rehearsal evidence within 26 hours, with at most five minutes of future clock
+skew. The archive basename must also contain a valid, current UTC timestamp;
+refreshing a report cannot make an old or future-dated archive pass.
+Privacy and price maintenance must both report zero failures/backlog. App
+backup evidence requires Auth hashes, image bytes and encryption round-trip checks;
+the latest retained archive must exist and match the isolated rehearsal by name.
+All restore isolation, real-JWT ownership, table/hash/privilege, image-download and
+cleanup flags are required. When private ingress is enabled, the gate requires its
+own current archive, SQLite integrity and credential-recovery rehearsal. A tunnel
+declared enabled without its gate is rejected. Deliberately disabled internet needs
+neither a gate rehearsal nor automatic reactivation.
+
+Exit 0 means these local advisory checks passed; exit 2 means missing, stale,
+mismatched or failed evidence needs attention; exit 1 means unsupported invocation.
+Malformed/oversized reports and redirected paths are rejected. Output contains only
+fixed check names, validated archive basenames, timestamps and booleans, never raw errors or
+unexpected fields. This is a report-consistency check, not a new cryptographic
+inspection of archive bytes or proof against an administrator forging local files.
+New daily backups can make the matching rehearsal pending again without meaning
+the app is down. No new scheduled job was installed and no existing watcher changed.
+
+Actual acceptance in this follow-up:
+
+- New app archive `owned-20261101-160907087.dpapi` passed encryption round-trip.
+  Its isolated restore completed at `2026-11-01T16:12:02Z`: all 75 tables, Auth
+  identities/hashes, grants/policies/functions, row fingerprints/share IDs and one
+  image matched. The image downloaded through restored Storage; synthetic login,
+  wrong-password denial and owner isolation through real JWT/RLS passed. The
+  restore did not stop/connect to the live database, expose ports, load provider
+  keys or create permanent volumes. Its temporary resources were cleaned up.
+- New gate archive `gate-20261101-161246854.dpapi` passed encryption round-trip and
+  resumed the gate/proxy after backup. The isolated rehearsal at `16:14:14Z` passed
+  all 26 SQLite tables, file/integrity checks and CurrentUser recovery of the
+  backed-up gate/tunnel credentials. Temporary resources were cleaned up.
+- The actual new command reported `localOperationsReady: true`, healthy supervisor,
+  current maintenance, both current recoveries and no issues. Its separate
+  `publicReleaseAssessed` remains false. Existing anonymous public HTTPS/denial
+  acceptance also passed all 25 checks again after the backup operations.
+
+Source validation passed 1,124 tests in 113 files, including 40 new operational
+regressions. TypeScript, ESLint, synthetic build, standalone runtime smoke and
+client budget checks passed. No frontend change or owned-app rebuild was needed.
+
+Backups remain same-PC/current-Windows-user encrypted. Off-device recovery,
+external SMTP, a real Windows cold boot, supplier/legal sign-off and physical
+mobile/cellular acceptance were not completed or silently waived. No owner
+password, AI scenario, external email or old-production operation was used.
+
+## Safe Stop And Rollback
+
+Stop the connector first to make the new public service unavailable, then optionally
+stop the private gate. Each stop disables only that component's recovery flag.
+It does not change DNS, the apex or the original production site:
+
+```powershell
+./scripts/run-owned-tunnel.ps1 -Action Stop
+./scripts/run-owned-ingress.ps1 -Action Stop
+```
+
+Explicit re-enable requires verified existing local services and gate backup/restore:
+
+```powershell
+./scripts/run-owned-ingress.ps1 -Action Install
+./scripts/run-owned-tunnel.ps1 -Action Install
+```
+
+For an operator-approved full owned-hostname rollback, stop the connector first,
+then use `run-owned-windows.ps1 -Action Update -LocalOnly`. Never delete the real
+data volumes, remove original credentials, restart Docker globally or silently
+replace this gate with the old Access-only/ungated proxy configuration.

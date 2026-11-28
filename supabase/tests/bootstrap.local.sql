@@ -36,7 +36,8 @@ $$;
 -- Simulated operation context for policy unit tests; hosted tests use Storage HTTP.
 CREATE FUNCTION storage.allow_any_operation(operations text[]) RETURNS boolean
 LANGUAGE sql STABLE AS $$
-  SELECT coalesce(current_setting('test.storage_operation', true) = ANY(operations), false);
+  SELECT coalesce(regexp_replace(current_setting('test.storage_operation', true), '^storage[.]', '')
+    = ANY(ARRAY(SELECT regexp_replace(op, '^storage[.]', '') FROM unnest(operations) op)), false);
 $$;
 GRANT USAGE ON SCHEMA public, auth, storage, extensions TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;

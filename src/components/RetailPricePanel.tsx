@@ -11,6 +11,7 @@ import {
   priceCandidates,
   priceFreshness,
   priceResponseSchema,
+  retailQuoteSchema,
   runPriceBatches,
   type PriceProgress,
   type PriceRequest,
@@ -21,7 +22,7 @@ type Props = {
   wines: RetailWine[];
   ready: boolean;
   request: (input: PriceRequest, signal: AbortSignal) => Promise<unknown>;
-  reload: (ids: string[]) => Promise<void>;
+  reload: (ids: string[], signal: AbortSignal) => Promise<void>;
 };
 const commandClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gold/30 px-3 py-2 text-base text-gold disabled:opacity-50";
@@ -60,6 +61,7 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [failure, setFailure] = useState<"failed" | "setup" | null>(null);
+  const [pendingRead, setPendingRead] = useState<string[] | null>(null);
   const stop = useRef(false);
   const lock = useRef(false);
   const controller = useRef<AbortController | null>(null);
@@ -75,7 +77,7 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
   }, []);
 
   async function refresh(resume: boolean) {
-    if (lock.current || !ready) return;
+    if (lock.current || !ready || pendingRead) return;
     lock.current = true;
     stop.current = false;
     const abort = new AbortController();
@@ -88,19 +90,32 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
     setRefreshing(true);
     setStopping(false);
     setFailure(null);
+    let unread: string[] | null = null;
+    const current = () => mounted.current && controller.current === abort && !abort.signal.aborted;
     try {
       const done = await runPriceBatches(
         initial,
-        (wineIds) => request({ action: "refresh", wineIds }, abort.signal),
+        async (wineIds) => {
+          if (!current()) throw new Error("account_scope_changed");
+          unread = wineIds;
+          const result = await request({ action: "refresh", wineIds }, abort.signal);
+          if (!current()) throw new Error("account_scope_changed");
+          return result;
+        },
         async (next, results) => {
+          if (!current()) throw new Error("account_scope_changed");
           latest.current = next;
-          if (!mounted.current) return;
           setProgress(next);
-          await reload(results.map((r) => r.wineId));
+          await reload(
+            results.map((r) => r.wineId),
+            abort.signal,
+          );
+          if (!current()) throw new Error("account_scope_changed");
+          unread = null;
         },
         () => stop.current || abort.signal.aborted,
       );
-      if (mounted.current && !done.remaining.length) {
+      if (current() && !done.remaining.length) {
         if (done.failed) toast.error(`${t("prices.error")} (${done.failed})`);
         else
           toast.success(
@@ -108,13 +123,16 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
           );
       }
     } catch (error) {
-      if (mounted.current && !abort.signal.aborted)
+      if (current()) {
+        if (!(error instanceof Error && error.message === "migration_required"))
+          setPendingRead(unread);
         setFailure(
           error instanceof Error && error.message === "migration_required" ? "setup" : "failed",
         );
+      }
     } finally {
-      lock.current = false;
-      if (mounted.current) {
+      if (controller.current === abort) lock.current = false;
+      if (current()) {
         setBusy(false);
         setRefreshing(false);
         setStopping(false);
@@ -123,12 +141,13 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
   }
 
   async function confirm(wineId: string, productNumber: string) {
-    if (lock.current || !ready) return;
+    if (lock.current || !ready || pendingRead) return;
     lock.current = true;
     setBusy(true);
     setFailure(null);
     const abort = new AbortController();
     controller.current = abort;
+    const current = () => mounted.current && controller.current === abort && !abort.signal.aborted;
     try {
       const parsed = priceResponseSchema.parse(
         await request(
@@ -141,18 +160,42 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
           ? parsed.results[0]
           : null;
       if (!result) throw new Error("Invalid confirmation response");
-      if (!mounted.current) return;
-      await reload([wineId]);
+      if (!current()) return;
+      await reload([wineId], abort.signal);
+      if (!current()) return;
       if (result.status === "matched") toast.success(t("overview.valuesUpdated"));
       else toast.error(t(result.status === "error" ? "prices.error" : "prices.changed"));
     } catch (error) {
-      if (mounted.current && !abort.signal.aborted)
+      if (current()) {
+        if (!(error instanceof Error && error.message === "migration_required"))
+          setPendingRead([wineId]);
         setFailure(
           error instanceof Error && error.message === "migration_required" ? "setup" : "failed",
         );
+      }
     } finally {
-      lock.current = false;
-      if (mounted.current) setBusy(false);
+      if (controller.current === abort) lock.current = false;
+      if (current()) setBusy(false);
+    }
+  }
+
+  async function retryRead() {
+    if (lock.current || !pendingRead) return;
+    lock.current = true;
+    const abort = new AbortController();
+    controller.current = abort;
+    const current = () => mounted.current && controller.current === abort && !abort.signal.aborted;
+    setBusy(true);
+    try {
+      await reload(pendingRead, abort.signal);
+      if (!current()) return;
+      setPendingRead(null);
+      setFailure(null);
+    } catch {
+      if (current()) setFailure("failed");
+    } finally {
+      if (controller.current === abort) lock.current = false;
+      if (current()) setBusy(false);
     }
   }
 
@@ -161,14 +204,19 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
       className="mt-4 min-w-0 border-y border-gold/20 py-4"
       aria-label={t("overview.marketValue")}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0 flex-1">
           <h2 className="text-base text-cream">{t("overview.marketValue")}</h2>
           <p className="mt-1 break-words font-display text-2xl text-cream">
             {summary.groups.map((g) => money(g.total, g.currency)).join(" / ") || "—"}
           </p>
         </div>
-        {refreshing && progress?.remaining.length ? (
+        {pendingRead ? (
+          <button className={commandClass} disabled={busy} onClick={retryRead}>
+            <RefreshCw className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {t("prices.reload")}
+          </button>
+        ) : refreshing && progress?.remaining.length ? (
           <button
             className={commandClass}
             disabled={stopping}
@@ -209,7 +257,13 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
       </dl>
       {(!ready || failure) && (
         <p role="alert" className="mt-3 text-sm text-amber-200">
-          {t(!ready || failure === "setup" ? "prices.setup" : "prices.failed")}
+          {t(
+            !ready || failure === "setup"
+              ? "prices.setup"
+              : pendingRead
+                ? "prices.readBeforeRetry"
+                : "prices.failed",
+          )}
         </p>
       )}
       {progress && (
@@ -236,7 +290,7 @@ export function RetailPricePanel({ wines, ready, request, reload }: Props) {
             <PriceWineRow
               key={`${wine.id}:${wine.updated_at}`}
               wine={wine}
-              busy={busy || !ready}
+              busy={busy || !ready || Boolean(pendingRead)}
               confirm={confirm}
             />
           ))}
@@ -258,6 +312,7 @@ function PriceWineRow({
   const t = useT();
   const status = priceFreshness(wine);
   const candidates = priceCandidates(wine);
+  const quote = retailQuoteSchema.safeParse(wine.retail_price_match);
   const [selected, setSelected] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const picked = candidates.find((c) => c.productNumber === selected);
@@ -293,6 +348,12 @@ function PriceWineRow({
       {date(wine.market_price_checked_at) && (
         <p className="mt-1 text-sm text-muted-foreground">
           {t("overview.lastChecked")}: {date(wine.market_price_checked_at)}
+        </p>
+      )}
+      {quote.success && quote.data.source && (
+        <p className="mt-1 break-words text-sm text-muted-foreground">
+          {t("prices.source")}: {quote.data.source}
+          {quote.data.sourceAsOf && ` · ${date(quote.data.sourceAsOf)}`}
         </p>
       )}
       {date(wine.retail_price_attempted_at) && (
@@ -334,6 +395,11 @@ function PriceWineRow({
                       {candidate.producer} · {candidate.vintage ?? t("prices.unknownYear")} ·{" "}
                       {candidate.volumeMl ? `${candidate.volumeMl} ml` : t("prices.unknownSize")} ·{" "}
                       {money(candidate.price, candidate.currency)} · #{candidate.productNumber}
+                      {candidate.source && (
+                        <span className="block">
+                          {t("prices.source")}: {candidate.source} · {date(candidate.sourceAsOf)}
+                        </span>
+                      )}
                     </span>
                   </span>
                 </label>

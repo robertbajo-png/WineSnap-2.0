@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n, useT } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/aiTransport";
 import type { MatchEvidence, RecommendationCandidate } from "@/lib/recommendationEngine";
 import {
   recommendationKey,
@@ -95,8 +96,8 @@ function ForYouPage() {
     setBusy(true);
     setError(null);
     try {
-      const { data, error: functionError } = await supabase.functions.invoke("taste-suggestions", {
-        body: { language: lang },
+      const { data, error: functionError } = await invokeAi("taste-suggestions", {
+        language: lang,
       });
       if (functionError) throw functionError;
       if (data?.error) throw new Error(data.error);

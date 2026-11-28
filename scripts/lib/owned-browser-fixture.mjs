@@ -1,0 +1,620 @@
+import assert from "node:assert/strict";
+import { createHash, createHmac, randomUUID } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
+import { ownedDemoRecipe } from "./owned-demo-data.mjs";
+import {
+  ownedApi,
+  ownedApp,
+  ownedProject,
+  ownedToken,
+  validateOwnedKeys,
+} from "./owned-backend.mjs";
+
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+export function ownedBrowserPassword(keys, run) {
+  assert.match(run, uuid);
+  return createHmac("sha256", keys.jwtSecret)
+    .update(`owned-browser-fixture-password-v1:${run}`)
+    .digest("hex");
+}
+export function validateBrowserFixture(value) {
+  assert.equal(value?.project, ownedProject);
+  for (const key of ["run", "userId", "wineId", "noteId", "shareId", "versionId", "sessionId"])
+    assert.match(value[key], uuid);
+  assert.equal(value.email, `owned-browser-${value.run}@example.test`);
+  assert.deepEqual(
+    Object.keys(value).sort(),
+    [
+      "project",
+      "run",
+      "userId",
+      "wineId",
+      "noteId",
+      "shareId",
+      "versionId",
+      "sessionId",
+      "email",
+    ].sort(),
+  );
+  return value;
+}
+export function assertFixtureOwner(user, fixture) {
+  validateBrowserFixture(fixture);
+  assert.equal(user?.id, fixture.userId);
+  assert.equal(user.email, fixture.email);
+  assert.equal(user.app_metadata?.owned_browser_run, fixture.run);
+}
+
+export function ownedMealSessionId(fixture) {
+  validateBrowserFixture(fixture);
+  const bytes = createHash("sha256")
+    .update(`owned-meal-session-v1:${fixture.run}`)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = bytes.toString("hex");
+  const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  assert.ok(![fixture.userId, fixture.sessionId, fixture.versionId, fixture.wineId].includes(id));
+  return id;
+}
+
+// Only synthetic fixtures use this reproducible password. Never persist it or
+// include it in a report. Interactive sign-in uses mail in the local inbox.
+export async function ownedBrowserFixture(
+  keys,
+  action,
+  fixture,
+  remember = async () => {},
+  {
+    demo = false,
+    cleanupImages = false,
+    cleanupMealPhotos = false,
+    cleanupMeals = false,
+    cleanupMemory = false,
+    planningOnly = false,
+    pantryOnly = false,
+    pantryPeer = false,
+    relay,
+  } = {},
+) {
+  validateOwnedKeys(keys);
+  assert.equal(typeof demo, "boolean");
+  assert.equal(typeof cleanupImages, "boolean");
+  assert.equal(typeof cleanupMealPhotos, "boolean");
+  assert.ok(!cleanupMealPhotos || planningOnly);
+  assert.equal(typeof cleanupMeals, "boolean");
+  assert.equal(typeof cleanupMemory, "boolean");
+  assert.equal(typeof planningOnly, "boolean");
+  assert.equal(typeof pantryOnly, "boolean");
+  assert.equal(typeof pantryPeer, "boolean");
+  assert.ok(!pantryOnly || !planningOnly);
+  assert.ok(!pantryPeer || (pantryOnly && action === "prepare"));
+  assert.ok(relay === undefined || ((pantryOnly || planningOnly) && typeof relay === "function"));
+  const kitchenOnly = planningOnly || pantryOnly;
+  if (kitchenOnly) {
+    assert.ok(!demo && !cleanupImages && !cleanupMeals && !cleanupMemory);
+    assert.ok(["prepare", "cleanup", "absent"].includes(action));
+  }
+  assert.ok(
+    ["prepare", "inspect", "conflict", "memory", "meals", "cleanup", "absent"].includes(action),
+  );
+  assert.equal(typeof remember, "function");
+  if (action !== "prepare") validateBrowserFixture(fixture);
+  const client = (role) =>
+    createClient(ownedApi, ownedToken(keys, role), {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch(url, init) {
+          assert.equal(new URL(url instanceof Request ? url.url : String(url)).origin, ownedApi);
+          return (relay ?? fetch)(url, {
+            ...init,
+            redirect: "error",
+            cache: "no-store",
+            signal: AbortSignal.timeout(20000),
+          });
+        },
+      },
+    });
+  const admin = client("service_role"),
+    app = client("anon");
+  const ok = (result) => {
+    if (result.error) throw new Error("owned_browser_fixture_failed");
+    return result.data;
+  };
+  const password = (run) => ownedBrowserPassword(keys, run);
+  async function owner() {
+    const user = ok(await admin.auth.admin.getUserById(fixture.userId)).user;
+    assertFixtureOwner(user, fixture);
+    return ok(
+      await app.auth.signInWithPassword({ email: fixture.email, password: password(fixture.run) }),
+    ).session;
+  }
+  async function mealPhotoObjects() {
+    const storage = admin.storage.from("meal-photos");
+    const objects = ok(await storage.list(fixture.userId, { limit: 21, offset: 0 }));
+    assert.ok(Array.isArray(objects) && objects.length <= 20);
+    return objects.map(({ id, name }) => {
+      assert.ok(typeof id === "string" && id.length > 0);
+      assert.ok(typeof name === "string" && name.endsWith(".png") && uuid.test(name.slice(0, -4)));
+      return fixture.userId + "/" + name;
+    });
+  }
+  async function assertDependentsAbsent() {
+    for (const [table, column = "id"] of [
+      ...(kitchenOnly
+        ? [
+            ["kitchen_week_plans", "week_start"],
+            ["kitchen_recipes"],
+            ["kitchen_recipe_versions"],
+            ["cooking_sessions"],
+          ]
+        : []),
+      ...(pantryOnly
+        ? [
+            ["kitchen_pantry", "user_id"],
+            ["kitchen_pantry_consumption", "session_id"],
+            ["kitchen_diners"],
+          ]
+        : []),
+      ...(cleanupMealPhotos ? [["kitchen_photo_meals"]] : []),
+      ...(cleanupMeals
+        ? [
+            ["kitchen_households"],
+            ["kitchen_household_members"],
+            ["kitchen_household_invites"],
+            ["kitchen_diners"],
+            ["meal_wine_links"],
+            ["cooking_sessions"],
+          ]
+        : []),
+      ...(cleanupMemory
+        ? [
+            ["food_signals"],
+            ["food_memory_state"],
+            ["food_memory_tombstones"],
+            ["chef_conversations"],
+            ["chef_messages"],
+            ["chef_requests"],
+          ]
+        : []),
+    ]) {
+      const rows = ok(
+        await admin.from(table).select(column).eq("user_id", fixture.userId).limit(1),
+      );
+      assert.ok(Array.isArray(rows));
+      assert.equal(rows.length, 0);
+    }
+    if (cleanupMealPhotos) assert.deepEqual(await mealPhotoObjects(), []);
+  }
+  if (action === "absent") {
+    const found = await admin.auth.admin.getUserById(fixture.userId);
+    assert.equal(found.error?.status, 404);
+    if (kitchenOnly) await assertDependentsAbsent();
+    return { completed: true, alreadyClean: true };
+  }
+  if (action === "prepare") {
+    const run = randomUUID(),
+      email = `owned-browser-${run}@example.test`;
+    const user = ok(
+      await admin.auth.admin.createUser({
+        email,
+        password: password(run),
+        email_confirm: true,
+        app_metadata: { owned_browser_run: run, ...(demo ? { owned_demo_run: run } : {}) },
+        user_metadata: { display_name: demo ? "Demo (exempeldata)" : "Local browser QA" },
+      }),
+    ).user;
+    fixture = {
+      project: ownedProject,
+      run,
+      email,
+      userId: user.id,
+      wineId: randomUUID(),
+      noteId: randomUUID(),
+      shareId: randomUUID(),
+      versionId: randomUUID(),
+      sessionId: randomUUID(),
+    };
+    try {
+      await remember(validateBrowserFixture(fixture));
+      await owner();
+      ok(
+        await app
+          .from("profiles")
+          .update({ onboarded_at: new Date().toISOString() })
+          .eq("id", fixture.userId),
+      );
+      if (!kitchenOnly) {
+        ok(
+          await app.from("wines").insert({
+            id: fixture.wineId,
+            user_id: user.id,
+            wine_name: demo ? "Nahe Chardonnay (demo)" : "Local browser QA Chardonnay",
+            producer: demo ? "Exempelproducent" : "Synthetic fixture",
+            vintage: 2023,
+            wine_type: "white",
+            quantity: 2,
+            country: "Germany",
+            acidity: 8,
+            body: 5,
+            tannin: 1,
+            sweetness: 0,
+            fruit: 6,
+            oak: 2,
+            is_public: !demo,
+            share_id: fixture.shareId,
+          }),
+        );
+        ok(
+          await app.from("tasting_notes").insert({
+            id: fixture.noteId,
+            user_id: user.id,
+            wine_id: fixture.wineId,
+            notes: "Jag gillar frisk syra. Jag ogillar ekfat.",
+            rating: null,
+          }),
+        );
+      }
+      if (pantryOnly) {
+        const dinerId = randomUUID();
+        ok(
+          await app.rpc("kitchen_family_change", {
+            _action: "save_diner",
+            _id: dinerId,
+            _revision: 0,
+            _data: {
+              shared: false,
+              document: pantryPeer
+                ? {
+                    name: "Annan profil",
+                    kind: "adult",
+                    preferences: [],
+                  }
+                : {
+                    name: "Syntetisk matgäst",
+                    kind: "child",
+                    preferences: [{ attribute: "ingredient", value: "tomater", direction: -1 }],
+                  },
+            },
+          }),
+        );
+        if (!pantryPeer) {
+          ok(
+            await app.rpc("kitchen_save_recipe", {
+              _recipe_id: randomUUID(),
+              _version_id: fixture.versionId,
+              _expected_revision: 0,
+              _document: {
+                title: "Syntetisk tomatsoppa",
+                description: "Syntetiskt funktionsprov.",
+                servings: 2,
+                totalMinutes: 10,
+                image: "none",
+                sourceNote: "Local synthetic QA",
+                notes: "",
+                ingredients: [{ id: randomUUID(), name: "Tomater", amount: 400, unit: "g" }],
+                steps: [
+                  {
+                    id: randomUUID(),
+                    title: "Teststeg",
+                    text: "Syntetiskt matlagningssteg.",
+                    timerSeconds: null,
+                  },
+                ],
+              },
+            }),
+          );
+        }
+        return {
+          completed: true,
+          fixture: validateBrowserFixture(fixture),
+          dinerId,
+          async read(table) {
+            assert.ok(
+              [
+                "kitchen_pantry",
+                "kitchen_pantry_consumption",
+                "kitchen_week_plans",
+                "cooking_sessions",
+              ].includes(table),
+            );
+            const rows = ok(
+              await app.from(table).select("*").eq("user_id", fixture.userId).limit(2),
+            );
+            assert.ok(Array.isArray(rows) && rows.every((row) => row.user_id === fixture.userId));
+            return rows;
+          },
+        };
+      }
+      const document = demo
+        ? ownedDemoRecipe()
+        : {
+            title: "Lokalt webblasarprov",
+            description: "Syntetiskt recept for funktionsprov.",
+            servings: 2,
+            totalMinutes: 10,
+            image: "none",
+            sourceNote: "Local synthetic QA",
+            notes: "",
+            ingredients: [{ id: randomUUID(), name: "Tomat", amount: 400, unit: "g" }],
+            steps: [
+              {
+                id: randomUUID(),
+                title: "Forbered tomaten",
+                text: "Syntetiskt steg ett.",
+                timerSeconds: 60,
+              },
+              {
+                id: randomUUID(),
+                title: "Ror om",
+                text: "Syntetiskt steg tva.",
+                timerSeconds: null,
+              },
+              {
+                id: randomUUID(),
+                title: "Servera",
+                text: "Syntetiskt steg tre.",
+                timerSeconds: null,
+              },
+            ],
+          };
+      ok(
+        await app.rpc("kitchen_save_recipe", {
+          _recipe_id: randomUUID(),
+          _version_id: fixture.versionId,
+          _expected_revision: 0,
+          _document: document,
+        }),
+      );
+      if (planningOnly)
+        return {
+          completed: true,
+          fixture: validateBrowserFixture(fixture),
+          login: "synthetic-only",
+        };
+      ok(
+        await app.rpc("kitchen_save_session", {
+          _id: fixture.sessionId,
+          _version_id: fixture.versionId,
+          _expected_revision: 0,
+          _request_id: randomUUID(),
+          _feedback: null,
+          _state: {
+            status: "running",
+            activeStep: 0,
+            servings: 2,
+            checkedIngredientIds: [],
+            timers: [],
+          },
+        }),
+      );
+      ok(
+        await app.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false, emailRedirectTo: ownedApp + "/kitchen" },
+        }),
+      );
+      return {
+        completed: true,
+        fixture: validateBrowserFixture(fixture),
+        login: "local-mail-only",
+      };
+    } catch {
+      assertFixtureOwner(ok(await admin.auth.admin.getUserById(user.id)).user, fixture);
+      ok(await admin.auth.admin.deleteUser(user.id));
+      if (pantryOnly) await assertDependentsAbsent();
+      throw new Error("owned_browser_prepare_failed");
+    }
+  }
+  if (action === "cleanup") {
+    const found = await admin.auth.admin.getUserById(fixture.userId);
+    if (!found.data?.user && found.error?.status === 404) {
+      await assertDependentsAbsent();
+      return { completed: true, alreadyClean: true };
+    }
+    assertFixtureOwner(ok(found).user, fixture);
+    if (demo) assert.equal(found.data.user.app_metadata?.owned_demo_run, fixture.run);
+    if (cleanupMealPhotos) {
+      const paths = await mealPhotoObjects();
+      if (paths.length) ok(await admin.storage.from("meal-photos").remove(paths));
+      assert.deepEqual(await mealPhotoObjects(), []);
+    }
+    if (cleanupImages) {
+      const wines = ok(
+        await admin.from("wines").select("image_url").eq("user_id", fixture.userId).limit(101),
+      );
+      const photos = ok(
+        await admin
+          .from("wine_photos")
+          .select("storage_path")
+          .eq("user_id", fixture.userId)
+          .limit(101),
+      );
+      assert.ok(wines.length <= 100 && photos.length <= 100);
+      const referenced = fixtureImagePaths(
+        [...wines.map((w) => w.image_url), ...photos.map((p) => p.storage_path)],
+        fixture,
+      );
+      const storage = admin.storage.from("wine-labels");
+      const objects = ok(await storage.list(fixture.userId, { limit: 101, offset: 0 }));
+      assert.ok(
+        objects.length <= 100 &&
+          objects.every((object) => typeof object.id === "string" && object.id.length > 0),
+      );
+      const paths = fixtureImagePaths(
+        [
+          ...new Set([
+            ...referenced,
+            ...objects.map((object) => `${fixture.userId}/${object.name}`),
+          ]),
+        ],
+        fixture,
+      );
+      if (paths.length) ok(await storage.remove(paths));
+      assert.equal(ok(await storage.list(fixture.userId, { limit: 101, offset: 0 })).length, 0);
+    }
+    ok(await admin.auth.admin.deleteUser(fixture.userId));
+    const after = await admin.auth.admin.getUserById(fixture.userId);
+    assert.equal(after.error?.status, 404);
+    await assertDependentsAbsent();
+    return { completed: true, cleanupCompleted: true, realAccountsChanged: false };
+  }
+  const session = await owner();
+  if (action === "meals") {
+    assert.equal(ok(await app.rpc("meals_access")), true);
+    const version = ok(
+      await app
+        .from("kitchen_recipe_versions")
+        .select("id,user_id,document")
+        .eq("id", fixture.versionId)
+        .eq("user_id", fixture.userId)
+        .single(),
+    );
+    assert.equal(version.id, fixture.versionId);
+    assert.equal(version.user_id, fixture.userId);
+    assert.ok(Array.isArray(version.document.steps) && version.document.steps.length > 0);
+    const original = () =>
+      app
+        .from("cooking_sessions")
+        .select("state,revision,user_id,recipe_version_id")
+        .eq("id", fixture.sessionId)
+        .eq("user_id", fixture.userId)
+        .single();
+    const before = ok(await original());
+    assert.equal(before.user_id, fixture.userId);
+    assert.equal(before.recipe_version_id, fixture.versionId);
+    const id = ownedMealSessionId(fixture);
+    const state = {
+      status: "completed",
+      activeStep: version.document.steps.length - 1,
+      servings: version.document.servings,
+      checkedIngredientIds: [],
+      timers: [],
+    };
+    const saved = ok(
+      await app.rpc("kitchen_save_session", {
+        _id: id,
+        _version_id: fixture.versionId,
+        _expected_revision: 0,
+        _request_id: id,
+        _state: state,
+        _feedback: null,
+      }),
+    );
+    assert.equal(saved.id, id);
+    assert.equal(saved.user_id, fixture.userId);
+    assert.equal(saved.recipe_version_id, fixture.versionId);
+    assert.deepEqual(saved.state, state);
+    assert.deepEqual(ok(await original()), before);
+    return { completed: true, mealSessionId: id, activeSessionUnchanged: true };
+  }
+  if (action === "memory") {
+    const response = await fetch(ownedApp + "/api/ai/extract-preference-signals", {
+      method: "POST",
+      redirect: "error",
+      cache: "no-store",
+      signal: AbortSignal.timeout(75000),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ tastingNoteId: fixture.noteId }),
+    });
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.ok(result.signals.length >= 2);
+    assert.ok(
+      result.signals.some(
+        (s) => s.attribute === "acidity" && ["like", "prefer"].includes(s.direction),
+      ),
+    );
+    assert.ok(
+      result.signals.some(
+        (s) => s.attribute === "oak" && ["dislike", "avoid"].includes(s.direction),
+      ),
+    );
+    const rows = ok(
+      await app
+        .from("taste_signals")
+        .select("attribute,direction,evidence,status")
+        .eq("tasting_note_id", fixture.noteId)
+        .eq("source", "explicit_feedback")
+        .neq("attribute", "feedback"),
+    );
+    assert.equal(rows.length, result.signals.length);
+    assert.ok(rows.every((row) => row.status === "active" && row.evidence.length > 0));
+    const anonymous = await client("anon")
+      .from("taste_signals")
+      .select("id")
+      .eq("user_id", fixture.userId);
+    assert.ok(
+      anonymous.error?.code === "42501" || (!anonymous.error && anonymous.data.length === 0),
+    );
+    return {
+      completed: true,
+      liveAiScenarios: 1,
+      extractedSignals: rows.length,
+      anonymousReadDenied: true,
+      realAccountsChanged: false,
+    };
+  }
+  let saved = ok(
+    await app
+      .from("cooking_sessions")
+      .select("state,revision,user_id,recipe_version_id")
+      .eq("id", fixture.sessionId)
+      .single(),
+  );
+  assert.equal(saved.user_id, fixture.userId);
+  assert.equal(saved.recipe_version_id, fixture.versionId);
+  if (action === "conflict") {
+    assert.ok(["running", "paused"].includes(saved.state.status));
+    saved = ok(
+      await app.rpc("kitchen_save_session", {
+        _id: fixture.sessionId,
+        _version_id: fixture.versionId,
+        _expected_revision: saved.revision,
+        _request_id: randomUUID(),
+        _state: { ...saved.state, activeStep: 0 },
+        _feedback: null,
+      }),
+    );
+  }
+  return {
+    completed: true,
+    step: saved.state.activeStep,
+    revision: saved.revision,
+    stateFingerprint: createHash("sha256").update(JSON.stringify(saved.state)).digest("hex"),
+    servings: saved.state.servings,
+    timers: saved.state.timers.length,
+    checkedIngredients: saved.state.checkedIngredientIds.length,
+    timerStates: saved.state.timers.map((timer) => ({
+      running: timer.deadlineMs !== null,
+      durationMs: timer.durationMs,
+      remainingMs: Math.max(
+        0,
+        Math.min(
+          timer.durationMs,
+          timer.deadlineMs === null ? timer.pausedMs : timer.deadlineMs - Date.now(),
+        ),
+      ),
+    })),
+    status: saved.state.status,
+  };
+}
+
+export function fixtureImagePaths(values, fixture) {
+  validateBrowserFixture(fixture);
+  assert.ok(Array.isArray(values) && values.length <= 200);
+  const paths = [...new Set(values.filter((v) => v !== null && v !== undefined))];
+  for (const path of paths) {
+    assert.equal(typeof path, "string");
+    assert.ok(path.startsWith(fixture.userId + "/"));
+    assert.match(
+      path.slice(fixture.userId.length + 1),
+      /^[a-zA-Z0-9_-]{1,100}\.(jpg|jpeg|png|webp)$/,
+    );
+  }
+  return paths;
+}

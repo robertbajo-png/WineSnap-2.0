@@ -21,6 +21,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeAi } from "@/lib/aiTransport";
 import { useAuth } from "@/hooks/useAuth";
 import { useT, useI18n, type TKey } from "@/i18n";
 import {
@@ -195,11 +196,11 @@ function NotesPage() {
     const savedNote = outcome.result.data as unknown as HistoryRow;
     setHistory((current) => [savedNote, ...current]);
     if (draft.summary.trim()) {
-      void supabase.functions
-        .invoke("extract-preference-signals", { body: { tastingNoteId: savedNote.id } })
-        .then(({ error }) => {
-          if (error) console.warn("Wine Memory extraction was deferred", error.message);
-        });
+      void invokeAi("extract-preference-signals", { tastingNoteId: savedNote.id }).then(
+        ({ error }) => {
+          if (error) console.warn("Wine Memory extraction was deferred");
+        },
+      );
     }
     const empty = EMPTY_TASTING_NOTE(today());
     // Preserve edits made while the submitted snapshot was being saved.

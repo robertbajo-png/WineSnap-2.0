@@ -242,18 +242,11 @@ export function createAttemptGuard(): AttemptGuard {
 /* Image input validation                                              */
 /* ------------------------------------------------------------------ */
 
-export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
-export const ACCEPTED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-];
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export type ImageCheck =
-  | { ok: true; mimeType: string }
-  | { ok: false; reason: "type" | "size" | "empty" };
+  { ok: true; mimeType: string } | { ok: false; reason: "type" | "size" | "empty" };
 
 export function checkImageInput(
   file: { type?: string; size?: number } | null | undefined,

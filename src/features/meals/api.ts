@@ -1,0 +1,196 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { versionSchema } from "../kitchen/domain";
+import {
+  dinerSchema,
+  householdSchema,
+  inviteSchema,
+  mealSchema,
+  memberSchema,
+  wineSchema,
+} from "./domain";
+import { mealsEnabled } from "./feature";
+import { accountWriteClient, type AccountWriteScope } from "@/lib/accountWriteScope";
+
+export class MealsError extends Error {
+  constructor(code = "") {
+    super(
+      ["PT409", "23505", "40P01"].includes(code)
+        ? "Uppgifterna har ändrats. Hämta på nytt innan du försöker igen."
+        : code === "rate_limited"
+          ? "För många försök. Vänta fem minuter."
+          : "Kunde inte slutföra. Kontrollera anslutning, inloggning och behörighet och hämta på nytt.",
+    );
+  }
+}
+async function scoped(
+  owner: string,
+  signal?: AbortSignal,
+  current = () => true,
+): Promise<SupabaseClient> {
+  if (!mealsEnabled) throw new MealsError();
+  try {
+    const client: SupabaseClient = await accountWriteClient(
+      { owner, current: () => current() && !signal?.aborted },
+      15000,
+      signal,
+    );
+    if (!current() || signal?.aborted) throw new MealsError();
+    const gate = await client.rpc("meals_access").abortSignal(signal ?? AbortSignal.timeout(15000));
+    if (!current() || signal?.aborted || gate.error || gate.data !== true) throw new MealsError();
+    return client;
+  } catch {
+    throw new MealsError();
+  }
+}
+export type MealsScope = AccountWriteScope & { signal: AbortSignal };
+export function mealMutationClient(scope: MealsScope) {
+  return scoped(scope.owner, scope.signal, scope.current);
+}
+export async function familyData(owner: string, signal?: AbortSignal) {
+  const client = await scoped(owner, signal);
+  const groups = await client
+    .from("kitchen_households")
+    .select("id,user_id,name,revision")
+    .limit(6)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
+  const diners: z.infer<typeof dinerSchema>[] = [];
+  for (let from = 0; from < 1500; from += 500) {
+    const page = await client
+      .from("kitchen_diners")
+      .select("*")
+      .order("id")
+      .range(from, from + 499)
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
+    if (page.error) throw new MealsError();
+    diners.push(...z.array(dinerSchema).parse(page.data));
+    if ((page.data?.length ?? 0) < 500) break;
+  }
+  const members = await client
+    .from("kitchen_household_members")
+    .select("id,user_id,household_id,display_name")
+    .limit(61)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
+  const invites = await client
+    .from("kitchen_household_invites")
+    .select("id,user_id,household_id,expires_at,revoked_at,used_at")
+    .gt("expires_at", new Date().toISOString())
+    .is("revoked_at", null)
+    .is("used_at", null)
+    .limit(61)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
+  if (
+    [groups, members, invites].some((r) => r.error) ||
+    (groups.data?.length ?? 0) > 5 ||
+    diners.length > 1464 ||
+    new Set(diners.map((d) => d.id)).size !== diners.length ||
+    (members.data?.length ?? 0) > 60 ||
+    (invites.data?.length ?? 0) > 60
+  )
+    throw new MealsError();
+  return {
+    groups: z.array(householdSchema).parse(groups.data),
+    diners,
+    members: z.array(memberSchema).parse(members.data),
+    invites: z.array(inviteSchema).parse(invites.data),
+  };
+}
+export type FamilyData = Awaited<ReturnType<typeof familyData>>;
+
+export async function ownedPlanDiners(owner: string, signal: AbortSignal) {
+  const client = await scoped(owner, signal);
+  const diners: z.infer<typeof dinerSchema>[] = [];
+  for (let from = 0; from < 1500; from += 500) {
+    const response = await client
+      .from("kitchen_diners")
+      .select("id,user_id,household_id,shared,document,revision,created_at,updated_at")
+      .eq("user_id", owner)
+      .order("id")
+      .range(from, from + 499)
+      .abortSignal(signal);
+    if (response.error || signal.aborted) throw new MealsError();
+    const page = z.array(dinerSchema).max(500).safeParse(response.data);
+    if (!page.success || page.data.some((diner) => diner.user_id !== owner)) throw new MealsError();
+    diners.push(...page.data);
+    if (page.data.length < 500) break;
+  }
+  if (diners.length > 1464 || new Set(diners.map((diner) => diner.id)).size !== diners.length)
+    throw new MealsError();
+  return diners;
+}
+export async function cellarWines(owner: string, signal?: AbortSignal) {
+  const result = await (
+    await scoped(owner, signal)
+  )
+    .from("wines")
+    .select(
+      "id,user_id,wine_name,vintage,wine_type,quantity,consumed_at,image_url,body,acidity,tannin,sweetness,grape_varieties,region,country",
+    )
+    .eq("user_id", owner)
+    .order("created_at", { ascending: false })
+    .limit(201)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
+  if (result.error) throw new MealsError(result.error.code);
+  return {
+    wines: z.array(wineSchema).parse(result.data?.slice(0, 200)),
+    truncated: result.data?.length === 201,
+  };
+}
+export async function mealHistory(owner: string, signal?: AbortSignal) {
+  const client = await scoped(owner, signal);
+  const r = await client
+    .from("meal_wine_links")
+    .select("*")
+    .eq("user_id", owner)
+    .order("updated_at", { ascending: false })
+    .limit(51)
+    .abortSignal(signal ?? AbortSignal.timeout(15000));
+  if (r.error) throw new MealsError(r.error.code);
+  const meals = z.array(mealSchema).parse(r.data?.slice(0, 50));
+  const titles: Record<string, string> = {},
+    wineNames: Record<string, string> = {};
+  if (meals.length) {
+    const sessions = await client
+      .from("cooking_sessions")
+      .select("id,recipe_version_id")
+      .eq("user_id", owner)
+      .in(
+        "id",
+        meals.map((m) => m.session_id),
+      )
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
+    if (sessions.error || sessions.data.length !== meals.length) throw new MealsError();
+    const versions = await client
+      .from("kitchen_recipe_versions")
+      .select("*")
+      .eq("user_id", owner)
+      .in(
+        "id",
+        sessions.data.map((s) => s.recipe_version_id),
+      )
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
+    const wines = await client
+      .from("wines")
+      .select("id,wine_name")
+      .eq("user_id", owner)
+      .in(
+        "id",
+        meals.map((m) => m.wine_id),
+      )
+      .abortSignal(signal ?? AbortSignal.timeout(15000));
+    if (versions.error || wines.error) throw new MealsError();
+    const parsed = z.array(versionSchema).parse(versions.data);
+    for (const s of sessions.data) {
+      const version = parsed.find((v) => v.id === s.recipe_version_id);
+      if (!version) throw new MealsError();
+      titles[s.id] = version.document.title;
+    }
+    for (const w of wines.data) wineNames[w.id] = w.wine_name ?? "Namnlöst vin";
+  }
+  return {
+    meals,
+    titles,
+    wineNames,
+    truncated: r.data?.length === 51,
+  };
+}

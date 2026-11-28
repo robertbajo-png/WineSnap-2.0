@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { ownedDeviceOrigin, requestOwnedDeviceSession } from "@/lib/ownedDeviceLogin";
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -12,6 +13,7 @@ export function useAuth() {
     let authEvent = false;
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       if (!active) return;
+      if (_e === "INITIAL_SESSION" && !s && ownedDeviceOrigin()) return;
       authEvent = true;
       setSession(s);
       setUser(s?.user ?? null);
@@ -19,10 +21,23 @@ export function useAuth() {
     });
     supabase.auth
       .getSession()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (!active || authEvent) return;
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
+        let current = data.session;
+        if (!current && ownedDeviceOrigin()) {
+          const approved = await requestOwnedDeviceSession();
+          if (!active || authEvent) return;
+          if (approved) {
+            const saved = await supabase.auth.setSession({
+              access_token: approved.access_token,
+              refresh_token: approved.refresh_token,
+            });
+            current = saved.error ? null : saved.data.session;
+          }
+        }
+        if (!active || authEvent) return;
+        setSession(current);
+        setUser(current?.user ?? null);
         setLoading(false);
       })
       .catch(() => {

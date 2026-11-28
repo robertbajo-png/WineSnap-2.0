@@ -1,0 +1,186 @@
+.meal-photo {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.meal-photo-heading,
+.meal-photo-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.meal-photo-actions {
+  justify-content: flex-start;
+}
+.meal-photo-heading h1,
+.meal-photo-review h2,
+.meal-photo-history h2,
+.meal-photo p {
+  margin: 0;
+}
+.meal-photo-review h2,
+.meal-photo-history h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.2rem;
+}
+
+.meal-photo-keep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.meal-photo-keep input {
+  inline-size: 20px;
+  block-size: 20px;
+  flex: 0 0 20px;
+  accent-color: #d7af70;
+}
+
+.meal-photo-history,
+.meal-photo-history-list,
+.meal-photo-history-entry {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.meal-photo-history {
+  padding-block-start: 16px;
+  border-top: 1px solid rgb(160 145 136 / 24%);
+  justify-items: start;
+}
+
+.meal-photo-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.meal-photo-history-list:empty {
+  display: none;
+}
+
+.meal-photo-history-entry {
+  padding-block: 12px;
+  border-bottom: 1px solid rgb(160 145 136 / 24%);
+}
+
+.meal-photo-history-entry time {
+  font-size: 0.9rem;
+}
+.meal-photo-review {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.meal-photo-preview {
+  display: block;
+  width: min(100%, 28rem);
+  aspect-ratio: 4 / 3;
+  max-height: 16rem;
+  object-fit: contain;
+  background: #101311;
+  border-radius: 8px;
+}
+
+.meal-photo-detail,
+.meal-photo-portion {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.meal-photo-detail a {
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+.meal-photo-alert {
+  border-inline-start: 2px solid #d59b80;
+  padding-inline-start: 12px;
+}
+.meal-photo-items,
+.meal-photo-summary {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.meal-photo-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 8rem) 44px;
+  align-items: end;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgb(160 145 136 / 24%);
+  min-width: 0;
+}
+
+.meal-photo-item label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.meal-photo-item input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 6px;
+  border: 1px solid rgb(160 145 136 / 50%);
+  padding: 7px 9px;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+}
+
+.meal-photo-item .meal-photo-icon {
+  width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  padding: 0;
+}
+.meal-photo-portion {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.meal-photo-portion button,
+.meal-photo button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: start;
+}
+.meal-photo-summary li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 390px) {
+  .meal-photo-item {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+  }
+  .meal-photo-item label:first-child {
+    grid-column: 1 / -1;
+  }
+  .meal-photo-item label:nth-child(2) {
+    grid-column: 1 / 3;
+  }
+}
