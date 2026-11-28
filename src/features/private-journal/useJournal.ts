@@ -3,7 +3,7 @@ import { exportJournal, JournalRequestError, sendJournal } from "./client";
 import type { JournalCommand, JournalState } from "./domain";
 
 export function useJournal(owner: string, offline: boolean) {
-  const [data, setData] = useState<{ state: JournalState; validUntil: string | null }>();
+  const [data, setData] = useState<Awaited<ReturnType<typeof sendJournal>>>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const channel = useRef<BroadcastChannel | null>(null);
@@ -126,5 +126,5 @@ export function useJournal(owner: string, offline: boolean) {
     return () => window.clearTimeout(timer);
   }, [clear, data, offline, run]);
 
-  return { state: data?.state, busy, error, run };
+  return { state: data?.state, maintenancePaused: data?.maintenancePaused, busy, error, run };
 }

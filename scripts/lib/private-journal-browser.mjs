@@ -47,6 +47,7 @@ export async function verifyPrivateJournalBrowser({
   handler,
   proof,
   report,
+  pauseMaintenance,
 }) {
   const root = new URL("../../", import.meta.url);
   const entry = fileURLToPath(new URL("dist/private-journal-runtime/server/index.mjs", root));
@@ -324,11 +325,41 @@ export async function verifyPrivateJournalBrowser({
     assert.equal(await journal.getByText("7,381 mmol/L").count(), 0);
     await context.setOffline(false);
     await journal.getByText("7,381 mmol/L", { exact: true }).waitFor();
+    if (pauseMaintenance) {
+      report.phase = "browser_maintenance_pause";
+      await pauseMaintenance();
+    }
     const other = await context.newPage();
     await other.goto(base + "/kitchen#private-journal");
+    const paused = "Dina värden är tillfälligt dolda i väntan på lokalt underhåll.";
+    if (pauseMaintenance) {
+      await other.setViewportSize({ width: 320, height: 760 });
+      await other.getByText(paused).waitFor();
+      assert.equal(await other.getByText("7,381 mmol/L").count(), 0);
+      assert.equal(
+        await other.getByRole("button", { name: "Exportera privata uppgifter" }).count(),
+        0,
+      );
+      assert.equal(await other.getByRole("button", { name: "Spara mätvärde" }).count(), 0);
+      assert.equal(await other.getByRole("button", { name: "Spara mål" }).count(), 0);
+      assert.ok(await other.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await other.screenshot({
+        path: join(directory, "synthetic-maintenance-320.png"),
+        fullPage: true,
+      });
+    }
     await other.getByRole("button", { name: "Stäng av och radera journalen" }).click();
+    if (pauseMaintenance)
+      await other
+        .getByRole("region", { name: "Privat ketonjournal" })
+        .getByText("Avstängt")
+        .waitFor();
     await page.bringToFront();
-    await enableJournal.waitFor();
+    if (pauseMaintenance) {
+      await panel.getByText(paused).waitFor();
+      await journal.getByText("Avstängt").waitFor();
+      report.maintenancePausedMobileWithdrawalPassed = true;
+    } else await enableJournal.waitFor();
     assert.equal(await journal.getByText("7,381 mmol/L").count(), 0);
     await context.close();
     const noAccess = await login(peer, 390);

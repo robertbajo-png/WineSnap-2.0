@@ -352,7 +352,7 @@ export function PrivateJournalPanel({
   offline: boolean;
   versions: RecipeVersion[];
 }) {
-  const { state, busy, error, run } = useJournal(owner, offline);
+  const { state, maintenancePaused, busy, error, run } = useJournal(owner, offline);
   return (
     <section className="journal" aria-labelledby="journal-heading">
       <h1 id="journal-heading">Mål och mätningar</h1>
@@ -374,11 +374,26 @@ export function PrivateJournalPanel({
         </>
       ) : (
         <>
+          {maintenancePaused && (
+            <div>
+              <p role="status">Dina värden är tillfälligt dolda i väntan på lokalt underhåll.</p>
+              <button
+                type="button"
+                className="k-secondary"
+                disabled={busy}
+                onClick={() => void run({ action: "read" })}
+              >
+                Läs om
+              </button>
+            </div>
+          )}
           <section aria-labelledby="journal-goal">
             <h2 id="journal-goal">Måltidsmål</h2>
             {state.goalChoice.enabled ? (
               <>
-                <GoalForm key={state.goalChoice.revision} state={state} run={run} busy={busy} />
+                {!maintenancePaused && (
+                  <GoalForm key={state.goalChoice.revision} state={state} run={run} busy={busy} />
+                )}
                 {state.goal?.period === "day" && (
                   <p className="journal-muted">Ingen verifierad dagssumma att jämföra med.</p>
                 )}
@@ -406,6 +421,8 @@ export function PrivateJournalPanel({
                   Stäng av och radera målet
                 </button>
               </>
+            ) : maintenancePaused ? (
+              <p className="journal-muted">Avstängt</p>
             ) : (
               <Consent feature="goal" revision={state.goalChoice.revision} run={run} busy={busy} />
             )}
@@ -414,7 +431,14 @@ export function PrivateJournalPanel({
             <h2 id="journal-readings">Privat ketonjournal</h2>
             {state.readingsChoice.enabled ? (
               <>
-                <Readings key={state.readingsChoice.revision} state={state} run={run} busy={busy} />
+                {!maintenancePaused && (
+                  <Readings
+                    key={state.readingsChoice.revision}
+                    state={state}
+                    run={run}
+                    busy={busy}
+                  />
+                )}
                 <button
                   type="button"
                   className="k-secondary"
@@ -430,6 +454,8 @@ export function PrivateJournalPanel({
                   Stäng av och radera journalen
                 </button>
               </>
+            ) : maintenancePaused ? (
+              <p className="journal-muted">Avstängt</p>
             ) : (
               <Consent
                 feature="readings"
@@ -439,7 +465,7 @@ export function PrivateJournalPanel({
               />
             )}
           </section>
-          {(state.goalChoice.enabled || state.readingsChoice.enabled) && (
+          {!maintenancePaused && (state.goalChoice.enabled || state.readingsChoice.enabled) && (
             <section>
               <button
                 type="button"

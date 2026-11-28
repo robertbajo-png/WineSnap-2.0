@@ -10,9 +10,10 @@ function Read-FixtureMessage {
   if (-not $line -or $line.Length -gt 384KB) { throw 'Unexpected private fixture response.' }
   return (ConvertFrom-Json -InputObject $line -AsHashtable -Depth 8 -DateKind String)
 }
-function Invoke-FixtureAdapter([string]$Request, [byte[]]$Bytes) {
+function Invoke-FixtureAdapter([string]$Request, [byte[]]$Bytes, [string]$Attempt) {
   $message = @{request=$Request}
   if ($Bytes) { $message.bytes = [Convert]::ToBase64String($Bytes) }
+  if ($Attempt) { $message.attempt = $Attempt }
   Write-FixtureMessage $message
   $reply = Read-FixtureMessage
   Require ($reply.request -ceq $Request -and $reply.accepted -eq $true)
@@ -94,11 +95,15 @@ try {
   Initialize-OwnedJournalVault $vault $id $clock
   if ($Mode -eq 'DatabaseFixture') {
     $report.phase = 'database_capture'
-    $prune = { (Invoke-FixtureAdapter 'prune').removed }
-    $capture = { return ,[Convert]::FromBase64String((Invoke-FixtureAdapter 'capture').bytes) }
-    $first = Invoke-OwnedJournalMaintenance $vault $id $prune $capture $clock
+    $operator = @{
+      Begin = { (Invoke-FixtureAdapter 'begin').attempt }
+      Prune = { param($Lease) (Invoke-FixtureAdapter 'prune' -Attempt $Lease).removed }
+      Capture = { param($Lease) return ,[Convert]::FromBase64String((Invoke-FixtureAdapter 'capture' -Attempt $Lease).bytes) }
+      Pass = { param($Lease) (Invoke-FixtureAdapter 'pass' -Attempt $Lease).verified }
+    }
+    $first = Invoke-OwnedJournalRetentionTick $vault $id $operator $clock
     $report.maintenance = $first.phase
-    Require ($first.completed -and $first.archiveWritten -and $first.prunedReadings -eq 1)
+    Require ($first.completed -and $first.healthPublished -and $first.archiveWritten -and $first.prunedReadings -eq 1)
     $report.sqlPurgeAndProtectedCapture = $true
     $archive = @(Get-OwnedJournalFiles $archives)
     Require ($archive.Count -eq 1)
@@ -189,15 +194,42 @@ try {
       Require (-not $noAnchor.completed -and $noAnchor.databasePruned -and -not (Invoke-OwnedJournalRestore $vault $id $name $restore $clock).completed)
     }
     finally { [IO.File]::WriteAllBytes($anchor, $anchorBytes) }
-    $acl = Get-Acl -LiteralPath $archives
     $broader = Get-Acl -LiteralPath $archives
-    $broader.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new('S-1-5-32-545'), 'Read', 'Allow'))
+    $addedRule = [Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new('S-1-5-32-545'), 'Read', 'Allow')
+    $broader.AddAccessRule($addedRule)
     [IO.FileSystemAclExtensions]::SetAccessControl((Get-Item -LiteralPath $archives), $broader)
     try { Require (-not (Invoke-OwnedJournalMaintenance $vault $id $prune $capture $clock).completed) }
-    finally { [IO.FileSystemAclExtensions]::SetAccessControl((Get-Item -LiteralPath $archives), $acl) }
+    finally {
+      $broader.RemoveAccessRuleSpecific($addedRule)
+      [IO.FileSystemAclExtensions]::SetAccessControl((Get-Item -LiteralPath $archives), $broader)
+    }
+    $null = Assert-OwnedJournalPrivate $archives $true
     Require ($script:captureCalls -eq 0 -and $script:pruneCalls -eq 7)
     $report.missingAnchorAndBroadAclFailClosed = $true
     $report.cleanupIndependentOfOtherStoreOutage = $true
+
+    $report.phase = 'maintenance_acknowledgement'
+    $fixtureLease = [Guid]::NewGuid().ToString()
+    $script:publishCalls = 0
+    $operator = @{
+      Begin = { $fixtureLease }
+      Prune = { param($Lease) Require ($Lease -ceq $fixtureLease); throw 'Synthetic pruning failure.' }
+      Capture = { throw 'Capture before verified prune refused.' }
+      Pass = { $script:publishCalls++; $true }
+    }
+    $failedTick = Invoke-OwnedJournalRetentionTick $vault $id $operator $clock
+    Require (-not $failedTick.completed -and -not $failedTick.healthPublished -and $script:publishCalls -eq 0)
+    $operator.Prune = { param($Lease) Require ($Lease -ceq $fixtureLease); 0 }
+    $operator.Capture = { $null }
+    $operator.Pass = { param($Lease) Require ($Lease -ceq $fixtureLease); $script:publishCalls++; 'true' }
+    $unverified = Invoke-OwnedJournalRetentionTick $vault $id $operator $clock
+    $report.unverifiedTickPhase = $unverified.phase
+    $report.unverifiedTickCallbacks = $script:publishCalls
+    Require (-not $unverified.completed -and -not $unverified.healthPublished -and $script:publishCalls -eq 1)
+    $operator.Pass = { param($Lease) Require ($Lease -ceq $fixtureLease); $script:publishCalls++; $true }
+    $healthy = Invoke-OwnedJournalRetentionTick $vault $id $operator $clock
+    Require ($healthy.completed -and $healthy.healthPublished -and $script:publishCalls -eq 2)
+    $report.onlyVerifiedTickPublishedHealth = $true
   }
   Require ([IO.File]::ReadAllText($ordinary) -ceq $ordinaryCanary)
   $report.ordinaryBackupUntouched = $true

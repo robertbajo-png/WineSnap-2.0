@@ -48,9 +48,11 @@ database/recovery and responsive browser run passed. The separate dormant
 `PrivateJournalUpdate` path was prepared and rehearsed with the retained
 DEV-10 web image, failure injection and both ingress configurations. The
 Windows DPAPI vault, expiry and independent cleanup retries passed in isolation,
-including real disposable PostgreSQL capture and selective restore. Next source
-work is the bounded operator adapter and maintenance health gate. No job or
-runtime bridge is installed. Keep DEV-11 off in the installed app. Do not
+including real disposable PostgreSQL capture and selective restore. The bound
+operator adapter, one Windows maintenance tick, stale-health denial and paused
+mobile withdrawal passed the combined disposable run. Next source work is the
+pinned Windows executor and periodic/restart rehearsal. No job or runtime
+bridge is installed. Keep DEV-11 off in the installed app. Do not
 invoke the installer or apply its private SQL to that app without separate
 approval; real collection has its own gate. Never add its SQL to the ledger.
 

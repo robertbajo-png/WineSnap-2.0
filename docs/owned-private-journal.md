@@ -77,13 +77,44 @@ power loss or locked file can delay physical deletion until a successful
 retry. This does not make an expired archive restorable. No promise covers
 administrator/OS compromise or rollback of the entire machine and its clock.
 
-Before real collection, wire trusted operator-only prune/capture/restore and
-an installation-bound maintenance health gate; rehearse first tick, restart,
-outage, stale state and retries without touching the running app. The active
-role, loopback bridge and automatic job are not installed. Verify real host
+Before real collection, connect the reviewed operator and retention tick to
+an explicitly enrolled Windows job with a pinned local database executor.
+Rehearse periodic execution, restart, outage and retry in a disposable setup
+before enabling the maintenance job on the owned host. The active role,
+loopback bridge and automatic job are not installed. Verify real host
 paths and database/WAL encryption, rule out sync and host snapshots bypassing
 the control store, close the impact and controller decisions in the design
 review and approve the local notice before real activation.
+
+## Maintenance Gate
+
+`config/owned-windows/dev11-operations.sql` is a separate, inactive delivery
+step. It does not change the pinned dormant SQL or the 42-migration ledger.
+The runtime calls `guarded_command` and `guarded_confirm` only; no missing-
+schema fallback to the unguarded functions is allowed. The journal API role
+does not have access to the health table, operator functions or unguarded
+calls after the operations SQL has been applied.
+
+The operator adapter pins both the ordinary and private installation IDs on
+every call. Trusted execution must be through a verified container and a
+private, bounded pipe, without query/payload logging. The job clears the
+previous ready state at the start of a maintenance attempt. Only the matching
+attempt can publish health within five minutes, after both database expiry
+and archive checks succeeded. A missing, interrupted or stale attempt does
+not re-open the journal. A successful check expires in 75 minutes; schedule
+the separate job hourly, with retries on failure before that deadline. These
+are job timings, not changes to either app or gate login sessions.
+
+While paused, already signed-in owners can see their existing on/off choices
+and turn off either feature through its existing, revisioned deletion action.
+This requires the database to be reachable; a failed request does not confirm deletion.
+No saved goals or readings are returned; new writes, opt-ins and export are
+denied. A previously prepared response is rechecked for health before release.
+Open views already holding a response clear on the recorded deadline or
+earlier when they refresh; no server can recall a response already delivered.
+Restore is a separate operator action with the journal locked and current
+permits intact, never part of periodic maintenance. Absence of the entire
+private stack must not interrupt ordinary Kitchen or account erasure.
 
 ## Guarded Delivery And Rollback
 
@@ -173,6 +204,23 @@ contents anyway.
   was removed, wrong identity and broad permissions were denied, and an
   ordinary backup canary was unchanged. A previous run timed out at the
   restart step; no timeout was increased and that run is not a pass.
+- The combined `--retention-browser` run passed all 42 migrations, an actual
+  Windows vault tick with the bound operator and selective restore, absent
+  ops denial, wrong backend/expired attempt refusal, stale health, and
+  blocking a prepared export when maintenance became unavailable before
+  release. The SQL role could not run unguarded commands or grant health.
+  The 320px paused view hid goal and measurement contents and export, fit
+  without horizontal overflow and allowed withdrawal. The previous tab
+  cleared its reading and the peer still could not open the journal. Both
+  real fixture logins, 320px/1280px normal layout, account erasure and
+  backend, vault and browser cleanup passed. The 19 focused Vitest cases
+  passed, with typecheck, scoped lint, synthetic standard build/runtime and
+  client budget. These are not a physical-phone or installed scheduler result.
+- The standalone tick also refused to publish health after failed pruning or
+  a non-boolean acknowledgement, and published it after a verified empty
+  successful cycle. An initial fixture failure was traced to restoration of
+  the synthetic ACL; the final run removed the exact added rule, verified
+  the original private access boundary, then passed and cleaned up.
 - The default synthetic Node build, typecheck, Node smoke and client bundle
   budget passed. The smoke checks require 404 for both journal endpoints.
 - Full lint passed with two existing Chef warnings. The full Vitest attempt
@@ -199,6 +247,10 @@ contents anyway.
   It passes disposable fixture bytes over a private pipe, does not print
   contents or keys, and cleans up the disposable vault and backend. Neither
   test invokes the installed supervisor or configures real maintenance.
+- The `--retention-browser` mode uses the same synthetic pipeline with the
+  guarded data path and a separate mobile-width browser check for paused
+  withdrawal. Build `private-journal-check` first. The browser uses fixture
+  authentication and no external network.
 - For dormant delivery, `node scripts/build-isolated-private-journal-web.mjs`
   builds the pinned runtime with a synthetic public configuration.
   `node scripts/check-isolated-private-journal-delivery.mjs` uses the same

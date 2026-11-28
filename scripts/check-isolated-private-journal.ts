@@ -15,12 +15,16 @@ import {
 } from "./lib/owned-dev11-archive.mjs";
 import { verifyPrivateJournalBrowser } from "./lib/private-journal-browser.mjs";
 import { verifyWindowsVault } from "./lib/private-journal-vault-fixture.mjs";
+import { createOwnedJournalOperator } from "./lib/owned-private-journal-operator.mjs";
 
+const mode = process.argv[2];
 assert.ok(
-  process.argv.length === 2 ||
-    (process.argv.length === 3 &&
-      ["--browser", "--browser-only", "--windows-storage"].includes(process.argv[2])),
+  process.argv.length <= 3 &&
+    [undefined, "--browser", "--browser-only", "--windows-storage", "--retention-browser"].includes(
+      mode,
+    ),
 );
+const windowsStorage = mode === "--windows-storage" || mode === "--retention-browser";
 
 const evidence: Record<string, boolean | number | string | undefined> = {
   synthetic: true,
@@ -67,6 +71,7 @@ async function accept() {
   await sql(await readFile(new URL("../config/owned-windows/dev11.sql", import.meta.url), "utf8"));
   await sql(`INSERT INTO winesnap_dev11_control.account(owner) VALUES (${id});`);
   let beforeConfirm: (() => Promise<unknown>) | undefined;
+  let useOperations = false;
   const handler = createJournalHandler({
     proof,
     ownerForToken: async (jwt) => {
@@ -75,7 +80,9 @@ async function accept() {
     },
     command: async (user, input) =>
       JSON.parse(
-        await bounded(`SELECT winesnap_dev11_control.command(${literal(user)},${json(input)});`),
+        await bounded(
+          `SELECT winesnap_dev11_control.${useOperations ? "guarded_command" : "command"}(${literal(user)},${json(input)});`,
+        ),
       ),
     confirm: async (user, stamp, expiresAt) => {
       const intercept = beforeConfirm;
@@ -83,7 +90,7 @@ async function accept() {
       await intercept?.();
       return (
         (await bounded(
-          `SELECT winesnap_dev11_control.confirm(${literal(user)},${literal(stamp)},${literal(expiresAt)});`,
+          `SELECT winesnap_dev11_control.${useOperations ? "guarded_confirm" : "confirm"}(${literal(user)},${literal(stamp)},${literal(expiresAt)});`,
         )) === "t"
       );
     },
@@ -127,7 +134,7 @@ async function accept() {
     "f",
   );
   evidence.isolationPassed = true;
-  if (process.argv[2] === "--browser-only") {
+  if (mode === "--browser-only") {
     await verifyPrivateJournalBrowser({ backend, owner, peer, handler, proof, report: evidence });
     return;
   }
@@ -229,11 +236,22 @@ async function accept() {
     await sql(`DELETE FROM winesnap_dev11_data.reading WHERE owner = ${id};`);
   };
   let archive: Record<string, unknown> | undefined;
+  let operator: ReturnType<typeof createOwnedJournalOperator> | undefined;
   const restore = (snapshot = archive) =>
     result(`SELECT winesnap_dev11_control.restore(${id},${json(snapshot)});`);
   const captureSql = `SELECT winesnap_dev11_control.capture(${id});`;
-  if (process.argv[2] === "--windows-storage") {
+  const checkPaused = async () => {
+    const payload = await (await call({ action: "read" })).json();
+    assert.equal(payload.maintenancePaused, true);
+    assert.equal(payload.validUntil, null);
+    assert.deepEqual([payload.state.goal, payload.state.readings], [null, []]);
+    return payload.state as JournalState;
+  };
+  if (windowsStorage) {
     evidence.phase = "windows_storage";
+    useOperations = true;
+    await call({ action: "read" }, { status: 503 });
+    useOperations = false;
     const seeded = await command({
       action: "addReading",
       revision: version,
@@ -241,19 +259,68 @@ async function accept() {
     });
     const expiring = seeded.readings.find((entry) => entry.reading.value === "9.87");
     assert.ok(expiring);
+    await sql(
+      await readFile(
+        new URL("../config/owned-windows/dev11-operations.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    useOperations = true;
+    const backendId = await sql("SELECT id FROM winesnap_local.installation;");
+    const installation = await sql("SELECT identity FROM winesnap_dev11_control.installation;");
+    const configured = createOwnedJournalOperator({
+      execute: sql,
+      backendId,
+      journalId: installation,
+    });
+    operator = configured;
+    const denied = createOwnedJournalOperator({
+      execute: sql,
+      backendId: randomBytes(16).toString("hex"),
+      journalId: installation,
+    });
+    assert.equal(await denied.begin(), null);
+    await checkPaused();
+    await call({ action: "addReading", revision: version, reading: blood }, { status: 403 });
+    assert.equal(
+      await sql(`SELECT
+      has_function_privilege('winesnap_dev11_api','winesnap_dev11_control.command(uuid,jsonb)','EXECUTE') OR
+      has_function_privilege('winesnap_dev11_api','winesnap_dev11_control.confirm(uuid,uuid,timestamptz)','EXECUTE') OR
+      has_function_privilege('winesnap_dev11_api','winesnap_dev11_control.maintenance_pass(uuid,uuid)','EXECUTE') OR
+      has_table_privilege('winesnap_dev11_api','winesnap_dev11_control.maintenance','SELECT');`),
+      "f",
+    );
+    const interrupted = await configured.begin();
+    assert.ok(interrupted);
+    assert.equal(await configured.begin(), null);
+    assert.equal(await denied.pass(interrupted), false);
+    await assert.rejects(denied.prune(interrupted));
+    await sql(
+      "UPDATE winesnap_dev11_control.maintenance SET started_at = clock_timestamp() - interval '6 minutes';",
+    );
+    assert.equal(await configured.pass(interrupted), false);
+    await checkPaused();
     await sql(`UPDATE winesnap_dev11_control.reading_permit
        SET expires_at = statement_timestamp() - interval '1 second'
        WHERE id = ${literal(expiring.id)};`);
+    let recoveryAttempt: string | null = null;
     await verifyWindowsVault({
-      installation: await sql("SELECT identity FROM winesnap_dev11_control.installation;"),
-      prune: async () => Number(await sql("SELECT winesnap_dev11_control.prune();")),
-      capture: async () => {
-        const document = await sql(captureSql);
+      installation,
+      operator: configured,
+      onCapturedSnapshot: (document: string) => {
         archive = JSON.parse(document);
-        return document;
       },
-      captured: prepareSelectiveRestore,
-      restore: (document: string) => restore(JSON.parse(document)),
+      captured: async () => {
+        assert.deepEqual(
+          (await command({ action: "read" })).readings.map(({ id }) => id),
+          [first.id, second.id, third.id],
+        );
+        await prepareSelectiveRestore();
+        recoveryAttempt = await configured.begin();
+        assert.ok(recoveryAttempt);
+        await checkPaused();
+      },
+      restore: (bytes: Buffer) => configured.restore(recoveryAttempt, bytes),
       report: evidence,
     });
     assert.equal(
@@ -262,6 +329,10 @@ async function accept() {
       ),
       "0",
     );
+    // The recovery path is still dark; reopening below is a synthetic completion only.
+    await checkPaused();
+    assert.ok(recoveryAttempt && (await configured.pass(recoveryAttempt)));
+    evidence.boundMaintenanceAndExpiredAttemptPassed = true;
   } else {
     const snapshot = await result(captureSql);
     const key = randomBytes(32);
@@ -325,13 +396,63 @@ async function accept() {
   assert.equal(late.headers.has("content-disposition"), false);
   evidence.lateExportRefused = true;
   state = await command({ action: "read" });
-  if (process.argv[2] === "--browser") {
-    state = await command({
-      action: "disable",
-      feature: "goal",
-      revision: state.goalChoice.revision,
+  if (operator) {
+    evidence.phase = "maintenance_release_and_stale";
+    const configured = operator;
+    let failedDuringRelease: string | null = null;
+    beforeConfirm = async () => {
+      failedDuringRelease = await configured.begin();
+      assert.ok(failedDuringRelease);
+    };
+    const exportInput = {
+      action: "export",
+      goalRevision: state.goalChoice.revision,
+      readingsRevision: state.readingsChoice.revision,
+    };
+    const refused = await call(exportInput, { path: "export", status: 409 });
+    assert.equal(refused.headers.has("content-disposition"), false);
+    assert.ok(failedDuringRelease && (await configured.pass(failedDuringRelease)));
+    await sql(
+      "UPDATE winesnap_dev11_control.maintenance SET checked_at = clock_timestamp() - interval '75 minutes';",
+    );
+    const paused = await checkPaused();
+    assert.equal(paused.goalChoice.enabled, true);
+    await call(exportInput, { path: "export", status: 403 });
+    const disabled = await (
+      await call({ action: "disable", feature: "goal", revision: paused.goalChoice.revision })
+    ).json();
+    assert.equal(disabled.maintenancePaused, true);
+    assert.equal(disabled.state.goalChoice.enabled, false);
+    assert.equal(await sql("SELECT count(*) FROM winesnap_dev11_data.goal;"), "0");
+    const retry = await configured.begin();
+    assert.ok(retry && (await configured.pass(retry)));
+    evidence.maintenanceLateReleaseAndWithdrawalPassed = true;
+    state = await command({ action: "read" });
+  }
+  if (mode === "--browser" || mode === "--retention-browser") {
+    if (state.goalChoice.enabled)
+      state = await command({
+        action: "disable",
+        feature: "goal",
+        revision: state.goalChoice.revision,
+      });
+    let afterBrowserPause: string | null = null;
+    const pauseMaintenance = operator
+      ? async () => {
+          afterBrowserPause = await operator.begin();
+          assert.ok(afterBrowserPause);
+        }
+      : undefined;
+    await verifyPrivateJournalBrowser({
+      backend,
+      owner,
+      peer,
+      handler,
+      proof,
+      report: evidence,
+      pauseMaintenance,
     });
-    await verifyPrivateJournalBrowser({ backend, owner, peer, handler, proof, report: evidence });
+    if (operator) assert.ok(afterBrowserPause && (await operator.pass(afterBrowserPause)));
     state = await command({ action: "read" });
   }
 

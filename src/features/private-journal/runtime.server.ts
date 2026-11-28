@@ -68,13 +68,13 @@ async function initialize() {
     },
     command: async (owner, input) => {
       const rows = await sql`
-        SELECT winesnap_dev11_control.command(${owner}::uuid,${sql.json(input)}::jsonb) AS result
+        SELECT winesnap_dev11_control.guarded_command(${owner}::uuid,${sql.json(input)}::jsonb) AS result
       `;
       return rows[0]?.result;
     },
     confirm: async (owner, stamp, expiresAt) => {
       const rows = await sql`
-        SELECT winesnap_dev11_control.confirm(${owner}::uuid,${stamp}::uuid,${expiresAt}::timestamptz) AS okay
+        SELECT winesnap_dev11_control.guarded_confirm(${owner}::uuid,${stamp}::uuid,${expiresAt}::timestamptz) AS okay
       `;
       return rows[0]?.okay === true;
     },
@@ -90,10 +90,12 @@ export async function handleOwnedPrivateJournal(request: Request) {
     !/^[a-f0-9]{64}$/.test(request.headers.get(journalProofHeader) ?? "")
   )
     return journalUnavailable();
+  const initializing = (runtime ??= initialize());
   try {
-    const handle = await (runtime ??= initialize());
+    const handle = await initializing;
     return handle(request);
   } catch {
+    if (runtime === initializing) runtime = undefined;
     return journalUnavailable();
   }
 }

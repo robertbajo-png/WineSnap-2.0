@@ -25,8 +25,8 @@ const envNames = new Set([
 // Pipe synthetic fixtures only; neither PowerShell transcript nor SQL values enter the report.
 export async function verifyWindowsVault({
   installation,
-  prune,
-  capture,
+  operator,
+  onCapturedSnapshot,
   captured,
   restore,
   report,
@@ -46,7 +46,8 @@ export async function verifyWindowsVault({
   const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
   const timeout = setTimeout(() => child.kill(), 120_000);
   let snapshot;
-  let phase = "prune";
+  let phase = "begin";
+  let attempt;
   const reply = (message) => child.stdin.write(JSON.stringify(message) + "\n");
   try {
     reply({ hello: "winesnap-dev11-vault-fixture-v1", installation });
@@ -67,14 +68,28 @@ export async function verifyWindowsVault({
       assert.ok(message.request === phase && phase !== "report" && phase !== "done");
       const envelope = { request: phase, accepted: true };
       switch (phase) {
+        case "begin":
+          attempt = await operator.begin();
+          assert.ok(attempt);
+          reply({ ...envelope, attempt });
+          phase = "prune";
+          break;
         case "prune":
-          reply({ ...envelope, removed: await prune() });
+          assert.ok(message.attempt === attempt);
+          reply({ ...envelope, removed: await operator.prune(attempt) });
           phase = "capture";
           break;
         case "capture":
-          snapshot = Buffer.from(await capture(), "utf8");
+          assert.ok(message.attempt === attempt);
+          snapshot = Buffer.from(await operator.capture(attempt), "utf8");
           assert.ok(snapshot.length > 0 && snapshot.length <= 256 * 1024);
+          onCapturedSnapshot(snapshot.toString("utf8"));
           reply({ ...envelope, bytes: snapshot.toString("base64") });
+          phase = "pass";
+          break;
+        case "pass":
+          assert.ok(message.attempt === attempt);
+          reply({ ...envelope, verified: await operator.pass(attempt) });
           phase = "captured";
           break;
         case "captured":
@@ -86,7 +101,7 @@ export async function verifyWindowsVault({
           const plaintext = Buffer.from(message.bytes, "base64");
           try {
             assert.ok(snapshot.equals(plaintext));
-            reply({ ...envelope, result: await restore(plaintext.toString("utf8")) });
+            reply({ ...envelope, result: await restore(plaintext) });
           } finally {
             plaintext.fill(0);
           }

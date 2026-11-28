@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { compareMealGoal, journalCommand, mealGoal, reading, readingInWindow } from "./domain";
+import {
+  compareMealGoal,
+  journalCommand,
+  journalReply,
+  mealGoal,
+  reading,
+  readingInWindow,
+} from "./domain";
 import { enteredInstant, localTimeOffsets } from "./timestamp";
 
 const at = "2026-10-25T02:30:00+02:00";
@@ -66,4 +73,23 @@ it("compares only a quantified, complete estimate per meal and does not invent a
   expect(compareMealGoal(goal, estimate)).toBe("within");
   expect(compareMealGoal(goal, { ...estimate, carbsPerServing: 12.501 })).toBe("above");
   expect(mealGoal.safeParse({ period: "meal", grams: "0" }).success).toBe(false);
+});
+
+it("allows paused choice controls but no goal, reading or content deadline", () => {
+  const revision = "1ca87bfd-7879-4a43-8747-14a5bce6d88e";
+  const choice = { enabled: true, revision };
+  const state = { goalChoice: choice, readingsChoice: choice, goal: null, readings: [] };
+  const paused = { state, validUntil: null, maintenancePaused: true };
+  expect(journalReply.safeParse(paused).success).toBe(true);
+  expect(journalReply.safeParse({ ...paused, validUntil: at }).success).toBe(false);
+  expect(
+    journalReply.safeParse({ ...paused, state: { ...state, goal: { grams: "12", period: "day" } } })
+      .success,
+  ).toBe(false);
+  expect(
+    journalReply.safeParse({
+      ...paused,
+      state: { ...state, readings: [{ id: revision, revision, reading: blood }] },
+    }).success,
+  ).toBe(false);
 });

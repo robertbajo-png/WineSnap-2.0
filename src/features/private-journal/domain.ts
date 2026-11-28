@@ -81,13 +81,19 @@ export const journalState = z.strictObject({
   goal: mealGoal.nullable(),
   readings: z.array(storedReading).max(journalLimit),
 });
-export const journalReply = z.strictObject({
-  state: journalState,
-  validUntil: z
-    .string()
-    .refine((value) => Number.isFinite(Date.parse(value)))
-    .nullable(),
-});
+export const journalReply = z
+  .strictObject({
+    state: journalState,
+    validUntil: z
+      .string()
+      .refine((value) => Number.isFinite(Date.parse(value)))
+      .nullable(),
+    maintenancePaused: z.literal(true).optional(),
+  })
+  .refine(
+    ({ maintenancePaused, validUntil, state }) =>
+      !maintenancePaused || (validUntil === null && state.goal === null && !state.readings.length),
+  );
 
 export const journalSnapshot = z.strictObject({
   version: z.literal(1),

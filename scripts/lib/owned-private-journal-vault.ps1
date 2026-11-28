@@ -280,6 +280,36 @@ function Invoke-OwnedJournalMaintenance([string]$Root, [string]$Installation, [s
   return $report
 }
 
+function Invoke-OwnedJournalRetentionTick([string]$Root, [string]$Installation, [hashtable]$Operator,
+  [scriptblock]$Clock = { [DateTimeOffset]::UtcNow }) {
+  $attempt = $null
+  try {
+    $candidate = & $Operator.Begin
+    if ($candidate -is [string] -and $candidate -cmatch '^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$') {
+      $attempt = $candidate
+    }
+  } catch { $attempt = $null }
+  $prune = {
+    if (-not $attempt) { throw 'No current maintenance attempt.' }
+    & $Operator.Prune $attempt
+  }
+  $capture = { & $Operator.Capture $attempt }
+  $report = Invoke-OwnedJournalMaintenance $Root $Installation $prune $capture $Clock
+  $report.healthPublished = $false
+  if (-not $attempt -or -not $report.completed) { return $report }
+  $report.completed = $false
+  $report.phase = 'publish_health'
+  try {
+    $ack = & $Operator.Pass $attempt
+    if ($ack -is [bool] -and $ack) {
+      $report.healthPublished = $true
+      $report.completed = $true
+      $report.phase = 'done'
+    }
+  } catch { $report.healthPublished = $false }
+  return $report
+}
+
 # The restore adapter must consult independent live permits; it never returns journal data.
 function Invoke-OwnedJournalRestore([string]$Root, [string]$Installation, [string]$Name, [scriptblock]$Restore,
   [scriptblock]$Clock = { [DateTimeOffset]::UtcNow }) {

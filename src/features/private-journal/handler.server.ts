@@ -22,6 +22,7 @@ const returned = z.union([
     stamp: uuid,
     state: journalState,
     expiresAt: z.string().nullable(),
+    maintenancePaused: z.literal(true).optional(),
   }),
   z.object({ status: z.union([z.literal(400), z.literal(403), z.literal(409), z.literal(429)]) }),
 ]);
@@ -100,13 +101,18 @@ export function createJournalHandler(deps: {
       request.signal.throwIfAborted();
       const output = returned.parse(await deps.command(owner.data, input.data));
       if (output.status !== 200) return journalUnavailable(output.status);
+      if (isExport && output.maintenancePaused) return journalUnavailable(409);
       const payload = isExport
         ? journalSnapshot.parse({
             version: 1,
             goal: output.state.goal,
             readings: output.state.readings.map(({ id, reading }) => ({ id, reading })),
           })
-        : journalReply.parse({ state: output.state, validUntil: output.expiresAt });
+        : journalReply.parse({
+            state: output.state,
+            validUntil: output.expiresAt,
+            maintenancePaused: output.maintenancePaused,
+          });
       request.signal.throwIfAborted();
       if (!(await deps.confirm(owner.data, output.stamp, output.expiresAt)))
         return journalUnavailable(409);
