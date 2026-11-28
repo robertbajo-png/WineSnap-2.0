@@ -1,8 +1,6 @@
 import { inflateSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
-import { ownedBackendOrigin } from "./backendScope";
-import { createMealPhotoHandler } from "./mealPhoto.server";
-import { createLocalAiClient } from "./ownedTextAi.server";
+import { createMealPhotoHandler, createOwnedMealPhotoCompletion } from "./mealPhoto.server";
 
 const url = "http://127.0.0.1:5212/api/ai/analyze-meal-photo";
 const rgb = [14, 84, 24, 247, 240, 190];
@@ -62,6 +60,9 @@ describe("owned meal photo analysis", () => {
       response_format: { json_schema: { name: "meal_photo_estimate", strict: true } },
     });
     expect(JSON.stringify(input)).not.toContain("synthetic-owner");
+    expect(JSON.stringify(input)).toContain(
+      "For cropped, partly hidden or unscaled portions use null",
+    );
     const requestText = JSON.stringify(input);
     const image = requestText.match(/data:image\/png;base64,([A-Za-z0-9+/=]+)"/)?.[1];
     expect(image).toBeDefined();
@@ -104,18 +105,10 @@ describe("owned meal photo analysis", () => {
         ],
       }),
     );
-    const env: Record<string, string> = {
-      SUPABASE_URL: ownedBackendOrigin,
-      OPENAI_API_KEY: "synthetic-only",
-      WINESNAP_OWNED_BACKEND_ENABLED: "true",
-      WINESNAP_LOCAL_TEXT_PROVIDER: "openai",
-      WINESNAP_LOCAL_TEXT_MODEL: "gpt-6.2-sol",
-    };
-    const client = createLocalAiClient("fast", (name) => env[name], send);
     const { deps } = fixture();
     const handle = createMealPhotoHandler({
       ...deps,
-      complete: (body) => client.complete(body, 1000),
+      complete: createOwnedMealPhotoCompletion("synthetic-only", "gpt-6.2-sol", send),
     });
     expect(await (await handle(upload())).json()).toEqual(estimate);
     expect(send).toHaveBeenCalledOnce();

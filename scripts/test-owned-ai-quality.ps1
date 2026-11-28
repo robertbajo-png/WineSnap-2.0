@@ -1,9 +1,10 @@
-param()
+param([switch]$MealPhoto)
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 $directory=Assert-OwnedRuntimeDirectory
 $lock=$null;$keys=$null;$provider=$null;$process=$null;$start=$null;$job=$null;$payload=$null
+$suite=if($MealPhoto){'winesnap-meal-photo-live-v1'}else{'winesnap-ai-quality-live-v1'}
 $report=[ordered]@{project='winesnap-owned-local';completed=$false;productionTouched=$false;configurationChanged=$false;failure='owned_ai_quality_incomplete'}
 function Assert-Private([string]$Path){
   $item=Get-Item -LiteralPath $Path -Force
@@ -16,14 +17,19 @@ function Assert-Private([string]$Path){
 try{
   $lock=Open-OwnedRuntimeLock -Name operation -WaitMs 300000
   if(-not $lock){throw 'Owned operation is busy.'}
-  $file=Join-Path $directory 'backend.dpapi';Assert-Private $file
-  $bytes=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($file),$null,'CurrentUser')
-  try{$keys=[Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json -AsHashtable}finally{[Array]::Clear($bytes,0,$bytes.Length)}
-  if($keys.version -ne 1 -or $keys.project -ne 'winesnap-owned-local'){throw 'Unexpected backend scope.'}
+  if($MealPhoto){
+    $keys=[ordered]@{project='winesnap-owned-local'}
+  }else{
+    $file=Join-Path $directory 'backend.dpapi';Assert-Private $file
+    $bytes=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($file),$null,'CurrentUser')
+    try{$keys=[Text.Encoding]::UTF8.GetString($bytes)|ConvertFrom-Json -AsHashtable}finally{[Array]::Clear($bytes,0,$bytes.Length)}
+    if($keys.version -ne 1 -or $keys.project -ne 'winesnap-owned-local'){throw 'Unexpected backend scope.'}
+  }
   $file=Join-Path $directory 'ai-keys.clixml';Assert-Private $file
   $provider=Import-Clixml -LiteralPath $file
   if($provider.Version -ne 1 -or $provider.Purpose -ne 'WineSnap-local-test'){throw 'Existing WineSnap provider store required.'}
   foreach($slot in @(@('OpenAI','openai','OPENAI_API_KEY'),@('Gemini','gemini','GEMINI_API_KEY'))){
+    if($MealPhoto -and $slot[0] -eq 'Gemini'){continue}
     $credential=$provider.($slot[0])
     if($credential -isnot [pscredential] -or $credential.UserName -ne $slot[2]){throw 'Existing provider credential required.'}
     $keys[$slot[1]]=$credential.GetNetworkCredential().Password.Trim()
@@ -34,8 +40,14 @@ try{
   $start.WorkingDirectory=Split-Path -Parent $PSScriptRoot;$start.UseShellExecute=$false;$start.CreateNoWindow=$true
   $start.RedirectStandardInput=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true;$start.Environment.Clear()
   foreach($name in @('PATH','PATHEXT','COMSPEC','SystemRoot','WINDIR','SystemDrive','ProgramData','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP')){$value=[Environment]::GetEnvironmentVariable($name);if($value){$start.Environment[$name]=$value}}
-  $start.Environment['WINESNAP_OWNED_QUALITY_PIPE']='1'
-  $start.ArgumentList.Add('--import');$start.ArgumentList.Add('tsx');$start.ArgumentList.Add((Join-Path $PSScriptRoot 'check-owned-ai-quality.ts'))
+  if($MealPhoto){
+    $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_QUALITY_PIPE']='1'
+    $scriptName='check-owned-meal-photo-quality.ts'
+  }else{
+    $start.Environment['WINESNAP_OWNED_QUALITY_PIPE']='1'
+    $scriptName='check-owned-ai-quality.ts'
+  }
+  $start.ArgumentList.Add('--import');$start.ArgumentList.Add('tsx');$start.ArgumentList.Add((Join-Path $PSScriptRoot $scriptName))
   $process=[Diagnostics.Process]::Start($start);$job.Assign($process.Handle)
   $out=$process.StandardOutput.ReadToEndAsync();$err=$process.StandardError.ReadToEndAsync()
   $process.StandardInput.Write($payload);$process.StandardInput.Close();$payload=$null
@@ -44,7 +56,8 @@ try{
   $raw=$out.GetAwaiter().GetResult();$err.GetAwaiter().GetResult()|Out-Null
   if(-not $raw -or $raw.Length -gt 128KB){throw 'Unexpected quality output.'}
   $result=$raw|ConvertFrom-Json
-  if($result.suite -ne 'winesnap-ai-quality-live-v1' -or $result.project -ne 'winesnap-owned-local' -or $result.productionTouched -ne $false -or $result.configurationChanged -ne $false){throw 'Unexpected quality scope.'}
+  if($result.suite -ne $suite -or $result.project -ne 'winesnap-owned-local' -or $result.productionTouched -ne $false -or $result.configurationChanged -ne $false){throw 'Unexpected quality scope.'}
+  if($MealPhoto -and ($result.syntheticOnly -ne $true -or $result.installedAppTouched -ne $false -or $result.externalCalls -gt 4)){throw 'Unexpected meal photo quality scope.'}
   $report=$result
 }catch{$report.completed=$false;$report.failure='owned_ai_quality_incomplete'}
 finally{
