@@ -26,19 +26,21 @@ export const publicEnvironmentKeys = [
 ] as const;
 
 export function independentEnvironment(mode: string, input: Record<string, string | undefined>) {
-  if (mode === "runtime-check") {
+  const photoCheck = mode === "meal-photo-check";
+  if (mode === "runtime-check" || photoCheck) {
     return {
-      VITE_SUPABASE_URL: "https://example.invalid",
+      VITE_SUPABASE_URL: photoCheck ? ownedBrowserOrigin : "https://example.invalid",
       VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_runtime_check_not_a_real_key",
-      VITE_PRIVACY_CONTROLS_ENABLED: "false",
-      VITE_PRIVACY_OPERATIONS_VERIFIED: "false",
+      ...(photoCheck ? { VITE_OWNED_BACKEND_ENABLED: "true" } : {}),
+      VITE_PRIVACY_CONTROLS_ENABLED: String(photoCheck),
+      VITE_PRIVACY_OPERATIONS_VERIFIED: String(photoCheck),
       VITE_PRIVACY_SUPPLIERS_VERIFIED: "false",
       VITE_WINE_IMAGE_PROXY_ENABLED: "false",
-      VITE_LOCAL_AI_ENABLED: "false",
-      VITE_COOKING_CORE_ENABLED: "false",
+      VITE_LOCAL_AI_ENABLED: String(photoCheck),
+      VITE_COOKING_CORE_ENABLED: String(photoCheck),
       VITE_AI_CHEF_ENABLED: "false",
       VITE_MEALS_ENABLED: "false",
-      VITE_MEAL_PHOTOS_ENABLED: "false",
+      VITE_MEAL_PHOTOS_ENABLED: String(photoCheck),
       VITE_PANTRY_ENABLED: "false",
       VITE_RECIPE_NUTRITION_ENABLED: "false",
       VITE_PILOT_UI_ENABLED: "false",

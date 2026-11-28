@@ -11,9 +11,13 @@ import { independentEnvironment } from "./config/independent/environment.ts";
 const root = fileURLToPath(new URL(".", import.meta.url));
 const dependencies = realpathSync(fileURLToPath(new URL("./node_modules", import.meta.url)));
 const envDir = fileURLToPath(new URL("./config/independent", import.meta.url));
-const output = fileURLToPath(new URL("./dist/independent-runtime", import.meta.url));
-
 export default defineConfig(({ mode, command }) => {
+  const output = fileURLToPath(
+    new URL(
+      mode === "meal-photo-check" ? "./dist/core-meal-photo-runtime" : "./dist/independent-runtime",
+      import.meta.url,
+    ),
+  );
   const publicValues = independentEnvironment(mode, loadEnv(mode, envDir, "VITE_"));
   return {
     root,

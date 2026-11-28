@@ -8,6 +8,21 @@ const input = {
 };
 
 describe("independent build configuration", () => {
+  it("uses only the fixed synthetic configuration in meal photo browser builds", () => {
+    const fixture = independentEnvironment("meal-photo-check", {
+      ...input,
+      VITE_OWNED_PUBLIC_ORIGIN: "https://private-canary.example.invalid",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_private_canary",
+      VITE_MEAL_PHOTOS_ENABLED: "false",
+    });
+    expect(fixture).toMatchObject({
+      VITE_SUPABASE_URL: "http://127.0.0.1:54323",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_runtime_check_not_a_real_key",
+      VITE_OWNED_BACKEND_ENABLED: "true",
+      VITE_MEAL_PHOTOS_ENABLED: "true",
+    });
+    expect(fixture).not.toHaveProperty("VITE_OWNED_PUBLIC_ORIGIN");
+  });
   it("requires a deliberate owned build opt-in for meal photos", () => {
     const photo = { ...input, VITE_MEAL_PHOTOS_ENABLED: "true" };
     expect(independentEnvironment("runtime-check", photo).VITE_MEAL_PHOTOS_ENABLED).toBe("false");

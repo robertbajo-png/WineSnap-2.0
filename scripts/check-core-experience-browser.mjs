@@ -15,9 +15,11 @@ import { createCorePlanningFixture, acceptCorePlanning } from "./lib/core-planni
 import { createCoreChatFixture, acceptCoreChat } from "./lib/core-chat-browser.mjs";
 import { createCoreCollectorFixture, acceptCoreCollector } from "./lib/core-collector-browser.mjs";
 import { createCorePricesFixture, acceptCorePrices } from "./lib/core-prices-browser.mjs";
+import { acceptCoreMealPhoto, createCoreMealPhotoFixture } from "./lib/core-meal-photo-browser.mjs";
 
 // Synthetic accounts/data only. No installed backend, real account or provider credentials.
 const kitchenTabsOnly = process.argv.length === 3 && process.argv[2] === "--kitchen-tabs";
+const mealPhotoOnly = process.argv.length === 3 && process.argv[2] === "--meal-photo";
 const planningSmoke = process.argv.length === 3 && process.argv[2] === "--planning-db-smoke";
 const pantryInstalledSmoke = process.argv.length === 3 && process.argv[2] === "--pantry-db-smoke";
 const pantryDb =
@@ -30,7 +32,10 @@ const planningDb =
   (process.argv.length === 3 && process.argv[2] === "--planning-db");
 const planningOnly = planningDb || (process.argv.length === 3 && process.argv[2] === "--planning");
 const kitchenOnly =
-  planningOnly || kitchenTabsOnly || (process.argv.length === 3 && process.argv[2] === "--kitchen");
+  planningOnly ||
+  kitchenTabsOnly ||
+  mealPhotoOnly ||
+  (process.argv.length === 3 && process.argv[2] === "--kitchen");
 const chatOnly = process.argv.length === 3 && process.argv[2] === "--chat";
 const collectorOnly = process.argv.length === 3 && process.argv[2] === "--collector";
 const pricesOnly = process.argv.length === 3 && process.argv[2] === "--prices";
@@ -39,47 +44,51 @@ const ownedFixture = kitchenOnly || chatOnly || collectorOnly || pricesOnly;
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = join(
   root,
-  nutritionDb
-    ? "dist/core-nutrition-runtime"
-    : pantryDb
-      ? "dist/core-pantry-runtime"
-      : planningOnly
-        ? "dist/core-planning-runtime"
-        : pricesOnly
-          ? "dist/core-prices-runtime"
-          : kitchenOnly
-            ? "dist/core-kitchen-runtime"
-            : chatOnly
-              ? "dist/core-chat-runtime"
-              : collectorOnly
-                ? "dist/core-collector-runtime"
-                : "dist/independent-runtime",
+  mealPhotoOnly
+    ? "dist/core-meal-photo-runtime"
+    : nutritionDb
+      ? "dist/core-nutrition-runtime"
+      : pantryDb
+        ? "dist/core-pantry-runtime"
+        : planningOnly
+          ? "dist/core-planning-runtime"
+          : pricesOnly
+            ? "dist/core-prices-runtime"
+            : kitchenOnly
+              ? "dist/core-kitchen-runtime"
+              : chatOnly
+                ? "dist/core-chat-runtime"
+                : collectorOnly
+                  ? "dist/core-collector-runtime"
+                  : "dist/independent-runtime",
 );
 const artifacts = join(
   root,
-  nutritionDb
-    ? "dist/core-nutrition-database"
-    : pantryDb
-      ? pantryInstalledSmoke
-        ? "dist/core-pantry-database-smoke"
-        : "dist/core-pantry-database"
-      : planningDb
-        ? planningSmoke
-          ? "dist/core-planning-database-smoke"
-          : "dist/core-planning-database"
-        : planningOnly
-          ? "dist/core-planning"
-          : pricesOnly
-            ? "dist/core-prices"
-            : kitchenTabsOnly
-              ? "dist/core-kitchen-tabs"
-              : kitchenOnly
-                ? "dist/core-kitchen"
-                : chatOnly
-                  ? "dist/core-chat"
-                  : collectorOnly
-                    ? "dist/core-collector"
-                    : "dist/core-experience",
+  mealPhotoOnly
+    ? "dist/core-meal-photo/" + new Date().toISOString().replace(/[:.]/g, "-")
+    : nutritionDb
+      ? "dist/core-nutrition-database"
+      : pantryDb
+        ? pantryInstalledSmoke
+          ? "dist/core-pantry-database-smoke"
+          : "dist/core-pantry-database"
+        : planningDb
+          ? planningSmoke
+            ? "dist/core-planning-database-smoke"
+            : "dist/core-planning-database"
+          : planningOnly
+            ? "dist/core-planning"
+            : pricesOnly
+              ? "dist/core-prices"
+              : kitchenTabsOnly
+                ? "dist/core-kitchen-tabs"
+                : kitchenOnly
+                  ? "dist/core-kitchen"
+                  : chatOnly
+                    ? "dist/core-chat"
+                    : collectorOnly
+                      ? "dist/core-collector"
+                      : "dist/core-experience",
 );
 const fixtureOrigin = ownedFixture ? "http://127.0.0.1:54323" : "https://example.invalid";
 const fixtureKey = "sb_publishable_runtime_check_not_a_real_key";
@@ -150,27 +159,29 @@ const syntheticUsers = new Map([
 const report = {
   synthetic: true,
   fixtureDataMocked: !planningDb,
-  sourceViewScope: nutritionDb
-    ? "core-nutrition-database"
-    : pantryDb
-      ? pantryInstalledSmoke
-        ? "core-pantry-database-smoke"
-        : "core-pantry-database"
-      : planningDb
-        ? planningSmoke
-          ? "core-planning-database-smoke"
-          : "core-planning-database"
-        : planningOnly
-          ? "core-planning"
-          : pricesOnly
-            ? "core-prices"
-            : kitchenOnly
-              ? "core-kitchen"
-              : chatOnly
-                ? "core-chat"
-                : collectorOnly
-                  ? "core-collector"
-                  : "wine-detail-scan",
+  sourceViewScope: mealPhotoOnly
+    ? "core-meal-photo"
+    : nutritionDb
+      ? "core-nutrition-database"
+      : pantryDb
+        ? pantryInstalledSmoke
+          ? "core-pantry-database-smoke"
+          : "core-pantry-database"
+        : planningDb
+          ? planningSmoke
+            ? "core-planning-database-smoke"
+            : "core-planning-database"
+          : planningOnly
+            ? "core-planning"
+            : pricesOnly
+              ? "core-prices"
+              : kitchenOnly
+                ? "core-kitchen"
+                : chatOnly
+                  ? "core-chat"
+                  : collectorOnly
+                    ? "core-collector"
+                    : "wine-detail-scan",
   realAccountUsed: false,
   installedAppTouched: false,
   productionTouched: false,
@@ -385,6 +396,9 @@ try {
         base,
       })
     : null;
+  const mealPhotoFixture = mealPhotoOnly
+    ? createCoreMealPhotoFixture({ base, fixtureOwner, syntheticUsers, report })
+    : null;
   let galleryFailed = false,
     delayNextGallery = false,
     releaseGallery;
@@ -405,6 +419,7 @@ try {
       body: JSON.stringify(data),
     });
   const routeFixture = async (route) => {
+    if (mealPhotoFixture?.matches(route.request())) return mealPhotoFixture.route(route);
     if (pantryAcceptance && new URL(route.request().url()).origin === fixtureOrigin) {
       assert.notEqual(
         pantryAcceptance.pantryBrowserRequest(route.request().url(), route.request().method()),
@@ -590,7 +605,16 @@ try {
   page.setDefaultTimeout(30000);
   page.on("pageerror", () => report.pageErrors++);
   await mkdir(artifacts, { recursive: true });
-  if (planningDatabaseFixture) {
+  if (mealPhotoFixture) {
+    await acceptCoreMealPhoto({
+      page,
+      context,
+      base,
+      artifacts,
+      report,
+      fixture: mealPhotoFixture,
+    });
+  } else if (planningDatabaseFixture) {
     const capture = async (screen, width) => {
       await page.setViewportSize({ width, height: 844 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
