@@ -605,6 +605,14 @@ fallback, and the private photo bytes and earlier wine share survived.
 Report: `dist/core-meal-photo/delivery-2026-11-28T13-16-56-757Z.json`.
 See the [local update runbook](owned-meal-photo-local-update.md).
 
+**November 28 release packaging checkpoint.** The Windows Git archive
+and Docker stdin path built reviewed revision `5f04580` into disposable
+image `f337735f6578` using only tracked source and a synthetic publishable
+key. That exact image started without network, host mounts or installed
+credentials. Health and Kitchen returned 200; unauthenticated food photo
+read and analysis returned 401. Typecheck passed. No provider call, live
+backup, installation or live-device acceptance took place.
+
 Next: after separate owner approval, make a fresh encrypted backup, prove
 isolated recovery with that exact archive, then run the reviewed local
 action and confirm the installed workflow using synthetic data. Do not use
