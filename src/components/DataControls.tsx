@@ -29,6 +29,7 @@ import { clearKitchenCache } from "@/features/kitchen/storage";
 import { kitchenEnabled } from "@/features/kitchen/feature";
 import { chefEnabled } from "@/features/chef/feature";
 import { mealsEnabled } from "@/features/meals/feature";
+import { canOpenPrivateJournal } from "@/features/private-journal/feature";
 export function DataControls() {
   const { user } = useAuth();
   const { lang, t } = useI18n();
@@ -209,6 +210,18 @@ export function DataControls() {
             )}
             {lang === "sv" ? "Exportera mina uppgifter" : "Export my data"}
           </button>
+          {canOpenPrivateJournal() && (
+            <Link
+              to="/kitchen"
+              hash="private-journal"
+              className="flex min-h-12 items-center gap-3 text-base"
+            >
+              <Download className="h-5 w-5 text-gold" aria-hidden />
+              {sv
+                ? "Måltidsmål och ketonjournal: export och radering"
+                : "Meal goals and ketone journal: export and deletion"}
+            </Link>
+          )}
           {privacyControlsEnabled && (
             <>
               <button

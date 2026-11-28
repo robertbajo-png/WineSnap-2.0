@@ -190,6 +190,19 @@ async function checkServer(configuredCron, artifact) {
     assert.equal(storedPhoto.response.status, 404);
     assert.equal(storedPhoto.response.headers.get("cache-control"), "private, no-store");
     assert.deepEqual(JSON.parse(storedPhoto.body), { error: "meal_photo_not_found" });
+    for (const path of ["/api/dev11/journal", "/api/dev11/export"]) {
+      const journal = await request(path, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-winesnap-dev11-proof": "a".repeat(64) },
+        body: "{}",
+      });
+      assert.equal(
+        journal.response.status,
+        404,
+        "Private journal is disabled in the ordinary build",
+      );
+      assert.match(journal.response.headers.get("cache-control"), /no-store/);
+    }
     for (const name of ["privacy-export", "privacy-controls", "privacy-maintenance"]) {
       const privacy = await request(`/api/privacy/${name}`, {
         method: "POST",

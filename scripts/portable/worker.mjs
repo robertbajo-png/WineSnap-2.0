@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { ownedServices } from "../lib/owned-backend.mjs";
 import { ownedRestoreProbeImage } from "../lib/owned-recovery.mjs";
 import { ownedGateArchiveCode } from "../lib/owned-gate-archive.mjs";
+import { assertOrdinaryJournalFree } from "../lib/owned-dev11-archive.mjs";
 import { portableLimit, sealPortable, openPortable, validatePortableBundle } from "./bundle.mjs";
 
 assert.equal(process.platform, "win32");
@@ -73,6 +75,51 @@ async function imageReferences(application) {
   }
   return references;
 }
+async function verifyOrdinaryArchive(application) {
+  const bytes = Buffer.from(application.database.base64, "base64");
+  try {
+    const list = await command(
+      [
+        "run",
+        "--rm",
+        "--interactive",
+        "--pull",
+        "never",
+        "--name",
+        `winesnap-portable-db-scope-${run}`,
+        "--label",
+        "winesnap.scope=owned-portable-recovery",
+        "--label",
+        `winesnap.portable=${run}`,
+        "--network",
+        "none",
+        "--read-only",
+        "--user",
+        "postgres",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges:true",
+        "--log-driver",
+        "none",
+        "--memory",
+        "128m",
+        "--pids-limit",
+        "32",
+        "--entrypoint",
+        "pg_restore",
+        application.images.db,
+        "--list",
+      ],
+      bytes,
+      90000,
+    );
+    assertOrdinaryJournalFree(list);
+    report.archiveScopeVerified = true;
+  } finally {
+    bytes.fill(0);
+  }
+}
 async function ensureImages(value, prepare) {
   for (const service of ["db", "auth", "rest", "storage"]) {
     const reference = value.imageReferences[service];
@@ -132,6 +179,8 @@ try {
       imageReferences: await imageReferences(input.application),
     };
     validatePortableBundle(bundle);
+    phase = "verify_ordinary_archive_scope";
+    await verifyOrdinaryArchive(bundle.application);
     if (action === "Create") {
       phase = "encrypt_age";
       ciphertext = await sealPortable(bundle, password);
@@ -150,6 +199,8 @@ try {
       phase = "validate_recovery_images";
       assert.equal(typeof input.prepareImages, "boolean");
       await ensureImages(bundle, input.prepareImages);
+      phase = "verify_ordinary_archive_scope";
+      await verifyOrdinaryArchive(bundle.application);
       phase = "isolated_application_restore";
       const archive = Buffer.from(JSON.stringify(bundle.application));
       let restored;
@@ -239,6 +290,8 @@ try {
       }
     }
   }
+  if (ciphertext && report.archiveScopeVerified)
+    report.archiveSha256 = createHash("sha256").update(ciphertext).digest("hex");
   report.completed = true;
 } catch {
   report.failure = "portable_backup_not_accepted";

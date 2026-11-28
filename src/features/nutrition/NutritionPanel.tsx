@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ChefHat, ClipboardCheck, RotateCcw, Scale, X } from "lucide-react";
 import type { RecipeDocument, RecipeVersion } from "../kitchen/domain";
 import { recipeImages } from "../kitchen/catalog";
+import { compareMealGoal, type MealGoal } from "../private-journal/domain";
 import { referenceAttribution, referenceFoods, referenceLicense, suggestedSwap } from "./catalog";
 import {
   compareLimit,
@@ -115,7 +116,41 @@ type CalculationProps = {
   recipeServings?: number;
   onAdapt?: (prompt: string) => void;
   onDraft?: (draft: RecipeDocument) => void;
+  personalMealGoal?: MealGoal;
 };
+
+export function PersonalMealComparison({
+  goal,
+  versions,
+}: {
+  goal: MealGoal;
+  versions: RecipeVersion[];
+}) {
+  const [chosen, setChosen] = useState("");
+  const selected = versions.find((version) => version.id === chosen);
+  return (
+    <div className="nutrition-panel nutrition-inline">
+      <label className="nutrition-field">
+        Jämför en receptportion
+        <select value={selected?.id ?? ""} onChange={(e) => setChosen(e.target.value)}>
+          <option value="">Välj ett sparat recept</option>
+          {versions.map((version) => (
+            <option key={version.id} value={version.id}>
+              {version.document.title}
+            </option>
+          ))}
+        </select>
+      </label>
+      {selected && (
+        <NutritionCalculation
+          key={selected.id}
+          document={selected.document}
+          personalMealGoal={goal}
+        />
+      )}
+    </div>
+  );
+}
 
 export function RecipeNutrition(props: CalculationProps & { recipeServings: number }) {
   const epoch = useResetEpoch();
@@ -145,6 +180,7 @@ function NutritionCalculation({
   recipeServings,
   onAdapt,
   onDraft,
+  personalMealGoal,
 }: CalculationProps) {
   const [bindings, setBindings] = useState<Bindings>({}),
     [selectedServings, setServings] = useState(initialServings ?? document.servings),
@@ -166,6 +202,12 @@ function NutritionCalculation({
   };
   const result = estimateRecipe(document, bindings, servings),
     target = compareLimit(result.perServing.carbs, limit);
+  const personal =
+    personalMealGoal &&
+    compareMealGoal(personalMealGoal, {
+      carbsPerServing: result.perServing.carbs,
+      allAmountsKnown: document.ingredients.every((ingredient) => ingredient.amount > 0),
+    });
   const ingredient = compare ? document.ingredients.find((i) => i.id === swapId) : undefined;
   const draft = ingredient && recipeSubstitutionDraft(document, ingredient.id, replacement);
   const proposed =
@@ -175,7 +217,7 @@ function NutritionCalculation({
   const suggestion = ingredient ? suggestedSwap(bindings[ingredient.id]?.reference) : null;
   return (
     <>
-      {recipeServings === undefined && (
+      {recipeServings === undefined && !personalMealGoal && (
         <div className="nutrition-recipe">
           {recipeImages[document.image] && <img src={recipeImages[document.image]} alt="" />}
           <div>
@@ -184,7 +226,7 @@ function NutritionCalculation({
           </div>
         </div>
       )}
-      {recipeServings === undefined && (
+      {recipeServings === undefined && !personalMealGoal && (
         <label className="nutrition-field">
           Visa antal portioner
           <input
@@ -204,75 +246,92 @@ function NutritionCalculation({
       <section className="nutrition-summary" aria-label="Beräkningsresultat" aria-live="polite">
         <div className="nutrition-title">
           <Scale size={20} aria-hidden />
-          <h2>Näring per portion</h2>
+          <h2>{personalMealGoal ? "Kolhydrater per portion" : "Näring per portion"}</h2>
         </div>
-        <p className="nutrition-status">
-          {nutrientKeys.every((key) => result.perServing[key] === null)
-            ? "Underlag saknas"
-            : "Uppskattade värden"}
-        </p>
-        <NutritionMetrics values={result.perServing} />
-        <details className="nutrition-fold">
-          <summary>Hela receptet · {servings} portioner</summary>
-          <NutritionMetrics values={result.total} />
-        </details>
-      </section>
-      <details className="nutrition-fold">
-        <summary>Kostläge{compare && ` · ${mode === "keto" ? "Keto" : "Lågkolhydrat"}`}</summary>
-        <label className="nutrition-check">
-          <input
-            type="checkbox"
-            checked={adult}
-            onChange={(e) => {
-              setAdult(e.target.checked);
-              if (!e.target.checked) switchMode("standard");
-            }}
-          />
-          Jag är vuxen
-        </label>
-        <fieldset className="nutrition-mode">
-          <legend>Frivilligt läge för detta recept</legend>
-          {(
-            [
-              ["standard", "Standard"],
-              ["low-carb", "Lågkolhydrat"],
-              ["keto", "Keto"],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value}>
-              <input
-                type="radio"
-                name="nutrition-mode"
-                value={value}
-                checked={mode === value}
-                disabled={value !== "standard" && !adult}
-                onChange={() => switchMode(value)}
-              />
-              {label}
-            </label>
-          ))}
-        </fieldset>
-        {compare && (
+        {personalMealGoal ? (
+          personal !== "incomplete" && <p>Uppskattat: {quantity(result.perServing.carbs, "g")}.</p>
+        ) : (
           <>
-            <p>
-              Receptuppskattning för vuxna, inte medicinsk rådgivning eller ett besked om ketos.
+            <p className="nutrition-status">
+              {nutrientKeys.every((key) => result.perServing[key] === null)
+                ? "Underlag saknas"
+                : "Uppskattade värden"}
             </p>
-            <label className="nutrition-field">
-              Egen gräns för kolhydrater, g per portion (valfri)
-              <input
-                type="number"
-                min={0.1}
-                max={250}
-                step="any"
-                value={limit ?? ""}
-                onChange={(e) => setLimit(numeric(e.target.value))}
-              />
-            </label>
-            {target === "within" && <p>Beräkningen ligger inom din valda gräns.</p>}
-            {target === "above" && <p>Beräkningen ligger över din valda gräns.</p>}
+            <NutritionMetrics values={result.perServing} />
+            <details className="nutrition-fold">
+              <summary>Hela receptet · {servings} portioner</summary>
+              <NutritionMetrics values={result.total} />
+            </details>
           </>
         )}
-      </details>
+        {personal === "incomplete" && (
+          <p>Jämförelsen väntar på kompletta mängder och kolhydratunderlag.</p>
+        )}
+        {personal === "within" && (
+          <p>Receptets uppskattning per portion är inom ditt angivna måltidsmål.</p>
+        )}
+        {personal === "above" && (
+          <p>Receptets uppskattning per portion är över ditt angivna måltidsmål.</p>
+        )}
+      </section>
+      {!personalMealGoal && (
+        <details className="nutrition-fold">
+          <summary>Kostläge{compare && ` · ${mode === "keto" ? "Keto" : "Lågkolhydrat"}`}</summary>
+          <label className="nutrition-check">
+            <input
+              type="checkbox"
+              checked={adult}
+              onChange={(e) => {
+                setAdult(e.target.checked);
+                if (!e.target.checked) switchMode("standard");
+              }}
+            />
+            Jag är vuxen
+          </label>
+          <fieldset className="nutrition-mode">
+            <legend>Frivilligt läge för detta recept</legend>
+            {(
+              [
+                ["standard", "Standard"],
+                ["low-carb", "Lågkolhydrat"],
+                ["keto", "Keto"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value}>
+                <input
+                  type="radio"
+                  name="nutrition-mode"
+                  value={value}
+                  checked={mode === value}
+                  disabled={value !== "standard" && !adult}
+                  onChange={() => switchMode(value)}
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          {compare && (
+            <>
+              <p>
+                Receptuppskattning för vuxna, inte medicinsk rådgivning eller ett besked om ketos.
+              </p>
+              <label className="nutrition-field">
+                Egen gräns för kolhydrater, g per portion (valfri)
+                <input
+                  type="number"
+                  min={0.1}
+                  max={250}
+                  step="any"
+                  value={limit ?? ""}
+                  onChange={(e) => setLimit(numeric(e.target.value))}
+                />
+              </label>
+              {target === "within" && <p>Beräkningen ligger inom din valda gräns.</p>}
+              {target === "above" && <p>Beräkningen ligger över din valda gräns.</p>}
+            </>
+          )}
+        </details>
+      )}
       <details className="nutrition-fold nutrition-band">
         <summary>Ingrediensunderlag</summary>
         <div className="k-section-title">

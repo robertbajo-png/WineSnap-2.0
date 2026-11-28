@@ -32,14 +32,14 @@ describe("installed DEV-07 browser acceptance", () => {
   it("gates test writes on the installed binary, exact ledger, paused tunnel and private manifests", () => {
     const launcher = readFileSync(new URL("../manage-owned-backend.mjs", import.meta.url), "utf8");
     expect(launcher).toContain(
-      "await verify({ syncWebKeys: !pantryAcceptance && !nutritionAcceptance });",
+      "syncWebKeys: !pantryAcceptance && !nutritionAcceptance && !mealPhotoAcceptance,",
     );
     expect(launcher).toMatch(
       /phase = "pantry_acceptance_ledger";[\s\S]+?readPausedPantryState\(\);[\s\S]+?assert\.equal\(installedPantry, pantryWebLabel\);[\s\S]+?assert\.equal\(ledger.scope, "already_applied"\);[\s\S]+?acceptInstalledPantry\(keys,/,
     );
     expect(launcher).toContain("pantry-browser-${name}-fixture.json");
     expect(launcher).toMatch(
-      /async function verify\([\s\S]+?if \(syncWebKeys\) await installWebKeys\(\);/,
+      /async function verify\([\s\S]+?if \(\s*syncWebKeys &&[^)]+\(name\("web"\)\)[\s\S]*?!== mealPhotoFallbackLabel\s*\)\s*await installWebKeys\(\);/,
     );
   });
 });

@@ -84,7 +84,7 @@ for await (const line of lines) {
 
 export function isolatedPlanningBackend(
   report,
-  { meals = false, mealPhotos = false, throughMigration } = {},
+  { meals = false, mealPhotos = false, privateJournal = false, throughMigration } = {},
 ) {
   const run = randomBytes(8).toString("hex");
   const names = Object.fromEntries(
@@ -418,7 +418,7 @@ export function isolatedPlanningBackend(
       entrypoint: "node",
       args: ["--eval", "setInterval(()=>{},60000)"],
     });
-    if (mealPhotos)
+    if (mealPhotos || privateJournal)
       serviceRelay = openPlanningRelay(docker, engine, env, probe, persistentRelay, relayLimit);
     await ready(async () => assert.equal((await request("auth", "/health")).status, 200));
     await ready(async () => assert.equal((await request("rest", "/")).status, 200));
@@ -873,6 +873,32 @@ export function isolatedPlanningBackend(
   return {
     boot,
     request,
+    journalFixtureSql(query) {
+      assert.ok(privateJournal && networkId && serviceRelay);
+      return sql(query);
+    },
+    async checkJournalArchive(dumpOptions, verify) {
+      assert.ok(privateJournal && networkId && serviceRelay);
+      const common = ["-h", "/tmp", "-U", "postgres"];
+      const dump = await command([
+        "exec",
+        names.db,
+        "pg_dump",
+        ...common,
+        "--format=custom",
+        ...dumpOptions,
+        "postgres",
+      ]);
+      try {
+        const list = await output(
+          ["exec", "--interactive", names.db, "pg_restore", "--list"],
+          dump,
+        );
+        return await verify(list, dump);
+      } finally {
+        dump.fill(0);
+      }
+    },
     rehearseMealPhotoMigrations,
     restoreMealPhotoFixture,
     mealPhotoFixtureFetch() {

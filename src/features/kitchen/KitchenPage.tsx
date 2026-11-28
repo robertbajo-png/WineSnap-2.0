@@ -80,6 +80,7 @@ import { emptyChefContext } from "../chef/domain";
 import { mealsEnabled } from "../meals/feature";
 import { mealPhotosEnabled } from "../meal-photos/feature";
 import { nutritionEnabled } from "../nutrition/feature";
+import { canOpenPrivateJournal } from "../private-journal/feature";
 import { pantryEnabled } from "../pantry/feature";
 import { usePantry } from "../pantry/usePantry";
 import {
@@ -93,6 +94,11 @@ const NutritionPage = lazy(() =>
 );
 const RecipeNutrition = lazy(() =>
   import("../nutrition/NutritionPanel").then((m) => ({ default: m.RecipeNutrition })),
+);
+const PrivateJournalPanel = lazy(() =>
+  import("../private-journal/PrivateJournalPanel").then((m) => ({
+    default: m.PrivateJournalPanel,
+  })),
 );
 const PairingPanel = lazy(() =>
   import("../meals/PairingPanel").then((m) => ({ default: m.PairingPanel })),
@@ -705,6 +711,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
           hash === "plan" ||
           (pantryEnabled && hash === "pantry") ||
           (mealPhotosEnabled && hash === "meal-photo") ||
+          (hash === "private-journal" && canOpenPrivateJournal()) ||
           (chefEnabled && ["chef", "memory"].includes(hash)) ||
           (mealsEnabled && ["pairings", "family", "meals"].includes(hash)) ||
           (nutritionEnabled && hash === "nutrition")
@@ -744,6 +751,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       "plan",
       "pantry",
       "meal-photo",
+      "private-journal",
     ].includes(next)
       ? next
       : "recipes";
@@ -928,6 +936,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                   "plan",
                   "pantry",
                   "meal-photo",
+                  "private-journal",
                 ].includes(tab)
                   ? tab
                   : ""
@@ -954,32 +963,38 @@ function KitchenWorkspace({ owner }: { owner: string }) {
               )}
               {nutritionEnabled && <option value="nutrition">Receptens näring</option>}
               {mealPhotosEnabled && <option value="meal-photo">Måltidsfoto</option>}
+              {canOpenPrivateJournal() && (
+                <option value="private-journal">Mål och mätningar</option>
+              )}
             </select>
           </label>
         </div>
-        {tab !== "plan" && tab !== "pantry" && tab !== "meal-photo" && (
-          <div className="k-status" role="status">
-            {offline ? (
-              <CloudOff size={16} />
-            ) : local?.dirty ? (
-              <RefreshCw size={16} />
-            ) : (
-              <CheckCheck size={16} />
-            )}
-            {busy ? t(local?.dirty ? "state.syncing" : "state.saving") : statusText}
-            <button
-              className="k-text"
-              disabled={busy || offline || !cache || !!conflict || localConflict}
-              onClick={() => {
-                void kitchen.sync();
-              }}
-              title="Synka matlagningen"
-            >
-              <RefreshCw size={15} />
-              <span className="sr-only">Synka matlagningen</span>
-            </button>
-          </div>
-        )}
+        {tab !== "plan" &&
+          tab !== "pantry" &&
+          tab !== "meal-photo" &&
+          tab !== "private-journal" && (
+            <div className="k-status" role="status">
+              {offline ? (
+                <CloudOff size={16} />
+              ) : local?.dirty ? (
+                <RefreshCw size={16} />
+              ) : (
+                <CheckCheck size={16} />
+              )}
+              {busy ? t(local?.dirty ? "state.syncing" : "state.saving") : statusText}
+              <button
+                className="k-text"
+                disabled={busy || offline || !cache || !!conflict || localConflict}
+                onClick={() => {
+                  void kitchen.sync();
+                }}
+                title="Synka matlagningen"
+              >
+                <RefreshCw size={15} />
+                <span className="sr-only">Synka matlagningen</span>
+              </button>
+            </div>
+          )}
         {error && tab !== "meal-photo" && (
           <OperationNotice
             kind="error"
@@ -1072,7 +1087,20 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             <MealPhotoPanel key={owner} owner={owner} offline={offline} />
           </Suspense>
         )}
-        {tab === "plan" || tab === "pantry" || tab === "meal-photo" ? null : !ready ? (
+        {tab === "private-journal" && canOpenPrivateJournal() && (
+          <Suspense fallback={<p aria-busy="true">Öppnar den privata vyn…</p>}>
+            <PrivateJournalPanel
+              key={owner}
+              owner={owner}
+              offline={offline}
+              versions={cache?.versions ?? []}
+            />
+          </Suspense>
+        )}
+        {tab === "plan" ||
+        tab === "pantry" ||
+        tab === "meal-photo" ||
+        tab === "private-journal" ? null : !ready ? (
           <p aria-busy="true">Hämtar din kokbok…</p>
         ) : !cache ? (
           <section className="k-empty">

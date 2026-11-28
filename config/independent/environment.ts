@@ -20,6 +20,7 @@ export const publicEnvironmentKeys = [
   "VITE_MEAL_PHOTOS_ENABLED",
   "VITE_PANTRY_ENABLED",
   "VITE_RECIPE_NUTRITION_ENABLED",
+  "VITE_PRIVATE_JOURNAL_ENABLED",
   "VITE_PILOT_UI_ENABLED",
   "VITE_PRIVACY_LEGAL_BASIS",
   "VITE_PRIVACY_RETENTION",
@@ -27,23 +28,26 @@ export const publicEnvironmentKeys = [
 
 export function independentEnvironment(mode: string, input: Record<string, string | undefined>) {
   const photoCheck = mode === "meal-photo-check";
-  if (mode === "runtime-check" || photoCheck) {
+  const journalCheck = mode === "private-journal-check";
+  if (mode === "runtime-check" || photoCheck || journalCheck) {
     return {
-      VITE_SUPABASE_URL: photoCheck ? ownedBrowserOrigin : "https://example.invalid",
+      VITE_SUPABASE_URL:
+        photoCheck || journalCheck ? ownedBrowserOrigin : "https://example.invalid",
       VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_runtime_check_not_a_real_key",
-      ...(photoCheck ? { VITE_OWNED_BACKEND_ENABLED: "true" } : {}),
-      VITE_PRIVACY_CONTROLS_ENABLED: String(photoCheck),
-      VITE_PRIVACY_OPERATIONS_VERIFIED: String(photoCheck),
+      ...(photoCheck || journalCheck ? { VITE_OWNED_BACKEND_ENABLED: "true" } : {}),
+      VITE_PRIVACY_CONTROLS_ENABLED: String(photoCheck || journalCheck),
+      VITE_PRIVACY_OPERATIONS_VERIFIED: String(photoCheck || journalCheck),
       VITE_PRIVACY_SUPPLIERS_VERIFIED: "false",
       VITE_WINE_IMAGE_PROXY_ENABLED: "false",
       VITE_LOCAL_AI_ENABLED: String(photoCheck),
-      VITE_COOKING_CORE_ENABLED: String(photoCheck),
+      VITE_COOKING_CORE_ENABLED: String(photoCheck || journalCheck),
       VITE_AI_CHEF_ENABLED: "false",
       VITE_MEALS_ENABLED: "false",
       VITE_MEAL_PHOTOS_ENABLED: String(photoCheck),
       VITE_PANTRY_ENABLED: "false",
-      VITE_RECIPE_NUTRITION_ENABLED: "false",
-      VITE_PILOT_UI_ENABLED: "false",
+      VITE_RECIPE_NUTRITION_ENABLED: String(journalCheck),
+      VITE_PRIVATE_JOURNAL_ENABLED: String(journalCheck),
+      VITE_PILOT_UI_ENABLED: String(journalCheck),
     };
   }
 
@@ -56,6 +60,12 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       throw new Error(`Independent build requires ${key}; see config/independent/.env.example`);
   }
   const url = new URL(values.VITE_SUPABASE_URL);
+  if (
+    values.VITE_PRIVATE_JOURNAL_ENABLED === "true" &&
+    (values.VITE_OWNED_BACKEND_ENABLED !== "true" ||
+      values.VITE_RECIPE_NUTRITION_ENABLED !== "true")
+  )
+    throw new Error("Private journal requires the owned Windows nutrition build");
   if (
     values.VITE_PILOT_UI_ENABLED === "true" &&
     (values.VITE_OWNED_BACKEND_ENABLED !== "true" || values.VITE_COOKING_CORE_ENABLED !== "true")

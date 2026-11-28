@@ -1742,6 +1742,8 @@ try {
       paused.push(service);
     }
     phase = "database_archive";
+    const { ordinaryJournalExclusions, assertOrdinaryJournalFree } =
+      await import("./lib/owned-dev11-archive.mjs");
     const dump = await command([
       "exec",
       name("db"),
@@ -1751,8 +1753,15 @@ try {
       "-U",
       "postgres",
       "--format=custom",
+      ...ordinaryJournalExclusions,
       "postgres",
     ]);
+    assertOrdinaryJournalFree(
+      (
+        await command(["exec", "--interactive", name("db"), "pg_restore", "--list"], dump)
+      ).toString(),
+    );
+    report.backupIncludesPrivateJournal = false;
     const roles = await command([
       "exec",
       name("db"),

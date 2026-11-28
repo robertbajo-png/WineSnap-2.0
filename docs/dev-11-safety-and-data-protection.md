@@ -2,7 +2,7 @@
 
 Reviewed 2026-11-28 against source `ce0799e` and the
 [canonical plan](development-plan.md#dev-11-optional-meal-goals-and-measured-ketones).
-**Design recommendation for owner approval.** This is an engineering review
+**Design approved for source and synthetic tests only.** This is an engineering review
 and impact-assessment screening, not a signed DPIA, legal opinion, medical
 validation, or authorization to collect real measurements.
 
@@ -194,9 +194,10 @@ qualified advice on any prior consultation obligation.
 
 ## Owner Decision
 
-Approve or revise the two separate controls, manual methods, 90-day live
-history, deletion on withdrawal and local-only seven-day backup proposal.
-That decision authorizes only a disabled build and synthetic verification.
+The owner approved the two separate controls, manual methods, 90-day live
+history, deletion on withdrawal and local-only seven-day backup design for
+a disabled build and synthetic verification only. See the
+[implementation notes](owned-private-journal.md) for subsequent evidence.
 Before real use, complete the scoped impact review, settle controller
 responsibility, withdrawal evidence and retention, verify technical and host
 controls, and publish the specific notice in the local app. Local installation

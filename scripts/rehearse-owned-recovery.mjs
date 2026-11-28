@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { ownedProject } from "./lib/owned-backend.mjs";
 import { checkBinaryPart, recoveryToken, sha256 } from "./lib/platform-recovery.mjs";
+import { assertOrdinaryJournalFree } from "./lib/owned-dev11-archive.mjs";
 import {
   assertOwnedRestoreContainer,
   inspectOwnedTar,
@@ -286,6 +287,12 @@ try {
     error.category = match?.[0] ?? error.category;
     throw error;
   }
+  phase = "verify_ordinary_archive_scope";
+  assertOrdinaryJournalFree(
+    (
+      await command(["exec", "--interactive", names.db, "pg_restore", "--list"], database)
+    ).toString(),
+  );
   phase = "restore_roles";
   await sql(ownedRoleRestoreSql(checkBinaryPart(bundle.roles).toString()));
   await sql(`ALTER DATABASE postgres OWNER TO postgres;

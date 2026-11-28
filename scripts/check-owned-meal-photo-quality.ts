@@ -53,10 +53,7 @@ const report = {
   checkedAt: new Date().toISOString(),
   cases: [] as Row[],
   failure: undefined as
-    | "private_input_or_local_preflight"
-    | "quality_not_proven"
-    | "replay_blocked"
-    | undefined,
+    "private_input_or_local_preflight" | "quality_not_proven" | "replay_blocked" | undefined,
 };
 let reportDirectoryReady = false;
 

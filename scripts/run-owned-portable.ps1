@@ -136,10 +136,17 @@ function Invoke-Portable([string]$Kind,$Payload) {
     return $value
   } finally {if($job){$job.Dispose()};if($process){$process.Dispose()};$start.Environment.Clear()}
 }
-function Read-CipherFile([string]$Path) {
+function Open-PortableCipher([string]$Path) {
   Assert-Safe $Path;$item=Get-Item -LiteralPath $Path -Force
-  if($item.PSIsContainer -or $item.Name -notmatch '^winesnap-portable-\d{8}-\d{9}\.age$' -or $item.Length -lt 128 -or $item.Length -gt 177MB){throw 'Unexpected portable file.'}
-  return ,[IO.File]::ReadAllBytes($item.FullName)
+  if($item.PSIsContainer -or $item.Name -notmatch '^winesnap-portable-\d{8}-\d{9}\.age$'){throw 'Unexpected portable file.'}
+  $opened=[IO.File]::Open($item.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+  if($opened.Length -lt 128 -or $opened.Length -gt 177MB){$opened.Dispose();throw 'Unexpected portable file.'}
+  return $opened
+}
+function Read-CipherFile([string]$Path) {
+  $opened=Open-PortableCipher $Path
+  try{$bytes=[byte[]]::new([int]$opened.Length);$opened.ReadExactly($bytes,0,$bytes.Length);return ,$bytes}
+  finally{$opened.Dispose()}
 }
 function Protect-Json($Value,[string]$Path) {
   Assert-PortableOutput $Path
@@ -154,6 +161,35 @@ function Protect-Json($Value,[string]$Path) {
     try{if(-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals([Security.Cryptography.SHA256]::HashData($bytes),[Security.Cryptography.SHA256]::HashData($check))){throw 'Recovered file encryption did not round-trip.'}}finally{[Array]::Clear($check,0,$check.Length)}
   } finally {[Array]::Clear($bytes,0,$bytes.Length)}
 }
+function Get-OpenArchiveDigest([IO.FileStream]$Stream) {
+  $Stream.Position=0
+  $digest=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($Stream)).ToLowerInvariant()
+  $Stream.Position=0
+  return $digest
+}
+function Get-PortableScopePath([string]$Digest) {
+  if($Digest -cnotmatch '^[a-f0-9]{64}$'){throw 'Invalid archive fingerprint.'}
+  return (Join-Path $portable ('scope-'+$Digest+'.dpapi'))
+}
+function Assert-PortableScope([string]$Digest) {
+  $scope=Read-PrivateArchive (Get-PortableScopePath $Digest) 16KB
+  if($scope.version -ne 1 -or $scope.excludesPrivateJournal -ne $true -or $scope.archiveSha256 -cne $Digest){
+    throw 'Archive scope must be verified before copying.'
+  }
+}
+function Save-PortableScope([string]$Path,$ScopeReport) {
+  if($ScopeReport.archiveScopeVerified -ne $true){throw 'Unverified backup contents.'}
+  $opened=Open-PortableCipher $Path
+  try{
+    $digest=Get-OpenArchiveDigest $opened
+    if($digest -cne $ScopeReport.archiveSha256){throw 'Verified archive bytes changed.'}
+    $marker=Get-PortableScopePath $digest
+    if(-not (Test-Path -LiteralPath $marker)){
+      Protect-Json @{version=1;excludesPrivateJournal=$true;archiveSha256=$digest} $marker
+    }
+    Assert-PortableScope $digest
+  }finally{$opened.Dispose()}
+}
 function Clear-PortableRehearsal {
   $docker=Join-Path $env:LOCALAPPDATA 'Programs/DockerDesktop/resources/bin/docker.exe'
   $engine=& $docker --host npipe:////./pipe/dockerDesktopLinuxEngine version --format '{{.Server.Os}}' 2>$null
@@ -161,6 +197,7 @@ function Clear-PortableRehearsal {
   $prefix='winesnap-owned-restore-'+$run;$clean=$true
   $targets=@('storage','rest','auth','probe','db')|ForEach-Object {@{name=($prefix+'-'+$_);scope='owned-backup-rehearsal';label='winesnap.restore';network=$prefix}}
   $targets+=@{name=('winesnap-portable-gate-'+$run);scope='owned-portable-recovery';label='winesnap.portable';network='none'}
+  $targets+=@{name=('winesnap-portable-db-scope-'+$run);scope='owned-portable-recovery';label='winesnap.portable';network='none'}
   foreach($target in $targets){
     $format='{{index .Config.Labels "winesnap.scope"}}|{{index .Config.Labels "'+$target.label+'"}}|{{.HostConfig.NetworkMode}}|{{.HostConfig.ReadonlyRootfs}}|{{len .HostConfig.PortBindings}}|{{len .HostConfig.Binds}}|{{range .Mounts}}{{.Type}},{{end}}'
     $identity=& $docker --host npipe:////./pipe/dockerDesktopLinuxEngine inspect --format $format $target.name 2>$null
@@ -220,17 +257,20 @@ try {
       $payload.credentials=@{gate=(Read-SnapshotStore $payload.gate.gateStore);tunnel=(Read-SnapshotStore $payload.gate.tunnelStore)}
       $payload.gate.Remove('gateStore')|Out-Null;$payload.gate.Remove('tunnelStore')|Out-Null
       $sourceLock.Dispose();$sourceLock=$null
-      $phase='validate_portable_source';$result=Invoke-Portable $(if($Action -eq 'Preflight'){'CheckSource'}else{'Create'}) $payload;$payload.Clear();$payload=$null
+      $phase='validate_portable_source';$rehearsalStarted=$true
+      $result=Invoke-Portable $(if($Action -eq 'Preflight'){'CheckSource'}else{'Create'}) $payload;$payload.Clear();$payload=$null
       if($Action -eq 'Preflight'){
         foreach($key in $result.report.Keys){$report[$key]=$result.report[$key]}
         $result=$null
       }else{
-      $cipher=[Convert]::FromBase64String($result.ciphertext);$result=$null
+      $cipher=[Convert]::FromBase64String($result.ciphertext);$verifiedScope=$result.report;$result=$null
+      if($verifiedScope.archiveScopeVerified -ne $true -or [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($cipher)).ToLowerInvariant() -cne $verifiedScope.archiveSha256){throw 'Unverified portable contents.'}
       $backupDirectory=$portable
       if($selfTest){$testDirectory=Join-Path $portable ('selftest-'+$run);Assert-PortableOutput $testDirectory;New-Item -ItemType Directory -Path $testDirectory|Out-Null;$backupDirectory=$testDirectory}
       $BackupPath=Join-Path $backupDirectory ('winesnap-portable-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'.age');Assert-PortableOutput $BackupPath
       $handle=[IO.File]::Open($BackupPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
       try{$handle.Write($cipher,0,$cipher.Length)}finally{$handle.Dispose()}
+      if(-not $selfTest){Save-PortableScope $BackupPath $verifiedScope}
       [Array]::Clear($cipher,0,$cipher.Length);$cipher=$null
       $report.backupFile=[IO.Path]::GetFileName($BackupPath);$report.encryptedRoundtripVerified=$true
       $report.archiveSha256=(Get-FileHash -LiteralPath $BackupPath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -243,6 +283,7 @@ try {
       $phase=if($Action -eq 'RecoverFiles'){'recover_new_user_files'}else{'standalone_restore_rehearsal'}
       $report.phase=$phase;Write-Status;$rehearsalStarted=$true
       $result=Invoke-Portable $(if($Action -eq 'RecoverFiles' -or $selfTest){'RecoverFiles'}else{'Rehearse'}) $payload;$payload.Clear();$payload=$null
+      if(-not $selfTest){Save-PortableScope $BackupPath $result.report}
       foreach($key in $result.report.Keys){$report[$key]=$result.report[$key]}
       $report.backupFile=[IO.Path]::GetFileName($BackupPath)
       if($Action -eq 'RecoverFiles' -or $selfTest){
@@ -278,18 +319,23 @@ try {
     if($Action -in @('Create','Export')){
       $phase='optional_encrypted_copy'
       $report.phase=$phase;Write-Status
+      $sourceStream=Open-PortableCipher $BackupPath
+      try {
+      $verifiedDigest=Get-OpenArchiveDigest $sourceStream
+      Assert-PortableScope $verifiedDigest
       Add-Type -AssemblyName System.Windows.Forms
       $dialog=[Windows.Forms.SaveFileDialog]::new()
       try {
         $dialog.Title='WineSnap - Save an additional encrypted copy (USB or a local folder)';$dialog.Filter='Encrypted WineSnap backup (*.age)|*.age';$dialog.FileName=[IO.Path]::GetFileName($BackupPath);$dialog.InitialDirectory=$portable
         if($dialog.ShowDialog() -eq [Windows.Forms.DialogResult]::OK -and [IO.Path]::GetFullPath($dialog.FileName) -ne [IO.Path]::GetFullPath($BackupPath)){
           Assert-PortableOutput $dialog.FileName
-          $sourceStream=[IO.File]::OpenRead($BackupPath);$target=$null
-          try{$target=[IO.File]::Open($dialog.FileName,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None);$sourceStream.CopyTo($target)}finally{if($target){$target.Dispose()};$sourceStream.Dispose()}
-          if((Get-FileHash -LiteralPath $BackupPath -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $dialog.FileName -Algorithm SHA256).Hash){throw 'Encrypted copy did not match.'}
+          $target=$null
+          try{$target=[IO.File]::Open($dialog.FileName,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None);$sourceStream.CopyTo($target)}finally{if($target){$target.Dispose()}}
+          if($verifiedDigest -ne (Get-FileHash -LiteralPath $dialog.FileName -Algorithm SHA256).Hash){throw 'Encrypted copy did not match.'}
           $report.additionalCopyCreated=$true;$report.copyPath=$dialog.FileName
         }
       } catch {$report.additionalCopyCreated=$false;$report.copyFailure='encrypted_copy_not_created'} finally {$dialog.Dispose()}
+      }finally{$sourceStream.Dispose()}
     }
     $report.completed=$true
   }

@@ -46,6 +46,8 @@ import { Route as ApiAiExtractPreferenceSignalsRouteImport } from './routes/api/
 import { Route as ApiAiRestaurantMatchRouteImport } from './routes/api/ai/restaurant-match'
 import { Route as ApiAiTasteSuggestionsRouteImport } from './routes/api/ai/taste-suggestions'
 import { Route as ApiAiWineSuggestionsRouteImport } from './routes/api/ai/wine-suggestions'
+import { Route as ApiDev11ExportRouteImport } from './routes/api/dev11/export'
+import { Route as ApiDev11JournalRouteImport } from './routes/api/dev11/journal'
 import { Route as ApiOwnedDeviceSessionRouteImport } from './routes/api/owned/device-session'
 import { Route as ApiPrivacyPrivacyControlsRouteImport } from './routes/api/privacy/privacy-controls'
 import { Route as ApiPrivacyPrivacyExportRouteImport } from './routes/api/privacy/privacy-export'
@@ -244,6 +246,16 @@ const ApiAiWineSuggestionsRoute = ApiAiWineSuggestionsRouteImport.update({
   path: '/api/ai/wine-suggestions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDev11ExportRoute = ApiDev11ExportRouteImport.update({
+  id: '/api/dev11/export',
+  path: '/api/dev11/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDev11JournalRoute = ApiDev11JournalRouteImport.update({
+  id: '/api/dev11/journal',
+  path: '/api/dev11/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOwnedDeviceSessionRoute = ApiOwnedDeviceSessionRouteImport.update({
   id: '/api/owned/device-session',
   path: '/api/owned/device-session',
@@ -344,6 +356,8 @@ export interface FileRoutesByFullPath {
   '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
   '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
   '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/dev11/export': typeof ApiDev11ExportRoute
+  '/api/dev11/journal': typeof ApiDev11JournalRoute
   '/api/owned/device-session': typeof ApiOwnedDeviceSessionRoute
   '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
   '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
@@ -394,6 +408,8 @@ export interface FileRoutesByTo {
   '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
   '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
   '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/dev11/export': typeof ApiDev11ExportRoute
+  '/api/dev11/journal': typeof ApiDev11JournalRoute
   '/api/owned/device-session': typeof ApiOwnedDeviceSessionRoute
   '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
   '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
@@ -445,6 +461,8 @@ export interface FileRoutesById {
   '/api/ai/restaurant-match': typeof ApiAiRestaurantMatchRoute
   '/api/ai/taste-suggestions': typeof ApiAiTasteSuggestionsRoute
   '/api/ai/wine-suggestions': typeof ApiAiWineSuggestionsRoute
+  '/api/dev11/export': typeof ApiDev11ExportRoute
+  '/api/dev11/journal': typeof ApiDev11JournalRoute
   '/api/owned/device-session': typeof ApiOwnedDeviceSessionRoute
   '/api/privacy/privacy-controls': typeof ApiPrivacyPrivacyControlsRoute
   '/api/privacy/privacy-export': typeof ApiPrivacyPrivacyExportRoute
@@ -497,6 +515,8 @@ export interface FileRouteTypes {
     | '/api/ai/restaurant-match'
     | '/api/ai/taste-suggestions'
     | '/api/ai/wine-suggestions'
+    | '/api/dev11/export'
+    | '/api/dev11/journal'
     | '/api/owned/device-session'
     | '/api/privacy/privacy-controls'
     | '/api/privacy/privacy-export'
@@ -547,6 +567,8 @@ export interface FileRouteTypes {
     | '/api/ai/restaurant-match'
     | '/api/ai/taste-suggestions'
     | '/api/ai/wine-suggestions'
+    | '/api/dev11/export'
+    | '/api/dev11/journal'
     | '/api/owned/device-session'
     | '/api/privacy/privacy-controls'
     | '/api/privacy/privacy-export'
@@ -597,6 +619,8 @@ export interface FileRouteTypes {
     | '/api/ai/restaurant-match'
     | '/api/ai/taste-suggestions'
     | '/api/ai/wine-suggestions'
+    | '/api/dev11/export'
+    | '/api/dev11/journal'
     | '/api/owned/device-session'
     | '/api/privacy/privacy-controls'
     | '/api/privacy/privacy-export'
@@ -646,6 +670,8 @@ export interface RootRouteChildren {
   ApiAiRestaurantMatchRoute: typeof ApiAiRestaurantMatchRoute
   ApiAiTasteSuggestionsRoute: typeof ApiAiTasteSuggestionsRoute
   ApiAiWineSuggestionsRoute: typeof ApiAiWineSuggestionsRoute
+  ApiDev11ExportRoute: typeof ApiDev11ExportRoute
+  ApiDev11JournalRoute: typeof ApiDev11JournalRoute
   ApiOwnedDeviceSessionRoute: typeof ApiOwnedDeviceSessionRoute
   ApiPrivacyPrivacyControlsRoute: typeof ApiPrivacyPrivacyControlsRoute
   ApiPrivacyPrivacyExportRoute: typeof ApiPrivacyPrivacyExportRoute
@@ -917,6 +943,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiWineSuggestionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dev11/export': {
+      id: '/api/dev11/export'
+      path: '/api/dev11/export'
+      fullPath: '/api/dev11/export'
+      preLoaderRoute: typeof ApiDev11ExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dev11/journal': {
+      id: '/api/dev11/journal'
+      path: '/api/dev11/journal'
+      fullPath: '/api/dev11/journal'
+      preLoaderRoute: typeof ApiDev11JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/owned/device-session': {
       id: '/api/owned/device-session'
       path: '/api/owned/device-session'
@@ -1061,6 +1101,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAiRestaurantMatchRoute: ApiAiRestaurantMatchRoute,
   ApiAiTasteSuggestionsRoute: ApiAiTasteSuggestionsRoute,
   ApiAiWineSuggestionsRoute: ApiAiWineSuggestionsRoute,
+  ApiDev11ExportRoute: ApiDev11ExportRoute,
+  ApiDev11JournalRoute: ApiDev11JournalRoute,
   ApiOwnedDeviceSessionRoute: ApiOwnedDeviceSessionRoute,
   ApiPrivacyPrivacyControlsRoute: ApiPrivacyPrivacyControlsRoute,
   ApiPrivacyPrivacyExportRoute: ApiPrivacyPrivacyExportRoute,

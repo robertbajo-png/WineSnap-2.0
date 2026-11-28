@@ -14,7 +14,11 @@ const envDir = fileURLToPath(new URL("./config/independent", import.meta.url));
 export default defineConfig(({ mode, command }) => {
   const output = fileURLToPath(
     new URL(
-      mode === "meal-photo-check" ? "./dist/core-meal-photo-runtime" : "./dist/independent-runtime",
+      mode === "meal-photo-check"
+        ? "./dist/core-meal-photo-runtime"
+        : mode === "private-journal-check"
+          ? "./dist/private-journal-runtime"
+          : "./dist/independent-runtime",
       import.meta.url,
     ),
   );
