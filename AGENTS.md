@@ -41,8 +41,10 @@ Its three browser AI replies were simulated; one separate synthetic call
 through the installed server passed on GPT-6.2 Sol. The public connector
 stayed paused. No owner photo, old production or abandoned hosted test was
 used. See `docs/development-plan.md` and `docs/owned-meal-photo-local-update.md`.
-DEV-09 remains blocked outside this work; DEV-11 still requires its own
-safety/data-protection review and explicit opt-in.
+DEV-09 remains blocked outside this work. DEV-11's
+`docs/dev-11-safety-and-data-protection.md` records the design review and
+proposed scope. Await the owner's explicit design approval before code,
+and separate approval before local installation or real measurements.
 
 Previous handoff: DEV-08 was installed and accepted on the owned Windows app.
 The approved window on November 24 verified a fresh encrypted backup and its
