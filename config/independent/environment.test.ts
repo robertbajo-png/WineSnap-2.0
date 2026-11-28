@@ -8,6 +8,27 @@ const input = {
 };
 
 describe("independent build configuration", () => {
+  it("requires a deliberate owned build opt-in for meal photos", () => {
+    const photo = { ...input, VITE_MEAL_PHOTOS_ENABLED: "true" };
+    expect(independentEnvironment("runtime-check", photo).VITE_MEAL_PHOTOS_ENABLED).toBe("false");
+    expect(independentEnvironment("production", input)).not.toHaveProperty(
+      "VITE_MEAL_PHOTOS_ENABLED",
+    );
+    expect(() => independentEnvironment("production", photo)).toThrow("owned Windows");
+    const owned = {
+      ...photo,
+      VITE_SUPABASE_URL: "http://127.0.0.1:54323",
+      VITE_OWNED_BACKEND_ENABLED: "true",
+      VITE_COOKING_CORE_ENABLED: "true",
+      VITE_LOCAL_AI_ENABLED: "true",
+      VITE_PRIVACY_CONTROLS_ENABLED: "true",
+      VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
+    };
+    expect(() =>
+      independentEnvironment("production", { ...owned, VITE_LOCAL_AI_ENABLED: "false" }),
+    ).toThrow("local AI");
+    expect(independentEnvironment("production", owned).VITE_MEAL_PHOTOS_ENABLED).toBe("true");
+  });
   it("only enables the pantry in the explicitly configured owned cooking build", () => {
     const pantry = { ...input, VITE_PANTRY_ENABLED: "true" };
     expect(independentEnvironment("runtime-check", pantry).VITE_PANTRY_ENABLED).toBe("false");

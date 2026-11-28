@@ -78,6 +78,7 @@ import { ChefPanel, type ChefOpening } from "../chef/ChefPanel";
 import { FoodMemoryPanel } from "../chef/FoodMemoryPanel";
 import { emptyChefContext } from "../chef/domain";
 import { mealsEnabled } from "../meals/feature";
+import { mealPhotosEnabled } from "../meal-photos/feature";
 import { nutritionEnabled } from "../nutrition/feature";
 import { pantryEnabled } from "../pantry/feature";
 import { usePantry } from "../pantry/usePantry";
@@ -101,6 +102,9 @@ const FamilyPanel = lazy(() =>
 );
 const MealHistoryPanel = lazy(() =>
   import("../meals/MealHistoryPanel").then((m) => ({ default: m.MealHistoryPanel })),
+);
+const MealPhotoPanel = lazy(() =>
+  import("../meal-photos/MealPhotoPanel").then((m) => ({ default: m.MealPhotoPanel })),
 );
 const WeekPlanner = lazy(() =>
   import("../planning/WeekPlanner").then((m) => ({ default: m.WeekPlanner })),
@@ -700,6 +704,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
         hash === "cook" ||
           hash === "plan" ||
           (pantryEnabled && hash === "pantry") ||
+          (mealPhotosEnabled && hash === "meal-photo") ||
           (chefEnabled && ["chef", "memory"].includes(hash)) ||
           (mealsEnabled && ["pairings", "family", "meals"].includes(hash)) ||
           (nutritionEnabled && hash === "nutrition")
@@ -738,6 +743,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
       "nutrition",
       "plan",
       "pantry",
+      "meal-photo",
     ].includes(next)
       ? next
       : "recipes";
@@ -914,7 +920,15 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             <span className="sr-only">Fler vyer i köket</span>
             <select
               value={
-                ["pairings", "family", "meals", "nutrition", "plan", "pantry"].includes(tab)
+                [
+                  "pairings",
+                  "family",
+                  "meals",
+                  "nutrition",
+                  "plan",
+                  "pantry",
+                  "meal-photo",
+                ].includes(tab)
                   ? tab
                   : ""
               }
@@ -939,10 +953,11 @@ function KitchenWorkspace({ owner }: { owner: string }) {
                 </>
               )}
               {nutritionEnabled && <option value="nutrition">Receptens näring</option>}
+              {mealPhotosEnabled && <option value="meal-photo">Måltidsfoto</option>}
             </select>
           </label>
         </div>
-        {tab !== "plan" && tab !== "pantry" && (
+        {tab !== "plan" && tab !== "pantry" && tab !== "meal-photo" && (
           <div className="k-status" role="status">
             {offline ? (
               <CloudOff size={16} />
@@ -965,7 +980,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             </button>
           </div>
         )}
-        {error && (
+        {error && tab !== "meal-photo" && (
           <OperationNotice
             kind="error"
             action={
@@ -984,7 +999,7 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             {error}
           </OperationNotice>
         )}
-        {conflict && (
+        {conflict && tab !== "meal-photo" && (
           <section className="k-conflict" aria-label="Synkningskonflikt">
             <h2>Välj vilken matlagning du vill behålla</h2>
             <p>
@@ -1052,7 +1067,12 @@ function KitchenWorkspace({ owner }: { owner: string }) {
             />
           </Suspense>
         )}
-        {tab === "plan" || tab === "pantry" ? null : !ready ? (
+        {mealPhotosEnabled && tab === "meal-photo" && (
+          <Suspense fallback={<p aria-busy="true">Öppnar måltidsfoto…</p>}>
+            <MealPhotoPanel key={owner} owner={owner} offline={offline} />
+          </Suspense>
+        )}
+        {tab === "plan" || tab === "pantry" || tab === "meal-photo" ? null : !ready ? (
           <p aria-busy="true">Hämtar din kokbok…</p>
         ) : !cache ? (
           <section className="k-empty">

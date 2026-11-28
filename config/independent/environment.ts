@@ -17,6 +17,7 @@ export const publicEnvironmentKeys = [
   "VITE_COOKING_CORE_ENABLED",
   "VITE_AI_CHEF_ENABLED",
   "VITE_MEALS_ENABLED",
+  "VITE_MEAL_PHOTOS_ENABLED",
   "VITE_PANTRY_ENABLED",
   "VITE_RECIPE_NUTRITION_ENABLED",
   "VITE_PILOT_UI_ENABLED",
@@ -37,6 +38,7 @@ export function independentEnvironment(mode: string, input: Record<string, strin
       VITE_COOKING_CORE_ENABLED: "false",
       VITE_AI_CHEF_ENABLED: "false",
       VITE_MEALS_ENABLED: "false",
+      VITE_MEAL_PHOTOS_ENABLED: "false",
       VITE_PANTRY_ENABLED: "false",
       VITE_RECIPE_NUTRITION_ENABLED: "false",
       VITE_PILOT_UI_ENABLED: "false",
@@ -69,6 +71,13 @@ export function independentEnvironment(mode: string, input: Record<string, strin
   }
   if (values.VITE_OWNED_BACKEND_ENABLED === "true" && url.origin !== ownedBrowserOrigin)
     throw new Error("Owned backend must use the exact local gateway");
+  if (
+    values.VITE_MEAL_PHOTOS_ENABLED === "true" &&
+    (values.VITE_OWNED_BACKEND_ENABLED !== "true" ||
+      values.VITE_COOKING_CORE_ENABLED !== "true" ||
+      values.VITE_LOCAL_AI_ENABLED !== "true")
+  )
+    throw new Error("Meal photos require the owned Windows cooking and local AI runtime");
   if (
     values.VITE_RECIPE_NUTRITION_ENABLED === "true" &&
     values.VITE_COOKING_CORE_ENABLED !== "true"

@@ -35,6 +35,7 @@ export const confirmedPhotoMealSchema = z.strictObject({
 
 export type MealPhotoEstimate = z.infer<typeof mealPhotoEstimateSchema>;
 export type PhotoMealReviewItem = z.infer<typeof reviewItemSchema>;
+export type ConfirmedPhotoMeal = z.infer<typeof confirmedPhotoMealSchema>;
 
 export function openPhotoMealReview(estimate: MealPhotoEstimate) {
   const items: PhotoMealReviewItem[] = estimate.items.map(({ name, portion }) => ({
