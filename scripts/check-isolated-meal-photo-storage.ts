@@ -8,13 +8,22 @@ import {
   createMealPhotoStorageHandler,
 } from "../src/lib/mealPhotoStorage.server";
 import { completePrivacyExport } from "../src/lib/privacyExport";
+import { ownedBackendOrigin, ownedBrowserOrigin } from "../src/lib/backendScope";
 import { isolatedMealPhotoApi, isolatedPlanningBackend } from "./lib/isolated-planning-backend.mjs";
 import { runAccountErasure } from "../supabase/functions/_shared/privacyErasure";
 import { createHandler as createExport } from "../supabase/functions/privacy-export/handler";
 
+assert.ok(
+  process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === "--restore-only"),
+);
+const restoreOnly = process.argv[2] === "--restore-only";
 const report = {
   checkedAt: new Date().toISOString(),
   synthetic: true,
+  restoreOnly,
+  backupStage: undefined as string | undefined,
+  failureCategory: undefined as string | undefined,
+  archiveRejection: undefined as string | undefined,
   actualAuthRestStorage: false,
   externalAiCalled: false,
   realAccountUsed: false,
@@ -26,6 +35,17 @@ const report = {
   isolatedMigrationsApplied: 0,
   failureCode: undefined as string | undefined,
   failedHttpStatus: undefined as { expected: number; actual: number } | undefined,
+  restored: undefined as
+    | {
+        completed: boolean;
+        cleanupCompleted: boolean;
+        restoredObjectsDownloaded?: number;
+        restoredMealPhotoDigestsVerified?: number;
+        restoredPeerMealRowsHidden: boolean;
+        phase?: string;
+        errorCategory?: string;
+      }
+    | undefined,
   passed: [] as string[],
 };
 const backend = isolatedPlanningBackend(report, { meals: true, mealPhotos: true });
@@ -41,6 +61,7 @@ function status(actual: number, expected: number) {
 }
 
 async function run() {
+  assert.equal(isolatedMealPhotoApi, ownedBackendOrigin);
   await backend.boot();
   report.phase = "synthetic_password_login";
   const options = {
@@ -102,6 +123,11 @@ async function run() {
       .single();
   const storedPhoto = () => admin.storage.from(bucket).download(path);
   let retained: Buffer;
+  const restoreName = "archive_restore_verifies_meal_photo_bytes_and_owner_isolation";
+  if (restoreOnly) {
+    await test(restoreName, verifyRestore);
+    return;
+  }
 
   await test("explicit_save_with_and_without_attachment", async () => {
     const neverStored = await save(optOut, false);
@@ -194,7 +220,13 @@ async function run() {
     status((await photo("GET", meal, ownerToken)).status, 200);
   });
 
-  await test("private_photo_export_contains_exact_bytes_not_credentials", async () => {
+  await test("mixed_photo_export_contains_exact_bytes_not_credentials", async () => {
+    const winePath = `${owner.id}/${randomUUID()}.png`;
+    const winePixels = new Uint8Array(retained);
+    const wineUpload = await admin.storage
+      .from("wine-labels")
+      .upload(winePath, new Blob([winePixels], { type: "image/png" }));
+    assert.equal(wineUpload.error, null);
     const exportData = createExport({
       admin: () => admin,
       erase: runAccountErasure,
@@ -210,17 +242,28 @@ async function run() {
     assert.equal(response.headers.get("cache-control"), "no-store");
     const manifest = await response.json();
     assert.equal(manifest.tables.kitchen_photo_meals.length, 2);
-    assert.deepEqual(manifest.files, [{ bucket, path, mealId: meal }]);
+    assert.equal(manifest.files.length, 2);
+    assert.deepEqual(
+      manifest.files.find((file: { bucket: string }) => file.bucket === bucket),
+      { bucket, path, mealId: meal },
+    );
+    const signed = manifest.files.find((file: { bucket: string }) => file.bucket === "wine-labels");
+    assert.equal(signed.path, winePath);
+    assert.equal(new URL(signed.signedUrl).origin, ownedBackendOrigin);
     let authorizedReads = 0;
     const download = await completePrivacyExport(
       manifest,
       owner.id,
-      isolatedMealPhotoApi,
-      async () => {
-        throw new Error("Unexpected signed-link export");
+      ownedBrowserOrigin,
+      async (href) => {
+        const url = new URL(href);
+        assert.equal(url.origin, ownedBrowserOrigin);
+        assert.equal(url.pathname, `/storage/v1/object/sign/wine-labels/${winePath}`);
+        return backend.request("storage", url.pathname.slice("/storage/v1".length) + url.search);
       },
       () => true,
       {
+        ownedPage: { origin: "http://127.0.0.1:5212" },
         readPrivateMealPhoto: async (id) => {
           authorizedReads++;
           return photo("GET", id, ownerToken);
@@ -234,6 +277,12 @@ async function run() {
         path,
         mimeType: "image/png",
         base64: retained.toString("base64"),
+      },
+      {
+        bucket: "wine-labels",
+        path: winePath,
+        mimeType: "image/png",
+        base64: Buffer.from(winePixels).toString("base64"),
       },
     ]);
   });
@@ -288,6 +337,35 @@ async function run() {
     status(remaining.status, 200);
     assert.deepEqual(remaining.data, [{ id: peerMeal, user_id: peer.id }]);
   });
+
+  await test(restoreName, verifyRestore);
+
+  async function verifyRestore() {
+    const restoredMeal = randomUUID();
+    status(
+      (
+        await peerClient.rpc("kitchen_save_photo_meal", {
+          _id: restoredMeal,
+          _items: items,
+          _keep_photo: true,
+        })
+      ).status,
+      200,
+    );
+    status((await photo("POST", restoredMeal, peerToken)).status, 200);
+    const result = await photo("GET", restoredMeal, peerToken);
+    status(result.status, 200);
+    const digest = createHash("sha256")
+      .update(Buffer.from(await result.arrayBuffer()))
+      .digest("hex");
+    report.actualAuthRestStorage = true;
+    report.restored = await backend.restoreMealPhotoFixture(digest);
+    assert.equal(report.restored.completed, true);
+    assert.equal(report.restored.cleanupCompleted, true);
+    assert.equal(report.restored.restoredMealPhotoDigestsVerified, 1);
+    assert.equal(report.restored.restoredObjectsDownloaded, 1);
+    assert.equal(report.restored.restoredPeerMealRowsHidden, true);
+  }
 }
 
 try {
@@ -296,6 +374,17 @@ try {
 } catch (error) {
   const code = (error as { code?: unknown })?.code;
   if (typeof code === "string" && /^[A-Z0-9_]{1,32}$/.test(code)) report.failureCode = code;
+  const reason = (error as { category?: unknown })?.category;
+  if (typeof reason === "string" && /^[a-z_]{1,40}$/.test(reason)) report.archiveRejection = reason;
+  if (
+    error instanceof Error &&
+    [
+      "owned_storage_archive_rejected",
+      "planning_database_command_failed",
+      "isolated_meal_photo_restore_failed",
+    ].includes(error.message)
+  )
+    report.failureCategory = error.message;
 } finally {
   try {
     report.cleanupCompleted = await backend.close();

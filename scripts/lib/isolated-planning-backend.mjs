@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { checkOwnedContainer, ownedApi, ownedProject, ownedServices } from "./owned-backend.mjs";
 import {
   ownedRestoreProbeImage,
+  inspectOwnedTar,
+  validateOwnedArchive,
   ownedRoleRestoreSql,
   validateOwnedManifest,
 } from "./owned-recovery.mjs";
 import { finishOwnedInput } from "./owned-process-input.mjs";
-import { recoveryToken } from "./platform-recovery.mjs";
+import { binaryPart, recoveryToken } from "./platform-recovery.mjs";
 import { ownedContainerProjection } from "./owned-planning-preflight.mjs";
 import { pantryRollbackTag, pantryWebLabel } from "./owned-pantry-preflight.mjs";
 import { nutritionRollbackTag } from "./owned-nutrition-delivery.mjs";
@@ -20,7 +23,7 @@ const prefix = "winesnap-planning-check";
 const services = ["db", "auth", "storage", "rest", "probe"];
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
-export const isolatedMealPhotoApi = "http://meal-photo.invalid";
+export const isolatedMealPhotoApi = "http://winesnap-owned-gateway:8080";
 
 // The relay runs inside the disposable network. It cannot address an installed or remote API.
 const relayLimit = 6 * 1024 * 1024;
@@ -96,7 +99,7 @@ export function isolatedPlanningBackend(
       "TMP",
     ].flatMap((key) => (process.env[key] ? [[key, process.env[key]]] : [])),
   );
-  let networkId, databaseImage;
+  let networkId, databaseImage, fixtureImages;
   const engine = "npipe:////./pipe/dockerDesktopLinuxEngine";
   let webRelay, serviceRelay;
   const containers = [];
@@ -280,6 +283,7 @@ export function isolatedPlanningBackend(
       assert.match(images[service], /^sha256:[a-f0-9]{64}$/);
     }
     databaseImage = images.db;
+    fixtureImages = images;
     report.phase = "create_internal_network";
     networkId = await output(["network", "create", "--internal", ...labelArgs, names.network]);
     assert.match(networkId, idPattern);
@@ -320,10 +324,12 @@ export function isolatedPlanningBackend(
     await ready(async () =>
       assert.equal(await sql("SELECT to_regclass('auth.users') IS NOT NULL"), "t"),
     );
+    const storageTenant = mealPhotos ? "winesnap-owned" : "winesnap-planning";
     await start("storage", images.storage, "1000:1000", {
       tmpfs: [
         "/tmp:rw,nosuid,nodev,noexec,size=16m,uid=1000,gid=1000",
-        "/var/lib/storage:rw,nosuid,nodev,noexec,size=64m,uid=1000,gid=1000",
+        "/var/lib/storage:rw,nosuid,nodev,noexec,size=64m,uid=1000,gid=1000" +
+          (mealPhotos ? ",mode=0700" : ""),
       ],
       vars: {
         DATABASE_URL: dbUrl("supabase_storage_admin"),
@@ -333,9 +339,9 @@ export function isolatedPlanningBackend(
         POSTGREST_URL: `http://${names.rest}:3000`,
         STORAGE_BACKEND: "file",
         FILE_STORAGE_BACKEND_PATH: "/var/lib/storage",
-        TENANT_ID: "winesnap-planning",
+        TENANT_ID: storageTenant,
         REGION: "local",
-        GLOBAL_S3_BUCKET: "winesnap-planning",
+        GLOBAL_S3_BUCKET: storageTenant,
         FILE_SIZE_LIMIT: "10485760",
         ENABLE_IMAGE_TRANSFORMATION: "false",
         LOG_LEVEL: "error",
@@ -409,6 +415,139 @@ export function isolatedPlanningBackend(
     const { id } = await response.json();
     assert.match(id, /^[a-f0-9-]{36}$/);
     return { id, email, password: accountPassword };
+  }
+
+  async function restoreMealPhotoFixture(expectedDigest) {
+    assert.ok(mealPhotos && meals && serviceRelay && networkId);
+    assert.match(expectedDigest, /^[a-f0-9]{64}$/);
+    const stage = (value) => {
+      report.backupStage = value;
+      console.log("ARCHIVE " + value);
+    };
+    stage("freeze_synthetic_writers");
+    // Close the only way to issue fixture requests before capturing the tmpfs.
+    await serviceRelay.close();
+    serviceRelay = undefined;
+    const writers = containers.filter(({ service }) => ["auth", "rest"].includes(service));
+    assert.equal(writers.length, 2);
+    await command(["stop", "--time", "5", ...writers.map(({ id }) => id)]);
+    const manifestSql = await source("config/owned-windows/backup-manifest.sql");
+    const manifest = await sql(manifestSql);
+    const buffers = [];
+    try {
+      stage("database_and_roles");
+      const dump = await command([
+        "exec",
+        names.db,
+        "pg_dump",
+        "-h",
+        "/tmp",
+        "-U",
+        "postgres",
+        "--format=custom",
+        "postgres",
+      ]);
+      buffers.push(dump);
+      const roles = await command([
+        "exec",
+        names.db,
+        "pg_dumpall",
+        "-h",
+        "/tmp",
+        "-U",
+        "postgres",
+        "--roles-only",
+        "--no-role-passwords",
+      ]);
+      buffers.push(roles);
+      stage("storage_tar");
+      const tar = await command([
+        "exec",
+        "--user",
+        "1000:1000",
+        names.storage,
+        "tar",
+        "--numeric-owner",
+        "-C",
+        "/var/lib/storage",
+        "-cf",
+        "-",
+        ".",
+      ]);
+      buffers.push(tar);
+      assert.equal(await sql(manifestSql), manifest);
+      stage("exact_tar_manifest");
+      const files = await inspectOwnedTar(tar);
+      assert.equal(files.filter((file) => file.sha256 === expectedDigest).length, 1);
+      const images = {};
+      stage("archive_images");
+      for (const service of Object.keys(ownedServices)) {
+        images[service] =
+          fixtureImages[service] ??
+          (await output(["image", "inspect", ownedServices[service], "--format", "{{.Id}}"]));
+      }
+      const archive = validateOwnedArchive({
+        version: 2,
+        project: ownedProject,
+        createdAt: new Date().toISOString(),
+        configuration: {
+          version: 1,
+          project: ownedProject,
+          installationId: run + run,
+          dbPassword: password,
+          jwtSecret: sign,
+          cronSecret: randomBytes(32).toString("hex"),
+          privacyCronSecret: randomBytes(32).toString("hex"),
+          issuedAt: Math.floor(Date.now() / 1000),
+        },
+        database: binaryPart(dump),
+        roles: binaryPart(roles),
+        storage: binaryPart(tar),
+        images,
+        writeQuiesced: true,
+        manifest: { database: validateOwnedManifest(JSON.parse(manifest)), files },
+      });
+      const payload = Buffer.from(JSON.stringify(archive));
+      buffers.push(payload);
+      stage("restartless_isolated_restore");
+      return await new Promise((resolve, reject) => {
+        const child = execFile(
+          process.execPath,
+          [fileURLToPath(new URL("../rehearse-owned-recovery.mjs", import.meta.url))],
+          {
+            env: {
+              ...env,
+              WINESNAP_OWNED_RESTORE_PIPE: "1",
+              WINESNAP_OWNED_RESTORE_ID: randomBytes(8).toString("hex"),
+            },
+            timeout: 720_000,
+            maxBuffer: 128 * 1024,
+            windowsHide: true,
+          },
+          (_error, stdout) => {
+            try {
+              const result = JSON.parse(stdout);
+              resolve({
+                completed: result.completed === true,
+                cleanupCompleted: result.cleanupCompleted === true,
+                restoredObjectsDownloaded: result.restoredObjectsDownloaded,
+                restoredMealPhotoDigestsVerified: result.restoredMealPhotoDigestsVerified,
+                restoredPeerMealRowsHidden: result.restoredPeerMealRowsHidden === true,
+                phase: /^[a-z_]+$/.test(result.phase) ? result.phase : undefined,
+                errorCategory: /^[a-z_]+$/.test(result.errorCategory)
+                  ? result.errorCategory
+                  : undefined,
+              });
+            } catch {
+              reject(new Error("isolated_meal_photo_restore_failed"));
+            }
+          },
+        );
+        finishOwnedInput(child.stdin, payload);
+      });
+    } finally {
+      for (const buffer of buffers) buffer.fill(0);
+    }
   }
   async function recover() {
     const manifestSql = await source("config/owned-windows/backup-manifest.sql");
@@ -569,6 +708,7 @@ export function isolatedPlanningBackend(
   return {
     boot,
     request,
+    restoreMealPhotoFixture,
     mealPhotoFixtureFetch() {
       assert.ok(mealPhotos && meals && networkId);
       return async (input, init) => {
@@ -582,7 +722,7 @@ export function isolatedPlanningBackend(
         if (service === "storage")
           assert.match(
             endpoint,
-            /^\/object(?:\/(?:authenticated|public|sign))?\/meal-photos(?:\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.png)?$/,
+            /^\/object(?:\/(?:authenticated|public|sign))?\/(?:meal-photos|wine-labels)(?:\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.png)?$/,
           );
         next.signal.throwIfAborted();
         const result = await request(service, endpoint + url.search, {

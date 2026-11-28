@@ -135,8 +135,15 @@ export function inspectOwnedTar(bytes) {
       python,
       ["-I", "-B", fileURLToPath(new URL("./inspect-owned-tar.py", import.meta.url))],
       { windowsHide: true, timeout: 30000, maxBuffer: 8 * 1024 * 1024 },
-      (error, stdout) => {
-        if (error) return reject(new Error("owned_storage_archive_rejected"));
+      (error, stdout, stderr) => {
+        if (error) {
+          const failure = new Error("owned_storage_archive_rejected");
+          failure.category = error.killed
+            ? "parser_timeout"
+            : (/^owned_storage_archive_rejected:([a-z_]+)\r?\n?$/.exec(stderr)?.[1] ??
+              "parser_start_or_pipe");
+          return reject(failure);
+        }
         try {
           resolve(JSON.parse(stdout));
         } catch {

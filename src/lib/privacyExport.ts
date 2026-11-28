@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { ownedBackendOrigin, ownedBrowserOrigin } from "./backendScope";
+import { ownedBrowserApiUrl } from "./ownedHosting";
 
 const photoBucket = "meal-photos";
 const exportFile = z.union([
@@ -31,7 +33,12 @@ export async function completePrivacyExport(
   {
     maxBytes = 50 * 1024 * 1024,
     readPrivateMealPhoto,
-  }: { maxBytes?: number; readPrivateMealPhoto?: (mealId: string) => Promise<Response> } = {},
+    ownedPage,
+  }: {
+    maxBytes?: number;
+    readPrivateMealPhoto?: (mealId: string) => Promise<Response>;
+    ownedPage?: { origin: string; publicOrigin?: string };
+  } = {},
 ) {
   const data = exportSchema.parse(input);
   if (data.account.id !== owner || !stillOwner()) throw new Error("Account changed");
@@ -51,8 +58,9 @@ export async function completePrivacyExport(
       }
     } else {
       const url = new URL(file.signedUrl);
+      const owned = !!ownedPage && origin === ownedBrowserOrigin;
       if (
-        url.origin !== new URL(origin).origin ||
+        (url.origin !== new URL(origin).origin && !(owned && url.origin === ownedBackendOrigin)) ||
         url.username ||
         url.password ||
         url.hash ||
@@ -60,7 +68,12 @@ export async function completePrivacyExport(
         decodeURIComponent(url.pathname.split("/")[5] ?? "") !== file.bucket
       )
         throw new Error("Invalid export file origin");
-      response = await read(url.href);
+      const target = owned
+        ? ownedBrowserApiUrl(origin, "true", ownedPage.publicOrigin, ownedPage.origin) +
+          url.pathname +
+          url.search
+        : url.href;
+      response = await read(target);
     }
     if (!response.ok || !response.body) throw new Error("Could not download export file");
     const chunks: Uint8Array[] = [];

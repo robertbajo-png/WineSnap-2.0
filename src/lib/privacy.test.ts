@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { eraseAccountFiles, recentSignIn } from "../../supabase/functions/_shared/privacy";
 import { completePrivacyExport } from "./privacyExport";
+import { ownedBackendOrigin, ownedBrowserOrigin } from "./backendScope";
 import { readFileSync } from "node:fs";
 
 describe("account erasure", () => {
@@ -83,6 +84,29 @@ const sample = () => ({
 });
 describe("complete private export", () => {
   const meal = "bc47c8cd-6273-4f56-aff5-214230c82b54";
+
+  it("uses only the approved browser gateway for signed URLs from the owned server", async () => {
+    const data = sample();
+    const path = "/storage/v1/object/sign/wine-labels/owner/image?token=synthetic";
+    data.files[0].signedUrl = ownedBackendOrigin + path;
+    const read = vi.fn(async () => new Response("synthetic"));
+    const complete = (origin: string, publicOrigin?: string) =>
+      completePrivacyExport(data, "owner", ownedBrowserOrigin, read, () => true, {
+        ownedPage: { origin, publicOrigin },
+      });
+    await complete("http://127.0.0.1:5212");
+    await complete("https://winesnap.example.com", "https://winesnap.example.com");
+    await expect(
+      complete("https://unknown.example.com", "https://winesnap.example.com"),
+    ).rejects.toThrow("does not allow");
+    await expect(
+      completePrivacyExport(data, "owner", ownedBrowserOrigin, read, () => true),
+    ).rejects.toThrow("origin");
+    expect(read.mock.calls).toEqual([
+      [ownedBrowserOrigin + path],
+      ["https://winesnap.example.com/backend" + path],
+    ]);
+  });
 
   it("downloads private meal photos only through the authenticated reader", async () => {
     const path = `owner/${meal}.png`;

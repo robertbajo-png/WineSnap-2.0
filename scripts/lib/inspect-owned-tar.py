@@ -25,8 +25,12 @@ def inspect_archive(data):
             if path.is_absolute() or ".." in path.parts or ":" in item.name:
                 raise ValueError("unsafe_path")
             name = str(path)
-            if name in seen or not (item.isdir() or item.isfile()) or item.mode & 0o7000:
-                raise ValueError("unsafe_entry")
+            if name in seen:
+                raise ValueError("duplicate_entry")
+            if not (item.isdir() or item.isfile()):
+                raise ValueError("unsafe_entry_type")
+            if item.mode & 0o7000:
+                raise ValueError("unsafe_entry_mode")
             seen.add(name)
             if name != "." and (not path.parts or path.parts[0] != "winesnap-owned"):
                 raise ValueError("foreign_tenant")
@@ -50,6 +54,12 @@ if __name__ == "__main__":
     try:
         result = inspect_archive(sys.stdin.buffer.read(LIMIT + 1))
         sys.stdout.write(json.dumps(result, separators=(",", ":")))
-    except Exception:
-        sys.stderr.write("owned_storage_archive_rejected\n")
+    except Exception as error:
+        categories = {
+            "archive_size", "entry_limit", "unsafe_path", "duplicate_entry",
+            "unsafe_entry_type", "unsafe_entry_mode",
+            "foreign_tenant", "expanded_size", "truncated_entry",
+        }
+        reason = str(error) if type(error) is ValueError and str(error) in categories else "invalid_tar"
+        sys.stderr.write("owned_storage_archive_rejected:" + reason + "\n")
         sys.exit(1)

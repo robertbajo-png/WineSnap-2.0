@@ -437,6 +437,7 @@ try {
     ),
   );
   assert.ok(objects.length <= 4096);
+  const restoredMealObjects = new Map();
   for (const object of objects) {
     const path = `${encodeURIComponent(object.bucket)}/${object.path.split("/").map(encodeURIComponent).join("/")}`;
     const image = await request("storage", `/object/${path}`, {
@@ -451,8 +452,26 @@ try {
     assert.ok(
       [400, 401, 403, 404].includes((await request("storage", `/object/public/${path}`)).status),
     );
+    if (object.bucket === "meal-photos") restoredMealObjects.set(object.path, sha256(image.bytes));
   }
   report.restoredObjectsDownloaded = objects.length;
+  const includesPhotoMeals = restored.relations.some(
+    ({ schema, table }) => schema === "public" && table === "kitchen_photo_meals",
+  );
+  if (includesPhotoMeals) {
+    phase = "verify_restored_meal_photo_digests";
+    const readyMeals = JSON.parse(
+      await sql(
+        "SELECT coalesce(jsonb_agg(jsonb_build_object('path',user_id::text||'/'||id::text||'.png','digest',photo_sha256)),'[]'::jsonb)::text FROM public.kitchen_photo_meals WHERE photo_state='ready'",
+      ),
+    );
+    assert.ok(readyMeals.length <= 4096);
+    for (const { path, digest } of readyMeals) {
+      assert.match(digest, /^[a-f0-9]{64}$/);
+      assert.equal(restoredMealObjects.get(path), digest);
+    }
+    report.restoredMealPhotoDigestsVerified = readyMeals.length;
+  }
   phase = "restored_auth_and_jwt_rls";
   const email = `owned-restore-${run}@example.test`,
     loginPassword = randomBytes(32).toString("hex");
@@ -481,6 +500,15 @@ try {
   });
   assert.equal(hidden.status, 200);
   assert.deepEqual(hidden.json(), []);
+  if (includesPhotoMeals) {
+    phase = "verify_restored_meals_private_to_original_owners";
+    const hiddenMeals = await request("rest", "/kitchen_photo_meals?select=id", {
+      headers: bearer(session.access_token),
+    });
+    assert.equal(hiddenMeals.status, 200);
+    assert.deepEqual(hiddenMeals.json(), []);
+    report.restoredPeerMealRowsHidden = true;
+  }
   report.syntheticCloneLoginAndWrongPassword = true;
   report.restoredOwnerIsolationWithRealJwt = true;
   report.originalUserPasswordsEnteredOrReset = false;

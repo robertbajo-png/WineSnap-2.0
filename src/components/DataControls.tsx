@@ -60,9 +60,16 @@ export function DataControls() {
           exportData,
           id,
           import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL,
-          (url) => fetch(url, { cache: "no-store", credentials: "omit", redirect: "error" }),
+          (url) => fetch(url, { cache: "no-store", credentials: "same-origin", redirect: "error" }),
           () => owner.current === id,
           {
+            ownedPage:
+              import.meta.env.VITE_OWNED_BACKEND_ENABLED === "true"
+                ? {
+                    origin: window.location.origin,
+                    publicOrigin: import.meta.env.VITE_OWNED_PUBLIC_ORIGIN,
+                  }
+                : undefined,
             readPrivateMealPhoto: async (mealId) =>
               new Response(
                 await readMealPhoto(
