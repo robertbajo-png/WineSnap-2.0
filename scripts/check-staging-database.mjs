@@ -103,7 +103,8 @@ try {
   stage = "create-synthetic-database";
   await admin`CREATE DATABASE ${admin(name)}`;
   created = true;
-  db = postgres({ ...options, database: name });
+  // Reopened connections need the same extension resolution as the bootstrap session.
+  db = postgres({ ...options, database: name, connection: { search_path: "public,extensions" } });
   stage = "bootstrap-platform-contracts";
   await db.unsafe(await readFile(resolve(root, "supabase/tests/bootstrap.local.sql"), "utf8"));
   const inventory = await sqlInventory(root);
@@ -188,6 +189,7 @@ try {
     "supabase/tests/week_plans.local.sql",
     "supabase/tests/kitchen_pantry.local.sql",
     "supabase/tests/week_plan_diners.local.sql",
+    "supabase/tests/kitchen_photo_meals.local.sql",
   ]) {
     stage = file;
     const source = await readFile(resolve(root, file), "utf8");
@@ -197,7 +199,9 @@ try {
       sha256: createHash("sha256").update(source).digest("hex"),
     });
   }
-  console.log("PASS private kitchen, week planning and pantry acceptance (synthetic only)");
+  console.log(
+    "PASS private kitchen, meal photos, week planning and pantry acceptance (synthetic only)",
+  );
   for (const file of [
     "supabase/operations/test-image-proxy-policy.sql",
     "supabase/tests/image_proxy.local.sql",
@@ -277,5 +281,6 @@ try {
 await mkdir(resolve(root, "dist"), { recursive: true });
 await writeFile(reportPath, JSON.stringify(report, null, 2));
 const summary = JSON.stringify({ ...report, files: undefined });
+process.exitCode = report.status === "passed" ? 0 : 1;
 if (process.exitCode) console.error(summary);
 else console.log(summary);

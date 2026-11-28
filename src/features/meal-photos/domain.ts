@@ -3,7 +3,12 @@ import { z } from "zod";
 export const mealPhotoFrameSideLimit = 1024;
 
 const maxItems = 20;
-const foodName = z.string().trim().min(1).max(100);
+const foodName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .refine((name) => /^[^\p{Cc}]+$/u.test(name));
 const grams = z.number().int().min(1).max(10_000);
 const gramsRange = z
   .strictObject({ minGrams: grams, maxGrams: grams })
@@ -27,11 +32,23 @@ const reviewedPortion = z
   .nullable();
 
 const reviewItemSchema = z.strictObject({ name: foodName, portion: reviewedPortion });
+const reviewedItems = z.array(reviewItemSchema).min(1).max(maxItems);
 
 export const confirmedPhotoMealSchema = z.strictObject({
-  items: z.array(reviewItemSchema).min(1).max(maxItems),
+  items: reviewedItems,
   keepPhoto: z.boolean(),
 });
+
+export const savedPhotoMealSchema = z
+  .strictObject({
+    id: z.uuid(),
+    user_id: z.uuid(),
+    created_at: z.iso.datetime({ offset: true }),
+    items: reviewedItems,
+    keep_photo: z.boolean(),
+    photo_state: z.enum(["none", "pending", "ready", "removing", "removed"]),
+  })
+  .refine((record) => record.keep_photo === (record.photo_state !== "none"));
 
 export type MealPhotoEstimate = z.infer<typeof mealPhotoEstimateSchema>;
 export type PhotoMealReviewItem = z.infer<typeof reviewItemSchema>;
