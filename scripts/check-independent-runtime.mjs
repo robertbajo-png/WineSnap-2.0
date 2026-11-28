@@ -178,6 +178,14 @@ async function checkServer(configuredCron, artifact) {
       );
       assert.equal(localAi.response.headers.get("cache-control"), "no-store");
     }
+    const mealPhoto = await request("/api/ai/analyze-meal-photo", { method: "POST" });
+    assert.equal(
+      mealPhoto.response.status,
+      404,
+      "Meal photo analysis must stay disabled by default",
+    );
+    assert.equal(mealPhoto.response.headers.get("cache-control"), "no-store");
+    assert.deepEqual(JSON.parse(mealPhoto.body), { error: "meal_photo_disabled" });
     for (const name of ["privacy-export", "privacy-controls", "privacy-maintenance"]) {
       const privacy = await request(`/api/privacy/${name}`, {
         method: "POST",

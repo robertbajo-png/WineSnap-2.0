@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const mealPhotoFrameSideLimit = 1024;
+
 const maxItems = 20;
 const foodName = z.string().trim().min(1).max(100);
 const grams = z.number().int().min(1).max(10_000);

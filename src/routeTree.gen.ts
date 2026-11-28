@@ -38,6 +38,7 @@ import { Route as CellarOverviewRouteImport } from './routes/cellar.overview'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as WShareIdRouteImport } from './routes/w.$shareId'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
+import { Route as ApiAiAnalyzeMealPhotoRouteImport } from './routes/api/ai/analyze-meal-photo'
 import { Route as ApiAiAnalyzeWineRouteImport } from './routes/api/ai/analyze-wine'
 import { Route as ApiAiAskWinesnapRouteImport } from './routes/api/ai/ask-winesnap'
 import { Route as ApiAiExtractPreferenceSignalsRouteImport } from './routes/api/ai/extract-preference-signals'
@@ -201,6 +202,11 @@ const WineIdRoute = WineIdRouteImport.update({
   path: '/wine/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiAnalyzeMealPhotoRoute = ApiAiAnalyzeMealPhotoRouteImport.update({
+  id: '/api/ai/analyze-meal-photo',
+  path: '/api/ai/analyze-meal-photo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAiAnalyzeWineRoute = ApiAiAnalyzeWineRouteImport.update({
   id: '/api/ai/analyze-wine',
   path: '/api/ai/analyze-wine',
@@ -324,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-meal-photo': typeof ApiAiAnalyzeMealPhotoRoute
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
   '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
@@ -372,6 +379,7 @@ export interface FileRoutesByTo {
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-meal-photo': typeof ApiAiAnalyzeMealPhotoRoute
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
   '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
@@ -421,6 +429,7 @@ export interface FileRoutesById {
   '/u/$username': typeof UUsernameRoute
   '/w/$shareId': typeof WShareIdRoute
   '/wine/$id': typeof WineIdRouteWithChildren
+  '/api/ai/analyze-meal-photo': typeof ApiAiAnalyzeMealPhotoRoute
   '/api/ai/analyze-wine': typeof ApiAiAnalyzeWineRoute
   '/api/ai/ask-winesnap': typeof ApiAiAskWinesnapRoute
   '/api/ai/extract-preference-signals': typeof ApiAiExtractPreferenceSignalsRoute
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-meal-photo'
     | '/api/ai/analyze-wine'
     | '/api/ai/ask-winesnap'
     | '/api/ai/extract-preference-signals'
@@ -519,6 +529,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-meal-photo'
     | '/api/ai/analyze-wine'
     | '/api/ai/ask-winesnap'
     | '/api/ai/extract-preference-signals'
@@ -567,6 +578,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/w/$shareId'
     | '/wine/$id'
+    | '/api/ai/analyze-meal-photo'
     | '/api/ai/analyze-wine'
     | '/api/ai/ask-winesnap'
     | '/api/ai/extract-preference-signals'
@@ -614,6 +626,7 @@ export interface RootRouteChildren {
   UUsernameRoute: typeof UUsernameRoute
   WShareIdRoute: typeof WShareIdRoute
   WineIdRoute: typeof WineIdRouteWithChildren
+  ApiAiAnalyzeMealPhotoRoute: typeof ApiAiAnalyzeMealPhotoRoute
   ApiAiAnalyzeWineRoute: typeof ApiAiAnalyzeWineRoute
   ApiAiAskWinesnapRoute: typeof ApiAiAskWinesnapRoute
   ApiAiExtractPreferenceSignalsRoute: typeof ApiAiExtractPreferenceSignalsRoute
@@ -835,6 +848,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai/analyze-meal-photo': {
+      id: '/api/ai/analyze-meal-photo'
+      path: '/api/ai/analyze-meal-photo'
+      fullPath: '/api/ai/analyze-meal-photo'
+      preLoaderRoute: typeof ApiAiAnalyzeMealPhotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ai/analyze-wine': {
       id: '/api/ai/analyze-wine'
       path: '/api/ai/analyze-wine'
@@ -1013,6 +1033,7 @@ const rootRouteChildren: RootRouteChildren = {
   UUsernameRoute: UUsernameRoute,
   WShareIdRoute: WShareIdRoute,
   WineIdRoute: WineIdRouteWithChildren,
+  ApiAiAnalyzeMealPhotoRoute: ApiAiAnalyzeMealPhotoRoute,
   ApiAiAnalyzeWineRoute: ApiAiAnalyzeWineRoute,
   ApiAiAskWinesnapRoute: ApiAiAskWinesnapRoute,
   ApiAiExtractPreferenceSignalsRoute: ApiAiExtractPreferenceSignalsRoute,
@@ -1036,13 +1057,10 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-
 import type { createStart } from '@tanstack/react-start'
-
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
-
     router: Awaited<ReturnType<typeof getRouter>>
   }
 }
