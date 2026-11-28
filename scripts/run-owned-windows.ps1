@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','TextAiUpdate','MealPhotoUpdate','MealPhotoAccept','MealPhotoCleanup','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
+  [ValidateSet('Start','Resume','RestartApp','Verify','Update','NutritionUpdate','TextAiUpdate','MealPhotoUpdate','PrivateJournalUpdate','MealPhotoAccept','MealPhotoCleanup','NutritionAccept','NutritionCleanup','Backup','Accept','ScanAccept','Features','FeaturesAi','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','PilotDemoCleanup','BrowserPrepare','BrowserInspect','BrowserConflict','BrowserMemory','BrowserCleanup','Maintain')][string]$Action='Start',
   [ValidateSet('https://winesnap.boleoai.se')][string]$PublicOrigin,
   [ValidateSet('Dark','Classic')][string]$PilotUi,
   [switch]$LocalOnly,
@@ -17,7 +17,11 @@ param(
   [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedMealPhotoBackup,
   [ValidatePattern('^[a-f0-9]{40}$')][string]$ExpectedMealPhotoRevision,
   [ValidatePattern('^sha256:[a-f0-9]{64}$')][string]$ExpectedMealPhotoPreviousImage,
-  [switch]$ConfirmMealPhotoMaintenance
+  [switch]$ConfirmMealPhotoMaintenance,
+  [ValidatePattern('^owned-\d{8}-\d{9}\.dpapi$')][string]$VerifiedPrivateJournalBackup,
+  [ValidatePattern('^[a-f0-9]{40}$')][string]$ExpectedPrivateJournalRevision,
+  [ValidatePattern('^sha256:[a-f0-9]{64}$')][string]$ExpectedPrivateJournalPreviousImage,
+  [switch]$ConfirmPrivateJournalMaintenance
 )
 $ErrorActionPreference='Stop'
 if(-not $IsWindows){throw 'PowerShell 7 on Windows is required.'}
@@ -38,6 +42,8 @@ if(($AiTextProvider -or $AiTextModel -or $VerifiedAiTextBackup) -and $Action -ne
 if($AiTextModel -and $AiTextProvider -ne 'OpenAI'){throw 'An OpenAI model requires the OpenAI provider.'}
 if($Action -eq 'MealPhotoUpdate' -and (-not $ConfirmMealPhotoMaintenance -or -not $VerifiedMealPhotoBackup -or -not $ExpectedMealPhotoRevision -or -not $ExpectedMealPhotoPreviousImage)){throw 'DEV-10 needs an approved window, reviewed revision, exact previous web image and freshly restored backup.'}
 if(($VerifiedMealPhotoBackup -or $ExpectedMealPhotoRevision -or $ExpectedMealPhotoPreviousImage -or $ConfirmMealPhotoMaintenance) -and $Action -ne 'MealPhotoUpdate'){throw 'DEV-10 inputs belong only to the dedicated MealPhotoUpdate action.'}
+if($Action -eq 'PrivateJournalUpdate' -and (-not $ConfirmPrivateJournalMaintenance -or -not $VerifiedPrivateJournalBackup -or -not $ExpectedPrivateJournalRevision -or -not $ExpectedPrivateJournalPreviousImage)){throw 'DEV-11 dormant delivery needs its own approved window, exact reviewed checkout, previous image and freshly restored backup.'}
+if(($VerifiedPrivateJournalBackup -or $ExpectedPrivateJournalRevision -or $ExpectedPrivateJournalPreviousImage -or $ConfirmPrivateJournalMaintenance) -and $Action -ne 'PrivateJournalUpdate'){throw 'DEV-11 inputs belong only to the dedicated PrivateJournalUpdate action.'}
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib/owned-windows-runtime.ps1')
 . (Join-Path $PSScriptRoot 'lib/owned-device-access.ps1')
@@ -78,9 +84,12 @@ function Assert-Private([string]$Path) {
 }
 try {
   Assert-Safe $store
-  New-Item -ItemType Directory -Path $directory -Force | Out-Null
-  Set-Private $directory -Folder
-  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','MealPhotoAccept','MealPhotoCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -in @('NutritionUpdate','TextAiUpdate','MealPhotoUpdate')){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
+  if($Action -eq 'PrivateJournalUpdate'){Assert-Private $directory}
+  else {
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    Set-Private $directory -Folder
+  }
+  $waitMs=if($Action -in @('Accept','Offline','PilotAccept','PlanningAccept','PantryAccept','PantryCleanup','NutritionAccept','NutritionCleanup','MealPhotoAccept','MealPhotoCleanup','PilotJourneys','PilotDemo','PilotDemoAccept','BrowserCleanup')){300000}elseif($Action -in @('NutritionUpdate','TextAiUpdate','MealPhotoUpdate','PrivateJournalUpdate')){120000}elseif($Action -eq 'Update' -or $WaitForBackupLock){120000}else{0}
   $operationLock=Open-OwnedRuntimeLock -Name operation -WaitMs $waitMs
   $acquired=[bool]$operationLock
   if(-not $acquired){$report.skipped='operation_already_running';throw 'Operation is already running.'}
@@ -153,6 +162,12 @@ try {
     $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_BACKUP']=$VerifiedMealPhotoBackup
     $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_REVISION']=$ExpectedMealPhotoRevision
     $start.Environment['WINESNAP_OWNED_MEAL_PHOTO_PREVIOUS_IMAGE']=$ExpectedMealPhotoPreviousImage
+  }
+  if($Action -eq 'PrivateJournalUpdate'){
+    $start.Environment['WINESNAP_OWNED_JOURNAL_APPROVED']='1'
+    $start.Environment['WINESNAP_OWNED_JOURNAL_BACKUP']=$VerifiedPrivateJournalBackup
+    $start.Environment['WINESNAP_OWNED_JOURNAL_REVISION']=$ExpectedPrivateJournalRevision
+    $start.Environment['WINESNAP_OWNED_JOURNAL_PREVIOUS_IMAGE']=$ExpectedPrivateJournalPreviousImage
   }
   $start.ArgumentList.Add((Join-Path $PSScriptRoot 'manage-owned-backend.mjs'));$start.ArgumentList.Add($Action)
   $phase='owned_backend_operation'

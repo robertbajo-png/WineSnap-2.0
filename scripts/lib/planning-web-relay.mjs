@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
 // This process can reach only the cloned web server's own loopback listener.
-const inContainer = ({ privacyProbe, mealPhotoProbe }) => `
+const inContainer = ({ privacyProbe, mealPhotoProbe, journalProbe }) => `
 import {createInterface} from "node:readline";
 const origin = "http://127.0.0.1:3000";
 async function serve(line) {
@@ -12,15 +12,19 @@ async function serve(line) {
     if (line.length > 4096) throw Error();
     const req = JSON.parse(line);
     id = req.id;
+    const journal = ${journalProbe === true} && req.method === "POST" &&
+      ["/api/dev11/journal","/api/dev11/export"].includes(req.path);
     const emptyPost = req.method === "POST" &&
       ((${privacyProbe === true} && req.path === "/api/privacy/privacy-export") ||
-       (${mealPhotoProbe === true} && req.path === "/api/ai/analyze-meal-photo"));
+       (${mealPhotoProbe === true} && req.path === "/api/ai/analyze-meal-photo") || journal);
     if (!Number.isSafeInteger(id) || (!["GET", "HEAD"].includes(req.method) && !emptyPost) ||
         !req.path.startsWith("/") || req.path.startsWith("//") || req.path.includes("\\\\"))
       throw Error();
     const url = new URL(req.path, origin);
     if (url.origin !== origin || url.username || url.password) throw Error();
     const response = await fetch(url, { method: req.method, redirect: "manual",
+      ...(journal ? { headers: {"content-type":"application/json","x-winesnap-dev11-proof":"a".repeat(64)},
+        body: "{}" } : {}),
       signal: AbortSignal.timeout(15000) });
     const bytes = Buffer.from(await response.arrayBuffer());
     if (bytes.length > 8388608) throw Error();

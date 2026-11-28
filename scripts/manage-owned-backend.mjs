@@ -65,6 +65,18 @@ import {
   requireMealPhotoRecovery,
   requireOwnedMealPhotoUpdate,
 } from "./lib/owned-meal-photo-delivery.mjs";
+import { ownedWebBuildFlags } from "./lib/owned-web-build.mjs";
+import {
+  deliverDormantJournal,
+  inspectJournalDeliveryState,
+  journalDeliveryLabel,
+  journalInstallationTransaction,
+  journalLabelKey,
+  journalPriorWebImage,
+  journalRollbackTag,
+  journalWebRevision,
+  requireJournalRecovery,
+} from "./lib/owned-private-journal-delivery.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -80,6 +92,7 @@ assert.ok(
     "NutritionUpdate",
     "TextAiUpdate",
     "MealPhotoUpdate",
+    "PrivateJournalUpdate",
     "MealPhotoAccept",
     "MealPhotoCleanup",
     "NutritionAccept",
@@ -121,6 +134,31 @@ const mealPhotoBackup = process.env.WINESNAP_OWNED_MEAL_PHOTO_BACKUP;
 const mealPhotoRevision = process.env.WINESNAP_OWNED_MEAL_PHOTO_REVISION;
 const mealPhotoPreviousImage = process.env.WINESNAP_OWNED_MEAL_PHOTO_PREVIOUS_IMAGE;
 const mealPhotoApproval = process.env.WINESNAP_OWNED_MEAL_PHOTO_APPROVED;
+const journalUpdate = action === "PrivateJournalUpdate";
+const journalBackup = process.env.WINESNAP_OWNED_JOURNAL_BACKUP;
+const journalRevision = process.env.WINESNAP_OWNED_JOURNAL_REVISION;
+const journalPreviousImage = process.env.WINESNAP_OWNED_JOURNAL_PREVIOUS_IMAGE;
+const journalApproval = process.env.WINESNAP_OWNED_JOURNAL_APPROVED;
+for (const value of [journalBackup, journalRevision, journalPreviousImage, journalApproval])
+  assert.equal(value !== undefined, journalUpdate);
+if (journalUpdate) {
+  assert.equal(journalApproval, "1");
+  assert.match(journalBackup, pantryBackupPattern);
+  assert.match(journalRevision, /^[a-f0-9]{40}$/);
+  assert.match(journalPreviousImage, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(journalPreviousImage, journalPriorWebImage);
+  for (const option of [
+    "WINESNAP_OWNED_PUBLIC_ORIGIN",
+    "WINESNAP_OWNED_ORIGIN_RESET",
+    "WINESNAP_OWNED_PILOT_UI",
+    "WINESNAP_OWNED_AI_TEXT_PROVIDER",
+    "WINESNAP_OWNED_AI_TEXT_MODEL",
+    "WINESNAP_OWNED_REQUIRE_PLANNING_MIGRATION",
+    "WINESNAP_OWNED_PANTRY_BACKUP",
+    "WINESNAP_OWNED_DEV11_ENABLED",
+  ])
+    assert.equal(process.env[option], undefined);
+}
 assert.equal(nutritionBackup !== undefined, nutritionUpdate);
 if (nutritionUpdate) assert.match(nutritionBackup, pantryBackupPattern);
 assert.equal(textAiBackup !== undefined, textAiUpdate);
@@ -176,7 +214,7 @@ let paused = [];
 const startedAt = performance.now();
 const deadline = startedAt + 16 * 60 * 1000;
 let recovering = false;
-let mealPhotoRecoveryDeadline;
+let webRecoveryDeadline;
 const report = {
   project: ownedProject,
   completed: false,
@@ -189,8 +227,8 @@ const report = {
 };
 const command = (args, input, extraEnv = {}, timeout = 180000) =>
   new Promise((resolve, reject) => {
-    const remaining = mealPhotoRecoveryDeadline
-      ? Math.min(timeout, Math.floor(mealPhotoRecoveryDeadline - performance.now()))
+    const remaining = webRecoveryDeadline
+      ? Math.min(timeout, Math.floor(webRecoveryDeadline - performance.now()))
       : recovering
         ? Math.min(timeout, 15000)
         : Math.floor(deadline - performance.now());
@@ -384,6 +422,7 @@ async function start(
     pantryLabel,
     nutritionLabel,
     mealPhotoLabel,
+    journalLabel,
     textAi,
   } = {},
 ) {
@@ -408,6 +447,7 @@ async function start(
     ...(pantryLabel ? ["--label", `winesnap.pantry=${pantryLabel}`] : []),
     ...(nutritionLabel ? ["--label", `winesnap.recipe-nutrition=${nutritionLabel}`] : []),
     ...(mealPhotoLabel ? ["--label", `winesnap.meal-photo=${mealPhotoLabel}`] : []),
+    ...(journalLabel ? ["--label", `${journalLabelKey}=${journalLabel}`] : []),
     ...(textAi ? ["--label", "winesnap.ai-text-provider=" + textAi.provider] : []),
     ...(textAi?.model ? ["--label", "winesnap.ai-text-model=" + textAi.model] : []),
     "--network",
@@ -550,24 +590,13 @@ async function buildOwnedWeb({
   webOnly = false,
   sourceArchive,
 }) {
-  const flags = {
-    ...originSettings.build,
-    VITE_OWNED_BACKEND_ENABLED: "true",
-    VITE_SUPABASE_URL: ownedApi,
-    VITE_SUPABASE_PUBLISHABLE_KEY: ownedToken(keys, "anon"),
-    VITE_WINE_IMAGE_PROXY_ENABLED: "true",
-    VITE_LOCAL_AI_ENABLED: "true",
-    VITE_COOKING_CORE_ENABLED: "true",
-    VITE_AI_CHEF_ENABLED: "true",
-    VITE_MEALS_ENABLED: "true",
-    VITE_MEAL_PHOTOS_ENABLED: String(mealPhotoEnabled),
-    VITE_PANTRY_ENABLED: pantryEnabled ? "true" : "false",
-    VITE_RECIPE_NUTRITION_ENABLED: "true",
-    VITE_PILOT_UI_ENABLED: pilotUi.enabled ? "true" : "false",
-    VITE_PRIVACY_CONTROLS_ENABLED: "true",
-    VITE_PRIVACY_OPERATIONS_VERIFIED: "true",
-    VITE_PRIVACY_SUPPLIERS_VERIFIED: "false",
-  };
+  const flags = ownedWebBuildFlags({
+    anon: ownedToken(keys, "anon"),
+    originBuild: originSettings.build,
+    pantryEnabled,
+    mealPhotoEnabled,
+    pilotEnabled: pilotUi.enabled,
+  });
   await command(
     [
       "build",
@@ -587,9 +616,10 @@ async function buildOwnedWeb({
 
 async function startOwnedWeb(
   image,
-  { originSettings, pilotUi, pantryEnabled, nutritionLabel, textAi, mealPhotoLabel },
+  { originSettings, pilotUi, pantryEnabled, nutritionLabel, textAi, mealPhotoLabel, journalLabel },
 ) {
   assert.ok([undefined, mealPhotoWebLabel, mealPhotoFallbackLabel].includes(mealPhotoLabel));
+  assert.ok([undefined, journalDeliveryLabel].includes(journalLabel));
   const restricted = mealPhotoLabel === mealPhotoFallbackLabel;
   const mealPhotoEnabled = mealPhotoLabel === mealPhotoWebLabel;
   await start("web", image, {
@@ -599,6 +629,7 @@ async function startOwnedWeb(
     pantryLabel: pantryEnabled ? pantryWebLabel : undefined,
     nutritionLabel,
     mealPhotoLabel,
+    journalLabel,
     textAi,
     memory: "768m",
     port: "5212:3000",
@@ -634,13 +665,7 @@ function installedTextAi(web) {
   };
 }
 
-async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textAi }) {
-  assert.ok(previous?.State.Running);
-  assert.equal(previous.Image, mealPhotoPreviousImage);
-  assert.equal(previous.Config.Labels["winesnap.pantry"], pantryWebLabel);
-  assert.equal(previous.Config.Labels["winesnap.recipe-nutrition"], nutritionWebLabel);
-  assert.deepEqual(textAi, { provider: "openai", model: "gpt-6.2-sol" });
-  assert.ok(keys.openai, "Existing owned OpenAI credential required");
+async function reviewedOwnedCheckout(expectedRevision) {
   const root = await realpath(fileURLToPath(new URL("../", import.meta.url)));
   assert.ok(!/(?:^|[\\/])OneDrive[^\\/]*(?:[\\/]|$)/i.test(root));
   const git = (args) =>
@@ -661,60 +686,77 @@ async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textA
       ),
     );
   const requireRevision = async () => {
-    assert.equal((await git(["rev-parse", "HEAD"])).toString().trim(), mealPhotoRevision);
+    assert.equal((await git(["rev-parse", "HEAD"])).toString().trim(), expectedRevision);
     assert.equal(
       (await git(["status", "--porcelain=v1", "--untracked-files=all"])).toString().trim(),
       "",
     );
   };
   await requireRevision();
+  return { git, requireRevision };
+}
+
+async function ownedBackupHash(file) {
+  assert.match(file, pantryBackupPattern);
+  const archivePath = join(homedir(), "WineSnapOwned", "backups", file);
+  const before = await lstat(archivePath);
+  assert.ok(
+    before.isFile() &&
+      !before.isSymbolicLink() &&
+      before.size > 0 &&
+      before.size <= 130 * 1024 * 1024,
+  );
+  const sha = createHash("sha256");
+  let size = 0;
+  for await (const chunk of createReadStream(archivePath)) {
+    size += chunk.length;
+    assert.ok(size <= before.size);
+    sha.update(chunk);
+  }
+  const after = await lstat(archivePath);
+  assert.ok(after.isFile() && !after.isSymbolicLink());
+  assert.equal(size, before.size);
+  for (const field of ["size", "mtimeMs", "ctimeMs", "ino", "dev"])
+    assert.equal(before[field], after[field]);
+  return sha.digest("hex");
+}
+
+async function nonWebServiceSnapshot() {
+  return [...(await installedServices())]
+    .filter(([service]) => service !== name("web"))
+    .map(([service, container]) => {
+      assert.ok(container.State.Running);
+      return [service, container.Id, container.Image, container.State.StartedAt];
+    });
+}
+
+async function inspectWebImage(tag) {
+  return (await command(["image", "inspect", tag, "--format", "{{.Id}}"])).toString().trim();
+}
+
+async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textAi }) {
+  assert.ok(previous?.State.Running);
+  assert.equal(previous.Image, mealPhotoPreviousImage);
+  assert.equal(previous.Config.Labels["winesnap.pantry"], pantryWebLabel);
+  assert.equal(previous.Config.Labels["winesnap.recipe-nutrition"], nutritionWebLabel);
+  assert.deepEqual(textAi, { provider: "openai", model: "gpt-6.2-sol" });
+  assert.ok(keys.openai, "Existing owned OpenAI credential required");
+  const { git, requireRevision } = await reviewedOwnedCheckout(mealPhotoRevision);
   const sources = await readMigrationSources();
   const databaseLedger = async () => JSON.parse(await sql(ownedMealPhotoLedgerQuery));
-  const snapshot = async () =>
-    [...(await installedServices())]
-      .filter(([service]) => service !== name("web"))
-      .map(([service, container]) => {
-        assert.ok(container.State.Running);
-        return [service, container.Id, container.Image, container.State.StartedAt];
-      });
-  const before = await snapshot();
-  const image = async (tag) =>
-    (await command(["image", "inspect", tag, "--format", "{{.Id}}"])).toString().trim();
+  const before = await nonWebServiceSnapshot();
   const rollback = mealPhotoRollbackTag(previous.Image);
-  const archivePath = join(homedir(), "WineSnapOwned", "backups", mealPhotoBackup);
-  const archiveSha256 = async () => {
-    const before = await lstat(archivePath);
-    assert.ok(
-      before.isFile() &&
-        !before.isSymbolicLink() &&
-        before.size > 0 &&
-        before.size <= 130 * 1024 * 1024,
-    );
-    const sha = createHash("sha256");
-    let size = 0;
-    for await (const chunk of createReadStream(archivePath)) {
-      size += chunk.length;
-      assert.ok(size <= before.size);
-      sha.update(chunk);
-    }
-    const after = await lstat(archivePath);
-    assert.ok(after.isFile() && !after.isSymbolicLink());
-    assert.equal(size, before.size);
-    for (const field of ["size", "mtimeMs", "ctimeMs", "ino", "dev"])
-      assert.equal(before[field], after[field]);
-    return sha.digest("hex");
-  };
   const guard = async ({ retained }) => {
     await requireRevision();
     const observation = await readPausedPantryState();
     requireMealPhotoRecovery(observation, mealPhotoBackup, {
-      archiveSha256: await archiveSha256(),
+      archiveSha256: await ownedBackupHash(mealPhotoBackup),
       installation: keys.installationId,
       previousImage: previous.Image,
     });
-    assert.deepEqual(await snapshot(), before);
-    assert.equal(await image("winesnap-owned:local"), previous.Image);
-    if (retained) assert.equal(await image(rollback), previous.Image);
+    assert.deepEqual(await nonWebServiceSnapshot(), before);
+    assert.equal(await inspectWebImage("winesnap-owned:local"), previous.Image);
+    if (retained) assert.equal(await inspectWebImage(rollback), previous.Image);
     await verify({ syncWebKeys: false });
     return requireOwnedMealPhotoUpdate(sources, await databaseLedger(), keys.installationId);
   };
@@ -735,7 +777,7 @@ async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textA
         webOnly: true,
         sourceArchive,
       });
-      return image(candidateTag);
+      return inspectWebImage(candidateTag);
     },
     retain: (id) => command(["image", "tag", id, rollback]),
     async apply(transaction) {
@@ -752,7 +794,7 @@ async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textA
       return state;
     },
     async verifyBackend() {
-      assert.deepEqual(await snapshot(), before);
+      assert.deepEqual(await nonWebServiceSnapshot(), before);
       await readPausedPantryState();
       await wait(async () => {
         const response = await request("/rest/v1/kitchen_photo_meals?limit=0");
@@ -802,7 +844,7 @@ async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textA
     stage(step) {
       phase = step;
       if (step === "meal_photo_read_migration_outcome")
-        mealPhotoRecoveryDeadline = performance.now() + 120_000;
+        webRecoveryDeadline = performance.now() + 120_000;
     },
     recovery(state) {
       report.mealPhotoRecovery = state;
@@ -810,6 +852,128 @@ async function updateGuardedMealPhoto(previous, { originSettings, pilotUi, textA
   });
   report.mealPhotoWebUpdated = true;
   report.mealPhotoServicesUnchanged = true;
+  report.publicTunnelPausedVerified = true;
+}
+
+async function updateDormantPrivateJournal(previous, { originSettings, pilotUi, textAi }) {
+  assert.ok(previous?.State.Running);
+  assert.equal(previous.Image, journalPreviousImage);
+  const labels = previous.Config.Labels;
+  assert.equal(labels["winesnap.pantry"], pantryWebLabel);
+  assert.equal(labels["winesnap.recipe-nutrition"], nutritionWebLabel);
+  assert.equal(labels["winesnap.meal-photo"], mealPhotoWebLabel);
+  assert.equal(labels[journalLabelKey], undefined);
+  assert.ok(
+    !previous.Config.Env.some((entry) => entry.startsWith("WINESNAP_OWNED_DEV11_ENABLED=")),
+  );
+  const { git, requireRevision } = await reviewedOwnedCheckout(journalRevision);
+  await git(["merge-base", "--is-ancestor", journalWebRevision, journalRevision]);
+  const sources = await readMigrationSources();
+  const source = await readFile(
+    new URL("../config/owned-windows/dev11.sql", import.meta.url),
+    "utf8",
+  );
+  const before = await nonWebServiceSnapshot();
+  const rollback = journalRollbackTag(previous.Image);
+  const assess = () =>
+    inspectJournalDeliveryState({ sources, installation: keys.installationId, sql });
+  const settings = {
+    originSettings,
+    pilotUi,
+    textAi,
+    pantryEnabled: true,
+    nutritionLabel: nutritionWebLabel,
+    mealPhotoLabel: mealPhotoWebLabel,
+  };
+  const probe = (path, init = {}) =>
+    fetch(ownedApp + path, { ...init, redirect: "error", signal: AbortSignal.timeout(5000) });
+  const candidateTag = "winesnap-owned:private-journal-candidate";
+  const verifyBackend = async () => {
+    await readPausedPantryState();
+    assert.deepEqual(await nonWebServiceSnapshot(), before);
+  };
+  await deliverDormantJournal({
+    previous,
+    async guard({ retained }) {
+      await requireRevision();
+      const observation = await readPausedPantryState();
+      requireJournalRecovery(observation, journalBackup, {
+        archiveSha256: await ownedBackupHash(journalBackup),
+        installation: keys.installationId,
+        previousImage: previous.Image,
+      });
+      assert.deepEqual(await nonWebServiceSnapshot(), before);
+      assert.equal(await inspectWebImage("winesnap-owned:local"), previous.Image);
+      if (retained) assert.equal(await inspectWebImage(rollback), previous.Image);
+      const state = await assess();
+      const transaction = journalInstallationTransaction(source, keys.installationId, state.ledger);
+      return { ...state, transaction };
+    },
+    async build() {
+      await buildOwnedWeb({
+        ...settings,
+        mealPhotoEnabled: true,
+        tag: candidateTag,
+        webOnly: true,
+        sourceArchive: await git(["archive", "--format=tar", journalWebRevision]),
+      });
+      return inspectWebImage(candidateTag);
+    },
+    retain: (id) => command(["image", "tag", id, rollback]),
+    apply: sql,
+    assess,
+    verifyBackend,
+    readWeb: () => existing("web"),
+    removeWeb: (id) => command(["rm", "--force", id]),
+    startWeb: (id, journalLabel) => startOwnedWeb(id, { ...settings, journalLabel }),
+    async verifyWeb(id, journalLabel, { unchanged = false } = {}) {
+      const web = await existing("web");
+      assert.equal(web?.Image, id);
+      assert.equal(web.State.Running, true);
+      assert.equal(web.Config.Labels[journalLabelKey], journalLabel);
+      for (const label of [
+        "public-origin",
+        "pilot-ui",
+        "pantry",
+        "recipe-nutrition",
+        "meal-photo",
+        "ai-text-provider",
+        "ai-text-model",
+      ]) {
+        assert.equal(web.Config.Labels["winesnap." + label], labels["winesnap." + label]);
+      }
+      assert.ok(!web.Config.Env.some((entry) => entry.startsWith("WINESNAP_OWNED_DEV11_ENABLED=")));
+      await verify({ syncWebKeys: !unchanged });
+      assert.equal((await probe("/kitchen")).status, 200);
+      assert.equal(
+        (await probe("/api/meal-photo?id=11111111-1111-4111-8111-111111111111")).status,
+        401,
+      );
+      for (const path of ["/api/dev11/journal", "/api/dev11/export"]) {
+        const response = await probe(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-winesnap-dev11-proof": "a".repeat(64) },
+          body: "{}",
+        });
+        assert.equal(response.status, 404);
+        if (journalLabel) {
+          assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+          assert.deepEqual(await response.json(), { error: "private_journal_unavailable" });
+        }
+      }
+    },
+    tagWeb: (id) => command(["image", "tag", id, "winesnap-owned:local"]),
+    stage(step) {
+      phase = step;
+      if (step === "private_journal_recovery") webRecoveryDeadline = performance.now() + 120_000;
+    },
+    recovery(state) {
+      report.privateJournalRecovery = state;
+    },
+  });
+  report.privateJournalDormantInstall = true;
+  report.privateJournalDataCollectionEnabled = false;
+  report.privateJournalWebSource = journalWebRevision;
   report.publicTunnelPausedVerified = true;
 }
 
@@ -971,6 +1135,21 @@ try {
       !["Start", "Update", "NutritionUpdate", "TextAiUpdate", "MealPhotoUpdate"].includes(action),
       "DEV-10 needs its own reviewed forward update; existing supervised Resume remains supported",
     );
+  const installedJournal = installedWeb?.Config.Labels[journalLabelKey];
+  if (installedJournal !== undefined) {
+    assert.equal(installedJournal, journalDeliveryLabel);
+    assert.ok(
+      ![
+        "Start",
+        "Update",
+        "NutritionUpdate",
+        "TextAiUpdate",
+        "MealPhotoUpdate",
+        "PrivateJournalUpdate",
+      ].includes(action),
+      "Private journal requires its reviewed forward path",
+    );
+  }
   const textAi = selectOwnedTextAi({
     action,
     requested: process.env.WINESNAP_OWNED_AI_TEXT_PROVIDER,
@@ -997,6 +1176,10 @@ try {
   if (mealPhotoUpdate) {
     phase = "meal_photo_delivery_guard";
     await updateGuardedMealPhoto(installedWeb, { originSettings, pilotUi, textAi });
+  }
+  if (journalUpdate) {
+    phase = "private_journal_delivery_guard";
+    await updateDormantPrivateJournal(installedWeb, { originSettings, pilotUi, textAi });
   }
   if (nutritionUpdate || textAiUpdate) {
     phase = textAiUpdate ? "text_ai_delivery_guard" : "nutrition_delivery_guard";

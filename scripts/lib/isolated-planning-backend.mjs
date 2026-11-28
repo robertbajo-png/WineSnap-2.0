@@ -22,6 +22,7 @@ import {
 import { nutritionRollbackTag } from "./owned-nutrition-delivery.mjs";
 import { openPlanningRelay, openPlanningWebRelay } from "./planning-web-relay.mjs";
 import { planOwnedMigrations } from "./owned-lifecycle.mjs";
+import { assertOrdinaryJournalFree, ordinaryJournalExclusions } from "./owned-dev11-archive.mjs";
 import {
   assessOwnedMealPhotoLedger,
   deliverOwnedMealPhotoUpdate,
@@ -32,6 +33,12 @@ import {
   ownedMealPhotoMigrationTransaction,
   requireOwnedMealPhotoUpdate,
 } from "./owned-meal-photo-delivery.mjs";
+import {
+  journalDeliveryLabel,
+  journalLabelKey,
+  journalPriorWebImage,
+  journalWebRevision,
+} from "./owned-private-journal-delivery.mjs";
 
 const scope = "planning-database-check";
 const prefix = "winesnap-planning-check";
@@ -88,7 +95,10 @@ export function isolatedPlanningBackend(
 ) {
   const run = randomBytes(8).toString("hex");
   const names = Object.fromEntries(
-    [...services, "restore", "web", "network"].map((s) => [s, `${prefix}-${run}-${s}`]),
+    [...services, "restore", "web", "network", "proxy-target", "ingress"].map((s) => [
+      s,
+      `${prefix}-${run}-${s}`,
+    ]),
   );
   const sign = randomBytes(32).toString("hex");
   const password = randomBytes(32).toString("hex");
@@ -170,7 +180,15 @@ export function isolatedPlanningBackend(
     service,
     image,
     user,
-    { vars = {}, tmpfs = [], entrypoint, args = [], networkMode = networkId, mealPhotoLabel } = {},
+    {
+      vars = {},
+      tmpfs = [],
+      entrypoint,
+      args = [],
+      networkMode = networkId,
+      mealPhotoLabel,
+      journalLabel,
+    } = {},
   ) {
     const id = await output([
       "create",
@@ -178,6 +196,7 @@ export function isolatedPlanningBackend(
       names[service],
       ...labelArgs,
       ...(mealPhotoLabel ? ["--label", `winesnap.meal-photo=${mealPhotoLabel}`] : []),
+      ...(journalLabel ? ["--label", `${journalLabelKey}=${journalLabel}`] : []),
       "--network",
       networkMode,
       "--read-only",
@@ -812,16 +831,18 @@ export function isolatedPlanningBackend(
     webRelay = undefined;
     await removeFixture(previous);
   }
-  async function replaceRehearsalWeb(image, mealPhotoLabel) {
+  async function replaceRehearsalWeb(image, mealPhotoLabel, journalLabel) {
     assert.match(image, /^sha256:[a-f0-9]{64}$/);
     assert.ok([undefined, mealPhotoWebLabel, mealPhotoFallbackLabel].includes(mealPhotoLabel));
     if (mealPhotoLabel) assert.ok(mealPhotos && meals);
+    if (journalLabel) assert.ok(privateJournal && journalLabel === journalDeliveryLabel);
     const previous = containers.find(({ service }) => service === "web");
     if (previous) await removeRehearsalWeb(previous.id);
     const enabled = mealPhotoLabel === mealPhotoWebLabel;
     const id = await start("web", image, "node", {
       networkMode: "none",
       mealPhotoLabel,
+      journalLabel,
       vars: {
         SUPABASE_URL: enabled ? isolatedMealPhotoApi : "http://127.0.0.1:54323",
         SUPABASE_PUBLISHABLE_KEY: tokens.anon,
@@ -841,9 +862,165 @@ export function isolatedPlanningBackend(
     webRelay = openPlanningWebRelay(docker, engine, env, id, {
       privacyProbe: mealPhotos,
       mealPhotoProbe: enabled,
+      journalProbe: privateJournal,
     });
     await ready(async () => assert.equal((await webRelay.request("/api/health")).status, 200));
     return id;
+  }
+  async function checkJournalIngress(ownerToken) {
+    assert.ok(privateJournal && networkId && fixtureImages);
+    assert.match(ownerToken, /^[a-zA-Z0-9._-]{20,4096}$/);
+    const image = await output(["image", "inspect", ownedServices.gateway, "--format", "{{.Id}}"]);
+    assert.match(image, /^sha256:[a-f0-9]{64}$/);
+    const upstreamProgram = `
+      import {createServer} from "node:http";
+      createServer(async (req,res) => {
+        if (req.url === "/api/authz/auth-request") {
+          res.writeHead(req.headers.cookie === "fixture=accepted" ? 204 : 403);
+        } else if (req.url === "/api/health") {
+          res.writeHead(req.headers["x-winesnap-dev11-proof"] ? 409 : 200);
+        } else if (req.url === "/rest/v1/reading") {
+          try {
+            const target = await fetch("http://${names.rest}:3000/reading", {
+              headers: {Authorization: req.headers.authorization, "Accept-Profile": "winesnap_dev11_data"},
+              redirect: "error", signal: AbortSignal.timeout(10000),
+            });
+            await target.body?.cancel();
+            res.writeHead(target.status);
+          } catch { res.writeHead(502); }
+        } else {
+          res.writeHead(500);
+        }
+        res.end();
+      }).listen(8091, "0.0.0.0");
+    `;
+    await start("proxy-target", fixtureImages.probe, "node", {
+      entrypoint: "node",
+      args: ["--input-type=module", "--eval", upstreamProgram],
+    });
+    const test = async (path, method) =>
+      Number(
+        await output(
+          [
+            "exec",
+            "--interactive",
+            names.probe,
+            "node",
+            "--input-type=module",
+            "--eval",
+            `
+        import http from "node:http";
+        let raw = "";
+        for await (const part of process.stdin) raw += part;
+        const {path,method,ownerToken} = JSON.parse(raw);
+        if (!["/api/health","/api/dev11/journal","/api/dev11/export","/backend/rest/v1/reading"].includes(path))
+          throw new Error();
+        const req = http.request("http://${names.ingress}:8080" + path, {
+          method, headers: {
+            Host: "winesnap.boleoai.se", Origin: "https://winesnap.boleoai.se",
+            Cookie: "fixture=accepted", Authorization: "Bearer " + ownerToken,
+            "X-WineSnap-Dev11-Proof": "a".repeat(64)
+          }, timeout: 10000,
+        }, (res) => { res.resume(); console.log(res.statusCode); });
+        req.on("timeout", () => req.destroy()); req.end();
+      `,
+          ],
+          JSON.stringify({ path, method, ownerToken }),
+        ),
+      );
+    for (const config of ["internet.conf", "gated-internet.conf"]) {
+      const raw = await source("config/owned-windows/" + config);
+      const rewritten = raw
+        .replace(
+          /winesnap-owned-(?:web:3000|gateway:8080|gate:9091)/g,
+          names["proxy-target"] + ":8091",
+        )
+        .replaceAll("\r\n", "\n");
+      assert.ok(!/server winesnap-owned-/.test(rewritten));
+      const fixture = Buffer.from(rewritten).toString("base64");
+      const id = await start("ingress", image, "101:101", {
+        tmpfs: ["/tmp:rw,nosuid,nodev,noexec,size=16m,uid=101,gid=101,mode=0700"],
+        entrypoint: "/bin/sh",
+        args: [
+          "-c",
+          'printf %s "$1" | base64 -d >/tmp/fixture.conf && exec nginx -c /tmp/fixture.conf -g "daemon off;"',
+          "fixture",
+          fixture,
+        ],
+      });
+      await ready(async () => assert.equal(await test("/api/health", "GET"), 200));
+      assert.equal(await test("/api/dev11/journal", "POST"), 404);
+      assert.equal(await test("/api/dev11/export", "POST"), 404);
+      assert.equal(await test("/backend/rest/v1/reading", "GET"), 406);
+      await removeFixture({ id, service: "ingress" });
+    }
+    await removeFixture(containers.find(({ service }) => service === "proxy-target"));
+  }
+  async function restoreOrdinaryJournalArchive(owner) {
+    assert.ok(privateJournal && networkId);
+    assert.match(owner, /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+    // Prevent disposable Auth/REST/Storage writers from changing the snapshot.
+    const writers = containers.filter(({ service }) =>
+      ["auth", "rest", "storage"].includes(service),
+    );
+    assert.equal(writers.length, 3);
+    await command(["stop", "--time", "5", ...writers.map(({ id }) => id)]);
+    const manifest = await source("config/owned-windows/backup-manifest.sql");
+    const before = validateOwnedManifest(JSON.parse(await sql(manifest)));
+    const connection = ["-h", "/tmp", "-U", "postgres"];
+    const ordinary = await command([
+      "exec",
+      names.db,
+      "pg_dump",
+      ...connection,
+      "--format=custom",
+      ...ordinaryJournalExclusions,
+      "postgres",
+    ]);
+    try {
+      assertOrdinaryJournalFree(
+        await output(["exec", "--interactive", names.db, "pg_restore", "--list"], ordinary),
+      );
+      const roles = await output([
+        "exec",
+        names.db,
+        "pg_dumpall",
+        ...connection,
+        "--roles-only",
+        "--no-role-passwords",
+      ]);
+      await startDatabase("restore", "none");
+      await sql(ownedRoleRestoreSql(roles), "restore");
+      await command(
+        [
+          "exec",
+          "--interactive",
+          names.restore,
+          "pg_restore",
+          ...connection,
+          "--exit-on-error",
+          "--single-transaction",
+          "--dbname=postgres",
+        ],
+        ordinary,
+      );
+      assert.deepEqual(validateOwnedManifest(JSON.parse(await sql(manifest, "restore"))), before);
+      assert.equal(
+        await sql(
+          `SELECT to_regnamespace('winesnap_dev11_control') IS NULL
+        AND to_regnamespace('winesnap_dev11_data') IS NULL
+        AND to_regprocedure('winesnap_local.dev11_account_erasure()') IS NOT NULL;`,
+          "restore",
+        ),
+        "t",
+      );
+      assert.equal(await sql(`SELECT public.privacy_account_active('${owner}');`, "restore"), "t");
+      await sql(`SELECT public.request_account_erasure('${owner}');`, "restore");
+      assert.equal(await sql(`SELECT public.privacy_account_active('${owner}');`, "restore"), "f");
+      return before.relations.length;
+    } finally {
+      ordinary.fill(0);
+    }
   }
   async function close() {
     let clean = true;
@@ -876,6 +1053,36 @@ export function isolatedPlanningBackend(
     journalFixtureSql(query) {
       assert.ok(privateJournal && networkId && serviceRelay);
       return sql(query);
+    },
+    journalDeliveryFixture() {
+      assert.ok(privateJournal && mealPhotos && networkId);
+      return {
+        installation: run + run,
+        readWeb: readRehearsalWeb,
+        removeWeb: removeRehearsalWeb,
+        startWeb: (id, label) => replaceRehearsalWeb(id, mealPhotoWebLabel, label),
+        async images() {
+          const prior = journalPriorWebImage;
+          assert.equal(await output(["image", "inspect", prior, "--format", "{{.Id}}"]), prior);
+          const tag = "winesnap-planning-rehearsal:dev11-" + journalWebRevision.slice(0, 7);
+          const candidate = await inspect(["image", "inspect", tag]);
+          assert.equal(candidate.Config.Labels["winesnap.rehearsal"], "dev11");
+          assert.equal(candidate.Config.Labels["winesnap.rehearsal-source"], journalWebRevision);
+          assert.match(candidate.Id, /^sha256:[a-f0-9]{64}$/);
+          return { prior, candidate: candidate.Id };
+        },
+        async services() {
+          const instances = [];
+          for (const { id, service } of containers.filter(({ service }) => service !== "web")) {
+            const value = await inspect(["inspect", id]);
+            assert.ok(value.State.Running && sameLabels(value.Config.Labels));
+            instances.push([service, value.Id, value.Image, value.State.StartedAt]);
+          }
+          return instances;
+        },
+        checkJournalIngress,
+        restoreOrdinaryJournalArchive,
+      };
     },
     async checkJournalArchive(dumpOptions, verify) {
       assert.ok(privateJournal && networkId && serviceRelay);

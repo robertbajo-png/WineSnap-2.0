@@ -293,6 +293,7 @@ try {
       await command(["exec", "--interactive", names.db, "pg_restore", "--list"], database)
     ).toString(),
   );
+  report.ordinaryJournalExclusionVerified = true;
   phase = "restore_roles";
   await sql(ownedRoleRestoreSql(checkBinaryPart(bundle.roles).toString()));
   await sql(`ALTER DATABASE postgres OWNER TO postgres;

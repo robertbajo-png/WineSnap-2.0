@@ -69,27 +69,42 @@ No protection against an OS administrator or compromised system is claimed.
 
 ## Guarded Delivery And Rollback
 
-Do not reuse a DEV-10 maintenance approval. In a separately approved
-window, pin the installed web image, ordinary ledger, private ingress and
-pre-change verified archive before starting. Rehearse the exact candidate
-and fallback with synthetic accounts and a disposable database. Verify
-both internet ingress denials with no public connector open. Do not
-provision eligibility, Windows startup, a journal archive key or API login
-through the generic upgrade path.
+Do not reuse a DEV-10 maintenance approval. The dedicated
+`PrivateJournalUpdate` action in `scripts/run-owned-windows.ps1` is for a
+separately approved **dormant installation** only. Its four explicit
+inputs are `-ConfirmPrivateJournalMaintenance`,
+`-VerifiedPrivateJournalBackup`, `-ExpectedPrivateJournalRevision` and
+`-ExpectedPrivateJournalPreviousImage`. Do not run it during the synthetic
+source checkpoint. It neither acquires the approval nor starts the journal.
 
-An installation-only run must keep the server and UI choices unavailable
-for real collection. Before an activation window, prove the private
-listener, rights routes, inactivity purge, short-lived file retirement
-and failure behavior with the exact delivered settings. No ordinary app
-function may depend on the journal bridge being up.
+The installer checks a clean, reviewed checkout, the rehearsed DEV-10 web
+image, the exact 42-migration ledger, the current non-web containers, a
+paused connector, and the freshly restored encrypted archive matched to
+its bytes, installation and previous image. The new backup/restore reports
+must affirm exclusion of both private schemas. It builds web source
+`ec2b0bb` with the existing owned profile and a forced-off browser flag.
+It then checks the inputs again, retains the prior image, and applies the
+pinned private DDL separately and transactionally. An unmarked or partial
+schema, login, membership, health record or installation identity blocks
+the action. There is no change to the ordinary migration ledger.
 
-For rollback before any real measurements, disable the new entry point,
-withdraw the API login and return to the pinned prior web image. Do not
-restore an older ordinary database over current data. After real use,
-disable access first and prefer a forward repair with the private
-control schema intact; never replace current consent or entry permits
-with archive state. Loss of independent control is an explicit
-fail-closed case, not authorization to recover the contents anyway.
+The new container must serve the existing Kitchen and meal-photo boundaries
+while both journal endpoints deny requests. The installer supplies no
+journal runtime flag, bridge, credentials, enrolment or new scheduler.
+Before an activation window, prove the private listener, rights routes,
+inactivity purge, short-lived file retirement and failure behavior with
+the exact delivered settings. No ordinary app function may depend on the
+journal bridge being up.
+
+If DDL is interrupted, the transaction rolls back and the old container
+stays in place. If replacement verification fails, the installer returns
+to the retained prior web image without dropping tables, restoring an old
+database or restarting the non-web services. A fully marked, verified
+empty schema may remain for a separately approved retry; an unknown
+container or catalog is never silently replaced. After real use, disable
+access first and prefer a forward repair with independent control intact.
+Loss of that control is a fail-closed case, not authorization to recover
+contents anyway.
 
 ## Synthetic Checks
 
@@ -108,6 +123,24 @@ fail-closed case, not authorization to recover the contents anyway.
   recovery, late export and deletion checks; the dark Kitchen passed at
   320px and 1280px with two real synthetic logins. Both viewports were
   visually reviewed. All disposable servers and fixtures were removed.
+- The isolated delivery rehearsal built a dormant image from `ec2b0bb`
+  with a test publishable configuration, and ran the exact prior web image
+  `f8b99303c8f8` with networking disabled. With 42 unchanged migrations,
+  injected DDL failure rolled back in place. Injected failure after the
+  candidate started led to a verified web-only return; a newer private
+  synthetic wine saved during the update still existed, and its peer
+  could not see it. The empty, locked private schema was safely reused.
+  Two real Nginx fixtures (one with a simulated accepted outer login)
+  served ordinary traffic and denied both journal paths as well as the
+  private REST schema; proof headers were stripped. Cleanup passed.
+  The focused Windows delivery regression run passed 69 tests; the
+  PowerShell wrapper passed parser validation.
+- The `--ordinary-recovery-only` rehearsal restored the filtered dump and
+  roles into a fresh networkless PostgreSQL instance. The logical catalog
+  and all 79 ordinary relations matched. Both private schemas were absent;
+  ordinary account erasure passed with the restored bridge function still
+  present. This is not proof of live Windows disk protection, scheduled
+  private-file expiry, or a full backup on the installed app.
 - The default synthetic Node build, typecheck, Node smoke and client bundle
   budget passed. The smoke checks require 404 for both journal endpoints.
 - Full lint passed with two existing Chef warnings. The full Vitest attempt
@@ -127,3 +160,9 @@ fail-closed case, not authorization to recover the contents anyway.
   ports 5291/5292, uses real synthetic sign-in, and denies direct browser
   network access. This is responsive browser evidence, not physical mobile
   access, an installed-run report or authorization to collect real values.
+- For dormant delivery, `node scripts/build-isolated-private-journal-web.mjs`
+  builds the pinned runtime with a synthetic public configuration.
+  `node scripts/check-isolated-private-journal-delivery.mjs` uses the same
+  replacement functions in a disposable stack. It does not launch the
+  Windows wrapper or connect to the installed app. It is not a
+  byte-identical build with the eventual installed publishable key.
