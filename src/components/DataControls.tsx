@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Download, ShieldCheck, Loader2, Trash2, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { readMealPhoto } from "@/features/meal-photos/client";
 import { completePrivacyExport } from "@/lib/privacyExport";
 import { invokePrivacy } from "@/lib/privacyTransport";
 import {
@@ -61,6 +62,16 @@ export function DataControls() {
           import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL,
           (url) => fetch(url, { cache: "no-store", credentials: "omit", redirect: "error" }),
           () => owner.current === id,
+          {
+            readPrivateMealPhoto: async (mealId) =>
+              new Response(
+                await readMealPhoto(
+                  mealId,
+                  { owner: id, current: () => owner.current === id },
+                  AbortSignal.timeout(55_000),
+                ),
+              ),
+          },
         );
       } else {
         // Keep the existing export until the backend rollout is verified.

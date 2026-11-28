@@ -32,6 +32,17 @@ for await (const line of lines)
 `;
 
 export function openPlanningWebRelay(docker, engine, env, id) {
+  const relay = openPlanningRelay(docker, engine, env, id, inContainer, 4096);
+  return {
+    request(path, method = "GET") {
+      assert.ok(typeof path === "string" && path.length < 2048);
+      return relay.request({ path, method });
+    },
+    close: relay.close,
+  };
+}
+
+export function openPlanningRelay(docker, engine, env, id, program, inputLimit) {
   assert.match(id, /^[a-f0-9]{64}$/);
   const proc = spawn(
     docker,
@@ -44,7 +55,7 @@ export function openPlanningWebRelay(docker, engine, env, id) {
       "node",
       "--input-type=module",
       "--eval",
-      inContainer,
+      program,
     ],
     { env, windowsHide: true, stdio: ["pipe", "pipe", "ignore"] },
   );
@@ -84,17 +95,18 @@ export function openPlanningWebRelay(docker, engine, env, id) {
     }
   });
   return {
-    request(path, method = "GET") {
+    request(input) {
       assert.ok(!closed && pending.size < 64);
-      assert.ok(typeof path === "string" && path.length < 2048);
       const id = ++next;
+      const line = JSON.stringify({ ...input, id }) + "\n";
+      assert.ok(line.length <= inputLimit);
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);
           reject(new Error("isolated_web_relay_timeout"));
         }, 25000);
         pending.set(id, { resolve, reject, timer });
-        proc.stdin.write(JSON.stringify({ id, path, method }) + "\n");
+        proc.stdin.write(line);
       });
     },
     async close() {

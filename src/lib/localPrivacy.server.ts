@@ -3,6 +3,7 @@ import { createHandler as controls } from "../../supabase/functions/privacy-cont
 import { createHandler as exportData } from "../../supabase/functions/privacy-export/handler";
 import { createHandler as maintenance } from "../../supabase/functions/privacy-maintenance/handler";
 import { runAccountErasure } from "../../supabase/functions/_shared/privacyErasure";
+import { approvedLocalBackend, ownedBackendOrigin } from "./backendScope";
 import {
   getOperationsAdmin,
   localOperationsEnabled,
@@ -76,6 +77,11 @@ export async function handleLocalPrivacy(request: Request, name: LocalPrivacyFun
             process.env.WINESNAP_COOKING_CORE_ENABLED === "true" ? "true" : "false",
           AI_CHEF_ENABLED: process.env.WINESNAP_AI_CHEF_ENABLED === "true" ? "true" : "false",
           MEALS_ENABLED: process.env.WINESNAP_MEALS_ENABLED === "true" ? "true" : "false",
+          OWNED_MEAL_PHOTO_EXPORT:
+            approvedLocalBackend(process.env) === ownedBackendOrigin &&
+            process.env.WINESNAP_MEAL_PHOTO_STORAGE_ENABLED === "true"
+              ? "true"
+              : "false",
         })[key],
     });
     const response = await handler(

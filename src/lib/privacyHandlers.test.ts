@@ -36,11 +36,12 @@ function setup(name: string, env: Record<string, string> = {}) {
     error: null,
   }));
   const remove = vi.fn().mockResolvedValue({ error: null });
+  const createSignedUrls = vi.fn();
   const admin = {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }) },
     rpc,
     from: vi.fn().mockReturnValue(chain),
-    storage: { from: vi.fn().mockReturnValue({ remove }) },
+    storage: { from: vi.fn().mockReturnValue({ remove, createSignedUrls }) },
   };
   const erase = vi.fn().mockResolvedValue({ complete: true });
   const logger = { error: vi.fn(), info: vi.fn() };
@@ -79,6 +80,7 @@ function setup(name: string, env: Record<string, string> = {}) {
     chain,
     erase,
     remove,
+    createSignedUrls,
     logger,
     call: (body: unknown = {}, token: string | null = "synthetic-token", method = "POST") =>
       handler!(
@@ -92,6 +94,65 @@ function setup(name: string, env: Record<string, string> = {}) {
       ),
   };
 }
+
+describe("private meal photo export", () => {
+  const id = "babbaabb-aaaa-4aaa-aaaa-bbbbbbbbbbbb";
+  const path = `${owner}/${id}.png`;
+  const object = { bucket_id: "meal-photos", name: path };
+
+  function fixture(enabled: boolean, state = "ready", objects = [object]) {
+    const api = setup("privacy-export", enabled ? { OWNED_MEAL_PHOTO_EXPORT: "true" } : {});
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockResolvedValue({
+        data: [{ id, user_id: owner, photo_state: state }],
+        error: null,
+      }),
+    };
+    api.admin.from.mockImplementation((table) =>
+      table === "kitchen_photo_meals" ? { ...api.chain, ...query } : api.chain,
+    );
+    api.rpc.mockImplementation(async (name) => ({
+      data:
+        name === "privacy_account_active"
+          ? true
+          : name === "consume_ai_quota"
+            ? [{ allowed: true }]
+            : objects,
+      error: null,
+    }));
+    return { ...api, query };
+  }
+
+  it("exports the owner's ready photo using only a same-account logical reference", async () => {
+    const api = fixture(true);
+    const response = await api.call();
+    expect(response.status).toBe(200);
+    const { files, tables } = await response.json();
+    expect(tables.kitchen_photo_meals).toEqual([{ id, user_id: owner, photo_state: "ready" }]);
+    expect(api.query.eq).toHaveBeenCalledWith("user_id", owner);
+    expect(files).toEqual([{ bucket: "meal-photos", path, mealId: id }]);
+    expect(api.createSignedUrls).not.toHaveBeenCalled();
+  });
+
+  it("does not sign pending or unrecognized objects even when the export feature is off", async () => {
+    const pending = fixture(true, "pending");
+    expect((await (await pending.call()).json()).files).toEqual([]);
+    expect(pending.createSignedUrls).not.toHaveBeenCalled();
+    const disabled = fixture(false);
+    expect((await disabled.call()).status).toBe(503);
+    expect(disabled.admin.from).not.toHaveBeenCalledWith("kitchen_photo_meals");
+    expect(disabled.createSignedUrls).not.toHaveBeenCalled();
+  });
+
+  it("refuses a ready photo export whose object is missing", async () => {
+    const api = fixture(true, "ready", []);
+    expect((await api.call()).status).toBe(500);
+    expect(api.createSignedUrls).not.toHaveBeenCalled();
+  });
+});
 
 describe("actual privacy-control handler", () => {
   it("rejects anonymous callers and unsupported methods without mutations", async () => {

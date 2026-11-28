@@ -21,6 +21,8 @@ const ownedTables = [
   "wishlist",
   "user_roles",
 ];
+const photoBucket = "meal-photos";
+const uuid = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/;
 
 export function createHandler(dependencies: PrivacyDependencies) {
   const { env, admin: privacyAdmin, erase: runAccountErasure } = dependencies;
@@ -46,9 +48,10 @@ export function createHandler(dependencies: PrivacyDependencies) {
         _user_id: owner,
       });
       if (activeError || active !== true) return privacyJson({ error: "Account unavailable" }, 403);
-      const tables: Record<string, unknown[]> = {};
+      const tables: Record<string, Record<string, unknown>[]> = {};
       let total = 0;
       let totalBytes = 0;
+      const photoExport = env("OWNED_MEAL_PHOTO_EXPORT") === "true";
       const cookingTables =
         env("KITCHEN_CORE_ENABLED") === "true"
           ? ["kitchen_recipes", "kitchen_recipe_versions", "cooking_sessions", "cooking_feedback"]
@@ -56,6 +59,7 @@ export function createHandler(dependencies: PrivacyDependencies) {
       for (const table of [
         ...ownedTables,
         ...cookingTables,
+        ...(photoExport ? ["kitchen_photo_meals"] : []),
         ...(env("AI_CHEF_ENABLED") === "true"
           ? [
               "food_memory_state",
@@ -116,10 +120,27 @@ export function createHandler(dependencies: PrivacyDependencies) {
       if (objects.length > 500) return privacyJson({ error: "export_requires_support" }, 413);
       const files = [];
       const buckets = new Map<string, string[]>();
+      const photoObjects = new Set<string>();
       for (const object of objects as StorageObject[]) {
+        // Food photos never enter the Storage signed-URL path, even when disabled.
+        if (object.bucket_id === photoBucket) {
+          photoObjects.add(object.name);
+          continue;
+        }
         const paths = buckets.get(object.bucket_id) ?? [];
         paths.push(object.name);
         buckets.set(object.bucket_id, paths);
+      }
+      if (!photoExport && photoObjects.size)
+        return privacyJson({ error: "Meal photo export unavailable" }, 503);
+      for (const record of tables.kitchen_photo_meals ?? []) {
+        if (record.photo_state !== "ready") continue;
+        const id = record.id;
+        if (record.user_id !== owner || typeof id !== "string" || !uuid.test(id))
+          throw new Error("export_error");
+        const path = `${owner}/${id}.png`;
+        if (!photoObjects.has(path)) throw new Error("export_error");
+        files.push({ bucket: photoBucket, path, mealId: id });
       }
       for (const [bucket, paths] of buckets) {
         const { data, error } = await admin.storage.from(bucket).createSignedUrls(paths, 900);

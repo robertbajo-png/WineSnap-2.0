@@ -13,36 +13,61 @@ import { recoveryToken } from "./platform-recovery.mjs";
 import { ownedContainerProjection } from "./owned-planning-preflight.mjs";
 import { pantryRollbackTag, pantryWebLabel } from "./owned-pantry-preflight.mjs";
 import { nutritionRollbackTag } from "./owned-nutrition-delivery.mjs";
-import { openPlanningWebRelay } from "./planning-web-relay.mjs";
+import { openPlanningRelay, openPlanningWebRelay } from "./planning-web-relay.mjs";
 
 const scope = "planning-database-check";
 const prefix = "winesnap-planning-check";
 const services = ["db", "auth", "storage", "rest", "probe"];
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const source = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
+export const isolatedMealPhotoApi = "http://meal-photo.invalid";
 
 // The relay runs inside the disposable network. It cannot address an installed or remote API.
-const relay = `
+const relayLimit = 6 * 1024 * 1024;
+const relayRequest = `
+async function serve(input) {
+  let id;
+  try {
+    if (input.length > ${relayLimit}) throw Error();
+    const req = JSON.parse(input);
+    id = req.id;
+    const { url, method, headers, body, binary } = req;
+    const target = new URL(url);
+    if (target.protocol !== "http:" || target.username || target.password ||
+        !/^winesnap-planning-check-[a-f0-9]{16}-(auth:9999|rest:3000|storage:5000)$/.test(target.host) ||
+        (binary ? target.port !== "5000" : input.length > 524288)) throw Error();
+    const response = await fetch(target, { method, headers,
+      body: binary ? Buffer.from(body, "base64") : body,
+      redirect: "error", signal: AbortSignal.timeout(20000) });
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > 8388608) throw Error();
+    return { id, status: response.status,
+      headers: Object.fromEntries([...response.headers].filter(([key]) =>
+        ["content-type", "content-range", "range-unit"].includes(key))),
+      bytes: bytes.toString("base64") };
+  } catch { return { id, failure: true }; }
+}`;
+const relay = `${relayRequest}
 let input = "";
 for await (const chunk of process.stdin) {
   input += chunk;
   if (input.length > 524288) process.exit(2);
 }
-const { url, method, headers, body } = JSON.parse(input);
-const target = new URL(url);
-if (target.protocol !== "http:" || target.username || target.password ||
-    !/^winesnap-planning-check-[a-f0-9]{16}-(auth:9999|rest:3000)$/.test(target.host))
-  process.exit(3);
-const response = await fetch(target, { method, headers, body,
-  redirect: "error", signal: AbortSignal.timeout(25000) });
-const bytes = Buffer.from(await response.arrayBuffer());
-if (bytes.length > 8388608) process.exit(4);
-console.log(JSON.stringify({ status: response.status,
-  headers: Object.fromEntries([...response.headers].filter(([key]) =>
-    ["content-type", "content-range", "range-unit"].includes(key))),
-  bytes: bytes.toString("base64") }));`;
+const result = await serve(input);
+if (result.failure) process.exit(3);
+console.log(JSON.stringify(result));`;
+const persistentRelay = `${relayRequest}
+import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
+for await (const line of lines) {
+  const result = await serve(line);
+  process.stdout.write(JSON.stringify(result) + "\\n");
+}`;
 
-export function isolatedPlanningBackend(report, { meals = false, throughMigration } = {}) {
+export function isolatedPlanningBackend(
+  report,
+  { meals = false, mealPhotos = false, throughMigration } = {},
+) {
   const run = randomBytes(8).toString("hex");
   const names = Object.fromEntries(
     [...services, "restore", "web", "network"].map((s) => [s, `${prefix}-${run}-${s}`]),
@@ -73,7 +98,7 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
   );
   let networkId, databaseImage;
   const engine = "npipe:////./pipe/dockerDesktopLinuxEngine";
-  let webRelay;
+  let webRelay, serviceRelay;
   const containers = [];
   function command(args, input, timeout = 120000) {
     return new Promise((resolve, reject) => {
@@ -211,21 +236,27 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
     });
   }
   async function request(service, path, { method = "GET", headers = {}, body } = {}) {
-    assert.ok(["auth", "rest"].includes(service));
+    assert.ok(["auth", "rest"].includes(service) || (mealPhotos && service === "storage"));
     assert.ok(path.startsWith("/") && !path.startsWith("//") && !path.includes("\\"));
-    const port = service === "auth" ? 9999 : 3000;
-    const result = JSON.parse(
-      await output(
-        ["exec", "--interactive", names.probe, "node", "--input-type=module", "--eval", relay],
-        JSON.stringify({
-          url: `http://${names[service]}:${port}${path}`,
-          method,
-          headers,
-          body,
-        }),
-      ),
-    );
-    const bytes = Buffer.from(result.bytes, "base64");
+    const port = { auth: 9999, rest: 3000, storage: 5000 }[service];
+    const binary = Buffer.isBuffer(body);
+    assert.ok(!binary || (service === "storage" && body.length <= 4 * 1024 * 1024 + 4096));
+    const input = {
+      url: `http://${names[service]}:${port}${path}`,
+      method,
+      headers,
+      body: binary ? body.toString("base64") : body,
+      binary,
+    };
+    const result = serviceRelay
+      ? await serviceRelay.request(input)
+      : JSON.parse(
+          await output(
+            ["exec", "--interactive", names.probe, "node", "--input-type=module", "--eval", relay],
+            JSON.stringify(input),
+          ),
+        );
+    const bytes = result.body ?? Buffer.from(result.bytes, "base64");
     return new Response([204, 205, 304].includes(result.status) ? null : bytes, {
       status: result.status,
       headers: result.headers,
@@ -354,12 +385,16 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
         PGRST_LOG_LEVEL: "crit",
       },
     });
-    await start("probe", images.probe, "node", {
+    const probe = await start("probe", images.probe, "node", {
       entrypoint: "node",
       args: ["--eval", "setInterval(()=>{},60000)"],
     });
+    if (mealPhotos)
+      serviceRelay = openPlanningRelay(docker, engine, env, probe, persistentRelay, relayLimit);
     await ready(async () => assert.equal((await request("auth", "/health")).status, 200));
     await ready(async () => assert.equal((await request("rest", "/")).status, 200));
+    if (mealPhotos)
+      await ready(async () => assert.equal((await request("storage", "/status")).status, 200));
   }
   async function createAccount(label) {
     assert.ok(["owner", "peer"].includes(label));
@@ -509,6 +544,7 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
   async function close() {
     let clean = true;
     await webRelay?.close();
+    await serviceRelay?.close();
     for (const { id, service } of containers.slice().reverse()) {
       try {
         await removeFixture({ id, service });
@@ -533,6 +569,35 @@ export function isolatedPlanningBackend(report, { meals = false, throughMigratio
   return {
     boot,
     request,
+    mealPhotoFixtureFetch() {
+      assert.ok(mealPhotos && meals && networkId);
+      return async (input, init) => {
+        const next = new Request(input, init);
+        const url = new URL(next.url);
+        assert.equal(url.origin, isolatedMealPhotoApi);
+        assert.ok(!url.username && !url.password && !url.hash);
+        const path = url.pathname.match(/^\/(auth|rest|storage)\/v1(\/[a-z0-9_./-]+)$/);
+        assert.ok(path);
+        const [, service, endpoint] = path;
+        if (service === "storage")
+          assert.match(
+            endpoint,
+            /^\/object(?:\/(?:authenticated|public|sign))?\/meal-photos(?:\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.png)?$/,
+          );
+        next.signal.throwIfAborted();
+        const result = await request(service, endpoint + url.search, {
+          method: next.method,
+          headers: Object.fromEntries(next.headers),
+          body: next.body
+            ? service === "storage"
+              ? Buffer.from(await next.arrayBuffer())
+              : await next.text()
+            : undefined,
+        });
+        next.signal.throwIfAborted();
+        return result;
+      };
+    },
     pantryFixtureTransport() {
       assert.ok(meals && networkId);
       const keys = {

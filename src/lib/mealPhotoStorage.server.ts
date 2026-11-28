@@ -170,6 +170,60 @@ export function createMealPhotoStorageHandler(deps: Dependencies) {
   };
 }
 
+export async function authorizeMealPhotoStorage(
+  token: string,
+  client: SupabaseClient,
+  operationsAdmin: () => Promise<SupabaseClient>,
+): Promise<Session | null> {
+  const { data: auth, error: authError } = await client.auth.getUser(token);
+  if (authError || !auth.user) return null;
+  const owner = auth.user.id;
+  const admin = await operationsAdmin();
+  const storage = admin.storage.from("meal-photos");
+  return {
+    owner,
+    async read(id) {
+      const active = await admin.rpc("privacy_account_active", { _user_id: owner });
+      if (active.error) throw new Error("Photo account check failed");
+      if (active.data !== true) return null;
+      const result = await admin
+        .from("kitchen_photo_meals")
+        .select("photo_state,photo_sha256")
+        .eq("user_id", owner)
+        .eq("id", id)
+        .maybeSingle();
+      if (result.error) throw new Error("Photo state unavailable");
+      return result.data === null ? null : stateSchema.parse(result.data);
+    },
+    async transition(id, ...[action, digest]) {
+      const result = await admin.rpc("kitchen_photo_object_transition", {
+        _owner: owner,
+        _meal: id,
+        _action: action,
+        _digest: digest ?? null,
+      });
+      if (result.error) throw new Error("Photo transition unavailable");
+      return transitionResult.parse(result.data);
+    },
+    async put(path, blob) {
+      const result = await storage.upload(path, blob, {
+        contentType: "image/png",
+        upsert: false,
+        cacheControl: "0",
+      });
+      return !result.error && result.data.path === path;
+    },
+    async get(path) {
+      const result = await storage.download(path);
+      return result.error ? null : result.data;
+    },
+    async remove(path) {
+      const result = await storage.remove([path]);
+      if (result.error) throw new Error("Photo removal unavailable");
+    },
+  };
+}
+
 export const handleMealPhotoStorage = createMealPhotoStorageHandler({
   enabled: () =>
     approvedLocalBackend(process.env) === ownedBackendOrigin &&
@@ -181,52 +235,6 @@ export const handleMealPhotoStorage = createMealPhotoStorageHandler({
       auth: { persistSession: false, autoRefreshToken: false },
       global: { fetch: localBackendFetch },
     });
-    const { data: auth, error: authError } = await client.auth.getUser(token);
-    if (authError || !auth.user) return null;
-    const owner = auth.user.id;
-    const admin = (await getOperationsAdmin()) as unknown as SupabaseClient;
-    const storage = admin.storage.from("meal-photos");
-    return {
-      owner,
-      async read(id) {
-        const active = await admin.rpc("privacy_account_active", { _user_id: owner });
-        if (active.error) throw new Error("Photo account check failed");
-        if (active.data !== true) return null;
-        const result = await admin
-          .from("kitchen_photo_meals")
-          .select("photo_state,photo_sha256")
-          .eq("user_id", owner)
-          .eq("id", id)
-          .maybeSingle();
-        if (result.error) throw new Error("Photo state unavailable");
-        return result.data === null ? null : stateSchema.parse(result.data);
-      },
-      async transition(id, ...[action, digest]) {
-        const result = await admin.rpc("kitchen_photo_object_transition", {
-          _owner: owner,
-          _meal: id,
-          _action: action,
-          _digest: digest ?? null,
-        });
-        if (result.error) throw new Error("Photo transition unavailable");
-        return transitionResult.parse(result.data);
-      },
-      async put(path, blob) {
-        const result = await storage.upload(path, blob, {
-          contentType: "image/png",
-          upsert: false,
-          cacheControl: "0",
-        });
-        return !result.error && result.data.path === path;
-      },
-      async get(path) {
-        const result = await storage.download(path);
-        return result.error ? null : result.data;
-      },
-      async remove(path) {
-        const result = await storage.remove([path]);
-        if (result.error) throw new Error("Photo removal unavailable");
-      },
-    };
+    return authorizeMealPhotoStorage(token, client, getOperationsAdmin);
   },
 });

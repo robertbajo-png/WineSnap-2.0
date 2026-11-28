@@ -1,11 +1,24 @@
 import { z } from "zod";
 
+const photoBucket = "meal-photos";
+const exportFile = z.union([
+  z.strictObject({
+    bucket: z.literal(photoBucket),
+    path: z.string(),
+    mealId: z.uuid(),
+  }),
+  z.strictObject({
+    bucket: z.string().refine((bucket) => bucket !== photoBucket),
+    path: z.string(),
+    signedUrl: z.string(),
+  }),
+]);
 const exportSchema = z.object({
   format: z.literal("WineSnap user export v2"),
   exported_at: z.string(),
   account: z.object({ id: z.string() }).passthrough(),
   tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))),
-  files: z.array(z.object({ bucket: z.string(), path: z.string(), signedUrl: z.string() })),
+  files: z.array(exportFile).max(500),
   excluded: z.array(z.string()),
 });
 
@@ -15,7 +28,10 @@ export async function completePrivacyExport(
   origin: string,
   read: (url: string) => Promise<Response>,
   stillOwner: () => boolean,
-  maxBytes = 50 * 1024 * 1024,
+  {
+    maxBytes = 50 * 1024 * 1024,
+    readPrivateMealPhoto,
+  }: { maxBytes?: number; readPrivateMealPhoto?: (mealId: string) => Promise<Response> } = {},
 ) {
   const data = exportSchema.parse(input);
   if (data.account.id !== owner || !stillOwner()) throw new Error("Account changed");
@@ -24,14 +40,28 @@ export async function completePrivacyExport(
   const files = [];
   for (const file of data.files) {
     if (!stillOwner()) throw new Error("Account changed");
-    const url = new URL(file.signedUrl);
-    if (
-      url.origin !== new URL(origin).origin ||
-      !url.pathname.startsWith("/storage/v1/object/sign/")
-    ) {
-      throw new Error("Invalid export file origin");
+    let response: Response;
+    if ("mealId" in file) {
+      if (!readPrivateMealPhoto || file.path !== `${owner}/${file.mealId}.png`)
+        throw new Error("Invalid private export file");
+      response = await readPrivateMealPhoto(file.mealId);
+      if (response.headers.get("content-type") !== "image/png") {
+        await response.body?.cancel();
+        throw new Error("Could not download export file");
+      }
+    } else {
+      const url = new URL(file.signedUrl);
+      if (
+        url.origin !== new URL(origin).origin ||
+        url.username ||
+        url.password ||
+        url.hash ||
+        !url.pathname.startsWith("/storage/v1/object/sign/") ||
+        decodeURIComponent(url.pathname.split("/")[5] ?? "") !== file.bucket
+      )
+        throw new Error("Invalid export file origin");
+      response = await read(url.href);
     }
-    const response = await read(url.href);
     if (!response.ok || !response.body) throw new Error("Could not download export file");
     const chunks: Uint8Array[] = [];
     const stream = response.body.getReader();

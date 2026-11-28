@@ -82,6 +82,54 @@ const sample = () => ({
   ],
 });
 describe("complete private export", () => {
+  const meal = "bc47c8cd-6273-4f56-aff5-214230c82b54";
+
+  it("downloads private meal photos only through the authenticated reader", async () => {
+    const path = `owner/${meal}.png`;
+    const readSigned = vi.fn();
+    const readPrivateMealPhoto = vi.fn(
+      async () => new Response("png-bytes", { headers: { "content-type": "image/png" } }),
+    );
+    const downloaded = await completePrivacyExport(
+      { ...sample(), files: [{ bucket: "meal-photos", path, mealId: meal }] },
+      "owner",
+      "https://db.example",
+      readSigned,
+      () => true,
+      { readPrivateMealPhoto },
+    );
+    expect(readPrivateMealPhoto).toHaveBeenCalledExactlyOnceWith(meal);
+    expect(readSigned).not.toHaveBeenCalled();
+    expect(downloaded.files).toEqual([
+      { bucket: "meal-photos", path, mimeType: "image/png", base64: btoa("png-bytes") },
+    ]);
+  });
+
+  it("rejects signed meal photo links and private refs outside the owner path", async () => {
+    const download = vi.fn();
+    for (const file of [
+      { bucket: "meal-photos", path: `peer/${meal}.png`, mealId: meal },
+      { bucket: "meal-photos", path: `owner/${meal}.png`, signedUrl: "https://db.example/token" },
+      {
+        bucket: "wine-labels",
+        path: "owner/label.png",
+        signedUrl: `https://db.example/storage/v1/object/sign/meal-photos/owner/${meal}.png`,
+      },
+    ]) {
+      await expect(
+        completePrivacyExport(
+          { ...sample(), files: [file] },
+          "owner",
+          "https://db.example",
+          download,
+          () => true,
+          { readPrivateMealPhoto: download },
+        ),
+      ).rejects.toThrow();
+    }
+    expect(download).not.toHaveBeenCalled();
+  });
+
   it("embeds file bytes rather than expiring signed URLs", async () => {
     const result = await completePrivacyExport(
       sample(),
@@ -140,7 +188,7 @@ describe("complete private export", () => {
         "https://db.example",
         async () => new Response("X".repeat(100)),
         () => true,
-        50,
+        { maxBytes: 50 },
       ),
     ).rejects.toThrow("export_requires_support");
   });
