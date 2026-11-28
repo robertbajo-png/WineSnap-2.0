@@ -14,9 +14,21 @@ import {
 import { finishOwnedInput } from "./owned-process-input.mjs";
 import { binaryPart, recoveryToken } from "./platform-recovery.mjs";
 import { ownedContainerProjection } from "./owned-planning-preflight.mjs";
-import { pantryRollbackTag, pantryWebLabel } from "./owned-pantry-preflight.mjs";
+import {
+  pantryMigrationBatch,
+  pantryRollbackTag,
+  pantryWebLabel,
+} from "./owned-pantry-preflight.mjs";
 import { nutritionRollbackTag } from "./owned-nutrition-delivery.mjs";
 import { openPlanningRelay, openPlanningWebRelay } from "./planning-web-relay.mjs";
+import { planOwnedMigrations } from "./owned-lifecycle.mjs";
+import {
+  assessOwnedMealPhotoLedger,
+  mealPhotoMigrationBatch,
+  ownedMealPhotoLedgerQuery,
+  ownedMealPhotoMigrationTransaction,
+  requireOwnedMealPhotoUpdate,
+} from "./owned-meal-photo-delivery.mjs";
 
 const scope = "planning-database-check";
 const prefix = "winesnap-planning-check";
@@ -365,11 +377,18 @@ export function isolatedPlanningBackend(
       files = files.slice(0, last + 1);
     }
     let schema = await source("config/owned-windows/auth-helpers.sql");
+    const photoSources = [];
     for (const file of files) {
       const migration = await source("supabase/migrations/" + file);
+      if (mealPhotoMigrationBatch.includes(file)) {
+        photoSources.push({ name: file, source: migration });
+        continue;
+      }
       const hash = createHash("sha256").update(migration).digest("hex");
       schema += `\nBEGIN;\n${migration}\nINSERT INTO winesnap_local.migrations(name,sha256) VALUES('${file}','${hash}'); COMMIT;\n`;
     }
+    if (photoSources.length)
+      schema += "\n" + ownedMealPhotoMigrationTransaction(planOwnedMigrations(photoSources, []));
     await sql(
       schema +
         "\nUPDATE public.kitchen_config SET enabled=true" +
@@ -415,6 +434,52 @@ export function isolatedPlanningBackend(
     const { id } = await response.json();
     assert.match(id, /^[a-f0-9-]{36}$/);
     return { id, email, password: accountPassword };
+  }
+
+  async function rehearseMealPhotoMigrations() {
+    assert.ok(mealPhotos && meals && serviceRelay);
+    assert.equal(throughMigration, pantryMigrationBatch.at(-1));
+    const files = (await readdir(new URL("../../supabase/migrations/", import.meta.url)))
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+    const sources = await Promise.all(
+      files.map(async (name) => ({
+        name,
+        source: await source("supabase/migrations/" + name),
+      })),
+    );
+    const readLedger = async () => JSON.parse(await sql(ownedMealPhotoLedgerQuery));
+    const installation = run + run;
+    const before = await readLedger();
+    const plan = requireOwnedMealPhotoUpdate(sources, before, installation);
+    const transaction = ownedMealPhotoMigrationTransaction(plan.pending);
+    const insert = `INSERT INTO winesnap_local.migrations(name,sha256) VALUES('${mealPhotoMigrationBatch[1]}'`;
+    assert.equal(transaction.split(insert).length, 2);
+    report.phase = "reject_interrupted_second_meal_photo_migration";
+    await assert.rejects(
+      sql(transaction.replace(insert, "SELECT 1/0;\n" + insert)),
+      (error) => error.code === "22012",
+    );
+    assert.deepEqual(await readLedger(), before);
+    report.failedBatchLeftBaselineUntouched = true;
+    report.phase = "apply_exact_meal_photo_migration_batch";
+    await sql(transaction);
+    const after = await readLedger();
+    const result = assessOwnedMealPhotoLedger(sources, after, installation);
+    assert.equal(result.scope, "already_applied");
+    assert.deepEqual(after.applied.slice(0, before.applied.length), before.applied);
+    assert.throws(() => requireOwnedMealPhotoUpdate(sources, after, installation), /not a retry/);
+    report.phase = "reload_rest_and_deny_anonymous_meals";
+    await sql("NOTIFY pgrst, 'reload schema';");
+    await ready(async () => {
+      const response = await request("rest", "/kitchen_photo_meals?select=id&limit=0", {
+        headers: authHeader(tokens.anon),
+      });
+      assert.ok([401, 403].includes(response.status));
+      assert.equal((await response.json()).code, "42501");
+    });
+    report.restSchemaRefreshedPrivately = true;
+    return { before: plan.applied, after: result.applied, applied: [...mealPhotoMigrationBatch] };
   }
 
   async function restoreMealPhotoFixture(expectedDigest) {
@@ -674,9 +739,17 @@ export function isolatedPlanningBackend(
         SUPABASE_PUBLISHABLE_KEY: tokens.anon,
         WINESNAP_OWNED_BACKEND_ENABLED: "true",
         WINESNAP_COOKING_CORE_ENABLED: "true",
+        ...(mealPhotos
+          ? {
+              WINESNAP_LOCAL_OPERATIONS_ENABLED: "false",
+              WINESNAP_LOCAL_AI_ENABLED: "false",
+              WINESNAP_MEAL_PHOTO_AI_ENABLED: "false",
+              WINESNAP_MEAL_PHOTO_STORAGE_ENABLED: "false",
+            }
+          : {}),
       },
     });
-    webRelay = openPlanningWebRelay(docker, engine, env, id);
+    webRelay = openPlanningWebRelay(docker, engine, env, id, { privacyProbe: mealPhotos });
     await ready(async () => assert.equal((await webRelay.request("/api/health")).status, 200));
     return id;
   }
@@ -708,6 +781,7 @@ export function isolatedPlanningBackend(
   return {
     boot,
     request,
+    rehearseMealPhotoMigrations,
     restoreMealPhotoFixture,
     mealPhotoFixtureFetch() {
       assert.ok(mealPhotos && meals && networkId);
@@ -803,9 +877,10 @@ export function isolatedPlanningBackend(
       );
       return { container: value.Id, image: value.Image };
     },
-    candidateImage(tag, { pantry = false, nutrition = false } = {}) {
-      assert.ok(!(pantry && nutrition));
-      const stage = nutrition ? "dev08" : pantry ? "dev07" : "dev06";
+    candidateImage(tag, { pantry = false, nutrition = false, mealPhoto = false } = {}) {
+      assert.ok([pantry, nutrition, mealPhoto].filter(Boolean).length <= 1);
+      assert.ok(!mealPhoto || mealPhotos);
+      const stage = mealPhoto ? "dev10" : nutrition ? "dev08" : pantry ? "dev07" : "dev06";
       assert.match(tag, new RegExp(`^winesnap-planning-rehearsal:${stage}-[a-f0-9]{7,40}$`));
       return output(["image", "inspect", "--format", "{{.Id}}", tag]);
     },
@@ -836,6 +911,28 @@ export function isolatedPlanningBackend(
         FROM pg_sequences s WHERE schemaname IN ('public','auth','storage','extensions','winesnap_local');`),
       );
       return { relations, catalog: manifest.catalog, sequenceDefinitions };
+    },
+    async mealPhotoSnapshot() {
+      assert.ok(mealPhotos && networkId);
+      const query = await source("config/owned-windows/backup-manifest.sql");
+      const manifest = validateOwnedManifest(JSON.parse(await sql(query)));
+      const fields = new Set([
+        "public.kitchen_photo_meals",
+        "public.wines",
+        "storage.objects",
+        "storage.buckets",
+        "winesnap_local.migrations",
+      ]);
+      const relations = manifest.relations.filter(({ schema, table }) =>
+        fields.has(schema + "." + table),
+      );
+      assert.equal(relations.length, fields.size);
+      assert.equal(relations.find(({ table }) => table === "kitchen_photo_meals").rows, 1);
+      assert.equal(
+        relations.find(({ schema, table }) => schema === "storage" && table === "objects").rows,
+        1,
+      );
+      return { relations, catalog: manifest.catalog };
     },
     createAccount,
     recover,

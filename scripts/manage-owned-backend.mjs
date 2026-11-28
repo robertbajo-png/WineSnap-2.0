@@ -51,6 +51,10 @@ import {
   replaceNutritionWeb,
   requireNutritionLedger,
 } from "./lib/owned-nutrition-delivery.mjs";
+import {
+  mealPhotoMigrationBatch,
+  refuseOrdinaryMealPhotoMigration,
+} from "./lib/owned-meal-photo-delivery.mjs";
 
 assert.equal(process.env.WINESNAP_OWNED_PIPE, "1");
 assert.ok(!process.stdout.isTTY && !process.stdin.isTTY);
@@ -802,16 +806,14 @@ try {
       );
     }
     if (action === "Update" && installedWeb && !planningUpdate && !pantryUpdate) {
-      phase = "refuse_unguarded_pantry_update";
+      phase = "refuse_unguarded_schema_update";
       assert.ok((await existing("db"))?.State.Running);
       unguardedSources = await readMigrationSources();
       const ledger = JSON.parse(await sql(pantryLedgerQuery));
       assert.equal(ledger.installation, keys.installationId);
-      guardOwnedPantryBatch(
-        planOwnedMigrations(unguardedSources, ledger.applied),
-        ledger.applied.length,
-        false,
-      );
+      const pending = planOwnedMigrations(unguardedSources, ledger.applied);
+      guardOwnedPantryBatch(pending, ledger.applied.length, false);
+      refuseOrdinaryMealPhotoMigration([...pending, ...ledger.applied]);
     }
     phase = "owned_networks_and_volumes";
     await ensureNetwork(ownedNetwork, true);
@@ -962,8 +964,12 @@ try {
       await readFile(new URL("../config/owned-windows/auth-helpers.sql", import.meta.url), "utf8"),
     );
     phase = "application_migrations";
-    const sources =
+    const availableSources =
       planningSources ?? guardedPantrySources ?? unguardedSources ?? (await readMigrationSources());
+    const sources =
+      action === "Start"
+        ? availableSources.filter(({ name }) => !mealPhotoMigrationBatch.includes(name))
+        : availableSources;
     const ledger =
       planningUpdate || pantryUpdate
         ? JSON.parse(await sql(pantryUpdate ? pantryLedgerQuery : planningLedgerQuery))
@@ -978,6 +984,7 @@ try {
       );
     const pending = planOwnedMigrations(sources, applied);
     guardOwnedPantryBatch(pending, applied.length, pantryUpdate);
+    refuseOrdinaryMealPhotoMigration(pending);
     if (pantryUpdate) {
       requirePantryUpdate(sources, ledger, keys.installationId);
       await pantryDeliveryChecks(previousPantryImage);

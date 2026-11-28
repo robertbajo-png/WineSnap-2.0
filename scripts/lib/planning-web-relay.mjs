@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
 // This process can reach only the cloned web server's own loopback listener.
-const inContainer = `
+const inContainer = (privacyProbe) => `
 import {createInterface} from "node:readline";
 const origin = "http://127.0.0.1:3000";
 async function serve(line) {
@@ -12,7 +12,9 @@ async function serve(line) {
     if (line.length > 4096) throw Error();
     const req = JSON.parse(line);
     id = req.id;
-    if (!Number.isSafeInteger(id) || !["GET", "HEAD"].includes(req.method) ||
+    const privacyProbe = ${privacyProbe === true} && req.method === "POST" &&
+      req.path === "/api/privacy/privacy-export";
+    if (!Number.isSafeInteger(id) || (!["GET", "HEAD"].includes(req.method) && !privacyProbe) ||
         !req.path.startsWith("/") || req.path.startsWith("//") || req.path.includes("\\\\"))
       throw Error();
     const url = new URL(req.path, origin);
@@ -31,8 +33,8 @@ for await (const line of lines)
   void serve(line).then((value) => process.stdout.write(JSON.stringify(value) + "\\n"));
 `;
 
-export function openPlanningWebRelay(docker, engine, env, id) {
-  const relay = openPlanningRelay(docker, engine, env, id, inContainer, 4096);
+export function openPlanningWebRelay(docker, engine, env, id, { privacyProbe = false } = {}) {
+  const relay = openPlanningRelay(docker, engine, env, id, inContainer(privacyProbe), 4096);
   return {
     request(path, method = "GET") {
       assert.ok(typeof path === "string" && path.length < 2048);
