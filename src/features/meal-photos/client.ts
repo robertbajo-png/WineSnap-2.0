@@ -1,5 +1,15 @@
-import { accountAccessToken, type AccountWriteScope } from "@/lib/accountWriteScope";
-import { mealPhotoEstimateSchema, mealPhotoFrameSideLimit } from "./domain";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  accountAccessToken,
+  accountWriteClient,
+  type AccountWriteScope,
+} from "@/lib/accountWriteScope";
+import {
+  mealPhotoEstimateSchema,
+  mealPhotoFrameSideLimit,
+  savedPhotoMealSchema,
+  type ConfirmedPhotoMeal,
+} from "./domain";
 
 const imageTypes = ["image/jpeg", "image/png", "image/webp"];
 export const mealPhotoAccept = imageTypes.join(",");
@@ -109,4 +119,128 @@ export async function analyzeMealPhoto(
   assertCurrent();
   if (!result.success) throw new MealPhotoError("invalid");
   return result.data;
+}
+
+export const photoMealPageSize = 20;
+const photoMealColumns = "id,user_id,created_at,items,keep_photo,photo_state,photo_sha256";
+
+function assertCurrent(scope: AccountWriteScope, signal: AbortSignal) {
+  signal.throwIfAborted();
+  if (!scope.current()) throw new MealPhotoError("auth");
+}
+
+export async function savePhotoMeal(
+  id: string,
+  meal: ConfirmedPhotoMeal,
+  scope: AccountWriteScope,
+  signal: AbortSignal,
+) {
+  const client: SupabaseClient = await accountWriteClient(scope, 12_000, signal);
+  assertCurrent(scope, signal);
+  const { data, error } = await client
+    .rpc("kitchen_save_photo_meal", { _id: id, _items: meal.items, _keep_photo: meal.keepPhoto })
+    .select(photoMealColumns)
+    .abortSignal(signal)
+    .single();
+  assertCurrent(scope, signal);
+  const record = savedPhotoMealSchema.safeParse(data);
+  if (
+    error ||
+    !record.success ||
+    record.data.user_id !== scope.owner ||
+    record.data.id !== id ||
+    record.data.keep_photo !== meal.keepPhoto
+  )
+    throw new MealPhotoError("invalid");
+  return record.data;
+}
+
+export async function listPhotoMeals(
+  scope: AccountWriteScope,
+  signal: AbortSignal,
+  offset: number,
+) {
+  const client: SupabaseClient = await accountWriteClient(scope, 12_000, signal);
+  assertCurrent(scope, signal);
+  const { data, error } = await client
+    .from("kitchen_photo_meals")
+    .select(photoMealColumns)
+    .eq("user_id", scope.owner)
+    .order("created_at", { ascending: false })
+    .order("id")
+    .range(offset, offset + photoMealPageSize - 1)
+    .abortSignal(signal);
+  assertCurrent(scope, signal);
+  const records = savedPhotoMealSchema.array().max(photoMealPageSize).safeParse(data);
+  if (error || !records.success || records.data.some((record) => record.user_id !== scope.owner))
+    throw new MealPhotoError("invalid");
+  return records.data;
+}
+
+async function photoFile(
+  id: string,
+  method: "GET" | "POST" | "DELETE",
+  scope: AccountWriteScope,
+  signal: AbortSignal,
+  photo?: PreparedMealPhoto,
+) {
+  const deadline = AbortSignal.any([signal, AbortSignal.timeout(55_000)]);
+  assertCurrent(scope, deadline);
+  const token = await accountAccessToken(scope, 10_000, deadline);
+  assertCurrent(scope, deadline);
+  const response = await fetch(`/api/meal-photo?${new URLSearchParams({ id })}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(photo && {
+        "Content-Type": "application/octet-stream",
+        "X-Meal-Photo-Width": String(photo.width),
+        "X-Meal-Photo-Height": String(photo.height),
+      }),
+    },
+    body: photo?.pixels,
+    signal: deadline,
+    cache: "no-store",
+    redirect: "error",
+  });
+  assertCurrent(scope, deadline);
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new MealPhotoError(
+      response.status === 401 || response.status === 403 ? "auth" : "invalid",
+    );
+  }
+  return { response, deadline };
+}
+
+export async function attachMealPhoto(
+  id: string,
+  photo: PreparedMealPhoto,
+  scope: AccountWriteScope,
+  signal: AbortSignal,
+) {
+  const { response, deadline } = await photoFile(id, "POST", scope, signal, photo);
+  const result = await response.json();
+  assertCurrent(scope, deadline);
+  if (result?.photoState !== "ready") throw new MealPhotoError("invalid");
+}
+
+export async function readMealPhoto(id: string, scope: AccountWriteScope, signal: AbortSignal) {
+  const { response, deadline } = await photoFile(id, "GET", scope, signal);
+  if (response.headers.get("content-type") !== "image/png") {
+    await response.body?.cancel();
+    throw new MealPhotoError("invalid");
+  }
+  const photo = await response.blob();
+  assertCurrent(scope, deadline);
+  if (!photo.size || photo.size > 4 * 1024 * 1024) throw new MealPhotoError("invalid");
+  return photo;
+}
+
+export async function removeMealPhoto(id: string, scope: AccountWriteScope, signal: AbortSignal) {
+  const { response } = await photoFile(id, "DELETE", scope, signal);
+  if (response.status !== 204) {
+    await response.body?.cancel();
+    throw new MealPhotoError("invalid");
+  }
 }

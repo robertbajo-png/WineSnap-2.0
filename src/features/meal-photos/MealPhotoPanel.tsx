@@ -1,19 +1,24 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, ImagePlus, Plus, ScanLine, Trash2, X } from "lucide-react";
+import { Check, ImagePlus, Plus, Save, ScanLine, Trash2, X } from "lucide-react";
 import {
   analyzeMealPhoto,
+  attachMealPhoto,
   mealPhotoAccept,
   MealPhotoError,
   prepareMealPhoto,
+  removeMealPhoto,
+  savePhotoMeal,
   type PreparedMealPhoto,
 } from "./client";
 import {
   confirmedPhotoMealSchema,
   openPhotoMealReview,
+  portionText,
   renamePhotoMealItem,
   type ConfirmedPhotoMeal,
   type PhotoMealReviewItem,
 } from "./domain";
+import { PhotoMealHistory } from "./PhotoMealHistory";
 import "./meal-photos.css";
 
 type DraftRow = {
@@ -22,7 +27,17 @@ type DraftRow = {
   enteredGrams?: string;
   uncertain?: boolean;
 };
-type OperationKind = "preparing" | "analyzing";
+type OperationKind = "preparing" | "analyzing" | "saving" | "removing";
+type SaveState = {
+  id: string;
+  progress: "unverified" | "meal" | "removal" | "retained" | "without";
+};
+const operationText: Record<OperationKind, string> = {
+  preparing: "Öppnar bilden…",
+  analyzing: "Analyserar måltiden…",
+  saving: "Sparar måltiden…",
+  removing: "Tar bort bilden…",
+};
 const errors: Record<MealPhotoError["code"], string> = {
   format: "Välj en JPG-, PNG- eller WebP-bild på högst 16 MB.",
   read: "Bilden gick inte att läsa. Prova en annan bild.",
@@ -31,13 +46,6 @@ const errors: Record<MealPhotoError["code"], string> = {
   disabled: "Bildanalysen är inte tillgänglig i den här installationen.",
   invalid: "Analysen gav inget användbart svar. Du kan försöka igen eller kasta bilden.",
 };
-
-function portionText(portion: PhotoMealReviewItem["portion"]) {
-  if (!portion) return "Okänd mängd";
-  return portion.source === "manual"
-    ? `${portion.grams} g (angivet manuellt)`
-    : `Ca ${portion.range.minGrams}\u2013${portion.range.maxGrams} g (från bild)`;
-}
 
 function photoReview(rows: DraftRow[]) {
   const items = rows.map(({ item, enteredGrams }) => {
@@ -67,7 +75,12 @@ export function MealPhotoPanel({ owner, offline }: { owner: string; offline: boo
   const [busy, setBusy] = useState<OperationKind | null>(null);
   const [rows, setRows] = useState<DraftRow[] | null>(null);
   const [confirmed, setConfirmed] = useState<ConfirmedPhotoMeal | null>(null);
+  const savedRef = useRef<SaveState | null>(null);
+  const [saved, setSaved] = useState<SaveState | null>(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [notice, setNotice] = useState("");
+  const completed = saved?.progress === "retained" || saved?.progress === "without";
+  const locked = saved !== null && !completed;
   const clearUrl = () => {
     if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
     objectUrl.current = null;
@@ -104,7 +117,20 @@ export function MealPhotoPanel({ owner, offline }: { owner: string; offline: boo
     setPhoto(null);
     setRows(null);
     setConfirmed(null);
+    showSaveState(null);
     setNotice("");
+  }
+
+  function showSaveState(value: SaveState | null) {
+    savedRef.current = value;
+    setSaved(value);
+  }
+
+  function completeSave(id: string, progress: "retained" | "without") {
+    clearUrl();
+    setPhoto(null);
+    showSaveState({ id, progress });
+    setHistoryVersion((version) => version + 1);
   }
 
   function start(kind: OperationKind) {
@@ -137,6 +163,46 @@ export function MealPhotoPanel({ owner, offline }: { owner: string; offline: boo
     } catch (cause) {
       if (attempt.current())
         setNotice(errors[cause instanceof MealPhotoError ? cause.code : "read"]);
+    } finally {
+      attempt.finish();
+    }
+  }
+
+  async function persist(withoutPhoto = false) {
+    if (!confirmed || offline || pending.current || completed) return;
+    const state = savedRef.current ?? { id: crypto.randomUUID(), progress: "unverified" };
+    if (withoutPhoto && state.progress !== "meal" && state.progress !== "removal") return;
+    if (!withoutPhoto && state.progress === "removal") return;
+    showSaveState(withoutPhoto ? { id: state.id, progress: "removal" } : state);
+    const attempt = start(withoutPhoto ? "removing" : "saving");
+    const scope = { owner, current: attempt.current };
+    let recordVerified = state.progress === "meal";
+    try {
+      if (withoutPhoto) {
+        await removeMealPhoto(state.id, scope, attempt.signal);
+        if (attempt.current()) completeSave(state.id, "without");
+        return;
+      }
+      const record = await savePhotoMeal(state.id, confirmed, scope, attempt.signal);
+      if (!attempt.current()) return;
+      recordVerified = true;
+      if (record.photo_state === "none" || record.photo_state === "removed") {
+        completeSave(state.id, "without");
+      } else {
+        showSaveState({ id: state.id, progress: "meal" });
+        if (!photo || record.photo_state === "removing") throw new MealPhotoError("invalid");
+        await attachMealPhoto(state.id, photo, scope, attempt.signal);
+        if (attempt.current()) completeSave(state.id, "retained");
+      }
+    } catch {
+      if (!attempt.current()) return;
+      setNotice(
+        withoutPhoto
+          ? "Borttagningen kunde inte bekräftas. Försök igen för att slutföra den."
+          : recordVerified
+            ? "Måltiden är sparad, men vi kunde inte bekräfta att bilden sparades."
+            : "Vi kunde inte bekräfta sparandet. Försök igen utan att skapa en ny måltid.",
+      );
     } finally {
       attempt.finish();
     }
@@ -190,16 +256,19 @@ export function MealPhotoPanel({ owner, offline }: { owner: string; offline: boo
             if (file) void choose(file);
           }}
         />
-        <button type="button" className="k-secondary" onClick={() => fileInput.current?.click()}>
+        <button
+          type="button"
+          className="k-secondary"
+          disabled={locked}
+          onClick={() => fileInput.current?.click()}
+        >
           <ImagePlus size={18} aria-hidden />
           {photo ? "Byt bild" : "Välj bild"}
         </button>
       </header>
 
       {photo && <img className="meal-photo-preview" src={photo.src} alt="Din valda måltidsbild" />}
-      {busy && (
-        <p role="status">{busy === "preparing" ? "Öppnar bilden…" : "Analyserar måltiden…"}</p>
-      )}
+      {busy && <p role="status">{operationText[busy]}</p>}
       {notice && (
         <p className="meal-photo-alert" role="alert">
           {notice}
@@ -225,9 +294,17 @@ export function MealPhotoPanel({ owner, offline }: { owner: string; offline: boo
       {confirmed ? (
         <div className="meal-photo-review">
           <h2>
-            <Check size={18} aria-hidden /> Granskat underlag
+            <Check size={18} aria-hidden /> {completed ? "Sparad måltid" : "Granskat underlag"}
           </h2>
-          <p role="status">Inget har sparats i måltidshistoriken.</p>
+          {(!saved || completed) && (
+            <p role="status">
+              {!saved
+                ? "Inget har sparats i måltidshistoriken."
+                : saved.progress === "retained"
+                  ? "Måltiden och bilden har sparats privat."
+                  : "Måltiden har sparats utan bild."}
+            </p>
+          )}
           <ul className="meal-photo-summary">
             {confirmed.items.map((item, index) => (
               <li key={rows?.[index].id ?? index}>
@@ -236,9 +313,56 @@ export function MealPhotoPanel({ owner, offline }: { owner: string; offline: boo
               </li>
             ))}
           </ul>
-          <button type="button" className="k-secondary" onClick={() => setConfirmed(null)}>
-            Redigera underlaget
-          </button>
+          {!saved && (
+            <label className="meal-photo-keep">
+              <input
+                type="checkbox"
+                checked={confirmed.keepPhoto}
+                onChange={(event) =>
+                  setConfirmed({ ...confirmed, keepPhoto: event.target.checked })
+                }
+              />
+              Behåll bilden privat med måltiden
+            </label>
+          )}
+          {offline && !completed && <p role="status">Offline. Sparande kräver anslutning.</p>}
+          {!completed && (
+            <div className="meal-photo-actions">
+              {saved?.progress !== "removal" && (
+                <button
+                  type="button"
+                  className="k-primary"
+                  disabled={offline || !!busy}
+                  onClick={() => void persist()}
+                >
+                  <Save size={18} aria-hidden />
+                  {saved?.progress === "meal"
+                    ? "Försök spara bilden igen"
+                    : saved
+                      ? "Kontrollera sparandet igen"
+                      : "Spara måltid"}
+                </button>
+              )}
+              {(saved?.progress === "meal" || saved?.progress === "removal") && (
+                <button
+                  type="button"
+                  className={saved.progress === "removal" ? "k-primary" : "k-secondary"}
+                  disabled={offline || !!busy}
+                  onClick={() => void persist(true)}
+                >
+                  <Trash2 size={18} aria-hidden />
+                  {saved.progress === "removal"
+                    ? "Slutför borttagningen"
+                    : "Ta bort bilden, behåll måltiden"}
+                </button>
+              )}
+              {!saved && (
+                <button type="button" className="k-secondary" onClick={() => setConfirmed(null)}>
+                  Redigera underlaget
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         rows && (
@@ -366,17 +490,18 @@ export function MealPhotoPanel({ owner, offline }: { owner: string; offline: boo
             <Check size={18} aria-hidden /> Bekräfta underlaget
           </button>
         )}
-        {busy && (
+        {(busy === "preparing" || busy === "analyzing") && (
           <button type="button" className="k-secondary" onClick={stop}>
             <X size={18} aria-hidden /> Avbryt
           </button>
         )}
-        {photo && (
+        {photo && !locked && (
           <button type="button" className="k-secondary" onClick={discard}>
             <Trash2 size={18} aria-hidden /> Kasta bilden
           </button>
         )}
       </div>
+      <PhotoMealHistory owner={owner} offline={offline} version={historyVersion} />
     </section>
   );
 }

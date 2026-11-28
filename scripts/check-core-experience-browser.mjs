@@ -397,7 +397,7 @@ try {
       })
     : null;
   const mealPhotoFixture = mealPhotoOnly
-    ? createCoreMealPhotoFixture({ base, fixtureOwner, syntheticUsers, report })
+    ? createCoreMealPhotoFixture({ base, fixtureOrigin, fixtureOwner, syntheticUsers, report })
     : null;
   let galleryFailed = false,
     delayNextGallery = false,

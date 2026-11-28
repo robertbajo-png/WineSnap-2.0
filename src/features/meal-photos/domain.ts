@@ -63,6 +63,14 @@ export const savedPhotoMealSchema = z
 export type MealPhotoEstimate = z.infer<typeof mealPhotoEstimateSchema>;
 export type PhotoMealReviewItem = z.infer<typeof reviewItemSchema>;
 export type ConfirmedPhotoMeal = z.infer<typeof confirmedPhotoMealSchema>;
+export type SavedPhotoMeal = z.infer<typeof savedPhotoMealSchema>;
+
+export function portionText(portion: PhotoMealReviewItem["portion"]) {
+  if (!portion) return "Okänd mängd";
+  return portion.source === "manual"
+    ? `${portion.grams} g (angivet manuellt)`
+    : `Ca ${portion.range.minGrams}\u2013${portion.range.maxGrams} g (från bild)`;
+}
 
 export function openPhotoMealReview(estimate: MealPhotoEstimate) {
   const items: PhotoMealReviewItem[] = estimate.items.map(({ name, portion }) => ({

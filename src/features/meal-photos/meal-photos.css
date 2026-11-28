@@ -18,14 +18,64 @@
 }
 .meal-photo-heading h1,
 .meal-photo-review h2,
+.meal-photo-history h2,
 .meal-photo p {
   margin: 0;
 }
-.meal-photo-review h2 {
+.meal-photo-review h2,
+.meal-photo-history h2 {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 1.2rem;
+}
+
+.meal-photo-keep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.meal-photo-keep input {
+  inline-size: 20px;
+  block-size: 20px;
+  flex: 0 0 20px;
+  accent-color: #d7af70;
+}
+
+.meal-photo-history,
+.meal-photo-history-list,
+.meal-photo-history-entry {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.meal-photo-history {
+  padding-block-start: 16px;
+  border-top: 1px solid rgb(160 145 136 / 24%);
+  justify-items: start;
+}
+
+.meal-photo-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.meal-photo-history-list:empty {
+  display: none;
+}
+
+.meal-photo-history-entry {
+  padding-block: 12px;
+  border-bottom: 1px solid rgb(160 145 136 / 24%);
+}
+
+.meal-photo-history-entry time {
+  font-size: 0.9rem;
 }
 .meal-photo-review {
   display: grid;

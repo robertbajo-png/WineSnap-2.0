@@ -1,11 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const token = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/accountWriteScope", () => ({ accountAccessToken: token }));
+const scopedClient = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/accountWriteScope", () => ({
+  accountAccessToken: token,
+  accountWriteClient: scopedClient,
+}));
 import {
   analyzeMealPhoto,
+  attachMealPhoto,
+  listPhotoMeals,
   mealPhotoFrameSize,
   prepareMealPhoto,
+  readMealPhoto,
+  removeMealPhoto,
+  savePhotoMeal,
   type PreparedMealPhoto,
 } from "./client";
 
@@ -88,6 +97,103 @@ describe("meal photo preparation", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(close).toHaveBeenCalledOnce();
     expect(getContext).not.toHaveBeenCalled();
+  });
+});
+
+describe("reviewed meal and private photo persistence", () => {
+  const owner = "884d9ce1-4680-4f0f-8ad6-6937c9e8c150";
+  const id = "03a1de48-eddb-4808-852a-c0999fa10978";
+  const items = [{ name: "Ris", portion: null }];
+  const meal = { items, keepPhoto: false };
+  const saved = {
+    id,
+    user_id: owner,
+    items,
+    created_at: "2026-11-28T12:00:00+00:00",
+    keep_photo: false,
+    photo_state: "none",
+    photo_sha256: null,
+  };
+  const scope = { owner, current: () => true };
+  const signal = new AbortController().signal;
+
+  it("uses the caller's fixed request ID and owner-scoped write for both attempts", async () => {
+    const select = vi.fn().mockReturnThis();
+    const abortSignal = vi.fn().mockReturnThis();
+    const single = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("connection lost"))
+      .mockResolvedValueOnce({ data: saved });
+    const rpc = vi.fn().mockReturnValue({ select, abortSignal, single });
+    scopedClient.mockReset().mockResolvedValue({ rpc });
+    await expect(savePhotoMeal(id, meal, scope, signal)).rejects.toThrow("connection lost");
+    await expect(savePhotoMeal(id, meal, scope, signal)).resolves.toEqual(saved);
+    expect(rpc.mock.calls).toEqual(
+      Array(2).fill(["kitchen_save_photo_meal", { _id: id, _items: items, _keep_photo: false }]),
+    );
+    expect(scopedClient).toHaveBeenLastCalledWith(scope, 12_000, signal);
+    expect(abortSignal).toHaveBeenCalledWith(signal);
+  });
+
+  it("does not start a write after an account switch", async () => {
+    let current = true;
+    const rpc = vi.fn();
+    scopedClient.mockReset().mockImplementationOnce(async () => {
+      current = false;
+      return { rpc };
+    });
+    await expect(
+      savePhotoMeal(id, meal, { owner, current: () => current }, signal),
+    ).rejects.toMatchObject({ code: "auth" });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("checks the owner on every recent history row and bounds the requested page", async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
+      abortSignal: vi
+        .fn()
+        .mockResolvedValueOnce({ data: [saved] })
+        .mockResolvedValueOnce({ data: [{ ...saved, user_id: id }] }),
+    };
+    scopedClient.mockReset().mockResolvedValue({ from: () => query });
+    await expect(listPhotoMeals(scope, signal, 20)).resolves.toEqual([saved]);
+    expect(query.eq).toHaveBeenCalledWith("user_id", owner);
+    expect(query.range).toHaveBeenCalledWith(20, 39);
+    await expect(listPhotoMeals(scope, signal, 0)).rejects.toMatchObject({ code: "invalid" });
+  });
+
+  it("uploads normalized bytes and fetches and removes only through the private path", async () => {
+    const image = new Uint8Array([1, 2, 3]);
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ photoState: "ready" }))
+      .mockResolvedValueOnce(new Response(image, { headers: { "Content-Type": "image/png" } }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", send);
+    await attachMealPhoto(id, source, scope, signal);
+    expect(new Uint8Array(await (await readMealPhoto(id, scope, signal)).arrayBuffer())).toEqual(
+      image,
+    );
+    await removeMealPhoto(id, scope, signal);
+    expect(send.mock.calls.map(([url]) => url)).toEqual(Array(3).fill(`/api/meal-photo?id=${id}`));
+    expect(send.mock.calls.map(([, init]) => init.method)).toEqual(["POST", "GET", "DELETE"]);
+    expect(send.mock.calls.map(([, init]) => init.body)).toEqual([
+      source.pixels,
+      undefined,
+      undefined,
+    ]);
+    expect(
+      send.mock.calls.every(
+        ([, init]) =>
+          init.cache === "no-store" &&
+          init.redirect === "error" &&
+          init.headers.Authorization === "Bearer synthetic-scoped-token",
+      ),
+    ).toBe(true);
   });
 });
 

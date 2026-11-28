@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { layout } from "./core-kitchen-browser.mjs";
 
 const path = "/api/ai/analyze-meal-photo";
+const photoPath = "/api/meal-photo";
+const mealPath = "/rest/v1/kitchen_photo_meals";
+const savePath = "/rest/v1/rpc/kitchen_save_photo_meal";
 const proposals = {
   items: [
     { name: "Ris", confidence: "medium", portion: { minGrams: 80, maxGrams: 140 } },
@@ -9,15 +12,45 @@ const proposals = {
   ],
 };
 
-export function createCoreMealPhotoFixture({ base, fixtureOwner, syntheticUsers, report }) {
+export function createCoreMealPhotoFixture({
+  base,
+  fixtureOrigin,
+  fixtureOwner,
+  syntheticUsers,
+  report,
+}) {
   let outcome = "failure";
   let held;
-  const matches = (request) => {
+  let photoFixture;
+  let loseSaveReply = true;
+  let loseUploadReply = true;
+  let failNextRemove = true;
+  const rows = new Map();
+  const files = new Set();
+  const saveIds = [];
+  const fileRequests = [];
+  const analysis = (request) => {
     const url = new URL(request.url());
     return url.origin === base && url.pathname === path;
   };
+  const matches = (request) => {
+    const url = new URL(request.url());
+    return (
+      analysis(request) ||
+      (url.origin === base && url.pathname === photoPath) ||
+      (url.origin === fixtureOrigin &&
+        [mealPath, savePath].includes(url.pathname) &&
+        request.method() !== "OPTIONS")
+    );
+  };
   return {
     matches,
+    analysis,
+    rows,
+    files,
+    saveIds,
+    fileRequests,
+    setPhoto: (buffer) => (photoFixture = buffer),
     preferSuccess: () => (outcome = "success"),
     holdNext() {
       assert.equal(held, undefined);
@@ -47,8 +80,82 @@ export function createCoreMealPhotoFixture({ base, fixtureOwner, syntheticUsers,
     async route(route) {
       const request = route.request();
       assert.ok(matches(request));
-      assert.equal(request.method(), "POST");
       assert.equal(syntheticUsers.get(request.headers().authorization)?.id, fixtureOwner);
+      const url = new URL(request.url());
+      const method = request.method();
+      function respond(status, value) {
+        return route.fulfill({
+          status,
+          json: value,
+          headers: { "Cache-Control": "no-store", "Access-Control-Allow-Origin": base },
+        });
+      }
+      if (url.pathname === mealPath) {
+        assert.equal(method, "GET");
+        assert.equal(url.searchParams.get("user_id"), `eq.${fixtureOwner}`);
+        return respond(200, [...rows.values()].reverse());
+      }
+      if (url.pathname === savePath) {
+        assert.equal(method, "POST");
+        report.simulatedWrites++;
+        const { _id, _items, _keep_photo } = request.postDataJSON();
+        assert.match(_id, /^[0-9a-f-]{36}$/);
+        assert.equal(typeof _keep_photo, "boolean");
+        saveIds.push(_id);
+        if (!rows.has(_id))
+          rows.set(_id, {
+            id: _id,
+            user_id: fixtureOwner,
+            created_at: "2026-11-28T12:00:00+00:00",
+            items: _items,
+            keep_photo: _keep_photo,
+            photo_state: _keep_photo ? "pending" : "none",
+            photo_sha256: null,
+          });
+        const record = rows.get(_id);
+        assert.deepEqual(record.items, _items);
+        assert.equal(record.keep_photo, _keep_photo);
+        if (loseSaveReply) {
+          loseSaveReply = false;
+          return route.abort("failed");
+        }
+        return respond(200, record);
+      }
+      if (url.pathname === photoPath) {
+        const id = url.searchParams.get("id");
+        const record = rows.get(id);
+        assert.ok(record?.keep_photo);
+        fileRequests.push(method);
+        if (method === "POST") {
+          report.simulatedWrites++;
+          assert.equal(request.headers()["content-type"], "application/octet-stream");
+          assert.equal(request.postDataBuffer()?.length, 1024 * 768 * 3);
+          files.add(id);
+          record.photo_state = "ready";
+          record.photo_sha256 = "a".repeat(64);
+          if (loseUploadReply) {
+            loseUploadReply = false;
+            return respond(503, { error: "synthetic_upload_failure" });
+          }
+          return respond(200, { photoState: "ready" });
+        }
+        if (method === "GET") {
+          assert.ok(files.has(id));
+          return route.fulfill({ status: 200, contentType: "image/png", body: photoFixture });
+        }
+        assert.equal(method, "DELETE");
+        report.simulatedWrites++;
+        record.photo_state = "removing";
+        if (failNextRemove) {
+          failNextRemove = false;
+          return respond(503, { error: "synthetic_remove_failure" });
+        }
+        files.delete(id);
+        record.photo_state = "removed";
+        record.photo_sha256 = null;
+        return route.fulfill({ status: 204 });
+      }
+      assert.equal(method, "POST");
       assert.equal(request.headers()["content-type"], "application/octet-stream");
       assert.equal(request.headers()["x-meal-photo-width"], "1024");
       assert.equal(request.headers()["x-meal-photo-height"], "768");
@@ -57,9 +164,6 @@ export function createCoreMealPhotoFixture({ base, fixtureOwner, syntheticUsers,
       assert.deepEqual([...pixels.subarray(0, 3)], [52, 45, 40]);
       report.simulatedAiRequests++;
 
-      function respond(status, value) {
-        return route.fulfill({ status, json: value, headers: { "Cache-Control": "no-store" } });
-      }
       if (held) {
         const { pending, finished } = held;
         held = undefined;
@@ -173,6 +277,7 @@ export async function acceptCoreMealPhoto({ page, context, base, artifacts, repo
   await panel.getByText("Inget har sparats i måltidshistoriken.").waitFor();
   assert.equal(report.simulatedAiRequests, 2);
   assert.equal(report.mutations, 0);
+  assert.equal(report.simulatedWrites, 0);
   await cancelPhoto();
   await preview.waitFor({ state: "detached" });
   report.passed.push("meal-photo-review-edit-confirm-discard-without-save");
@@ -182,7 +287,7 @@ export async function acceptCoreMealPhoto({ page, context, base, artifacts, repo
   await preview.waitFor();
   const held = fixture.holdNext();
   try {
-    const sent = page.waitForRequest(fixture.matches);
+    const sent = page.waitForRequest(fixture.analysis);
     await analyze.click();
     await sent;
     await panel.getByRole("button", { name: "Avbryt", exact: true }).click();
@@ -217,7 +322,7 @@ export async function acceptCoreMealPhoto({ page, context, base, artifacts, repo
   await preview.waitFor();
   const interrupted = fixture.holdNext();
   try {
-    const sent = page.waitForRequest(fixture.matches);
+    const sent = page.waitForRequest(fixture.analysis);
     await analyze.click();
     await sent;
     await page.getByRole("button", { name: "Recept", exact: true }).click();
@@ -232,4 +337,73 @@ export async function acceptCoreMealPhoto({ page, context, base, artifacts, repo
   assert.equal(await panel.getByText("Fordrojt testforslag").count(), 0);
   assert.equal(report.simulatedAiRequests, 4);
   report.passed.push("meal-photo-view-exit-clears-draft-and-late-result");
+
+  fixture.setPhoto(file.buffer);
+  const history = panel.getByRole("region", { name: "Sparade fotomåltider" });
+  const keep = panel.getByRole("checkbox", { name: "Behåll bilden privat med måltiden" });
+  const save = panel.getByRole("button", { name: "Spara måltid" });
+
+  report.phase = "meal-photo-save-without-image";
+  await choose();
+  await analyze.click();
+  await panel.getByRole("textbox", { name: "Livsmedel 1", exact: true }).fill("Matvete");
+  await grams.fill("160");
+  await confirm.click();
+  assert.equal(await keep.isChecked(), false);
+  assert.equal(fixture.rows.size, 0);
+  await context.setOffline(true);
+  try {
+    await panel.getByText("Offline. Sparande kräver anslutning.").waitFor();
+    assert.equal(await save.isEnabled(), false);
+  } finally {
+    await context.setOffline(false);
+  }
+  await save.click();
+  await panel.getByText(/Vi kunde inte bekräfta sparandet/).waitFor();
+  await panel.getByRole("button", { name: "Kontrollera sparandet igen" }).click();
+  await panel.getByText("Måltiden har sparats utan bild.").waitFor();
+  await history.getByText("160 g (angivet manuellt)").waitFor();
+  await history.getByText("Okänd mängd", { exact: true }).waitFor();
+  assert.equal(fixture.rows.size, 1);
+  assert.equal(fixture.saveIds[0], fixture.saveIds[1]);
+  assert.deepEqual(fixture.fileRequests, []);
+  report.passed.push("meal-photo-opt-out-confirmed-save-and-idempotent-retry");
+
+  report.phase = "meal-photo-save-private-image";
+  await choose();
+  await analyze.click();
+  await confirm.click();
+  await keep.check();
+  await layout(page, artifacts, report, "meal-photo-confirm");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await save.click();
+  await panel.getByText(/Måltiden är sparad, men vi kunde inte bekräfta/).waitFor();
+  assert.equal(fixture.rows.size, 2);
+  await panel.getByRole("button", { name: "Försök spara bilden igen" }).click();
+  await panel.getByText("Måltiden och bilden har sparats privat.").waitFor();
+  assert.equal(fixture.saveIds[2], fixture.saveIds[3]);
+  assert.equal(fixture.files.size, 1);
+  await history.getByRole("button", { name: "Visa bild" }).click();
+  const savedImage = history.getByRole("img", { name: "Sparad måltidsbild" });
+  await savedImage.waitFor();
+  assert.match(await savedImage.getAttribute("src"), /^blob:/);
+  assert.equal(await savedImage.evaluate(async (img) => (await img.decode(), img.complete)), true);
+  report.passed.push("meal-photo-opt-in-attached-once-and-private-preview");
+
+  report.phase = "meal-photo-remove-keep-log";
+  await history.getByRole("button", { name: "Ta bort bild", exact: true }).click();
+  assert.ok(await savedImage.isVisible());
+  const remove = history.getByRole("button", { name: "Bekräfta borttagning" });
+  await remove.click();
+  await history.getByText("Borttagningen kunde inte bekräftas. Försök igen.").waitFor();
+  await savedImage.waitFor({ state: "detached" });
+  await remove.click();
+  await history.getByText("Bilden är borttagen.").waitFor();
+  assert.equal(fixture.rows.size, 2);
+  assert.equal(fixture.files.size, 0);
+  assert.deepEqual(fixture.fileRequests, ["POST", "POST", "GET", "DELETE", "DELETE"]);
+  assert.equal(fixture.saveIds.length, 4);
+  assert.equal(report.simulatedAiRequests, 6);
+  assert.equal(report.simulatedWrites, 8);
+  report.passed.push("meal-photo-remove-image-retry-preserves-meal");
 }
